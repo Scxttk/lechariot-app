@@ -4,13 +4,20 @@ struct LiveOfferRepository: OfferRepositoryProtocol {
     let client: SupabaseClient
     private let pageSize = 1000
 
-    func offers(regions: [String]) async throws -> [Offer] {
+    func offers(regions: [String], chains: [String]) async throws -> [Offer] {
         guard !regions.isEmpty else { return [] }
         var all: [Offer] = []
         var offset = 0
+        var marketFilter = ""
+        if !chains.isEmpty {
+            let joined = chains.joined(separator: ",")
+                .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            marketFilter = "&market=in.(\(joined))"
+        }
         while true {
             let query = "select=*&order=valid_from.desc"
                 + "&region=in.(\(regions.joined(separator: ",")))"
+                + marketFilter
                 + "&limit=\(pageSize)&offset=\(offset)"
             let page = try await client.get([Offer].self, path: "offers", query: query)
             all.append(contentsOf: page)

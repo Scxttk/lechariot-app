@@ -2,7 +2,8 @@ import Foundation
 
 protocol OfferRepositoryProtocol {
     /// Offers for the given PLZ regions, newest validity first.
-    func offers(regions: [String]) async throws -> [Offer]
+    /// `chains` restricts results to those market chains; empty means all chains.
+    func offers(regions: [String], chains: [String]) async throws -> [Offer]
 }
 
 protocol MarketRepositoryProtocol {

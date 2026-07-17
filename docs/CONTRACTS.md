@@ -39,6 +39,10 @@ GET /rest/v1/offers?select=*&order=valid_from.desc&region=in.(01219)&market=in.(
 
 Paginated 1000 rows per page via `limit`/`offset`.
 
+The `market=in.(...)` filter is optional: the app sends it with the user's favorite
+chains ("Wunschmärkte") and omits it to fetch all chains. Chain names are
+percent-encoded (they may contain spaces, e.g. `Netto Marken-Discount`).
+
 ### `markets`
 
 | Column | Type | Notes |
