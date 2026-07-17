@@ -22,8 +22,11 @@ struct LiveOfferRepository: OfferRepositoryProtocol {
                 + "&region=in.(\(regions.joined(separator: ",")))"
                 + marketFilter
                 + "&limit=\(pageSize)&offset=\(offset)"
-            let page = try await client.get([Offer].self, path: "offers", query: query)
-            all.append(contentsOf: page)
+            // Decode per element so one malformed row cannot sink the fetch.
+            // Pagination must count raw rows, not surviving ones, so the raw
+            // failable page drives the termination check.
+            let page = try await client.get([FailableElement<Offer>].self, path: "offers", query: query)
+            all.append(contentsOf: page.compactMap(\.value))
             if page.count < pageSize { break }
             offset += pageSize
         }
@@ -39,7 +42,7 @@ struct LiveMarketRepository: MarketRepositoryProtocol {
         let query = "select=chain,branch_name,market_id,plz"
             + "&plz=in.(\(plzs.joined(separator: ",")))"
             + "&order=chain.asc,branch_name.asc"
-        return try await client.get([Market].self, path: "markets", query: query)
+        return try await client.getList(Market.self, path: "markets", query: query)
     }
 }
 

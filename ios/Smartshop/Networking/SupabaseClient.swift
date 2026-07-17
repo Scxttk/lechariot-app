@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 enum SupabaseError: Error {
     case notConfigured
@@ -60,6 +61,18 @@ struct SupabaseClient {
         try validate(response: response, data: data)
     }
 
+    /// GET returning a JSON array, decoded per element: a single malformed
+    /// row is skipped and logged instead of sinking the whole fetch.
+    func getList<T: Decodable>(_ type: T.Type, path: String, query: String = "") async throws -> [T] {
+        let rows = try await get([FailableElement<T>].self, path: path, query: query)
+        let values = rows.compactMap(\.value)
+        if values.count != rows.count {
+            Logger(subsystem: "smartshop", category: "supabase")
+                .warning("Skipped \(rows.count - values.count) malformed row(s) from \(path)")
+        }
+        return values
+    }
+
     private func applyHeaders(_ request: inout URLRequest) {
         request.setValue(apiKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -73,6 +86,16 @@ struct SupabaseClient {
                 body: String(data: data, encoding: .utf8) ?? ""
             )
         }
+    }
+}
+
+/// Wraps an array element so a per-element decode failure yields nil instead
+/// of failing the surrounding array.
+struct FailableElement<T: Decodable>: Decodable {
+    let value: T?
+
+    init(from decoder: Decoder) {
+        value = try? T(from: decoder)
     }
 }
 

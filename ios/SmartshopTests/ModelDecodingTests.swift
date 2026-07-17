@@ -112,4 +112,38 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertNil(region.lastSynced)
         XCTAssertNil(region.active)
     }
+
+    // MARK: Decoding resilience
+
+    /// One poisoned row (null valid_from) must not sink the whole fetch:
+    /// per-element decoding keeps the good rows and drops the bad one.
+    func testPoisonedRowIsSkippedNotFatal() throws {
+        let json = """
+        [
+            {
+                "market": "Lidl", "product": "Bio Vollmilch", "price": 0.99,
+                "regular_price": 1.29, "unit": null, "category": "Molkerei & Eier",
+                "emoji": null, "valid_from": "2026-07-13", "valid_until": "2026-07-19",
+                "base_price": null, "base_unit": null, "region": "01219"
+            },
+            {
+                "market": "Kaputt", "product": "Poisoned", "price": "NaN",
+                "regular_price": null, "unit": null, "category": "Sonstiges",
+                "emoji": null, "valid_from": null, "valid_until": null,
+                "base_price": null, "base_unit": null, "region": "01219"
+            },
+            {
+                "market": "Aldi", "product": "Orangen", "price": 1.99,
+                "regular_price": null, "unit": null, "category": "Obst & Gemüse",
+                "emoji": null, "valid_from": "2026-07-13", "valid_until": "2026-07-19",
+                "base_price": null, "base_unit": null, "region": "01219"
+            }
+        ]
+        """.data(using: .utf8)!
+
+        let rows = try decoder.decode([FailableElement<Offer>].self, from: json)
+        let offers = rows.compactMap(\.value)
+        XCTAssertEqual(rows.count, 3)
+        XCTAssertEqual(offers.map(\.product), ["Bio Vollmilch", "Orangen"])
+    }
 }
