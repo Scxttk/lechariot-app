@@ -40,7 +40,7 @@ struct ShoppingListRowView: View {
     private var suggestion: some View {
         if let match {
             HStack(spacing: Theme.Spacing.sm) {
-                Text(match.emoji ?? "🛒")
+                OfferThumbnail(imageUrl: match.imageUrl, emoji: match.emoji, size: 32)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(match.product)
                         .font(.caption)

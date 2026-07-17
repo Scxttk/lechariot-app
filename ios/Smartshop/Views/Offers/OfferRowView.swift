@@ -12,8 +12,7 @@ struct OfferRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.md) {
-            Text(offer.emoji ?? "🛒")
-                .font(.title2)
+            OfferThumbnail(imageUrl: offer.imageUrl, emoji: offer.emoji)
             VStack(alignment: .leading, spacing: 2) {
                 Text(offer.product)
                     .font(.body.weight(.medium))

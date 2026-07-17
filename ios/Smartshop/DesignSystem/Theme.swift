@@ -60,6 +60,39 @@ struct DiscountBadge: View {
     }
 }
 
+// MARK: - Offer thumbnail
+
+/// Product image for an offer, emoji as fallback. Single source of truth —
+/// used in offer rows (Angebote, Top-Deals) and shopping-list suggestions.
+/// Loads via AsyncImage/URLCache; the emoji tile shows while loading, on
+/// failure, and when the offer has no image URL.
+struct OfferThumbnail: View {
+    let imageUrl: String?
+    let emoji: String?
+    var size: CGFloat = 48
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+            Text(emoji ?? "🛒")
+                .font(.system(size: size * 0.5))
+            if let url = imageUrl.flatMap(URL.init(string:)) {
+                AsyncImage(url: url) { phase in
+                    if case .success(let image) = phase {
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    }
+                }
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous))
+        .accessibilityHidden(true)
+    }
+}
+
 // MARK: - Price text
 
 /// Price label with tabular digits so columns of prices align optically.
