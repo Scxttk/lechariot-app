@@ -14,7 +14,7 @@ struct ContentView: View {
 
     private var mainTabs: some View {
         TabView {
-            OffersPlaceholderView()
+            offersTab
                 .tabItem {
                     Label("Angebote", systemImage: "tag")
                 }
@@ -24,21 +24,27 @@ struct ContentView: View {
                 }
         }
     }
-}
 
-struct OffersPlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 12) {
-                Image(systemName: "cart")
-                    .font(.largeTitle)
-                    .foregroundStyle(.secondary)
-                Text("Angebote folgen in Kürze")
-                    .foregroundStyle(.secondary)
-            }
-            .navigationTitle("Smartshop")
+    @ViewBuilder
+    private var offersTab: some View {
+        if let plz = store.selectedRegion {
+            OffersView(
+                plz: plz,
+                favoriteMarkets: store.favoriteMarkets(in: plz),
+                repository: Self.offerRepository
+            )
+        } else {
+            ContentUnavailableView("Keine Region ausgewählt", systemImage: "mappin.slash")
         }
     }
+
+    /// Mirrors the live-or-mock fallback used in SmartshopApp for the other repositories.
+    private static let offerRepository: OfferRepositoryProtocol = {
+        if let client = SupabaseClient.fromConfig() {
+            return LiveOfferRepository(client: client)
+        }
+        return MockOfferRepository()
+    }()
 }
 
 struct SettingsPlaceholderView: View {
