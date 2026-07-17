@@ -1,7 +1,18 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(RegionStore.self) private var store
+    let marketRepository: MarketRepositoryProtocol
+
     var body: some View {
+        if store.isOnboardingComplete {
+            mainTabs
+        } else {
+            OnboardingFlowView(marketRepository: marketRepository)
+        }
+    }
+
+    private var mainTabs: some View {
         TabView {
             OffersPlaceholderView()
                 .tabItem {
@@ -45,5 +56,6 @@ struct SettingsPlaceholderView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(marketRepository: MockMarketRepository())
+        .environment(RegionStore(repository: MockRegionRepository()))
 }

@@ -20,6 +20,7 @@ targets:
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Dein Standort wird einmalig verwendet, um deine Postleitzahl zu ermitteln. Du kannst sie auch manuell eingeben."
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 0.1.0
