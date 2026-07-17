@@ -26,6 +26,7 @@
 		63B3FC223A69849D4413406C /* AnalyseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 284DE14BB127F101EBAF34F6 /* AnalyseView.swift */; };
 		6489EAB6EBDF8B831D52FF05 /* OfferStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B816EFCB523B03236DAEEEF /* OfferStore.swift */; };
 		6958E0BBF81CABFBFAC157B1 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A687DB4BC334F9E68BA90F77 /* ContentView.swift */; };
+		6CAEFA276FB0987B4A7F334A /* MarketTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09410A87BA1B641089F1FB1F /* MarketTests.swift */; };
 		7D323F4158711B185CAEE8B4 /* Market.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA5E2F1FD07970ECF93D078 /* Market.swift */; };
 		800FDB245BEBA1AD7B61AB07 /* Offer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF672C84046EBB21ACA1088B /* Offer.swift */; };
 		901030CA717C52D1F23A9840 /* OfferAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A0A73C2B5FEF9C28CB9A27 /* OfferAnalytics.swift */; };
@@ -61,6 +62,7 @@
 
 /* Begin PBXFileReference section */
 		01E0E10DD074BFC523DF9AD2 /* PLZLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PLZLocator.swift; sourceTree = "<group>"; };
+		09410A87BA1B641089F1FB1F /* MarketTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketTests.swift; sourceTree = "<group>"; };
 		0A51CF633937486C4F3C90CD /* Smartshop.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Smartshop.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1329B01BEF7B45706988C564 /* LiveRepositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRepositories.swift; sourceTree = "<group>"; };
 		1B70F1AA0433221D95BBAEAB /* MockRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockRepositoryTests.swift; sourceTree = "<group>"; };
@@ -224,6 +226,7 @@
 		B5721556CE68C53738BA7E7B /* SmartshopTests */ = {
 			isa = PBXGroup;
 			children = (
+				09410A87BA1B641089F1FB1F /* MarketTests.swift */,
 				1B70F1AA0433221D95BBAEAB /* MockRepositoryTests.swift */,
 				B48FD6DDE4020955072D1F67 /* ModelDecodingTests.swift */,
 				94DEA83EC6F1AB3BE5F30366 /* OfferAnalyticsTests.swift */,
@@ -435,6 +438,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6CAEFA276FB0987B4A7F334A /* MarketTests.swift in Sources */,
 				D00A5FAAB301C2D65D7D1EB2 /* MockRepositoryTests.swift in Sources */,
 				F9CF4DA5F34A08A75D43B6F0 /* ModelDecodingTests.swift in Sources */,
 				E326D9D197136729E22F88CB /* OfferAnalyticsTests.swift in Sources */,

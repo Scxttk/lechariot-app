@@ -15,3 +15,11 @@ struct Market: Codable, Equatable, Identifiable {
         case marketId = "market_id"
     }
 }
+
+extension Market {
+    /// Placeholder rows for chains whose offers apply nationwide carry a
+    /// `market_id` with the suffix "_DE" (e.g. `LIDL_DE`) instead of a real
+    /// branch id. Once the backend delivers real branches (ids without the
+    /// suffix), they automatically count as regular markets again.
+    var isNationwide: Bool { marketId.hasSuffix("_DE") }
+}

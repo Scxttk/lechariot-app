@@ -12,10 +12,13 @@ struct MarketPickerView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
 
-    private var grouped: [(chain: String, markets: [Market])] {
-        Dictionary(grouping: markets, by: \.chain)
-            .map { (chain: $0.key, markets: $0.value.sorted { $0.branchName < $1.branchName }) }
-            .sorted { $0.chain < $1.chain }
+    private var localMarkets: [Market] {
+        markets.filter { !$0.isNationwide }
+            .sorted { ($0.chain, $0.branchName) < ($1.chain, $1.branchName) }
+    }
+
+    private var nationwideMarkets: [Market] {
+        markets.filter(\.isNationwide).sorted { $0.chain < $1.chain }
     }
 
     private var hasFavoritesHere: Bool { !store.favoriteMarkets(in: plz).isEmpty }
@@ -28,11 +31,19 @@ struct MarketPickerView: View {
                     .foregroundStyle(.secondary)
             }
 
-            ForEach(grouped, id: \.chain) { group in
-                Section(group.chain) {
-                    ForEach(group.markets) { market in
-                        marketRow(market)
-                    }
+            if !localMarkets.isEmpty {
+                Section("Märkte in deiner Nähe") {
+                    ForEach(localMarkets) { marketRow($0) }
+                }
+            }
+
+            if !nationwideMarkets.isEmpty {
+                Section {
+                    ForEach(nationwideMarkets) { marketRow($0) }
+                } header: {
+                    Text("Überregionale Angebote")
+                } footer: {
+                    Text("Filiale unbekannt – Angebote gelten deutschlandweit")
                 }
             }
 
@@ -63,11 +74,11 @@ struct MarketPickerView: View {
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(market.branchName)
-                        .font(.body)
+                    Text(market.chain)
+                        .font(.body.weight(.medium))
                         .foregroundStyle(.primary)
-                    Text("PLZ \(market.plz)")
-                        .font(.caption2)
+                    Text(market.isNationwide ? "Deutschlandweit" : "\(market.branchName) · PLZ \(market.plz)")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
