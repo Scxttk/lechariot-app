@@ -54,6 +54,17 @@ struct MarketPickerView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            if store.canAddRegion {
+                Section {
+                    NavigationLink {
+                        AddRegionScreen()
+                    } label: {
+                        Label("Wohnst du nahe einer PLZ-Grenze? Weitere PLZ hinzufügen", systemImage: "plus.circle")
+                            .font(.subheadline)
+                    }
+                }
+            }
         }
         .overlay { if isLoading { ProgressView("Märkte werden geladen…") } }
         .navigationTitle("Wunschmärkte")

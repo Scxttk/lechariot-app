@@ -107,6 +107,16 @@ struct RegionSetupView: View {
     }
 }
 
+/// Wraps RegionSetupView so a successful submit pops back to the pushing
+/// screen. Used from Settings and the market picker's PLZ-border affordance.
+struct AddRegionScreen: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        RegionSetupView(onPLZSubmitted: { _ in dismiss() })
+    }
+}
+
 #Preview {
     NavigationStack {
         RegionSetupView(onPLZSubmitted: { _ in })

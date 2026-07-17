@@ -137,15 +137,6 @@ struct SettingsView: View {
 
 // MARK: - Subscreens (onboarding components reused)
 
-/// Wraps RegionSetupView so a successful submit pops back to the settings list.
-private struct AddRegionScreen: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        RegionSetupView(onPLZSubmitted: { _ in dismiss() })
-    }
-}
-
 /// Wraps MarketPickerView so "Fertig" pops back to the settings list.
 private struct EditMarketsScreen: View {
     @Environment(\.dismiss) private var dismiss
