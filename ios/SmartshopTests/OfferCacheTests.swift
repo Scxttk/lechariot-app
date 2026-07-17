@@ -38,6 +38,19 @@ final class OfferCacheTests: XCTestCase {
         XCTAssertNil(loaded.fetchedAt)
     }
 
+    func testImageUrlSurvivesCacheRoundTrip() throws {
+        let cache = try OfferCache(inMemory: true)
+        var withImage = MockFixtures.offers[0]
+        withImage.imageUrl = "https://example.supabase.co/storage/v1/object/public/offer-images/abc.jpg"
+        var withoutImage = MockFixtures.offers[1]
+        withoutImage.imageUrl = nil
+
+        try cache.replaceAll([withImage, withoutImage], region: "01219")
+
+        let loaded = try cache.load(region: "01219").offers
+        XCTAssertEqual(Set(loaded.map(\.imageUrl)), [withImage.imageUrl, nil])
+    }
+
     func testStalenessThresholdIs24Hours() {
         let now = Date.now
         XCTAssertTrue(OfferCache.isStale(fetchedAt: nil, now: now))

@@ -30,6 +30,7 @@ Writes additionally send `Content-Type: application/json` and `Prefer: return=mi
 | `base_price` | double? | Price per base unit |
 | `base_unit` | text? | e.g. `"1 kg"` |
 | `region` | text | PLZ, e.g. `"01219"` |
+| `image_url` | text? | Public Supabase-Storage URL of the product image. Content-addressed and stable — safe to cache aggressively. `null` = app shows the emoji instead. |
 
 Typical query:
 

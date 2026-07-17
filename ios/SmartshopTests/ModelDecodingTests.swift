@@ -18,7 +18,8 @@ final class ModelDecodingTests: XCTestCase {
             "valid_until": "2026-07-19",
             "base_price": 0.99,
             "base_unit": "1 l",
-            "region": "01219"
+            "region": "01219",
+            "image_url": "https://cddubgdnasmzvcfhmrzj.supabase.co/storage/v1/object/public/offer-images/abc123.jpg"
         }]
         """.data(using: .utf8)!
 
@@ -35,6 +36,10 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(offer.basePrice, 0.99)
         XCTAssertEqual(offer.baseUnit, "1 l")
         XCTAssertEqual(offer.region, "01219")
+        XCTAssertEqual(
+            offer.imageUrl,
+            "https://cddubgdnasmzvcfhmrzj.supabase.co/storage/v1/object/public/offer-images/abc123.jpg"
+        )
         XCTAssertEqual(DateFormatter.supabaseDay.string(from: offer.validFrom), "2026-07-13")
         XCTAssertEqual(DateFormatter.supabaseDay.string(from: offer.validUntil), "2026-07-19")
         XCTAssertTrue(Categories.all.contains(offer.category))
@@ -65,6 +70,8 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertNil(offer.emoji)
         XCTAssertNil(offer.basePrice)
         XCTAssertNil(offer.baseUnit)
+        // image_url absent entirely (pre-migration rows) must also decode.
+        XCTAssertNil(offer.imageUrl)
     }
 
     func testDecodeMarket() throws {

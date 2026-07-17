@@ -14,6 +14,9 @@ struct Offer: Codable, Equatable, Identifiable {
     let basePrice: Double?
     let baseUnit: String?
     let region: String
+    /// Public Supabase-Storage URL of the product image; nil = emoji only.
+    /// Default keeps the memberwise initializer source-compatible.
+    var imageUrl: String? = nil
 
     var id: String { "\(market)|\(product)|\(region)|\(validFrom.timeIntervalSince1970)" }
 
@@ -24,5 +27,6 @@ struct Offer: Codable, Equatable, Identifiable {
         case validUntil = "valid_until"
         case basePrice = "base_price"
         case baseUnit = "base_unit"
+        case imageUrl = "image_url"
     }
 }

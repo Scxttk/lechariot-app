@@ -16,6 +16,7 @@ final class CachedOffer {
     var basePrice: Double?
     var baseUnit: String?
     var region: String
+    var imageUrl: String?
     var fetchedAt: Date
 
     init(offer: Offer, fetchedAt: Date) {
@@ -31,6 +32,7 @@ final class CachedOffer {
         self.basePrice = offer.basePrice
         self.baseUnit = offer.baseUnit
         self.region = offer.region
+        self.imageUrl = offer.imageUrl
         self.fetchedAt = fetchedAt
     }
 
@@ -47,7 +49,8 @@ final class CachedOffer {
             validUntil: validUntil,
             basePrice: basePrice,
             baseUnit: baseUnit,
-            region: region
+            region: region,
+            imageUrl: imageUrl
         )
     }
 }
