@@ -63,11 +63,27 @@ struct ShoppingListRowView: View {
                 Color(uiColor: .tertiarySystemGroupedBackground),
                 in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
             )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(suggestionSummary(match))
         } else {
             Text("Kein Angebot diese Woche")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
+    }
+
+    /// One VoiceOver utterance for the suggestion tile: product, price,
+    /// discount and market.
+    private func suggestionSummary(_ match: Offer) -> String {
+        var parts = ["Günstigstes Angebot: \(match.product)"]
+        if let price = match.price {
+            parts.append(price.formatted(.currency(code: "EUR")))
+        }
+        if let discount = match.discountPercent {
+            parts.append("\(discount) Prozent reduziert")
+        }
+        parts.append("bei \(match.market)")
+        return parts.joined(separator: ", ")
     }
 }
 

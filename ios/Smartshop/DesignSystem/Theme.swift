@@ -32,10 +32,11 @@ enum Theme {
             : UIColor(red: 0.09, green: 0.51, blue: 0.27, alpha: 1)
     })
 
-    /// Discount badge background (semantic, not decorative).
+    /// Discount badge background (semantic, not decorative). Both variants
+    /// keep white caption text above the WCAG-AA 4.5:1 contrast ratio.
     static let discount = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.92, green: 0.28, blue: 0.25, alpha: 1)
+            ? UIColor(red: 0.82, green: 0.22, blue: 0.20, alpha: 1)
             : UIColor(red: 0.80, green: 0.16, blue: 0.14, alpha: 1)
     })
 
@@ -57,6 +58,7 @@ struct DiscountBadge: View {
             .padding(.vertical, 2)
             .background(Theme.discount, in: Capsule())
             .foregroundStyle(.white)
+            .accessibilityLabel("\(percent) Prozent reduziert")
     }
 }
 
@@ -78,11 +80,13 @@ struct OfferThumbnail: View {
             Text(emoji ?? "🛒")
                 .font(.system(size: size * 0.5))
             if let url = imageUrl.flatMap(URL.init(string:)) {
-                AsyncImage(url: url) { phase in
+                // Fade the loaded image in over the emoji tile instead of popping.
+                AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
                     if case .success(let image) = phase {
                         image
                             .resizable()
                             .scaledToFill()
+                            .transition(.opacity)
                     }
                 }
             }
@@ -144,6 +148,29 @@ extension View {
     func themeCard() -> some View {
         padding(Theme.Spacing.lg)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+    }
+}
+
+// MARK: - Skeleton fixtures
+
+extension Offer {
+    /// Fixed-shape placeholder rows for redacted loading states, so the
+    /// skeleton matches the final list layout instead of a bare spinner.
+    static let skeleton: [Offer] = (0..<6).map { index in
+        Offer(
+            market: "Markt",
+            product: "Produktname Platzhalter",
+            price: 1.99,
+            regularPrice: 2.99,
+            unit: "500 g Packung",
+            category: "Sonstiges",
+            emoji: "🛒",
+            validFrom: .now,
+            validUntil: .now,
+            basePrice: nil,
+            baseUnit: nil,
+            region: "0000\(index)"
+        )
     }
 }
 

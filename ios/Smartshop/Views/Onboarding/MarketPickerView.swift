@@ -99,6 +99,13 @@ struct MarketPickerView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(market.chain), \(market.isNationwide ? "deutschlandweit" : market.branchName)"
+        )
+        .accessibilityValue(isFav ? "Wunschmarkt" : "kein Wunschmarkt")
+        .accessibilityHint(isFav ? "Doppeltippen zum Entfernen" : "Doppeltippen zum Hinzufügen")
+        .accessibilityAddTraits(isFav ? [.isSelected] : [])
     }
 
     private func loadMarkets() async {
