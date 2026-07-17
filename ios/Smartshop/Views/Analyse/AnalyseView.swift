@@ -25,7 +25,7 @@ struct AnalyseView: View {
                 .navigationTitle("Analyse")
                 .background(Color(uiColor: .systemGroupedBackground))
         }
-        .task(id: plz) { await store.load(plz: plz, chains: chains) }
+        .task(id: plz) { await store.load(regions: [plz], chains: chains) }
     }
 
     @ViewBuilder

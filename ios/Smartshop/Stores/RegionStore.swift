@@ -107,6 +107,12 @@ final class RegionStore {
 
     var canAddRegion: Bool { regions.count < Self.maxRegions }
 
+    /// Ready regions in the order the user added them; the Angebote query
+    /// spans all of them so PLZ-border users see every favorited market.
+    var orderedReadyRegions: [String] {
+        regions.filter { readyRegions.contains($0) }
+    }
+
     /// Onboarding is done once at least one region is ready and at least one
     /// Wunschmarkt is chosen.
     var isOnboardingComplete: Bool {
@@ -207,6 +213,10 @@ final class RegionStore {
 
     func favoriteMarkets(in plz: String) -> [Market] {
         favoriteMarkets.filter { $0.plz == plz }
+    }
+
+    func favoriteMarkets(in plzs: [String]) -> [Market] {
+        favoriteMarkets.filter { plzs.contains($0.plz) }
     }
 
     func isFavorite(_ market: Market) -> Bool {

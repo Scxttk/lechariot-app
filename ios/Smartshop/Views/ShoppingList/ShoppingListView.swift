@@ -44,7 +44,7 @@ struct ShoppingListView: View {
             .toolbar { toolbarMenu }
             .safeAreaInset(edge: .bottom) { inputBar }
         }
-        .task(id: plz) { await offerStore.load(plz: plz, chains: chains) }
+        .task(id: plz) { await offerStore.load(regions: [plz], chains: chains) }
     }
 
     // MARK: List

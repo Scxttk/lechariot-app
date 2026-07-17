@@ -102,7 +102,7 @@ final class OfferStore {
 
     private let repository: OfferRepositoryProtocol
     private let cache: OfferCache?
-    private var plz: String?
+    private var regions: [String] = []
     private var chains: [String] = []
 
     var isStale: Bool {
@@ -114,13 +114,18 @@ final class OfferStore {
         self.cache = cache
     }
 
-    /// Shows cached offers for the region immediately (if any), then refreshes.
-    func load(plz: String, chains: [String]) async {
-        self.plz = plz
+    /// Shows cached offers for the regions immediately (if any), then refreshes.
+    /// A single fetch spans all regions (offers query: `region=in.(...)`), so a
+    /// user near a PLZ border sees favorites from every ready region at once.
+    func load(regions: [String], chains: [String]) async {
+        self.regions = regions
         self.chains = chains
-        if let cached = try? cache?.load(region: plz), !cached.offers.isEmpty {
-            offers = filteredToChains(cached.offers)
-            fetchedAt = cached.fetchedAt
+        let cached = regions.compactMap { try? cache?.load(region: $0) }
+        let cachedOffers = cached.flatMap(\.offers)
+        if !cachedOffers.isEmpty {
+            offers = filteredToChains(cachedOffers)
+            // The oldest region determines staleness of the combined list.
+            fetchedAt = cached.compactMap(\.fetchedAt).min()
             state = offers.isEmpty ? .empty : .loaded
         } else {
             state = .loading
@@ -128,15 +133,18 @@ final class OfferStore {
         await refresh()
     }
 
-    /// Fetches from the network and replaces the cache for the region.
+    /// Fetches all regions in one query and replaces the cache per region.
     func refresh() async {
-        guard let plz else { return }
+        guard !regions.isEmpty else { return }
         isRefreshing = true
         defer { isRefreshing = false }
         do {
-            let fresh = try await repository.offers(regions: [plz], chains: chains)
+            let fresh = try await repository.offers(regions: regions, chains: chains)
             let now = Date.now
-            try? cache?.replaceAll(fresh, region: plz, fetchedAt: now)
+            let byRegion = Dictionary(grouping: fresh, by: \.region)
+            for region in regions {
+                try? cache?.replaceAll(byRegion[region] ?? [], region: region, fetchedAt: now)
+            }
             offers = fresh
             fetchedAt = now
             isOffline = false

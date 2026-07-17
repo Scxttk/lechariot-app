@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Angebote tab: cached-first offer list for the selected region, restricted to
-/// the user's Wunschmärkte. Decoupled from RegionStore — takes plz + markets.
+/// Angebote tab: cached-first offer list across all ready regions, restricted
+/// to the user's Wunschmärkte. Decoupled from RegionStore — takes regions + markets.
 struct OffersView: View {
-    let plz: String
+    let regions: [String]
     let favoriteMarkets: [Market]
 
     @State private var store: OfferStore
@@ -13,8 +13,8 @@ struct OffersView: View {
     @State private var categoryFilter: String?
     @State private var marketFilter: String?
 
-    init(plz: String, favoriteMarkets: [Market], repository: OfferRepositoryProtocol) {
-        self.plz = plz
+    init(regions: [String], favoriteMarkets: [Market], repository: OfferRepositoryProtocol) {
+        self.regions = regions
         self.favoriteMarkets = favoriteMarkets
         _store = State(initialValue: OfferStore(repository: repository, cache: try? OfferCache()))
     }
@@ -30,7 +30,7 @@ struct OffersView: View {
                 .searchable(text: $search, prompt: "Produkt suchen")
                 .toolbar { filterMenu }
         }
-        .task(id: plz) { await store.load(plz: plz, chains: chains) }
+        .task(id: regions) { await store.load(regions: regions, chains: chains) }
     }
 
     @ViewBuilder
@@ -96,10 +96,10 @@ struct OffersView: View {
     }
 
     /// Market sections show the branch name when the chain has exactly one
-    /// favorited branch in this region.
+    /// favorited branch across the shown regions.
     private func sectionTitle(_ key: String) -> String {
         guard grouping == .market else { return key }
-        let branches = favoriteMarkets.filter { $0.chain == key && $0.plz == plz }
+        let branches = favoriteMarkets.filter { $0.chain == key }
         if branches.count == 1, !branches[0].branchName.isEmpty {
             return "\(key) – \(branches[0].branchName)"
         }
@@ -138,7 +138,7 @@ struct OffersView: View {
 
 #Preview {
     OffersView(
-        plz: "01219",
+        regions: ["01219"],
         favoriteMarkets: MockFixtures.markets,
         repository: MockOfferRepository()
     )

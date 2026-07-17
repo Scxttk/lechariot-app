@@ -16,12 +16,10 @@ struct ContentView: View {
 
     private var mainTabs: some View {
         TabView {
-            regionScoped { plz, markets in
-                OffersView(plz: plz, favoriteMarkets: markets, repository: Self.offerRepository)
-            }
-            .tabItem {
-                Label("Angebote", systemImage: "tag")
-            }
+            offersTab
+                .tabItem {
+                    Label("Angebote", systemImage: "tag")
+                }
 
             regionScoped { plz, markets in
                 ShoppingListView(plz: plz, favoriteMarkets: markets, repository: Self.offerRepository)
@@ -44,6 +42,22 @@ struct ContentView: View {
         }
         .environment(shoppingList)
         .tint(Theme.accent)
+    }
+
+    /// Angebote spans all ready regions with their favorites, so PLZ-border
+    /// users see offers from every region they added.
+    @ViewBuilder
+    private var offersTab: some View {
+        let regions = store.orderedReadyRegions
+        if regions.isEmpty {
+            ContentUnavailableView("Keine Region ausgewählt", systemImage: "mappin.slash")
+        } else {
+            OffersView(
+                regions: regions,
+                favoriteMarkets: store.favoriteMarkets(in: regions),
+                repository: Self.offerRepository
+            )
+        }
     }
 
     /// All region-bound tabs share the same guard and inputs.

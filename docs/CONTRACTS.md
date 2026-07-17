@@ -40,6 +40,9 @@ GET /rest/v1/offers?select=*&order=valid_from.desc&region=in.(01219)&market=in.(
 
 Paginated 1000 rows per page via `limit`/`offset`.
 
+`region=in.(...)` carries all of the user's ready regions in one request
+(e.g. `region=in.(01219,01067)` for PLZ-border users), not just the selected one.
+
 The `market=in.(...)` filter is optional: the app sends it with the user's favorite
 chains ("Wunschmärkte") and omits it to fetch all chains. Chain names are
 percent-encoded (they may contain spaces, e.g. `Netto Marken-Discount`).

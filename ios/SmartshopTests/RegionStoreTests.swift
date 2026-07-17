@@ -154,6 +154,32 @@ final class RegionStoreTests: XCTestCase {
         XCTAssertFalse(store.canAddRegion)
     }
 
+    // MARK: Multi-region helpers
+
+    func testOrderedReadyRegionsAndFavoritesAcrossRegions() async {
+        let repo = ControllableRegionRepository()
+        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
+        repo.regionsByPLZ["01067"] = Region(plz: "01067", lastSynced: "2026-07-16T05:00:00Z", active: true)
+        // Never syncs → must not appear in orderedReadyRegions.
+        repo.regionsByPLZ["10115"] = Region(plz: "10115", lastSynced: nil, active: true)
+        let store = makeStore(repository: repo, maxPollAttempts: 1)
+
+        await store.addRegion("01219")
+        await store.addRegion("10115")
+        await store.addRegion("01067")
+        await store.waitForPolling("10115")
+
+        XCTAssertEqual(store.orderedReadyRegions, ["01219", "01067"])
+
+        let dresden = Market(chain: "Lidl", branchName: "Dresden Reick", marketId: "lidl-01219-1", plz: "01219")
+        let mitte = Market(chain: "Aldi", branchName: "Dresden Mitte", marketId: "aldi-01067-1", plz: "01067")
+        store.toggleFavorite(dresden)
+        store.toggleFavorite(mitte)
+
+        XCTAssertEqual(store.favoriteMarkets(in: ["01219", "01067"]), [dresden, mitte])
+        XCTAssertEqual(store.favoriteMarkets(in: ["01067"]), [mitte])
+    }
+
     // MARK: Persistence round-trip
 
     func testWunschmaerktePersistenceRoundTrip() async {
