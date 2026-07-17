@@ -63,7 +63,9 @@ enum OfferQuery {
         switch grouping {
         case .market:
             let dict = Dictionary(grouping: offers, by: \.market)
-            return dict.keys.sorted().map { (key: $0, offers: dict[$0]!) }
+            return dict.keys.sorted().compactMap { key in
+                dict[key].map { (key: key, offers: $0) }
+            }
         case .category:
             let dict = Dictionary(grouping: offers, by: \.category)
             var sections = Categories.all.compactMap { name in
@@ -71,7 +73,8 @@ enum OfferQuery {
             }
             let known = Set(Categories.all)
             for key in dict.keys.sorted() where !known.contains(key) {
-                sections.append((key: key, offers: dict[key]!))
+                guard let offers = dict[key] else { continue }
+                sections.append((key: key, offers: offers))
             }
             return sections
         }

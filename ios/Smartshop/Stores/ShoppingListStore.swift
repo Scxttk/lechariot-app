@@ -10,13 +10,16 @@ enum ShoppingListMatcher {
         let needle = text.trimmingCharacters(in: .whitespaces)
         guard !needle.isEmpty else { return nil }
         return offers
-            .filter { $0.price != nil && $0.product.localizedCaseInsensitiveContains(needle) }
-            .min { lhs, rhs in
-                let (lp, rp) = (lhs.price!, rhs.price!)
-                if lp != rp { return lp < rp }
-                // Same price: prefer the better base price when known.
-                return (lhs.basePrice ?? .infinity) < (rhs.basePrice ?? .infinity)
+            .compactMap { offer in
+                offer.price.map { (offer: offer, price: $0) }
             }
+            .filter { $0.offer.product.localizedCaseInsensitiveContains(needle) }
+            .min { lhs, rhs in
+                if lhs.price != rhs.price { return lhs.price < rhs.price }
+                // Same price: prefer the better base price when known.
+                return (lhs.offer.basePrice ?? .infinity) < (rhs.offer.basePrice ?? .infinity)
+            }?
+            .offer
     }
 }
 
