@@ -127,4 +127,15 @@ final class ShoppingListStoreTests: XCTestCase {
         let match = ShoppingListMatcher.cheapestMatch(for: "Butter", in: offers)
         XCTAssertEqual(match?.product, "Butter 500g")
     }
+
+    // MARK: Corrupt persistence
+
+    func testCorruptPersistedDataResetsToEmptyList() {
+        defaults.set(Data("{broken".utf8), forKey: "shopping.items")
+        let store = makeStore()
+        XCTAssertTrue(store.items.isEmpty)
+        // Store stays usable and re-persists cleanly after the reset.
+        XCTAssertTrue(store.add("Milch"))
+        XCTAssertEqual(makeStore().items.map(\.text), ["Milch"])
+    }
 }

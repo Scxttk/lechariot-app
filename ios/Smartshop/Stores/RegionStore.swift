@@ -98,7 +98,15 @@ final class RegionStore {
         } else {
             self.favoriteMarkets = []
         }
-        for plz in readyRegions where regions.contains(plz) {
+        // Sanitize persisted state that got out of sync (corrupt/old defaults):
+        // everything must reference a PLZ that is still in `regions`.
+        let knownPLZs = Set(regions)
+        readyRegions.formIntersection(knownPLZs)
+        favoriteMarkets.removeAll { !knownPLZs.contains($0.plz) }
+        if let selected = selectedRegion, !knownPLZs.contains(selected) {
+            selectedRegion = regions.first
+        }
+        for plz in readyRegions {
             syncStates[plz] = .ready
         }
     }

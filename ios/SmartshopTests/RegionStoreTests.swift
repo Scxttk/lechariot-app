@@ -219,4 +219,30 @@ final class RegionStoreTests: XCTestCase {
         XCTAssertTrue(store.favoriteMarkets.isEmpty)
         XCTAssertEqual(store.syncState(for: "01219"), .unknown)
     }
+
+    // MARK: Corrupt/out-of-sync persisted state
+
+    func testCorruptFavoritesDataResetsToEmpty() {
+        defaults.set(Data("not json".utf8), forKey: "region.favoriteMarkets")
+        defaults.set(["01219"], forKey: "region.plzs")
+        let store = makeStore(repository: ControllableRegionRepository())
+        XCTAssertTrue(store.favoriteMarkets.isEmpty)
+    }
+
+    func testOrphanedSelectionAndFavoritesAreSanitizedOnInit() throws {
+        // Selected region and a favorite reference a PLZ that is no longer
+        // in the region list (corrupt/old defaults).
+        defaults.set(["01219"], forKey: "region.plzs")
+        defaults.set("99999", forKey: "region.selected")
+        defaults.set(["01219", "99999"], forKey: "region.readyPLZs")
+        let orphan = Market(chain: "Lidl", branchName: "Weg", marketId: "lidl-99999-1", plz: "99999")
+        let kept = Market(chain: "EDEKA", branchName: "Reick", marketId: "edeka-01219-1", plz: "01219")
+        defaults.set(try JSONEncoder().encode([orphan, kept]), forKey: "region.favoriteMarkets")
+
+        let store = makeStore(repository: ControllableRegionRepository())
+        XCTAssertEqual(store.selectedRegion, "01219")
+        XCTAssertEqual(store.favoriteMarkets, [kept])
+        XCTAssertEqual(store.orderedReadyRegions, ["01219"])
+        XCTAssertTrue(store.isOnboardingComplete)
+    }
 }

@@ -12,7 +12,10 @@ struct OnboardingFlowView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let plz = activePLZ {
+                // Re-entry case: the user removed their last Wunschmarkt in
+                // Settings but still has a ready region — resume at the market
+                // picker instead of asking for the PLZ again.
+                if let plz = activePLZ ?? store.orderedReadyRegions.first {
                     switch store.syncState(for: plz) {
                     case .ready:
                         MarketPickerView(plz: plz, marketRepository: marketRepository) {
