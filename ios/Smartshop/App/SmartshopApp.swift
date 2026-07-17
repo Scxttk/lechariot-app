@@ -27,6 +27,9 @@ struct SmartshopApp: App {
         WindowGroup {
             ContentView(marketRepository: marketRepository)
                 .environment(store)
+                // App-wide accent, so onboarding matches the tabs instead of
+                // falling back to system blue.
+                .tint(Theme.accent)
         }
     }
 }

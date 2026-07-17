@@ -32,8 +32,23 @@ struct AnalyseView: View {
     private var content: some View {
         switch store.state {
         case .loading:
-            ProgressView("Angebote werden geladen…")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Skeleton matching the loaded layout — no jump when data arrives.
+            ScrollView {
+                LazyVGrid(
+                    columns: [GridItem(.flexible(), spacing: Theme.Spacing.md), GridItem(.flexible())],
+                    spacing: Theme.Spacing.md
+                ) {
+                    StatTile(title: "Angebote", value: "000", footnote: "diese Woche")
+                    StatTile(title: "Märkte", value: "0", footnote: "mit Angeboten")
+                    StatTile(title: "Ø Rabatt", value: "00 %", footnote: "wo bekannt")
+                    StatTile(title: "Top-Rabatt", value: "00 %", footnote: "beste Ersparnis")
+                }
+                .padding(Theme.Spacing.lg)
+            }
+            .redacted(reason: .placeholder)
+            .disabled(true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Analyse wird geladen")
         case .empty:
             ContentUnavailableView(
                 "Keine Daten",
@@ -97,7 +112,8 @@ struct AnalyseView: View {
 
     private var marketCountCard: some View {
         let stats = OfferAnalytics.marketStats(store.offers)
-        return chartCard("Angebote pro Markt") {
+        let summary = stats.map { "\($0.chain) \($0.offerCount) Angebote" }.joined(separator: ", ")
+        return chartCard("Angebote pro Markt", accessibilitySummary: summary) {
             Chart(stats) { stat in
                 BarMark(
                     x: .value("Angebote", stat.offerCount),
@@ -120,7 +136,10 @@ struct AnalyseView: View {
         let stats = OfferAnalytics.marketStats(store.offers)
             .filter { $0.avgDiscount != nil }
             .sorted { ($0.avgDiscount ?? 0) > ($1.avgDiscount ?? 0) }
-        return chartCard("Ø Rabatt pro Markt") {
+        let summary = stats
+            .map { "\($0.chain) durchschnittlich \($0.avgDiscount ?? 0) Prozent" }
+            .joined(separator: ", ")
+        return chartCard("Ø Rabatt pro Markt", accessibilitySummary: stats.isEmpty ? nil : summary) {
             if stats.isEmpty {
                 Text("Keine Rabattdaten in dieser Woche.")
                     .font(.subheadline)
@@ -147,7 +166,8 @@ struct AnalyseView: View {
 
     private var categoryCard: some View {
         let stats = OfferAnalytics.categoryBreakdown(store.offers)
-        return chartCard("Kategorien") {
+        let summary = stats.map { "\($0.category) \($0.count) Angebote" }.joined(separator: ", ")
+        return chartCard("Kategorien", accessibilitySummary: summary) {
             Chart(stats) { stat in
                 BarMark(
                     x: .value("Angebote", stat.count),
@@ -191,7 +211,13 @@ struct AnalyseView: View {
 
     private let rowHeight: CGFloat = 32
 
-    private func chartCard(_ title: String, @ViewBuilder content: () -> some View) -> some View {
+    /// `accessibilitySummary` replaces the chart for VoiceOver with a spoken
+    /// list of the values; nil keeps the default element structure.
+    private func chartCard(
+        _ title: String,
+        accessibilitySummary: String? = nil,
+        @ViewBuilder content: () -> some View
+    ) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             Text(title)
                 .font(.headline)
@@ -199,6 +225,24 @@ struct AnalyseView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .themeCard()
+        .modifier(ChartSummaryModifier(title: title, summary: accessibilitySummary))
+    }
+}
+
+/// Collapses a chart card into a single VoiceOver element that speaks the
+/// chart's values, instead of an unlabeled picture of bars.
+private struct ChartSummaryModifier: ViewModifier {
+    let title: String
+    let summary: String?
+
+    func body(content: Content) -> some View {
+        if let summary {
+            content
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(title). \(summary)")
+        } else {
+            content
+        }
     }
 }
 

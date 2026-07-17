@@ -32,7 +32,9 @@ struct RegionSetupView: View {
             HStack {
                 TextField("PLZ, z. B. 01219", text: $manualPLZ)
                     .keyboardType(.numberPad)
+                    .textContentType(.postalCode)
                     .textFieldStyle(.roundedBorder)
+                    .accessibilityLabel("Postleitzahl")
                 Button("Weiter") { submit(manualPLZ) }
                     .buttonStyle(.borderedProminent)
                     .disabled(!PLZValidator.isValid(manualPLZ) || isBusy)

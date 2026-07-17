@@ -37,8 +37,13 @@ struct OffersView: View {
     private var content: some View {
         switch store.state {
         case .loading:
-            ProgressView("Angebote werden geladen…")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Skeleton matching the loaded list shape — no layout jump when
+            // real offers arrive.
+            List(Offer.skeleton) { OfferRowView(offer: $0) }
+                .redacted(reason: .placeholder)
+                .disabled(true)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Angebote werden geladen")
         case .empty:
             ContentUnavailableView(
                 "Keine Angebote",
