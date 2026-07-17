@@ -4,6 +4,8 @@ struct ContentView: View {
     @Environment(RegionStore.self) private var store
     let marketRepository: MarketRepositoryProtocol
 
+    @State private var shoppingList = ShoppingListStore()
+
     var body: some View {
         if store.isOnboardingComplete {
             mainTabs
@@ -14,25 +16,43 @@ struct ContentView: View {
 
     private var mainTabs: some View {
         TabView {
-            offersTab
-                .tabItem {
-                    Label("Angebote", systemImage: "tag")
-                }
-            SettingsPlaceholderView()
+            regionScoped { plz, markets in
+                OffersView(plz: plz, favoriteMarkets: markets, repository: Self.offerRepository)
+            }
+            .tabItem {
+                Label("Angebote", systemImage: "tag")
+            }
+
+            regionScoped { plz, markets in
+                ShoppingListView(plz: plz, favoriteMarkets: markets, repository: Self.offerRepository)
+            }
+            .tabItem {
+                Label("Einkaufsliste", systemImage: "checklist")
+            }
+
+            regionScoped { plz, markets in
+                AnalyseView(plz: plz, favoriteMarkets: markets, repository: Self.offerRepository)
+            }
+            .tabItem {
+                Label("Analyse", systemImage: "chart.bar.xaxis")
+            }
+
+            SettingsView(marketRepository: marketRepository)
                 .tabItem {
                     Label("Einstellungen", systemImage: "gearshape")
                 }
         }
+        .environment(shoppingList)
+        .tint(Theme.accent)
     }
 
+    /// All region-bound tabs share the same guard and inputs.
     @ViewBuilder
-    private var offersTab: some View {
+    private func regionScoped(
+        @ViewBuilder content: (String, [Market]) -> some View
+    ) -> some View {
         if let plz = store.selectedRegion {
-            OffersView(
-                plz: plz,
-                favoriteMarkets: store.favoriteMarkets(in: plz),
-                repository: Self.offerRepository
-            )
+            content(plz, store.favoriteMarkets(in: plz))
         } else {
             ContentUnavailableView("Keine Region ausgewählt", systemImage: "mappin.slash")
         }
@@ -45,20 +65,6 @@ struct ContentView: View {
         }
         return MockOfferRepository()
     }()
-}
-
-struct SettingsPlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Region") {
-                    Text("Noch keine Region ausgewählt")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .navigationTitle("Einstellungen")
-        }
-    }
 }
 
 #Preview {

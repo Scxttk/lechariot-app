@@ -15,7 +15,10 @@ struct LiveOfferRepository: OfferRepositoryProtocol {
             marketFilter = "&market=in.(\(joined))"
         }
         while true {
+            // Legacy rows (pre-enrichment sources) carry null validity dates and
+            // would fail decoding; the contract requires both dates to be set.
             let query = "select=*&order=valid_from.desc"
+                + "&valid_from=not.is.null&valid_until=not.is.null"
                 + "&region=in.(\(regions.joined(separator: ",")))"
                 + marketFilter
                 + "&limit=\(pageSize)&offset=\(offset)"

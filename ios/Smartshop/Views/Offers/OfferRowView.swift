@@ -11,7 +11,7 @@ struct OfferRowView: View {
     }()
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: Theme.Spacing.md) {
             Text(offer.emoji ?? "🛒")
                 .font(.title2)
             VStack(alignment: .leading, spacing: 2) {
@@ -24,7 +24,7 @@ struct OfferRowView: View {
                 }
                 if let basePrice = offer.basePrice, let baseUnit = offer.baseUnit {
                     Text("\(basePrice, format: .currency(code: "EUR")) / \(baseUnit)")
-                        .font(.caption)
+                        .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
                 Text(validityText)
@@ -34,20 +34,14 @@ struct OfferRowView: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 if let discount = offer.discountPercent {
-                    Text("-\(discount) %")
-                        .font(.caption.bold())
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.red, in: Capsule())
-                        .foregroundStyle(.white)
+                    DiscountBadge(percent: discount)
                 }
                 if let price = offer.price {
-                    Text(price, format: .currency(code: "EUR"))
-                        .font(.body.bold())
+                    PriceText(amount: price)
                 }
                 if let regular = offer.regularPrice {
                     Text(regular, format: .currency(code: "EUR"))
-                        .font(.caption)
+                        .font(.caption.monospacedDigit())
                         .strikethrough()
                         .foregroundStyle(.secondary)
                 }
