@@ -45,11 +45,7 @@ struct OffersView: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Angebote werden geladen")
         case .empty:
-            ContentUnavailableView(
-                "Keine Angebote",
-                systemImage: "tag.slash",
-                description: Text("Für deine Region und Märkte liegen aktuell keine Angebote vor.")
-            )
+            emptyState
         case .error(let message):
             ContentUnavailableView {
                 Label("Fehler beim Laden", systemImage: "wifi.exclamationmark")
@@ -64,6 +60,22 @@ struct OffersView: View {
         case .loaded:
             offerList
         }
+    }
+
+    /// Region is ready, but there are no offers to show. Guides the user toward
+    /// picking other markets when the empty list is a consequence of their
+    /// Wunschmärkte selection.
+    private var emptyState: some View {
+        ContentUnavailableView {
+            Label("Keine Angebote", systemImage: "basket")
+        } description: {
+            Text(store.hasFavoriteChains
+                ? "Für deine Märkte liegen gerade keine Angebote vor. Wähle in den Einstellungen weitere Märkte, um mehr zu sehen."
+                : "Für deine Region liegen aktuell keine Angebote vor. Schau später noch einmal vorbei.")
+        }
+        .accessibilityLabel(store.hasFavoriteChains
+            ? "Keine Angebote für deine Märkte"
+            : "Keine Angebote für deine Region")
     }
 
     private var offerList: some View {

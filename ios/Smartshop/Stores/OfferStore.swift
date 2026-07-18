@@ -112,6 +112,15 @@ final class OfferStore {
         isOffline || OfferCache.isStale(fetchedAt: fetchedAt)
     }
 
+    /// True once loading finished with zero offers to show (region ready, but
+    /// no matching offers) — distinct from `loading`, `error`, and `loaded`.
+    /// Drives the friendly empty-state in the offer list.
+    var isEmptyAfterLoad: Bool { state == .empty }
+
+    /// Whether the user has restricted the list to specific Wunschmärkte.
+    /// Lets the empty-state suggest picking other markets in the settings.
+    var hasFavoriteChains: Bool { !chains.isEmpty }
+
     init(repository: OfferRepositoryProtocol, cache: OfferCache?) {
         self.repository = repository
         self.cache = cache

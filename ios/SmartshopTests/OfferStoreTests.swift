@@ -60,6 +60,41 @@ final class OfferStoreTests: XCTestCase {
         XCTAssertEqual(store.state, .empty)
     }
 
+    func testEmptyResultWithFavoriteChainsIsEmptyAfterLoad() async throws {
+        let store = OfferStore(
+            repository: StubOfferRepository(result: .success([])),
+            cache: try makeCache()
+        )
+
+        await store.load(regions: ["01219"], chains: ["Kaufland"])
+
+        XCTAssertTrue(store.isEmptyAfterLoad)
+        XCTAssertTrue(store.hasFavoriteChains)
+    }
+
+    func testEmptyResultWithoutFavoriteChainsHasNoFavoriteChains() async throws {
+        let store = OfferStore(
+            repository: StubOfferRepository(result: .success([])),
+            cache: try makeCache()
+        )
+
+        await store.load(regions: ["01219"], chains: [])
+
+        XCTAssertTrue(store.isEmptyAfterLoad)
+        XCTAssertFalse(store.hasFavoriteChains)
+    }
+
+    func testLoadedResultIsNotEmptyAfterLoad() async throws {
+        let store = OfferStore(
+            repository: StubOfferRepository(result: .success(MockFixtures.offers)),
+            cache: try makeCache()
+        )
+
+        await store.load(regions: ["01219"], chains: [])
+
+        XCTAssertFalse(store.isEmptyAfterLoad)
+    }
+
     func testLoadErrorWithoutCacheReachesError() async throws {
         let store = OfferStore(
             repository: StubOfferRepository(result: .failure(StubError())),
