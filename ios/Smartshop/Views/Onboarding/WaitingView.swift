@@ -28,19 +28,61 @@ struct WaitingView: View {
         }
         .padding(24)
         .navigationTitle("Region \(plz)")
+        // Progress-Polling lebt exakt so lange wie diese View sichtbar ist;
+        // bei ready/failed kehrt observeProgress von selbst zurück.
+        .task(id: plz) { await store.observeProgress(plz: plz) }
     }
 
     private var progressContent: some View {
-        VStack(spacing: 16) {
+        let progress = store.progress(for: plz)
+        return VStack(spacing: 16) {
             ProgressView()
                 .controlSize(.large)
             Text("Deine Region wird vorbereitet")
                 .font(.title2).bold()
-            Text("Wir sammeln gerade die Angebote für \(plz).\nDas dauert meist nur wenige Minuten – du kannst die App gerne geöffnet lassen.")
+            Text("Wir sammeln gerade die Angebote für \(plz).\nDas dauert meist nur wenige Minuten.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+
+            if !progress.markets.isEmpty {
+                foundMarketsList(progress.markets)
+            }
+            if progress.offerCount > 0 {
+                Text("\(progress.offerCount.formatted()) Angebote geladen")
+                    .font(.subheadline.weight(.medium))
+                    .contentTransition(.numericText())
+                    .accessibilityLabel("\(progress.offerCount) Angebote bereits geladen")
+            }
+
+            Text("Du kannst die App schließen – die Vorbereitung läuft auf unseren Servern weiter. Schau in ein paar Minuten wieder rein.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.top, 8)
         }
+        .animation(.default, value: progress)
+    }
+
+    /// Chips der bereits gefundenen Märkte — sie erscheinen nacheinander,
+    /// während der Server-Sync die Ketten abarbeitet.
+    private func foundMarketsList(_ markets: [Market]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(markets, id: \.marketId) { market in
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("\(market.chain) \(market.branchName)")
+                        .lineLimit(1)
+                }
+                .font(.subheadline)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(market.chain) \(market.branchName) gefunden")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Gefundene Märkte")
     }
 
     private var timeoutContent: some View {

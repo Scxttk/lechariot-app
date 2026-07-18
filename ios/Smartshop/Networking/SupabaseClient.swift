@@ -73,6 +73,29 @@ struct SupabaseClient {
         return values
     }
 
+    /// HEAD /rest/v1/{path}?{query} with `Prefer: count=exact`; returns the row
+    /// count from the `content-range` header ("0-24/25" or "*/0") without
+    /// transferring a body.
+    func count(path: String, query: String = "") async throws -> Int {
+        var urlString = baseURL.absoluteString + "/rest/v1/" + path
+        if !query.isEmpty { urlString += "?" + query }
+        guard let url = URL(string: urlString) else { throw SupabaseError.invalidURL }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        applyHeaders(&request)
+        request.setValue("count=exact", forHTTPHeaderField: "Prefer")
+
+        let (data, response) = try await session.data(for: request)
+        try validate(response: response, data: data)
+        guard let http = response as? HTTPURLResponse,
+              let range = http.value(forHTTPHeaderField: "content-range"),
+              let total = range.split(separator: "/").last.flatMap({ Int($0) }) else {
+            return 0
+        }
+        return total
+    }
+
     private func applyHeaders(_ request: inout URLRequest) {
         request.setValue(apiKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")

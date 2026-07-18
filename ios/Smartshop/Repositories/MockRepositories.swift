@@ -70,4 +70,12 @@ struct MockRegionRepository: RegionRepositoryProtocol {
     }
 
     func registerRegion(plz: String) async throws {}
+
+    func foundMarkets(plz: String) async throws -> [Market] {
+        MockFixtures.markets.filter { $0.plz == plz }
+    }
+
+    func offerCount(plz: String) async throws -> Int {
+        MockFixtures.offers.filter { $0.region == plz }.count
+    }
 }

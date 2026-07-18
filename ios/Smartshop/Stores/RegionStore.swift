@@ -39,6 +39,13 @@ enum RegionSyncFailure: Equatable {
     case timedOut
 }
 
+/// Heuristic snapshot of a running backend sync: markets appear one by one,
+/// the offer count grows. No total exists, so no percentage is derived.
+struct RegionSyncProgress: Equatable {
+    var markets: [Market] = []
+    var offerCount: Int = 0
+}
+
 // MARK: - Store
 
 /// Local source of truth for the user's regions (PLZs), the selected region and
@@ -58,6 +65,8 @@ final class RegionStore {
     private let pollInterval: Duration
     /// Maximum number of polls before giving up (~10 min at 30 s default).
     private let maxPollAttempts: Int
+    /// Interval between progress polls while the WaitingView is visible.
+    private let progressPollInterval: Duration
 
     /// Saved PLZs, in the order the user added them.
     private(set) var regions: [String]
@@ -69,6 +78,8 @@ final class RegionStore {
     private(set) var readyRegions: Set<String>
     /// Live sync state per PLZ for the current app session.
     private(set) var syncStates: [String: RegionSyncState] = [:]
+    /// Live progress per PLZ while a sync runs (fed by `observeProgress`).
+    private(set) var syncProgress: [String: RegionSyncProgress] = [:]
 
     private var pollTasks: [String: Task<Void, Never>] = [:]
 
@@ -83,12 +94,14 @@ final class RegionStore {
         repository: RegionRepositoryProtocol,
         defaults: UserDefaults = .standard,
         pollInterval: Duration = .seconds(30),
-        maxPollAttempts: Int = 20
+        maxPollAttempts: Int = 20,
+        progressPollInterval: Duration = .seconds(10)
     ) {
         self.repository = repository
         self.defaults = defaults
         self.pollInterval = pollInterval
         self.maxPollAttempts = maxPollAttempts
+        self.progressPollInterval = progressPollInterval
         self.regions = defaults.stringArray(forKey: Keys.regions) ?? []
         self.selectedRegion = defaults.string(forKey: Keys.selected)
         self.readyRegions = Set(defaults.stringArray(forKey: Keys.ready) ?? [])
@@ -129,6 +142,37 @@ final class RegionStore {
 
     func syncState(for plz: String) -> RegionSyncState {
         syncStates[plz] ?? .unknown
+    }
+
+    func progress(for plz: String) -> RegionSyncProgress {
+        syncProgress[plz] ?? RegionSyncProgress()
+    }
+
+    /// Polls found markets and the offer count for a PLZ while its sync runs.
+    /// Meant to be bound to the WaitingView's lifetime via `.task` — it returns
+    /// when the view disappears (cancellation) or the sync leaves the
+    /// requested/syncing states, so nothing polls behind the user's back.
+    /// Best-effort: single failed fetches keep the previous snapshot.
+    func observeProgress(plz: String) async {
+        while !Task.isCancelled {
+            switch syncState(for: plz) {
+            case .requested, .syncing, .unknown:
+                break
+            case .ready, .failed:
+                return
+            }
+            var snapshot = progress(for: plz)
+            if let markets = try? await repository.foundMarkets(plz: plz) {
+                snapshot.markets = markets
+            }
+            if let count = try? await repository.offerCount(plz: plz) {
+                snapshot.offerCount = count
+            }
+            if !Task.isCancelled, syncProgress[plz] != snapshot {
+                syncProgress[plz] = snapshot
+            }
+            try? await Task.sleep(for: progressPollInterval)
+        }
     }
 
     // MARK: Region flow

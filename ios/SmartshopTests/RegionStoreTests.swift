@@ -29,6 +29,23 @@ final class ControllableRegionRepository: RegionRepositoryProtocol, @unchecked S
         if shouldThrow { throw TestError() }
         registeredPLZs.append(plz)
     }
+
+    // Mid-sync progress fixtures; mutable so tests can simulate the backend
+    // finding more markets/offers between polls.
+    var marketsByPLZ: [String: [Market]] = [:]
+    var offerCounts: [String: Int] = [:]
+    private(set) var progressFetches = 0
+
+    func foundMarkets(plz: String) async throws -> [Market] {
+        if shouldThrow { throw TestError() }
+        progressFetches += 1
+        return marketsByPLZ[plz] ?? []
+    }
+
+    func offerCount(plz: String) async throws -> Int {
+        if shouldThrow { throw TestError() }
+        return offerCounts[plz] ?? 0
+    }
 }
 
 @MainActor
@@ -49,8 +66,16 @@ final class RegionStoreTests: XCTestCase {
             repository: repository,
             defaults: defaults,
             pollInterval: .milliseconds(1),
-            maxPollAttempts: maxPollAttempts
+            maxPollAttempts: maxPollAttempts,
+            progressPollInterval: .milliseconds(1)
         )
+    }
+
+    /// Polls `condition` (up to ~1 s) so tests survive scheduler jitter.
+    private func waitUntil(_ condition: @autoclosure () -> Bool) async {
+        for _ in 0..<1000 where !condition() {
+            try? await Task.sleep(for: .milliseconds(1))
+        }
     }
 
     // MARK: PLZ validation
@@ -152,6 +177,47 @@ final class RegionStoreTests: XCTestCase {
         }
         XCTAssertEqual(store.regions.count, 10)
         XCTAssertFalse(store.canAddRegion)
+    }
+
+    // MARK: Sync progress
+
+    func testObserveProgressPicksUpGrowingMarketsAndCounts() async {
+        let repo = ControllableRegionRepository()
+        repo.regionsByPLZ["04626"] = Region(plz: "04626", lastSynced: nil, active: true)
+        let store = makeStore(repository: repo, maxPollAttempts: 10_000)
+        await store.addRegion("04626")
+        XCTAssertEqual(store.syncState(for: "04626"), .syncing)
+
+        let kaufland = Market(chain: "Kaufland", branchName: "Schmölln", marketId: "k-1", plz: "04626")
+        let lidl = Market(chain: "Lidl", branchName: "Schmölln", marketId: "l-1", plz: "04626")
+        repo.marketsByPLZ["04626"] = [kaufland]
+        repo.offerCounts["04626"] = 470
+
+        let observer = Task { await store.observeProgress(plz: "04626") }
+        await waitUntil(store.progress(for: "04626").offerCount == 470)
+        XCTAssertEqual(store.progress(for: "04626").markets, [kaufland])
+        XCTAssertEqual(store.progress(for: "04626").offerCount, 470)
+
+        // Backend findet eine weitere Kette und lädt mehr Angebote hoch.
+        repo.marketsByPLZ["04626"] = [kaufland, lidl]
+        repo.offerCounts["04626"] = 725
+        await waitUntil(store.progress(for: "04626").offerCount == 725)
+        XCTAssertEqual(store.progress(for: "04626").markets, [kaufland, lidl])
+
+        observer.cancel()
+        await observer.value
+    }
+
+    func testObserveProgressStopsWhenRegionBecomesReady() async {
+        let repo = ControllableRegionRepository()
+        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-18T05:00:00Z", active: true)
+        let store = makeStore(repository: repo)
+        await store.addRegion("01219")
+        XCTAssertEqual(store.syncState(for: "01219"), .ready)
+
+        // Muss sofort zurückkehren, ohne einen einzigen Progress-Fetch.
+        await store.observeProgress(plz: "01219")
+        XCTAssertEqual(repo.progressFetches, 0)
     }
 
     // MARK: Multi-region helpers

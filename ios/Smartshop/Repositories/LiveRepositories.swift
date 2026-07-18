@@ -57,4 +57,14 @@ struct LiveRegionRepository: RegionRepositoryProtocol {
     func registerRegion(plz: String) async throws {
         try await client.post(path: "regions", body: ["plz": plz], acceptConflict: true)
     }
+
+    func foundMarkets(plz: String) async throws -> [Market] {
+        let query = "select=chain,branch_name,market_id,plz"
+            + "&plz=eq.\(plz)&order=chain.asc"
+        return try await client.getList(Market.self, path: "markets", query: query)
+    }
+
+    func offerCount(plz: String) async throws -> Int {
+        try await client.count(path: "offers", query: "region=eq.\(plz)")
+    }
 }

@@ -16,4 +16,9 @@ protocol RegionRepositoryProtocol {
     func region(plz: String) async throws -> Region?
     /// Registers a PLZ for syncing. Idempotent (409 = already registered).
     func registerRegion(plz: String) async throws
+    /// Markets the backend has already found for a PLZ mid-sync (each chain
+    /// appears here before its offers land). Lightweight; safe to poll.
+    func foundMarkets(plz: String) async throws -> [Market]
+    /// Number of offer rows already uploaded for a PLZ (HEAD count, no body).
+    func offerCount(plz: String) async throws -> Int
 }
