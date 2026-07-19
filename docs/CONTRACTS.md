@@ -85,3 +85,32 @@ Tierbedarf, Kinder, Sonstiges
 
 `valid_from` / `valid_until` are plain `yyyy-MM-dd` strings (no time, no timezone).
 The app decodes them with a fixed `DateFormatter` (`en_US_POSIX`, format `yyyy-MM-dd`).
+
+## Edge Functions
+
+### `sync-region`
+
+On-demand offer sync for a region via Marktguru (source of truth:
+`supabase/functions/sync-region/`, deploy with `supabase functions deploy sync-region`).
+
+```
+POST {SupabaseURL}/functions/v1/sync-region   body: {"zip": "04626"}
+```
+
+Headers as above (publishable key is sufficient). Optional `"force": true`
+bypasses the 24h cache (used by the daily refresh workflow, service key).
+
+Responses:
+
+```
+{"cached": true,  "zip": "04626", "count": 2513}                      // cache fresh (<24h)
+{"cached": false, "zip": "04626", "markets": 4, "count": 1543, "failed": []}
+```
+
+Behavior: claims `regions.last_synced` first (parallel calls return `cached`),
+resolves the region's retailers from the Marktguru search API, upserts offers
+with `region = zip` on conflict `(market, product, valid_from, region)`.
+`markets` is owned by the branch pipeline and never written here.
+
+Note: offer categories written by this function still use the legacy 9-category
+set, not the 15 categories above; unknown categories must fall back to Sonstiges.
