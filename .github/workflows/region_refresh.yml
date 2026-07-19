@@ -1,0 +1,63 @@
+name: Regionen-Refresh (sync-region)
+
+on:
+  # Täglich um 05:00 UTC — refresht alle aktiven Regionen
+  schedule:
+    - cron: "0 5 * * *"
+
+  # Manuell oder per Region-Trigger (pg_net) auslösen
+  workflow_dispatch:
+    inputs:
+      zip:
+        description: "Nur diese PLZ syncen (leer = alle aktiven Regionen)"
+        required: false
+        default: ""
+
+jobs:
+  sync:
+    name: Regionen über Edge Function auffrischen
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Regionen syncen
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set -u
+          if [ -n "${{ github.event.inputs.zip }}" ]; then
+            ZIPS="${{ github.event.inputs.zip }}"
+          else
+            ZIPS=$(curl -sf "$SUPABASE_URL/rest/v1/regions?select=plz&active=eq.true" \
+              -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" | jq -r '.[].plz')
+          fi
+          if [ -z "$ZIPS" ]; then
+            echo "Keine aktiven Regionen gefunden." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "### Angebots-Sync (Regionen)" >> $GITHUB_STEP_SUMMARY
+          FAILED=""
+          for z in $ZIPS; do
+            echo "── Region $z"
+            RESP=$(curl -s -m 600 -X POST "$SUPABASE_URL/functions/v1/sync-region" \
+              -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"zip\":\"$z\",\"force\":true}")
+            echo "$RESP"
+            COUNT=$(echo "$RESP" | jq -r '.count // empty')
+            if [ -n "$COUNT" ]; then
+              echo "- $z: $COUNT Angebote ($(echo "$RESP" | jq -r '.failed // [] | join(", ")'))" >> $GITHUB_STEP_SUMMARY
+            else
+              FAILED="$FAILED $z"
+              echo "- $z: FEHLER — $RESP" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          if [ -n "$FAILED" ]; then
+            echo "Fehlgeschlagen:$FAILED" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
