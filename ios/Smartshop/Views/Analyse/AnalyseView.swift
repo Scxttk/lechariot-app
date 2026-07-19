@@ -7,6 +7,8 @@ struct AnalyseView: View {
     let plz: String
     let favoriteMarkets: [Market]
 
+    @Environment(ShoppingListStore.self) private var list
+    @Environment(MatchRejectionStore.self) private var rejections
     @State private var store: OfferStore
 
     init(plz: String, favoriteMarkets: [Market], repository: OfferRepositoryProtocol) {
@@ -75,6 +77,7 @@ struct AnalyseView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                 statTiles
+                listRankingCard
                 marketCountCard
                 marketDiscountCard
                 categoryCard
@@ -106,6 +109,70 @@ struct AnalyseView: View {
                 footnote: "beste Ersparnis"
             )
         }
+    }
+
+    // MARK: Listen-Ranking
+
+    /// Which Wunschmarkt covers the shopping list best — coverage before
+    /// price, honest wording: the totals compare matched offer prices only.
+    @ViewBuilder
+    private var listRankingCard: some View {
+        let ranks = ShoppingListRanking.rank(
+            items: list.uncheckedItems,
+            offers: store.offers,
+            chains: chains
+        ) { rejections.isRejected(itemText: $0, offer: $1) }
+
+        if !ranks.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                Text("Bester Markt für deine Liste")
+                    .font(.headline)
+                VStack(spacing: 0) {
+                    ForEach(Array(ranks.enumerated()), id: \.element.id) { index, rank in
+                        rankRow(rank, position: index + 1)
+                            .padding(.vertical, Theme.Spacing.xs)
+                        if rank.id != ranks.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+                Text("Rangfolge: erst Abdeckung, dann Preis. Die Summe zählt nur die gematchten Angebote — Artikel ohne Treffer und Normalpreise sind nicht eingerechnet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .themeCard()
+        }
+    }
+
+    private func rankRow(_ rank: MarketListRank, position: Int) -> some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            Text("\(position).")
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 24, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(rank.chain)
+                    .font(.subheadline.weight(position == 1 ? .semibold : .regular))
+                Text("\(rank.matchedCount)/\(rank.itemCount) Artikel")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: Theme.Spacing.sm)
+            if let total = rank.total {
+                Text(total, format: .currency(code: "EUR"))
+                    .font(.subheadline.monospacedDigit())
+                    .fontWeight(position == 1 ? .semibold : .regular)
+            } else {
+                Text("–")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "Platz \(position): \(rank.chain), \(rank.matchedCount) von \(rank.itemCount) Artikeln"
+            + (rank.total.map { String(format: ", %.2f Euro", $0) } ?? "")
+        )
     }
 
     // MARK: Charts
@@ -252,4 +319,6 @@ private struct ChartSummaryModifier: ViewModifier {
         favoriteMarkets: MockFixtures.markets,
         repository: MockOfferRepository()
     )
+    .environment(ShoppingListStore())
+    .environment(MatchRejectionStore())
 }

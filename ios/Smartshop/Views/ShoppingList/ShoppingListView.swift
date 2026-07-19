@@ -8,7 +8,7 @@ struct ShoppingListView: View {
 
     @Environment(ShoppingListStore.self) private var list
     @State private var offerStore: OfferStore
-    @State private var rejections = MatchRejectionStore()
+    @Environment(MatchRejectionStore.self) private var rejections
     @State private var detailItem: ShoppingItem?
     @State private var newItemText = ""
     @FocusState private var inputFocused: Bool
@@ -181,4 +181,5 @@ struct ShoppingListView: View {
         repository: MockOfferRepository()
     )
     .environment(ShoppingListStore())
+    .environment(MatchRejectionStore())
 }

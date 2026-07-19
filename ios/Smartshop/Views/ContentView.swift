@@ -5,6 +5,7 @@ struct ContentView: View {
     let marketRepository: MarketRepositoryProtocol
 
     @State private var shoppingList = ShoppingListStore()
+    @State private var rejections = MatchRejectionStore()
 
     var body: some View {
         if store.isOnboardingComplete {
@@ -41,6 +42,7 @@ struct ContentView: View {
                 }
         }
         .environment(shoppingList)
+        .environment(rejections)
         .tint(Theme.accent)
     }
 
