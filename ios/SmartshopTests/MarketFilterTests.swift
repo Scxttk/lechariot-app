@@ -42,6 +42,21 @@ final class MarketFilterTests: XCTestCase {
         XCTAssertTrue(MarketFilter.filter(branches, query: "Edeka").isEmpty)
     }
 
+    /// Guards the app layer against accidental dedupe: two branches of the
+    /// same chain in the same PLZ must both survive filtering and stay
+    /// distinguishable. (That only one arrives today is a backend limitation:
+    /// the scrapers' find_market returns a single nearest branch per chain.)
+    func testTwoBranchesOfSameChainInSamePLZBothKept() {
+        let nettos = [
+            market("Netto", branch: "Johannes-Paul-Thilman-Straße"),
+            market("Netto", branch: "Strehlener Platz"),
+        ]
+        let hits = MarketFilter.filter(nettos, query: "netto")
+        XCTAssertEqual(hits.count, 2)
+        XCTAssertEqual(Set(hits.map(\.id)).count, 2, "branches must keep distinct ids")
+        XCTAssertEqual(MarketFilter.filter(nettos, query: "thilman").count, 1)
+    }
+
     func testKonsumIsListedAsChainWithoutData() {
         XCTAssertTrue(MarketFilter.chainsWithoutData.contains("Konsum"))
     }
