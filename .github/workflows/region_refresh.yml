@@ -1,11 +1,9 @@
 name: Regionen-Refresh (sync-region)
 
 on:
-  # Täglich um 05:00 UTC — refresht alle aktiven Regionen
-  schedule:
-    - cron: "0 5 * * *"
-
-  # Manuell oder per Region-Trigger (pg_net) auslösen
+  # Cron deaktiviert (19.07.2026): Marktguru ist als Datenquelle gestrichen,
+  # der nächtliche Sync läuft über die eigenen Scraper im Backend-Repo.
+  # sync-region bleibt als manuelles Dev-Werkzeug auslösbar.
   workflow_dispatch:
     inputs:
       zip:
