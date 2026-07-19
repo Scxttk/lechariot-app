@@ -8,6 +8,8 @@ struct ShoppingListView: View {
 
     @Environment(ShoppingListStore.self) private var list
     @State private var offerStore: OfferStore
+    @State private var rejections = MatchRejectionStore()
+    @State private var detailItem: ShoppingItem?
     @State private var newItemText = ""
     @FocusState private var inputFocused: Bool
 
@@ -21,14 +23,16 @@ struct ShoppingListView: View {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
     }
 
-    /// Matches are recomputed on the fly; nothing offer-related is persisted.
-    private func match(for item: ShoppingItem) -> Offer? {
-        ShoppingListMatcher.cheapestMatch(for: item.text, in: offerStore.offers)
+    /// Matches are recomputed on the fly; only rejections are persisted.
+    private func match(for item: ShoppingItem) -> OfferMatch? {
+        ShoppingListMatcher.cheapestMatch(for: item.text, in: offerStore.offers) {
+            rejections.isRejected(itemText: item.text, offer: $0)
+        }
     }
 
     /// Sum of the suggested prices of all open items with a match.
     private var matchedTotal: Double {
-        list.uncheckedItems.compactMap { match(for: $0)?.price }.reduce(0, +)
+        list.uncheckedItems.compactMap { match(for: $0)?.offer.price }.reduce(0, +)
     }
 
     var body: some View {
@@ -46,6 +50,10 @@ struct ShoppingListView: View {
             .safeAreaInset(edge: .bottom) { inputBar }
         }
         .task(id: plz) { await offerStore.load(regions: [plz], chains: chains) }
+        .sheet(item: $detailItem) { item in
+            MatchDetailView(item: item, offers: offerStore.offers)
+                .environment(rejections)
+        }
     }
 
     // MARK: List
@@ -54,9 +62,12 @@ struct ShoppingListView: View {
         List {
             Section {
                 ForEach(list.uncheckedItems) { item in
-                    ShoppingListRowView(item: item, match: match(for: item)) {
-                        withAnimation { list.toggle(item) }
-                    }
+                    ShoppingListRowView(
+                        item: item,
+                        match: match(for: item),
+                        onToggle: { withAnimation { list.toggle(item) } },
+                        onShowMatches: { detailItem = item }
+                    )
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             list.remove(item)

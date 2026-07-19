@@ -3,23 +3,27 @@ import Observation
 
 // MARK: - Offer matching
 
-/// Finds the cheapest current offer for a shopping-list item. Mirrors the CLI's
-/// `list suggest`: case-insensitive substring match on the product name.
+/// Suggestion logic for shopping-list items on top of OfferMatcher: rejected
+/// matches drop out, and the suggested offer is the cheapest direct hit,
+/// falling back to the cheapest category hit.
 enum ShoppingListMatcher {
-    static func cheapestMatch(for text: String, in offers: [Offer]) -> Offer? {
-        let needle = text.trimmingCharacters(in: .whitespaces)
-        guard !needle.isEmpty else { return nil }
-        return offers
-            .compactMap { offer in
-                offer.price.map { (offer: offer, price: $0) }
-            }
-            .filter { $0.offer.product.localizedCaseInsensitiveContains(needle) }
-            .min { lhs, rhs in
-                if lhs.price != rhs.price { return lhs.price < rhs.price }
-                // Same price: prefer the better base price when known.
-                return (lhs.offer.basePrice ?? .infinity) < (rhs.offer.basePrice ?? .infinity)
-            }?
-            .offer
+    static func matches(
+        for text: String,
+        in offers: [Offer],
+        isRejected: (Offer) -> Bool = { _ in false }
+    ) -> [OfferMatch] {
+        OfferMatcher.matches(for: text, in: offers).filter { !isRejected($0.offer) }
+    }
+
+    static func cheapestMatch(
+        for text: String,
+        in offers: [Offer],
+        isRejected: (Offer) -> Bool = { _ in false }
+    ) -> OfferMatch? {
+        // matches() already orders direct-before-category, each by price —
+        // but priceless offers sort last, so prefer the first priced hit.
+        let ranked = matches(for: text, in: offers, isRejected: isRejected)
+        return ranked.first { $0.offer.price != nil } ?? ranked.first
     }
 }
 

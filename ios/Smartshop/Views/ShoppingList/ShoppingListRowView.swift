@@ -4,8 +4,10 @@ import SwiftUI
 /// a match) the cheapest current offer as a suggestion line.
 struct ShoppingListRowView: View {
     let item: ShoppingItem
-    let match: Offer?
+    let match: OfferMatch?
     let onToggle: () -> Void
+    /// Opens the match-detail sheet; nil hides the affordance (checked items).
+    var onShowMatches: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.md) {
@@ -39,32 +41,40 @@ struct ShoppingListRowView: View {
     @ViewBuilder
     private var suggestion: some View {
         if let match {
-            HStack(spacing: Theme.Spacing.sm) {
-                OfferThumbnail(imageUrl: match.imageUrl, emoji: match.emoji, size: 32)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(match.product)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Text(match.market)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+            let offer = match.offer
+            Button(action: { onShowMatches?() }) {
+                HStack(spacing: Theme.Spacing.sm) {
+                    OfferThumbnail(imageUrl: offer.imageUrl, emoji: offer.emoji, size: 32)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: Theme.Spacing.xs) {
+                            Text(offer.product)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            MatchKindBadge(kind: match.kind)
+                        }
+                        Text(offer.market)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    Spacer(minLength: Theme.Spacing.sm)
+                    if let discount = offer.discountPercent {
+                        DiscountBadge(percent: discount)
+                    }
+                    if let price = offer.price {
+                        PriceText(amount: price)
+                    }
                 }
-                Spacer(minLength: Theme.Spacing.sm)
-                if let discount = match.discountPercent {
-                    DiscountBadge(percent: discount)
-                }
-                if let price = match.price {
-                    PriceText(amount: price)
-                }
+                .padding(Theme.Spacing.sm)
+                .background(
+                    Color(uiColor: .tertiarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                )
             }
-            .padding(Theme.Spacing.sm)
-            .background(
-                Color(uiColor: .tertiarySystemGroupedBackground),
-                in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-            )
+            .buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(suggestionSummary(match))
+            .accessibilityHint("Zeigt alle passenden Angebote")
         } else {
             Text("Kein Angebot diese Woche")
                 .font(.caption)
@@ -74,16 +84,35 @@ struct ShoppingListRowView: View {
 
     /// One VoiceOver utterance for the suggestion tile: product, price,
     /// discount and market.
-    private func suggestionSummary(_ match: Offer) -> String {
-        var parts = ["Günstigstes Angebot: \(match.product)"]
-        if let price = match.price {
+    private func suggestionSummary(_ match: OfferMatch) -> String {
+        let offer = match.offer
+        var parts = ["Günstigstes Angebot: \(offer.product)"]
+        if let price = offer.price {
             parts.append(price.formatted(.currency(code: "EUR")))
         }
-        if let discount = match.discountPercent {
+        if let discount = offer.discountPercent {
             parts.append("\(discount) Prozent reduziert")
         }
-        parts.append("bei \(match.market)")
+        parts.append("bei \(offer.market)")
+        parts.append(match.kind == .direct ? "direkter Treffer" : "Kategorie-Treffer")
         return parts.joined(separator: ", ")
+    }
+}
+
+/// Small pill distinguishing exact hits from category fallback hits.
+struct MatchKindBadge: View {
+    let kind: MatchKind
+
+    var body: some View {
+        Text(kind == .direct ? "Direkt" : "Kategorie")
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                kind == .direct ? Theme.accent.opacity(0.15) : Color.secondary.opacity(0.15),
+                in: Capsule()
+            )
+            .foregroundStyle(kind == .direct ? Theme.accent : Color.secondary)
     }
 }
 
@@ -91,7 +120,7 @@ struct ShoppingListRowView: View {
     List {
         ShoppingListRowView(
             item: ShoppingItem(text: "Milch"),
-            match: MockFixtures.offers[0],
+            match: OfferMatch(offer: MockFixtures.offers[0], kind: .direct),
             onToggle: {}
         )
         ShoppingListRowView(

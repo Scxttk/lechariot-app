@@ -101,7 +101,7 @@ final class ShoppingListStoreTests: XCTestCase {
             offer(product: "Orangen", price: 0.49),
         ]
         let match = ShoppingListMatcher.cheapestMatch(for: "vollmilch", in: offers)
-        XCTAssertEqual(match?.product, "Frische Vollmilch")
+        XCTAssertEqual(match?.offer.product, "Frische Vollmilch")
     }
 
     func testMatcherIgnoresOffersWithoutPrice() {
@@ -110,7 +110,7 @@ final class ShoppingListStoreTests: XCTestCase {
             offer(product: "Vollmilch extra", price: 1.49),
         ]
         let match = ShoppingListMatcher.cheapestMatch(for: "Vollmilch", in: offers)
-        XCTAssertEqual(match?.product, "Vollmilch extra")
+        XCTAssertEqual(match?.offer.product, "Vollmilch extra")
     }
 
     func testMatcherReturnsNilWithoutHitOrForEmptyText() {
@@ -125,7 +125,7 @@ final class ShoppingListStoreTests: XCTestCase {
             offer(product: "Butter 500g", price: 1.99, basePrice: 3.98),
         ]
         let match = ShoppingListMatcher.cheapestMatch(for: "Butter", in: offers)
-        XCTAssertEqual(match?.product, "Butter 500g")
+        XCTAssertEqual(match?.offer.product, "Butter 500g")
     }
 
     // MARK: Corrupt persistence
