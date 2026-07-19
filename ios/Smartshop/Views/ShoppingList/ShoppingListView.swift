@@ -132,6 +132,10 @@ struct ShoppingListView: View {
                     Theme.surface,
                     in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                 )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .strokeBorder(Theme.stroke)
+                )
 
             Button(action: addItem) {
                 Image(systemName: "plus.circle.fill")
@@ -139,6 +143,7 @@ struct ShoppingListView: View {
                     .foregroundStyle(Theme.accent)
                     .frame(width: 44, height: 44)
             }
+            .buttonStyle(TactileButtonStyle())
             .disabled(newItemText.trimmingCharacters(in: .whitespaces).isEmpty)
             .accessibilityLabel("Artikel hinzufügen")
         }

@@ -98,7 +98,7 @@ struct MatchDetailView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(TactileButtonStyle())
             .accessibilityLabel(isRejected ? "Ablehnung zurücknehmen" : "Treffer ablehnen")
         }
         .opacity(isRejected ? 0.5 : 1)

@@ -59,6 +59,14 @@ enum Theme {
             : UIColor(red: 0.80, green: 0.16, blue: 0.14, alpha: 1)
     })
 
+    /// Hairline stroke separating cards from the background — warm neutral
+    /// so it reads as an edge, not as a colored border.
+    static let stroke = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(white: 1, alpha: 0.10)
+            : UIColor(red: 0.28, green: 0.17, blue: 0.11, alpha: 0.10)
+    })
+
     /// Elevated surface for tiles/cards/list rows on `background`. Dark mode
     /// uses the brand brown (#472C1B) so brown carries the dark appearance;
     /// light mode uses a lifted cream so green accents carry the light one.
@@ -160,6 +168,12 @@ struct OfferThumbnail: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous))
+        // Inset hairline so photo edges don't blur into the surface —
+        // neutral alpha, never brand-tinted.
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08))
+        )
         .accessibilityHidden(true)
     }
 }
@@ -204,17 +218,47 @@ struct StatTile: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.Spacing.lg)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .cardSurface()
     }
 }
 
 // MARK: - Card container
 
 extension View {
-    /// Standard elevated card on the grouped background.
+    /// Standard elevated card on the grouped background: surface fill,
+    /// hairline edge, and a soft two-layer shadow. The shadow is nearly
+    /// invisible in dark mode — there the stroke does the separating.
     func themeCard() -> some View {
         padding(Theme.Spacing.lg)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .cardSurface()
+    }
+
+    /// Surface + edge + shadow without the padding, for tiles that manage
+    /// their own insets (StatTile).
+    fileprivate func cardSurface() -> some View {
+        background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                    .strokeBorder(Theme.stroke)
+            )
+            .shadow(color: .black.opacity(0.05), radius: 6, y: 2)
+            .shadow(color: .black.opacity(0.04), radius: 1, y: 1)
+    }
+}
+
+// MARK: - Tactile button style
+
+/// Press feedback for tappable tiles and icon buttons: slight scale-down and
+/// dim, interruptible ease-out. Plain buttons otherwise give no feedback at all.
+struct TactileButtonStyle: ButtonStyle {
+    // Custom styles bypass the system's automatic disabled dimming.
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 

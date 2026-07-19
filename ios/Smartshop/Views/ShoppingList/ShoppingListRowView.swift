@@ -19,7 +19,7 @@ struct ShoppingListRowView: View {
                     // 44-pt hit area despite the small glyph.
                     .frame(width: 44, height: 44, alignment: .center)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(TactileButtonStyle())
             .accessibilityLabel(item.isChecked ? "Als offen markieren" : "Als erledigt markieren")
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -66,12 +66,18 @@ struct ShoppingListRowView: View {
                     }
                 }
                 .padding(Theme.Spacing.sm)
+                // Screen background as nested fill: reads as "recessed into
+                // the row" and stays in the brand palette instead of system gray.
                 .background(
-                    Color(uiColor: .tertiarySystemGroupedBackground),
+                    Theme.background,
                     in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
                 )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                        .strokeBorder(Theme.stroke)
+                )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(TactileButtonStyle())
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(suggestionSummary(match))
             .accessibilityHint("Zeigt alle passenden Angebote")

@@ -130,9 +130,16 @@ struct AnalyseView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(ranks.enumerated()), id: \.element.id) { index, rank in
                         rankRow(rank, position: index + 1)
-                            .padding(.vertical, Theme.Spacing.xs)
+                            .padding(.vertical, Theme.Spacing.sm)
+                            .padding(.horizontal, Theme.Spacing.sm)
+                            // Winner row gets a soft accent tint; the others
+                            // stay flat so the hierarchy is instant.
+                            .background(
+                                index == 0 ? Theme.accent.opacity(0.12) : .clear,
+                                in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                            )
                         if rank.id != ranks.last?.id {
-                            Divider()
+                            Divider().padding(.horizontal, Theme.Spacing.sm)
                         }
                     }
                 }
@@ -149,7 +156,7 @@ struct AnalyseView: View {
         HStack(spacing: Theme.Spacing.sm) {
             Text("\(position).")
                 .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(position == 1 ? Theme.accent : .secondary)
                 .frame(width: 24, alignment: .trailing)
             VStack(alignment: .leading, spacing: 2) {
                 Text(rank.chain)
