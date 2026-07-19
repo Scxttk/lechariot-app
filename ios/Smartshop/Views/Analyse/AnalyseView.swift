@@ -4,15 +4,15 @@ import Charts
 /// Analyse tab: key figures and charts over the current week's offers for the
 /// selected region and Wunschmärkte. One measure per chart, one accent hue.
 struct AnalyseView: View {
-    let plz: String
+    let regions: [String]
     let favoriteMarkets: [Market]
 
     @Environment(ShoppingListStore.self) private var list
     @Environment(MatchRejectionStore.self) private var rejections
     @State private var store: OfferStore
 
-    init(plz: String, favoriteMarkets: [Market], repository: OfferRepositoryProtocol) {
-        self.plz = plz
+    init(regions: [String], favoriteMarkets: [Market], repository: OfferRepositoryProtocol) {
+        self.regions = regions
         self.favoriteMarkets = favoriteMarkets
         _store = State(initialValue: OfferStore(repository: repository, cache: try? OfferCache()))
     }
@@ -27,7 +27,7 @@ struct AnalyseView: View {
                 .navigationTitle("Analyse")
                 .background(Theme.background)
         }
-        .task(id: plz) { await store.load(regions: [plz], chains: chains) }
+        .task(id: regions) { await store.load(regions: regions, chains: chains) }
     }
 
     @ViewBuilder
@@ -315,7 +315,7 @@ private struct ChartSummaryModifier: ViewModifier {
 
 #Preview {
     AnalyseView(
-        plz: "01219",
+        regions: ["01219"],
         favoriteMarkets: MockFixtures.markets,
         repository: MockOfferRepository()
     )

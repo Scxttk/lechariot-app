@@ -13,7 +13,7 @@ struct SettingsView: View {
                 Group {
                     regionSection
                     if let plz = store.selectedRegion {
-                        marketSection(plz: plz)
+                        marketSection(anyPLZ: plz)
                     }
                     appearanceSection
                     appSection
@@ -99,29 +99,34 @@ struct SettingsView: View {
 
     // MARK: Wunschmärkte
 
-    private func marketSection(plz: String) -> some View {
-        let favorites = store.favoriteMarkets(in: plz)
+    /// All chosen branches across every region; `anyPLZ` only seeds the
+    /// edit screen with a starting region.
+    private func marketSection(anyPLZ: String) -> some View {
+        let favorites = store.favoriteMarkets
+            .sorted { ($0.chain, $0.branchName) < ($1.chain, $1.branchName) }
         return Section {
             ForEach(favorites) { market in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(market.chain)
                         .font(.body.weight(.medium))
-                    Text(market.branchName)
+                    Text(market.isNationwide
+                        ? "Deutschlandweit"
+                        : "\(market.branchName) · PLZ \(market.plz)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
             NavigationLink {
-                EditMarketsScreen(plz: plz, marketRepository: marketRepository)
+                EditMarketsScreen(plz: anyPLZ, marketRepository: marketRepository)
             } label: {
-                Label("Märkte bearbeiten", systemImage: "storefront")
+                Label("Filialen bearbeiten", systemImage: "storefront")
                     .foregroundStyle(Theme.accent)
             }
         } header: {
-            Text("Wunschmärkte – PLZ \(plz)")
+            Text("Deine Filialen")
         } footer: {
             if favorites.isEmpty {
-                Text("Ohne Wunschmarkt werden keine Angebote angezeigt.")
+                Text("Ohne gewählte Filiale werden keine Angebote angezeigt.")
             }
         }
     }

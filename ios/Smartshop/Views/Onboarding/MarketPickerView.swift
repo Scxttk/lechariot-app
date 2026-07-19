@@ -1,7 +1,10 @@
 import SwiftUI
 
-/// Second onboarding step: pick favorite markets ("Wunschmärkte") for a ready
-/// region, grouped by chain. At least one is required to continue.
+/// Branch picker ("Wunschmärkte"): one cross-chain, searchable list of all
+/// branches in the user's regions, grouped by chain. Search matches chain,
+/// branch name and PLZ. Chains without backend data (see
+/// `MarketFilter.chainsWithoutData`) are listed but not selectable.
+/// At least one selected branch is required to continue.
 struct MarketPickerView: View {
     @Environment(RegionStore.self) private var store
     let plz: String
@@ -11,29 +14,52 @@ struct MarketPickerView: View {
     @State private var markets: [Market] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var query = ""
 
-    private var localMarkets: [Market] {
-        markets.filter { !$0.isNationwide }
-            .sorted { ($0.chain, $0.branchName) < ($1.chain, $1.branchName) }
+    /// All regions whose branches the picker offers — the current one plus
+    /// every other ready region, so PLZ-border users pick across borders.
+    private var plzs: [String] {
+        var seen = Set<String>()
+        return ([plz] + store.orderedReadyRegions).filter { seen.insert($0).inserted }
+    }
+
+    private var filtered: [Market] {
+        MarketFilter.filter(markets, query: query)
+    }
+
+    /// Local branches grouped by chain, chains alphabetical, branches by name.
+    private var chainGroups: [(chain: String, markets: [Market])] {
+        Dictionary(grouping: filtered.filter { !$0.isNationwide }, by: \.chain)
+            .map { (chain: $0.key, markets: $0.value.sorted { $0.branchName < $1.branchName }) }
+            .sorted { $0.chain < $1.chain }
     }
 
     private var nationwideMarkets: [Market] {
-        markets.filter(\.isNationwide).sorted { $0.chain < $1.chain }
+        filtered.filter(\.isNationwide).sorted { $0.chain < $1.chain }
     }
 
-    private var hasFavoritesHere: Bool { !store.favoriteMarkets(in: plz).isEmpty }
+    private var missingChains: [String] {
+        MarketFilter.chainsWithoutData.filter { chain in
+            query.trimmingCharacters(in: .whitespaces).isEmpty
+                || chain.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        }
+    }
+
+    private var hasAnyFavorites: Bool {
+        !store.favoriteMarkets(in: plzs).isEmpty
+    }
 
     var body: some View {
         List {
             Section {
-                Label("Wähle mindestens einen Wunschmarkt – nur dessen Angebote werden dir angezeigt.", systemImage: "info.circle")
+                Label("Wähle deine Filialen – nur deren Angebote werden dir angezeigt.", systemImage: "info.circle")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
-            if !localMarkets.isEmpty {
-                Section("Märkte in deiner Nähe") {
-                    ForEach(localMarkets) { marketRow($0) }
+            ForEach(chainGroups, id: \.chain) { group in
+                Section(group.chain) {
+                    ForEach(group.markets) { marketRow($0) }
                 }
             }
 
@@ -47,9 +73,41 @@ struct MarketPickerView: View {
                 }
             }
 
-            if markets.isEmpty && !isLoading {
+            if !missingChains.isEmpty {
                 Section {
-                    Text(errorMessage ?? "Für die PLZ \(plz) wurden noch keine Märkte gefunden.")
+                    ForEach(missingChains, id: \.self) { chain in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(chain)
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                Text("Keine Daten verfügbar")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            Spacer()
+                            Image(systemName: "star.slash")
+                                .foregroundStyle(.tertiary)
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(chain), keine Daten verfügbar, nicht wählbar")
+                    }
+                } footer: {
+                    Text("Diese Kette veröffentlicht ihre Angebote nicht in einer Form, die Smartshop auslesen kann.")
+                }
+            }
+
+            if filtered.isEmpty && !isLoading && !query.isEmpty {
+                Section {
+                    Text("Keine Filiale passt zu \u{201E}\(query)\u{201C}.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if markets.isEmpty && !isLoading && query.isEmpty {
+                Section {
+                    Text(errorMessage ?? "Für deine Regionen wurden noch keine Märkte gefunden.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -60,18 +118,19 @@ struct MarketPickerView: View {
                     NavigationLink {
                         AddRegionScreen()
                     } label: {
-                        Label("Wohnst du nahe einer PLZ-Grenze? Weitere PLZ hinzufügen", systemImage: "plus.circle")
+                        Label("Deine Filiale fehlt? Weitere PLZ hinzufügen", systemImage: "plus.circle")
                             .font(.subheadline)
                     }
                 }
             }
         }
+        .searchable(text: $query, prompt: "Kette, Filiale oder PLZ")
         .overlay { if isLoading { ProgressView("Märkte werden geladen…") } }
-        .navigationTitle("Wunschmärkte")
+        .navigationTitle("Filialen wählen")
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Fertig") { onDone() }
-                    .disabled(!hasFavoritesHere)
+                    .disabled(!hasAnyFavorites)
             }
         }
         .task { await loadMarkets() }
@@ -85,10 +144,10 @@ struct MarketPickerView: View {
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(market.chain)
+                    Text(market.isNationwide ? market.chain : market.branchName)
                         .font(.body.weight(.medium))
                         .foregroundStyle(.primary)
-                    Text(market.isNationwide ? "Deutschlandweit" : "\(market.branchName) · PLZ \(market.plz)")
+                    Text(market.isNationwide ? "Deutschlandweit" : "PLZ \(market.plz)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -112,7 +171,7 @@ struct MarketPickerView: View {
         isLoading = true
         errorMessage = nil
         do {
-            markets = try await marketRepository.markets(plzs: [plz])
+            markets = try await marketRepository.markets(plzs: plzs)
         } catch {
             errorMessage = "Märkte konnten nicht geladen werden. Ziehe die Liste nach unten, um es erneut zu versuchen."
         }

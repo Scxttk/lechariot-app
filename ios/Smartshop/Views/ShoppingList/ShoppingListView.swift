@@ -3,7 +3,7 @@ import SwiftUI
 /// Einkaufsliste tab: local list with per-item cheapest-offer suggestions from
 /// the current week's offers (region + Wunschmärkte, like the Angebote tab).
 struct ShoppingListView: View {
-    let plz: String
+    let regions: [String]
     let favoriteMarkets: [Market]
 
     @Environment(ShoppingListStore.self) private var list
@@ -13,8 +13,8 @@ struct ShoppingListView: View {
     @State private var newItemText = ""
     @FocusState private var inputFocused: Bool
 
-    init(plz: String, favoriteMarkets: [Market], repository: OfferRepositoryProtocol) {
-        self.plz = plz
+    init(regions: [String], favoriteMarkets: [Market], repository: OfferRepositoryProtocol) {
+        self.regions = regions
         self.favoriteMarkets = favoriteMarkets
         _offerStore = State(initialValue: OfferStore(repository: repository, cache: try? OfferCache()))
     }
@@ -49,7 +49,7 @@ struct ShoppingListView: View {
             .toolbar { toolbarMenu }
             .safeAreaInset(edge: .bottom) { inputBar }
         }
-        .task(id: plz) { await offerStore.load(regions: [plz], chains: chains) }
+        .task(id: regions) { await offerStore.load(regions: regions, chains: chains) }
         .sheet(item: $detailItem) { item in
             MatchDetailView(item: item, offers: offerStore.offers)
                 .environment(rejections)
@@ -176,7 +176,7 @@ struct ShoppingListView: View {
 
 #Preview {
     ShoppingListView(
-        plz: "01219",
+        regions: ["01219"],
         favoriteMarkets: MockFixtures.markets,
         repository: MockOfferRepository()
     )

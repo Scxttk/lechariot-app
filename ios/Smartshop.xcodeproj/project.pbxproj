@@ -44,12 +44,14 @@
 		D09930822B5A4F4E71E1601C /* OnboardingFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E06287A5B5DDF7F656F70C /* OnboardingFlowView.swift */; };
 		D0AE2A24E7140F562CC57033 /* OfferMatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAA8AC26E4BC01DF5A0C6FA2 /* OfferMatcherTests.swift */; };
 		D55A1F37BAF7F5862BBD6309 /* OfferCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22EF4DB51E488E8DCD969A0B /* OfferCacheTests.swift */; };
+		DB37DA5AFBEB7F45EAA7B017 /* MarketFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971ADEDD8EDD5BD80EE09E88 /* MarketFilter.swift */; };
 		DD85902B4FD0B8217F02ED4A /* WaitingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D583F29D93E176CF24E3D4E /* WaitingView.swift */; };
 		DF9902A7D9E645AAE99CE314 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27834BA71F48A6AF73887634 /* Theme.swift */; };
 		DF9F6517A6D0F31CA4E38147 /* MockRepositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4182237F12035092E0DC4BD /* MockRepositories.swift */; };
 		E326D9D197136729E22F88CB /* OfferAnalyticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DEA83EC6F1AB3BE5F30366 /* OfferAnalyticsTests.swift */; };
 		E9A35414E0F415D5F256DAB8 /* APIKeys.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5AA184AEE48DDF1CFDBB58AE /* APIKeys.plist */; };
 		F25EC2E07C8D7E9E81F342F4 /* Region.swift in Sources */ = {isa = PBXBuildFile; fileRef = 711F4305918425B41721D89C /* Region.swift */; };
+		F37C9EB36CAD104F7E90BAF6 /* MarketFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1288BFEE69CC731FD2467645 /* MarketFilterTests.swift */; };
 		F944DB41D768696C1A798FAE /* ShoppingListStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C6E875DEA6BFBC297763AAE /* ShoppingListStore.swift */; };
 		F9CF4DA5F34A08A75D43B6F0 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B48FD6DDE4020955072D1F67 /* ModelDecodingTests.swift */; };
 		FB79DF4DE67EEBC120455F2D /* PLZLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E0E10DD074BFC523DF9AD2 /* PLZLocator.swift */; };
@@ -70,6 +72,7 @@
 		01E0E10DD074BFC523DF9AD2 /* PLZLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PLZLocator.swift; sourceTree = "<group>"; };
 		09410A87BA1B641089F1FB1F /* MarketTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketTests.swift; sourceTree = "<group>"; };
 		0A51CF633937486C4F3C90CD /* Smartshop.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Smartshop.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1288BFEE69CC731FD2467645 /* MarketFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketFilterTests.swift; sourceTree = "<group>"; };
 		1329B01BEF7B45706988C564 /* LiveRepositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRepositories.swift; sourceTree = "<group>"; };
 		1B70F1AA0433221D95BBAEAB /* MockRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockRepositoryTests.swift; sourceTree = "<group>"; };
 		22EF4DB51E488E8DCD969A0B /* OfferCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferCacheTests.swift; sourceTree = "<group>"; };
@@ -101,6 +104,7 @@
 		8A55AEE68082C0FC0867C922 /* ShoppingListStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingListStoreTests.swift; sourceTree = "<group>"; };
 		9067D38E35AD37E75F0399D0 /* Repositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repositories.swift; sourceTree = "<group>"; };
 		94DEA83EC6F1AB3BE5F30366 /* OfferAnalyticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferAnalyticsTests.swift; sourceTree = "<group>"; };
+		971ADEDD8EDD5BD80EE09E88 /* MarketFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketFilter.swift; sourceTree = "<group>"; };
 		9B816EFCB523B03236DAEEEF /* OfferStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferStore.swift; sourceTree = "<group>"; };
 		A687DB4BC334F9E68BA90F77 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AF835B2B5E4F7175CD1BC237 /* OfferRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferRowView.swift; sourceTree = "<group>"; };
@@ -213,6 +217,7 @@
 			children = (
 				4D2AA9D14BC4A0DE3E94A637 /* Categories.swift */,
 				2DA5E2F1FD07970ECF93D078 /* Market.swift */,
+				971ADEDD8EDD5BD80EE09E88 /* MarketFilter.swift */,
 				EF672C84046EBB21ACA1088B /* Offer.swift */,
 				7002CAEC0771B195B6EF2198 /* OfferMatcher.swift */,
 				711F4305918425B41721D89C /* Region.swift */,
@@ -242,6 +247,7 @@
 		B5721556CE68C53738BA7E7B /* SmartshopTests */ = {
 			isa = PBXGroup;
 			children = (
+				1288BFEE69CC731FD2467645 /* MarketFilterTests.swift */,
 				09410A87BA1B641089F1FB1F /* MarketTests.swift */,
 				1B70F1AA0433221D95BBAEAB /* MockRepositoryTests.swift */,
 				B48FD6DDE4020955072D1F67 /* ModelDecodingTests.swift */,
@@ -426,6 +432,7 @@
 				6958E0BBF81CABFBFAC157B1 /* ContentView.swift in Sources */,
 				178B4FB3FE725FC8445FA295 /* LiveRepositories.swift in Sources */,
 				7D323F4158711B185CAEE8B4 /* Market.swift in Sources */,
+				DB37DA5AFBEB7F45EAA7B017 /* MarketFilter.swift in Sources */,
 				40DD889262FF2BC3BA791FD9 /* MarketPickerView.swift in Sources */,
 				2AB6CD2243AA21C818C74DCB /* MatchDetailView.swift in Sources */,
 				51848D45B3928B6DDB8CB3DC /* MatchRejectionStore.swift in Sources */,
@@ -460,6 +467,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F37C9EB36CAD104F7E90BAF6 /* MarketFilterTests.swift in Sources */,
 				6CAEFA276FB0987B4A7F334A /* MarketTests.swift in Sources */,
 				D00A5FAAB301C2D65D7D1EB2 /* MockRepositoryTests.swift in Sources */,
 				F9CF4DA5F34A08A75D43B6F0 /* ModelDecodingTests.swift in Sources */,

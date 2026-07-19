@@ -22,15 +22,15 @@ struct ContentView: View {
                     Label("Angebote", systemImage: "tag")
                 }
 
-            regionScoped { plz, markets in
-                ShoppingListView(plz: plz, favoriteMarkets: markets, repository: Self.offerRepository)
+            allRegionScoped { regions, markets in
+                ShoppingListView(regions: regions, favoriteMarkets: markets, repository: Self.offerRepository)
             }
             .tabItem {
                 Label("Einkaufsliste", systemImage: "checklist")
             }
 
-            regionScoped { plz, markets in
-                AnalyseView(plz: plz, favoriteMarkets: markets, repository: Self.offerRepository)
+            allRegionScoped { regions, markets in
+                AnalyseView(regions: regions, favoriteMarkets: markets, repository: Self.offerRepository)
             }
             .tabItem {
                 Label("Analyse", systemImage: "chart.bar.xaxis")
@@ -62,15 +62,17 @@ struct ContentView: View {
         }
     }
 
-    /// All region-bound tabs share the same guard and inputs.
+    /// Einkaufsliste and Analyse span all ready regions, like Angebote — the
+    /// chosen branches are the filter, not the selected region.
     @ViewBuilder
-    private func regionScoped(
-        @ViewBuilder content: (String, [Market]) -> some View
+    private func allRegionScoped(
+        @ViewBuilder content: ([String], [Market]) -> some View
     ) -> some View {
-        if let plz = store.selectedRegion {
-            content(plz, store.favoriteMarkets(in: plz))
-        } else {
+        let regions = store.orderedReadyRegions
+        if regions.isEmpty {
             ContentUnavailableView("Keine Region ausgewählt", systemImage: "mappin.slash")
+        } else {
+            content(regions, store.favoriteMarkets(in: regions))
         }
     }
 
