@@ -17,6 +17,8 @@ final class CachedOffer {
     var baseUnit: String?
     var region: String
     var imageUrl: String?
+    /// Default value keeps lightweight migration of pre-match_key stores working.
+    var matchKey: [String] = []
     var fetchedAt: Date
 
     init(offer: Offer, fetchedAt: Date) {
@@ -33,6 +35,7 @@ final class CachedOffer {
         self.baseUnit = offer.baseUnit
         self.region = offer.region
         self.imageUrl = offer.imageUrl
+        self.matchKey = offer.matchKeys
         self.fetchedAt = fetchedAt
     }
 
@@ -50,7 +53,8 @@ final class CachedOffer {
             basePrice: basePrice,
             baseUnit: baseUnit,
             region: region,
-            imageUrl: imageUrl
+            imageUrl: imageUrl,
+            matchKey: matchKey
         )
     }
 }

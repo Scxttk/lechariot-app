@@ -23,7 +23,7 @@ struct AnalyseView: View {
         NavigationStack {
             content
                 .navigationTitle("Analyse")
-                .background(Color(uiColor: .systemGroupedBackground))
+                .background(Theme.background)
         }
         .task(id: plz) { await store.load(regions: [plz], chains: chains) }
     }

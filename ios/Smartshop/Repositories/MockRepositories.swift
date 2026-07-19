@@ -46,11 +46,8 @@ enum MockFixtures {
 struct MockOfferRepository: OfferRepositoryProtocol {
     var fixtures: [Offer] = MockFixtures.offers
 
-    func offers(regions: [String], chains: [String]) async throws -> [Offer] {
-        fixtures.filter { offer in
-            regions.contains(offer.region)
-                && (chains.isEmpty || chains.contains(offer.market))
-        }
+    func offers(regions: [String]) async throws -> [Offer] {
+        fixtures.filter { regions.contains($0.region) }
     }
 }
 

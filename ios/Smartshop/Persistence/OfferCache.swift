@@ -35,9 +35,20 @@ final class OfferCache {
         try context.save()
     }
 
-    /// True when there is no fetch timestamp or it is older than `maxAge`.
+    /// True when there is no fetch timestamp, it is older than `maxAge`, or it
+    /// is from an earlier calendar week — the cache key is Region+KW, so a week
+    /// rollover always invalidates even a fresh-looking cache.
     static func isStale(fetchedAt: Date?, now: Date = .now) -> Bool {
         guard let fetchedAt else { return true }
         return now.timeIntervalSince(fetchedAt) > maxAge
+            || weekKey(for: fetchedAt) != weekKey(for: now)
+    }
+
+    /// ISO calendar week identifier, e.g. "2026-W30".
+    static func weekKey(for date: Date) -> String {
+        let cal = Calendar(identifier: .iso8601)
+        let week = cal.component(.weekOfYear, from: date)
+        let year = cal.component(.yearForWeekOfYear, from: date)
+        return String(format: "%d-W%02d", year, week)
     }
 }

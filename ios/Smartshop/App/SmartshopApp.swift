@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct SmartshopApp: App {
     @State private var store: RegionStore
+    @AppStorage(Theme.appearanceKey) private var appearance: AppAppearance = .system
     private let marketRepository: MarketRepositoryProtocol
 
     init() {
@@ -30,6 +31,7 @@ struct SmartshopApp: App {
                 // App-wide accent, so onboarding matches the tabs instead of
                 // falling back to system blue.
                 .tint(Theme.accent)
+                .preferredColorScheme(appearance.colorScheme)
         }
     }
 }

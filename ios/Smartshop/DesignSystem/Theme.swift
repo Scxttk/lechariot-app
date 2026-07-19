@@ -24,12 +24,31 @@ enum Theme {
 
     // MARK: Colors
 
-    /// Single brand accent: calibrated market green. Red stays reserved for
-    /// discount semantics, yellow for favorites — never as decoration.
+    /// Brand palette: green + brown. Light mode leans green on cream
+    /// (#507C55 on #EDE9C0), dark mode leans brown on dark olive
+    /// (#472C1B surfaces on #2F361B). Red stays reserved for discount
+    /// semantics, yellow for favorites — never as decoration.
     static let accent = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.30, green: 0.78, blue: 0.47, alpha: 1)
-            : UIColor(red: 0.09, green: 0.51, blue: 0.27, alpha: 1)
+            // #472C1B itself is too dark against #2F361B for controls/text;
+            // brightened brown keeps the hue but stays legible.
+            ? UIColor(red: 0.76, green: 0.55, blue: 0.36, alpha: 1)
+            : UIColor(red: 0.31, green: 0.49, blue: 0.33, alpha: 1)   // #507C55
+    })
+
+    /// Non-dominant brand color: brown in light mode, green in dark mode.
+    /// For secondary highlights only, never for controls.
+    static let brandSecondary = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0.31, green: 0.49, blue: 0.33, alpha: 1)   // #507C55
+            : UIColor(red: 0.28, green: 0.17, blue: 0.11, alpha: 1)   // #472C1B
+    })
+
+    /// Screen background behind lists and scroll views.
+    static let background = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0.18, green: 0.21, blue: 0.11, alpha: 1)   // #2F361B
+            : UIColor(red: 0.93, green: 0.91, blue: 0.75, alpha: 1)   // #EDE9C0
     })
 
     /// Discount badge background (semantic, not decorative). Both variants
@@ -40,8 +59,56 @@ enum Theme {
             : UIColor(red: 0.80, green: 0.16, blue: 0.14, alpha: 1)
     })
 
-    /// Elevated surface for tiles/cards on the grouped background.
-    static let surface = Color(uiColor: .secondarySystemGroupedBackground)
+    /// Elevated surface for tiles/cards/list rows on `background`. Dark mode
+    /// uses the brand brown (#472C1B) so brown carries the dark appearance;
+    /// light mode uses a lifted cream so green accents carry the light one.
+    static let surface = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0.28, green: 0.17, blue: 0.11, alpha: 1)   // #472C1B
+            : UIColor(red: 0.97, green: 0.96, blue: 0.88, alpha: 1)   // lifted #EDE9C0
+    })
+}
+
+// MARK: - Appearance override
+
+/// User-selected appearance (Einstellungen → Darstellung), persisted via
+/// AppStorage under `Theme.appearanceKey`.
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case system, light, dark
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .system: "System"
+        case .light: "Hell"
+        case .dark: "Dunkel"
+        }
+    }
+
+    /// nil = follow the system setting.
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
+extension Theme {
+    static let appearanceKey = "appAppearance"
+}
+
+// MARK: - Themed screen background
+
+extension View {
+    /// Replaces the default grouped background of a List/ScrollView screen
+    /// with the brand background (cream / dark olive).
+    func themedScreen() -> some View {
+        scrollContentBackground(.hidden)
+            .background(Theme.background)
+    }
 }
 
 // MARK: - Discount badge
@@ -188,5 +255,5 @@ extension Offer {
         .themeCard()
     }
     .padding()
-    .background(Color(uiColor: .systemGroupedBackground))
+    .background(Theme.background)
 }

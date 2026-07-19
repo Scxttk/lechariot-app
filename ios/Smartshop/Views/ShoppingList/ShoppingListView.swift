@@ -40,6 +40,7 @@ struct ShoppingListView: View {
                     itemList
                 }
             }
+            .themedScreen()
             .navigationTitle("Einkaufsliste")
             .toolbar { toolbarMenu }
             .safeAreaInset(edge: .bottom) { inputBar }
@@ -76,6 +77,7 @@ struct ShoppingListView: View {
                     .font(.footnote)
                 }
             }
+            .listRowBackground(Theme.surface)
 
             if !list.checkedItems.isEmpty {
                 Section("Erledigt") {
@@ -92,6 +94,7 @@ struct ShoppingListView: View {
                         }
                     }
                 }
+                .listRowBackground(Theme.surface)
             }
         }
     }

@@ -4,17 +4,23 @@ import SwiftUI
 /// onboarding components; plus app/data info.
 struct SettingsView: View {
     @Environment(RegionStore.self) private var store
+    @AppStorage(Theme.appearanceKey) private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
 
     var body: some View {
         NavigationStack {
             List {
-                regionSection
-                if let plz = store.selectedRegion {
-                    marketSection(plz: plz)
+                Group {
+                    regionSection
+                    if let plz = store.selectedRegion {
+                        marketSection(plz: plz)
+                    }
+                    appearanceSection
+                    appSection
                 }
-                appSection
+                .listRowBackground(Theme.surface)
             }
+            .themedScreen()
             .navigationTitle("Einstellungen")
         }
     }
@@ -117,6 +123,19 @@ struct SettingsView: View {
             if favorites.isEmpty {
                 Text("Ohne Wunschmarkt werden keine Angebote angezeigt.")
             }
+        }
+    }
+
+    // MARK: Darstellung
+
+    private var appearanceSection: some View {
+        Section("Darstellung") {
+            Picker("Erscheinungsbild", selection: $appearance) {
+                ForEach(AppAppearance.allCases) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
         }
     }
 

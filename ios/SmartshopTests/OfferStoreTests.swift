@@ -5,7 +5,7 @@ import XCTest
 private struct StubOfferRepository: OfferRepositoryProtocol {
     var result: Result<[Offer], Error> = .success([])
 
-    func offers(regions: [String], chains: [String]) async throws -> [Offer] {
+    func offers(regions: [String]) async throws -> [Offer] {
         try result.get()
     }
 }
@@ -18,11 +18,11 @@ private struct StubError: LocalizedError {
 private final class RecordingOfferRepository: OfferRepositoryProtocol {
     var result: [Offer] = []
     private(set) var lastRegions: [String]?
-    private(set) var lastChains: [String]?
+    private(set) var callCount = 0
 
-    func offers(regions: [String], chains: [String]) async throws -> [Offer] {
+    func offers(regions: [String]) async throws -> [Offer] {
         lastRegions = regions
-        lastChains = chains
+        callCount += 1
         return result
     }
 }
@@ -108,7 +108,11 @@ final class OfferStoreTests: XCTestCase {
 
     func testLoadErrorWithCacheKeepsCachedDataAndFlagsStale() async throws {
         let cache = try makeCache()
-        try cache.replaceAll(MockFixtures.offers, region: "01219", fetchedAt: .now)
+        // Stale timestamp so the store attempts (and fails) a network refresh.
+        try cache.replaceAll(
+            MockFixtures.offers, region: "01219",
+            fetchedAt: .now.addingTimeInterval(-OfferCache.maxAge - 60)
+        )
         let store = OfferStore(
             repository: StubOfferRepository(result: .failure(StubError())),
             cache: cache
@@ -157,7 +161,6 @@ final class OfferStoreTests: XCTestCase {
         await store.load(regions: ["01219", "01067"], chains: ["Lidl", "Aldi"])
 
         XCTAssertEqual(repository.lastRegions, ["01219", "01067"])
-        XCTAssertEqual(repository.lastChains, ["Lidl", "Aldi"])
         XCTAssertEqual(store.offers.count, 2)
         XCTAssertEqual(Set(store.offers.map(\.region)), ["01219", "01067"])
     }
@@ -178,8 +181,9 @@ final class OfferStoreTests: XCTestCase {
 
     func testCachedOffersOfAllRegionsAreServedWhenOffline() async throws {
         let cache = try makeCache()
-        try cache.replaceAll([offer(region: "01219")], region: "01219", fetchedAt: .now)
-        try cache.replaceAll([offer(region: "01067")], region: "01067", fetchedAt: .now)
+        let stale = Date.now.addingTimeInterval(-OfferCache.maxAge - 60)
+        try cache.replaceAll([offer(region: "01219")], region: "01219", fetchedAt: stale)
+        try cache.replaceAll([offer(region: "01067")], region: "01067", fetchedAt: stale)
         let store = OfferStore(
             repository: StubOfferRepository(result: .failure(StubError())),
             cache: cache
@@ -190,5 +194,31 @@ final class OfferStoreTests: XCTestCase {
         XCTAssertEqual(store.state, .loaded)
         XCTAssertEqual(Set(store.offers.map(\.region)), ["01219", "01067"])
         XCTAssertTrue(store.isOffline)
+    }
+
+    // MARK: KW-Cache
+
+    func testFreshCompleteCacheSkipsNetworkRefresh() async throws {
+        let cache = try makeCache()
+        try cache.replaceAll(MockFixtures.offers, region: "01219", fetchedAt: .now)
+        let repository = RecordingOfferRepository()
+        let store = OfferStore(repository: repository, cache: cache)
+
+        await store.load(regions: ["01219"], chains: [])
+
+        XCTAssertEqual(repository.callCount, 0)
+        XCTAssertEqual(store.state, .loaded)
+        XCTAssertFalse(store.isStale)
+    }
+
+    func testMatchKeySurvivesCacheRoundTrip() async throws {
+        let cache = try makeCache()
+        var tagged = MockFixtures.offers[0]
+        tagged.matchKey = ["milch"]
+        try cache.replaceAll([tagged], region: "01219", fetchedAt: .now)
+
+        let cached = try cache.load(region: "01219")
+
+        XCTAssertEqual(cached.offers.first?.matchKeys, ["milch"])
     }
 }

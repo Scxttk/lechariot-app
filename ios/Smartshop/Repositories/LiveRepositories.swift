@@ -4,23 +4,16 @@ struct LiveOfferRepository: OfferRepositoryProtocol {
     let client: SupabaseClient
     private let pageSize = 1000
 
-    func offers(regions: [String], chains: [String]) async throws -> [Offer] {
+    func offers(regions: [String]) async throws -> [Offer] {
         guard !regions.isEmpty else { return [] }
         var all: [Offer] = []
         var offset = 0
-        var marketFilter = ""
-        if !chains.isEmpty {
-            let joined = chains.joined(separator: ",")
-                .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            marketFilter = "&market=in.(\(joined))"
-        }
         while true {
             // Legacy rows (pre-enrichment sources) carry null validity dates and
             // would fail decoding; the contract requires both dates to be set.
             let query = "select=*&order=valid_from.desc"
                 + "&valid_from=not.is.null&valid_until=not.is.null"
                 + "&region=in.(\(regions.joined(separator: ",")))"
-                + marketFilter
                 + "&limit=\(pageSize)&offset=\(offset)"
             // Decode per element so one malformed row cannot sink the fetch.
             // Pagination must count raw rows, not surviving ones, so the raw

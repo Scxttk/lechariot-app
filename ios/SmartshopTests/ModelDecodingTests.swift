@@ -72,6 +72,31 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertNil(offer.baseUnit)
         // image_url absent entirely (pre-migration rows) must also decode.
         XCTAssertNil(offer.imageUrl)
+        // match_key absent (pre-migration_v10 rows) → empty tags.
+        XCTAssertEqual(offer.matchKeys, [])
+    }
+
+    func testDecodeOfferMatchKey() throws {
+        let json = """
+        {
+            "market": "Lidl",
+            "product": "Gouda jung",
+            "price": 1.99,
+            "regular_price": null,
+            "unit": null,
+            "category": "Molkerei & Eier",
+            "emoji": null,
+            "valid_from": "2026-07-13",
+            "valid_until": "2026-07-19",
+            "base_price": null,
+            "base_unit": null,
+            "region": "01219",
+            "match_key": ["käse"]
+        }
+        """.data(using: .utf8)!
+
+        let offer = try decoder.decode(Offer.self, from: json)
+        XCTAssertEqual(offer.matchKeys, ["käse"])
     }
 
     func testDecodeMarket() throws {

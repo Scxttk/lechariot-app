@@ -26,6 +26,7 @@ struct OffersView: View {
     var body: some View {
         NavigationStack {
             content
+                .themedScreen()
                 .navigationTitle("Angebote")
                 .searchable(text: $search, prompt: "Produkt suchen")
                 .toolbar { filterMenu }
@@ -39,7 +40,7 @@ struct OffersView: View {
         case .loading:
             // Skeleton matching the loaded list shape — no layout jump when
             // real offers arrive.
-            List(Offer.skeleton) { OfferRowView(offer: $0) }
+            List(Offer.skeleton) { OfferRowView(offer: $0).listRowBackground(Theme.surface) }
                 .redacted(reason: .placeholder)
                 .disabled(true)
                 .accessibilityElement(children: .ignore)
@@ -94,6 +95,7 @@ struct OffersView: View {
                     Section(sectionTitle(section.key)) {
                         ForEach(section.offers) { OfferRowView(offer: $0) }
                     }
+                    .listRowBackground(Theme.surface)
                 }
             }
         }

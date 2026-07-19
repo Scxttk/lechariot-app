@@ -142,25 +142,35 @@ final class OfferStore {
         } else {
             state = .loading
         }
+        // KW-Cache: skip the network while EVERY region has cached offers from
+        // the current calendar week younger than maxAge; a week rollover or an
+        // empty region forces a refresh.
+        let cacheComplete = cached.count == regions.count
+            && cached.allSatisfy { !$0.offers.isEmpty }
+        if cacheComplete && !OfferCache.isStale(fetchedAt: fetchedAt) {
+            return
+        }
         await refresh()
     }
 
-    /// Fetches all regions in one query and replaces the cache per region.
+    /// Fetches the COMPLETE offer set of all regions in one query (no chain
+    /// filter — the cache is the per-region KW dataset) and replaces the cache
+    /// per region; display is narrowed to the favorited chains in memory.
     func refresh() async {
         guard !regions.isEmpty else { return }
         isRefreshing = true
         defer { isRefreshing = false }
         do {
-            let fresh = try await repository.offers(regions: regions, chains: chains)
+            let fresh = try await repository.offers(regions: regions)
             let now = Date.now
             let byRegion = Dictionary(grouping: fresh, by: \.region)
             for region in regions {
                 try? cache?.replaceAll(byRegion[region] ?? [], region: region, fetchedAt: now)
             }
-            offers = fresh
+            offers = filteredToChains(fresh)
             fetchedAt = now
             isOffline = false
-            state = fresh.isEmpty ? .empty : .loaded
+            state = offers.isEmpty ? .empty : .loaded
         } catch {
             isOffline = true
             // Keep showing cached data; only surface the error when there is none.
