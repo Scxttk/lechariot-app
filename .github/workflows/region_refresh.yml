@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Regionen syncen
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: https://cddubgdnasmzvcfhmrzj.supabase.co
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           set -u
