@@ -111,7 +111,10 @@ async function upload(
   if (validFroms.length) {
     const current = validFroms.reduce((a, b) => (a > b ? a : b));
     const { error } = await supabase
-      .from("offers").delete().eq("market", market).eq("region", zip).lt("valid_from", current);
+      // Nur eigene (Marktguru-)Zeilen aufräumen — Daten anderer Quellen
+      // (smartshop-rust) dürfen von diesem Dev-Werkzeug nie gelöscht werden
+      .from("offers").delete().eq("source", "marktguru")
+      .eq("market", market).eq("region", zip).lt("valid_from", current);
     if (error) throw new Error(`Delete: ${error.message}`);
   }
 
