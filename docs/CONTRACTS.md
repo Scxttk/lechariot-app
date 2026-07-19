@@ -111,6 +111,3 @@ Behavior: claims `regions.last_synced` first (parallel calls return `cached`),
 resolves the region's retailers from the Marktguru search API, upserts offers
 with `region = zip` on conflict `(market, product, valid_from, region)`.
 `markets` is owned by the branch pipeline and never written here.
-
-Note: offer categories written by this function still use the legacy 9-category
-set, not the 15 categories above; unknown categories must fall back to Sonstiges.

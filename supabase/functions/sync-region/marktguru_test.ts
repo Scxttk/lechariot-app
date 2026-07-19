@@ -14,7 +14,7 @@ Deno.test("Basis-Mapping", () => {
   assertEquals(o.product, "Vollmilch 3,5%");
   assertEquals(o.price, 0.99);
   assertEquals(o.loyaltyPrice, null);
-  assertEquals(o.category, "Milchprodukte");
+  assertEquals(o.category, "Molkerei & Eier");
   assertEquals(o.emoji, "🥛");
   assertEquals(o.source, "marktguru");
   // UTC 22:00 → Berlin (Sommerzeit +2) = Folgetag
@@ -90,7 +90,8 @@ Deno.test("MG-Kategorie hat Vorrang vor Keyword-Fallback", () => {
     { ...base, product: { name: "Kirschtomatensauce" }, categories: [{ name: "Saucen & Gewürze" }] },
     "Edeka",
   )!;
-  assertEquals(o.category, "Vorrat"); // via MG "sauce", nicht "Obst & Gemüse" via "tomate"
+  assertEquals(o.category, "Vorräte & Kochen"); // via MG "sauce", nicht "Obst & Gemüse" via "tomate"
+  assertEquals(o.emoji, "🥫"); // Emoji folgt der finalen Kategorie, nicht dem Keyword-Fallback
 });
 
 Deno.test("mapMgCategories: leer/unbekannt → null", () => {
@@ -100,8 +101,22 @@ Deno.test("mapMgCategories: leer/unbekannt → null", () => {
 });
 
 Deno.test("categorize-Fallback", () => {
-  assertEquals(categorize("Schokoriegel"), ["Süßwaren", "🍫"]);
+  assertEquals(categorize("Schokoriegel"), ["Süßes & Snacks", "🍬"]);
   assertEquals(categorize("Unbekanntes Dings"), ["Sonstiges", "🛒"]);
+  // Fisch vor Fleisch & Wurst, Alkohol vor Getränken, neue Kategorien
+  assertEquals(categorize("Räucherlachs")[0], "Fisch");
+  assertEquals(categorize("Pilsener Bier")[0], "Alkohol");
+  assertEquals(categorize("Katzenfutter")[0], "Tierbedarf");
+  assertEquals(categorize("Windeln Gr. 4")[0], "Kinder");
+  assertEquals(categorize("Vollwaschmittel")[0], "Haushalt");
+});
+
+Deno.test("mapMgCategories: 15er-Set-Aufteilung", () => {
+  assertEquals(mapMgCategories([{ name: "Fisch & Meeresfrüchte" }]), "Fisch");
+  assertEquals(mapMgCategories([{ name: "Bier & Wein" }]), "Alkohol");
+  assertEquals(mapMgCategories([{ name: "Molkereiprodukte" }]), "Molkerei & Eier");
+  assertEquals(mapMgCategories([{ name: "Tiernahrung" }]), "Tierbedarf");
+  assertEquals(mapMgCategories([{ name: "Waschmittel & Putzmittel" }]), "Haushalt");
 });
 
 Deno.test("validity: fehlende Daten", () => {

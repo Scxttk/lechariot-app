@@ -29,35 +29,47 @@ export interface Offer {
 }
 
 // Marktguru-Kategoriename (lowercase, contains-Match, Reihenfolge = Priorität)
-// → App-Kategorie. Identisch zu MG_CATEGORY_MAP in marktguru_client.py.
+// → App-Kategorie (15er-Set aus docs/CONTRACTS.md, synchron mit enrich.rs).
 const MG_CATEGORY_MAP: [string, string][] = [
   ["tiefkühl", "Tiefkühl"], ["frost", "Tiefkühl"], ["eiscreme", "Tiefkühl"], ["speiseeis", "Tiefkühl"],
+  ["fisch", "Fisch"], ["meeresfrüchte", "Fisch"], ["garnele", "Fisch"], ["lachs", "Fisch"],
   ["obst", "Obst & Gemüse"], ["gemüse", "Obst & Gemüse"], ["früchte", "Obst & Gemüse"],
   ["salat", "Obst & Gemüse"], ["kartoffel", "Obst & Gemüse"],
-  ["milch", "Milchprodukte"], ["käse", "Milchprodukte"], ["butter", "Milchprodukte"],
-  ["joghurt", "Milchprodukte"], ["quark", "Milchprodukte"], ["sahne", "Milchprodukte"],
-  ["molkerei", "Milchprodukte"], ["eier", "Milchprodukte"],
+  ["milch", "Molkerei & Eier"], ["käse", "Molkerei & Eier"], ["butter", "Molkerei & Eier"],
+  ["joghurt", "Molkerei & Eier"], ["quark", "Molkerei & Eier"], ["sahne", "Molkerei & Eier"],
+  ["molkerei", "Molkerei & Eier"], ["eier", "Molkerei & Eier"],
   ["fleisch", "Fleisch & Wurst"], ["wurst", "Fleisch & Wurst"], ["schinken", "Fleisch & Wurst"],
-  ["geflügel", "Fleisch & Wurst"], ["fisch", "Fleisch & Wurst"], ["grill", "Fleisch & Wurst"],
+  ["geflügel", "Fleisch & Wurst"], ["grill", "Fleisch & Wurst"],
   ["brot", "Backwaren"], ["backware", "Backwaren"], ["gebäck", "Backwaren"], ["brötchen", "Backwaren"],
-  ["bier", "Getränke"], ["wein", "Getränke"], ["sekt", "Getränke"], ["spirituosen", "Getränke"],
+  ["bier", "Alkohol"], ["wein", "Alkohol"], ["sekt", "Alkohol"], ["spirituosen", "Alkohol"],
+  ["likör", "Alkohol"], ["schnaps", "Alkohol"], ["whisky", "Alkohol"], ["wodka", "Alkohol"],
   ["saft", "Getränke"], ["wasser", "Getränke"], ["kaffee", "Getränke"], ["tee", "Getränke"],
   ["getränk", "Getränke"], ["limonade", "Getränke"], ["energy", "Getränke"],
-  ["süßigkeit", "Süßwaren"], ["süßware", "Süßwaren"], ["schokolade", "Süßwaren"],
-  ["snack", "Süßwaren"], ["chips", "Süßwaren"], ["keks", "Süßwaren"], ["bonbon", "Süßwaren"],
-  ["drogerie", "Drogerie"], ["pflege", "Drogerie"], ["hygiene", "Drogerie"],
-  ["waschmittel", "Drogerie"], ["putz", "Drogerie"], ["reinig", "Drogerie"], ["kosmetik", "Drogerie"],
-  ["konserve", "Vorrat"], ["nudel", "Vorrat"], ["pasta", "Vorrat"], ["reis", "Vorrat"],
-  ["öl", "Vorrat"], ["essig", "Vorrat"], ["gewürz", "Vorrat"], ["sauce", "Vorrat"], ["soße", "Vorrat"],
-  ["müsli", "Vorrat"], ["cerealien", "Vorrat"], ["backzutat", "Vorrat"], ["brotaufstrich", "Vorrat"],
+  ["süßigkeit", "Süßes & Snacks"], ["süßware", "Süßes & Snacks"], ["schokolade", "Süßes & Snacks"],
+  ["snack", "Süßes & Snacks"], ["chips", "Süßes & Snacks"], ["keks", "Süßes & Snacks"],
+  ["bonbon", "Süßes & Snacks"],
+  ["tiernahrung", "Tierbedarf"], ["tierfutter", "Tierbedarf"], ["tierbedarf", "Tierbedarf"],
+  ["hund", "Tierbedarf"], ["katze", "Tierbedarf"], ["haustier", "Tierbedarf"],
+  ["baby", "Kinder"], ["windel", "Kinder"], ["kinder", "Kinder"], ["spielzeug", "Kinder"], ["spielware", "Kinder"],
+  ["waschmittel", "Haushalt"], ["putz", "Haushalt"], ["reinig", "Haushalt"],
+  ["haushalt", "Haushalt"], ["küchenrolle", "Haushalt"], ["spülmittel", "Haushalt"],
+  ["drogerie", "Drogerie"], ["pflege", "Drogerie"], ["hygiene", "Drogerie"], ["kosmetik", "Drogerie"],
+  ["konserve", "Vorräte & Kochen"], ["nudel", "Vorräte & Kochen"], ["pasta", "Vorräte & Kochen"],
+  ["reis", "Vorräte & Kochen"], ["öl", "Vorräte & Kochen"], ["essig", "Vorräte & Kochen"],
+  ["gewürz", "Vorräte & Kochen"], ["sauce", "Vorräte & Kochen"], ["soße", "Vorräte & Kochen"],
+  ["müsli", "Vorräte & Kochen"], ["cerealien", "Vorräte & Kochen"], ["backzutat", "Vorräte & Kochen"],
+  ["brotaufstrich", "Vorräte & Kochen"],
 ];
 
 // Keyword-Fallback über den Produktnamen (identisch zu scrapers/categorizer.py)
 const CATEGORIES: Record<string, string[]> = {
+  "Fisch": [
+    "lachs", "fisch", "garnele", "thunfisch", "hering", "forelle", "matjes",
+    "shrimp", "meeresfrüchte",
+  ],
   "Fleisch & Wurst": [
     "hack", "fleisch", "steak", "wurst", "schinken", "speck", "salami",
-    "bratwurst", "schnitzel", "huhn", "hähnchen", "pute", "lachs", "fisch",
-    "garnelen", "thunfisch", "hering", "forelle", "rind", "schwein",
+    "bratwurst", "schnitzel", "huhn", "hähnchen", "pute", "rind", "schwein",
   ],
   "Obst & Gemüse": [
     "apfel", "banane", "tomate", "karotte", "salat", "gurke", "paprika",
@@ -67,17 +79,21 @@ const CATEGORIES: Record<string, string[]> = {
     "beere", "nektarine", "avocado", "zwetschge", "aprikose", "radieschen",
     "kohlrabi", "aubergine", "champignon", "pilz", "lauch", "sellerie",
   ],
-  "Milchprodukte": [
+  "Molkerei & Eier": [
     "milch", "butter", "käse", "joghurt", "quark", "sahne", "schmand",
     "frischkäse", "mozzarella", "gouda", "edam", "brie", "camembert",
-    "kefir", "skyr", "rahm",
+    "kefir", "skyr", "rahm", "margarine", "eier",
+  ],
+  "Alkohol": [
+    "bier", "wein", "sekt", "prosecco", "likör", "schnaps", "whisky",
+    "wodka", "gin", "rum", "spirituose", "aperol", "radler",
   ],
   "Getränke": [
-    "wasser", "saft", "cola", "bier", "wein", "sekt", "limo", "limonade",
+    "wasser", "saft", "cola", "limo", "limonade",
     "kaffee", "tee", "kakao", "smoothie", "energy", "fanta", "sprite",
     "mineralwasser", "sprudel",
   ],
-  "Vorrat": [
+  "Vorräte & Kochen": [
     "nudel", "pasta", "reis", "mehl", "zucker", "öl", "essig", "salz",
     "pfeffer", "gewürz", "soße", "sauce", "senf", "ketchup", "mayo",
     "mayonnaise", "konserve", "dose", "suppe", "brühe", "linse", "bohne",
@@ -92,28 +108,46 @@ const CATEGORIES: Record<string, string[]> = {
     "tiefkühl", "gefroren", "tk ", "pizza", "pommes", "fischstäbchen",
     "eis", "speiseeis", "eisbecher",
   ],
-  "Drogerie": [
-    "shampoo", "duschgel", "zahnpasta", "waschmittel", "spülmittel",
-    "deodorant", "deo", "seife", "klopapier", "toilettenpapier",
-    "taschentuch", "windel", "rasierer",
+  "Tierbedarf": [
+    "hundefutter", "katzenfutter", "tierfutter", "tiernahrung", "katzenstreu",
+    "hundesnack", "katzensnack", "vogelfutter",
   ],
-  "Süßwaren": [
+  "Kinder": [
+    "windel", "babynahrung", "babybrei", "feuchttücher", "schnuller",
+    "spielzeug", "kinderriegel",
+  ],
+  "Haushalt": [
+    "waschmittel", "spülmittel", "weichspüler", "putzmittel", "reiniger",
+    "klopapier", "toilettenpapier", "küchenrolle", "müllbeutel",
+    "taschentuch", "batterie", "kerze",
+  ],
+  "Drogerie": [
+    "shampoo", "duschgel", "zahnpasta",
+    "deodorant", "deo", "seife", "creme", "lotion", "rasierer",
+  ],
+  "Süßes & Snacks": [
     "schokolade", "schoko", "gummibär", "bonbon", "chips", "snack",
     "popcorn", "nuss", "mandel", "erdnuss", "praline", "riegel",
     "müsliriegel", "kaugummi",
   ],
 };
 
+// Emojis synchron mit CATEGORY_EMOJI in smarthop-backend/src/enrich.rs
 const EMOJI_MAP: Record<string, string> = {
+  "Obst & Gemüse": "🥬",
+  "Molkerei & Eier": "🥛",
   "Fleisch & Wurst": "🥩",
-  "Obst & Gemüse": "🥦",
-  "Milchprodukte": "🥛",
+  "Fisch": "🐟",
+  "Backwaren": "🥖",
+  "Tiefkühl": "❄️",
+  "Süßes & Snacks": "🍬",
   "Getränke": "🥤",
-  "Vorrat": "🥫",
-  "Backwaren": "🍞",
-  "Tiefkühl": "🧊",
+  "Alkohol": "🍺",
+  "Vorräte & Kochen": "🥫",
   "Drogerie": "🧴",
-  "Süßwaren": "🍫",
+  "Haushalt": "🧽",
+  "Tierbedarf": "🐾",
+  "Kinder": "🧸",
   "Sonstiges": "🛒",
 };
 
@@ -193,8 +227,9 @@ export function toOffer(item: Record<string, unknown>, market: string): Offer | 
 
   const [validFrom, validUntil] = validity(item);
   // Marktguru-Kategorie hat Vorrang, Keyword-Matching über den Namen als Fallback
-  const [kwCategory, emoji] = categorize(product);
+  const [kwCategory] = categorize(product);
   const category = mapMgCategories((item.categories ?? []) as { name?: string }[]) ?? kwCategory;
+  const emoji = EMOJI_MAP[category] ?? "🛒";
 
   // Bei Kundenkarten-Angeboten ist `price` der Karten-Preis
   const oldPrice = item.oldPrice as number | undefined;
