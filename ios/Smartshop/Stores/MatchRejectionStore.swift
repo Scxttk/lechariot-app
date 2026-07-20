@@ -15,7 +15,7 @@ final class MatchRejectionStore {
     private let defaults: UserDefaults
     private static let key = "matching.rejections"
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = AppDefaults.shared) {
         self.defaults = defaults
         self.rejected = Set(defaults.stringArray(forKey: Self.key) ?? [])
     }

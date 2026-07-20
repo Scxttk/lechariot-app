@@ -141,10 +141,14 @@ enum AppAppearance: String, CaseIterable, Identifiable {
         }
     }
 
-    /// nil = follow the system setting.
-    var colorScheme: ColorScheme? {
+    /// The choice as UIKit expresses it; `.unspecified` follows the system.
+    /// The override is applied to the `UIWindow`
+    /// rather than through `preferredColorScheme`, so navigation bar, tab bar
+    /// and list backgrounds change in the same step as the content —
+    /// see `AppearanceWindowBridge`.
+    var interfaceStyle: UIUserInterfaceStyle {
         switch self {
-        case .system: nil
+        case .system: .unspecified
         case .light: .light
         case .dark: .dark
         }

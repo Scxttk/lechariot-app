@@ -41,7 +41,7 @@ final class ShoppingListStore {
     private let defaults: UserDefaults
     private static let key = "shopping.items"
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = AppDefaults.shared) {
         self.defaults = defaults
         if let data = defaults.data(forKey: Self.key),
            let stored = try? JSONDecoder().decode([ShoppingItem].self, from: data) {

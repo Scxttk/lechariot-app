@@ -35,7 +35,7 @@ enum DebugReset {
         // Not owned by any store: the appearance override (a fresh install
         // follows the system) and the two caches that would otherwise make the
         // second run visibly faster than the first.
-        UserDefaults.standard.removeObject(forKey: Theme.appearanceKey)
+        AppDefaults.shared.removeObject(forKey: Theme.appearanceKey)
         try? OfferCache.shared?.deleteAll()
         URLCache.shared.removeAllCachedResponses()
     }

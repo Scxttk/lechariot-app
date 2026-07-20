@@ -18,7 +18,7 @@ final class ProfileStore {
     private let defaults: UserDefaults
     private static let key = "profile.user"
 
-    init(repository: ProfileRepositoryProtocol? = nil, defaults: UserDefaults = .standard) {
+    init(repository: ProfileRepositoryProtocol? = nil, defaults: UserDefaults = AppDefaults.shared) {
         self.repository = repository
         self.defaults = defaults
         if let data = defaults.data(forKey: Self.key),

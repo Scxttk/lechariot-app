@@ -98,7 +98,7 @@ final class RegionStore {
 
     init(
         repository: RegionRepositoryProtocol,
-        defaults: UserDefaults = .standard,
+        defaults: UserDefaults = AppDefaults.shared,
         pollInterval: Duration = .seconds(30),
         maxPollAttempts: Int = 20,
         progressPollInterval: Duration = .seconds(10)

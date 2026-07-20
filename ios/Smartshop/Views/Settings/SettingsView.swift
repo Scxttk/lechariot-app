@@ -7,7 +7,8 @@ struct SettingsView: View {
     @Environment(ProfileStore.self) private var profile
     @Environment(ShoppingListStore.self) private var list
     @Environment(MatchRejectionStore.self) private var rejections
-    @AppStorage(Theme.appearanceKey) private var appearance: AppAppearance = .system
+    @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
+    private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
 
     @State private var showResetConfirmation = false

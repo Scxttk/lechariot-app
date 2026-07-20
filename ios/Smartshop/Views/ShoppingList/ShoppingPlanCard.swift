@@ -22,11 +22,19 @@ struct ShoppingPlanCard: View {
 
                 if !winner.matchedItems.isEmpty || !others.isEmpty {
                     Divider()
-                    disclosure(winner)
+                    disclosureButton
+                    if isExpanded {
+                        details(winner)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .themeCard()
+            // One animation for the whole card. A `DisclosureGroup` inside a
+            // `List` row animated in three separate steps — the row height by
+            // the List, the content by itself, the card's rounded background
+            // and shadow after both — which is what made the expansion judder.
+            .animation(.snappy(duration: 0.28), value: isExpanded)
         }
     }
 
@@ -96,40 +104,59 @@ struct ShoppingPlanCard: View {
 
     // MARK: Details
 
-    private func disclosure(_ winner: MarketListRank) -> some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                if !winner.matchedItems.isEmpty {
-                    itemGroup(
-                        title: "Bei \(winner.chain) im Angebot",
-                        items: winner.matchedItems.map(\.item),
-                        symbol: "checkmark.circle.fill",
-                        color: Theme.success
-                    )
-                }
-                if !winner.missingItems.isEmpty {
-                    itemGroup(
-                        title: "Zum Normalpreis",
-                        items: winner.missingItems,
-                        symbol: "circle",
-                        color: .secondary
-                    )
-                }
-                if !others.isEmpty {
-                    otherMarkets
-                }
-                Text("Erst Abdeckung, dann Preis. Die Summe zählt nur die gefundenen Angebote — Normalpreise sind nicht dabei.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+    /// Plain button rather than a `DisclosureGroup`: the label stays put, the
+    /// chevron turns with the same animation as the card, and the caption
+    /// cross-fades instead of swapping halfway through the expansion.
+    private var disclosureButton: some View {
+        Button { isExpanded.toggle() } label: {
+            HStack(spacing: Theme.Spacing.sm) {
+                Text(isExpanded ? "Weniger anzeigen" : "Was heißt das?")
+                    .font(.subheadline.weight(.medium))
+                    .contentTransition(.opacity)
+                Spacer(minLength: Theme.Spacing.sm)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
             }
-            .padding(.top, Theme.Spacing.sm)
-        } label: {
-            Text(isExpanded ? "Weniger anzeigen" : "Was heißt das?")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Theme.accent)
+            .foregroundStyle(Theme.accent)
+            // The row centre is a Spacer and would otherwise not react —
+            // the same dead-zone that made the branch rows untappable.
+            .contentShape(Rectangle())
         }
-        .tint(Theme.accent)
+        .buttonStyle(.plain)
+        .accessibilityHint(isExpanded ? "Blendet die Details aus" : "Zeigt Artikel und die anderen Filialen")
+    }
+
+    private func details(_ winner: MarketListRank) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            if !winner.matchedItems.isEmpty {
+                itemGroup(
+                    title: "Bei \(winner.chain) im Angebot",
+                    items: winner.matchedItems.map(\.item),
+                    symbol: "checkmark.circle.fill",
+                    color: Theme.success
+                )
+            }
+            if !winner.missingItems.isEmpty {
+                itemGroup(
+                    title: "Zum Normalpreis",
+                    items: winner.missingItems,
+                    symbol: "circle",
+                    color: .secondary
+                )
+            }
+            if !others.isEmpty {
+                otherMarkets
+            }
+            Text("Erst Abdeckung, dann Preis. Die Summe zählt nur die gefundenen Angebote — Normalpreise sind nicht dabei.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // Fade only. A sliding transition would draw the text outside the
+        // card while its background is still growing to the new height.
+        .transition(.opacity)
     }
 
     private func itemGroup(
