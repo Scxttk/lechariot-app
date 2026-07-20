@@ -8,7 +8,11 @@ struct MatchDetailView: View {
     let offers: [Offer]
 
     @Environment(MatchRejectionStore.self) private var rejections
+    @Environment(MatchFeedbackStore.self) private var feedback
     @Environment(\.dismiss) private var dismiss
+
+    /// The match whose rejection is currently being asked about, if any.
+    @State private var askingAbout: OfferMatch?
 
     private var allMatches: [OfferMatch] {
         ShoppingListMatcher.matches(for: item.text, in: offers)
@@ -62,6 +66,10 @@ struct MatchDetailView: View {
                     Button("Fertig") { dismiss() }
                 }
             }
+            .sheet(item: $askingAbout) { match in
+                RejectionFeedbackSheet(itemText: item.text, match: match)
+                    .environment(feedback)
+            }
         }
     }
 
@@ -90,6 +98,9 @@ struct MatchDetailView: View {
                         rejections.unreject(itemText: item.text, offer: offer)
                     } else {
                         rejections.reject(itemText: item.text, offer: offer)
+                        // The rejection is already done and persisted; the
+                        // question is an optional afterthought on top of it.
+                        if feedback.isAskingEnabled { askingAbout = match }
                     }
                 }
             } label: {

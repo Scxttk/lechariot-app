@@ -69,6 +69,16 @@ final class MockProfileRepository: ProfileRepositoryProtocol, @unchecked Sendabl
     }
 }
 
+/// Records reports instead of sending them, so tests can assert that skipping
+/// the question — or switching it off — never reaches the network.
+final class MockMatchFeedbackRepository: MatchFeedbackRepositoryProtocol, @unchecked Sendable {
+    private(set) var submitted: [MatchFeedbackReport] = []
+
+    func submit(_ report: MatchFeedbackReport) async throws {
+        submitted.append(report)
+    }
+}
+
 struct MockRegionRepository: RegionRepositoryProtocol {
     var fixtures: [Region] = [MockFixtures.region]
 

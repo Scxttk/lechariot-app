@@ -63,6 +63,9 @@ struct ShoppingListRowView: View {
             // was read out as its raw parts instead of one sentence.
             .accessibilityLabel(suggestionSummary(match))
             .accessibilityHint("Zeigt alle passenden Angebote")
+            // Stable handle for the UI journeys — the label is a whole
+            // sentence built from whatever offer happens to match.
+            .accessibilityIdentifier("list.matches")
         } else {
             Text("Diese Woche nirgends im Angebot")
                 .font(.caption)

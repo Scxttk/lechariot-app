@@ -18,6 +18,12 @@ protocol ProfileRepositoryProtocol {
     func upload(_ profile: SyncedProfile) async throws
 }
 
+protocol MatchFeedbackRepositoryProtocol {
+    /// Appends one rejection reason. Insert-only, same shape as profiles —
+    /// the app never reads feedback back.
+    func submit(_ report: MatchFeedbackReport) async throws
+}
+
 protocol RegionRepositoryProtocol {
     /// Region row for a PLZ, or nil if unknown.
     func region(plz: String) async throws -> Region?

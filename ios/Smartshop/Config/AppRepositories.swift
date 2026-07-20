@@ -42,4 +42,11 @@ enum AppRepositories {
         guard let client else { return nil }
         return LiveProfileRepository(client: client)
     }
+
+    /// nil disables match feedback entirely — the sheet still appears and can
+    /// be filled in, nothing is uploaded. Same rule as `profiles()`.
+    static func matchFeedback() -> MatchFeedbackRepositoryProtocol? {
+        guard let client else { return nil }
+        return LiveMatchFeedbackRepository(client: client)
+    }
 }

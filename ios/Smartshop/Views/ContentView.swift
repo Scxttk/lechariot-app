@@ -6,6 +6,7 @@ struct ContentView: View {
 
     @State private var shoppingList = ShoppingListStore()
     @State private var rejections = MatchRejectionStore()
+    @State private var feedback = MatchFeedbackStore(repository: AppRepositories.matchFeedback())
     /// One offer store for the whole app.
     ///
     /// Liste and Angebote used to build one each. Both then fetched the full
@@ -57,6 +58,7 @@ struct ContentView: View {
         }
         .environment(shoppingList)
         .environment(rejections)
+        .environment(feedback)
         .tint(Theme.accent)
     }
 

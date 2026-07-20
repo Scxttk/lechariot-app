@@ -7,6 +7,7 @@ struct SettingsView: View {
     @Environment(ProfileStore.self) private var profile
     @Environment(ShoppingListStore.self) private var list
     @Environment(MatchRejectionStore.self) private var rejections
+    @Environment(MatchFeedbackStore.self) private var feedback
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
@@ -20,6 +21,7 @@ struct SettingsView: View {
                     marketSection
                     regionSection
                     profileSection
+                    feedbackSection
                     appearanceSection
                     appSection
                     #if DEBUG
@@ -154,6 +156,22 @@ struct SettingsView: View {
         return parts.joined(separator: " · ")
     }
 
+    // MARK: Rückfragen
+
+    private var feedbackSection: some View {
+        @Bindable var feedback = feedback
+        return Section {
+            Toggle("Nach Ablehnungen fragen", isOn: $feedback.isAskingEnabled)
+                .tint(Theme.accent)
+        } header: {
+            Text("Rückfragen")
+        } footer: {
+            Text(feedback.isAskingEnabled
+                 ? "Wenn du einen Treffer weglegst, fragt Smartshop kurz nach dem Grund. Das ist der einzige Weg, wie falsche Treffer gefunden und behoben werden. Überspringen geht immer."
+                 : "Weglegen funktioniert unverändert. Es wird nicht gefragt und nichts übertragen.")
+        }
+    }
+
     // MARK: Darstellung
 
     private var appearanceSection: some View {
@@ -203,7 +221,8 @@ struct SettingsView: View {
                 Button("Zurücksetzen", role: .destructive) {
                     DebugReset.everything(
                         regions: store, profile: profile,
-                        list: list, rejections: rejections
+                        list: list, rejections: rejections,
+                        feedback: feedback
                     )
                 }
                 Button("Abbrechen", role: .cancel) {}
@@ -332,4 +351,5 @@ private struct ProfileEditScreen: View {
         .environment(ProfileStore())
         .environment(ShoppingListStore())
         .environment(MatchRejectionStore())
+        .environment(MatchFeedbackStore())
 }

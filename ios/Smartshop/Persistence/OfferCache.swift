@@ -14,7 +14,17 @@ final class OfferCache {
     /// re-evaluates `@State` initial values on every view init and throws all
     /// but the first away, so building one inline meant constructing containers
     /// over and over — for the same file — and discarding them.
-    static let shared: OfferCache? = try? OfferCache()
+    ///
+    /// UI-test runs get an in-memory container instead. `-uiTesting` swaps the
+    /// repositories for fixtures, but the cache is read *before* the network
+    /// and lives in its own store file — so a normal run's real offers were
+    /// served to the "hermetic" journeys and quietly overruled the fixtures.
+    static let shared: OfferCache? = {
+        #if DEBUG
+        if UITestSupport.isActive { return try? OfferCache(inMemory: true) }
+        #endif
+        return try? OfferCache()
+    }()
 
     private let container: ModelContainer
 

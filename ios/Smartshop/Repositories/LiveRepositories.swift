@@ -49,6 +49,15 @@ struct LiveProfileRepository: ProfileRepositoryProtocol {
     }
 }
 
+struct LiveMatchFeedbackRepository: MatchFeedbackRepositoryProtocol {
+    let client: SupabaseClient
+
+    func submit(_ report: MatchFeedbackReport) async throws {
+        // Insert policy, no select policy — see supabase/migration_match_feedback.sql.
+        try await client.post(path: "match_feedback", body: report)
+    }
+}
+
 struct LiveRegionRepository: RegionRepositoryProtocol {
     let client: SupabaseClient
 
