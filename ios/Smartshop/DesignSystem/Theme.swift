@@ -24,30 +24,31 @@ enum Theme {
 
     // MARK: Colors
 
-    /// Brand palette: green + brown. Light mode leans green on cream
-    /// (#507C55 on #EDE9C0), dark mode leans brown on dark olive
-    /// (#472C1B surfaces on #2F361B). Red stays reserved for discount
-    /// semantics, yellow for favorites — never as decoration.
+    /// Brand palette: green + brown, green leads in BOTH appearances.
+    /// Light mode: #507C55 on cream #EDE9C0. Dark mode mirrors that look —
+    /// brightened green on deep green-olive; brown is demoted to secondary
+    /// there (brown surfaces on olive clashed). Red stays reserved for
+    /// discount semantics, yellow for favorites — never as decoration.
     static let accent = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            // #472C1B itself is too dark against #2F361B for controls/text;
-            // brightened brown keeps the hue but stays legible.
-            ? UIColor(red: 0.76, green: 0.55, blue: 0.36, alpha: 1)
+            // #507C55 lacks contrast on the dark surfaces; same hue, lifted.
+            ? UIColor(red: 0.56, green: 0.74, blue: 0.58, alpha: 1)   // ~#8FBD94
             : UIColor(red: 0.31, green: 0.49, blue: 0.33, alpha: 1)   // #507C55
     })
 
-    /// Non-dominant brand color: brown in light mode, green in dark mode.
-    /// For secondary highlights only, never for controls.
+    /// Non-dominant brand color (brown) in both appearances — warm tan in
+    /// dark, deep brown in light. For secondary highlights only, never controls.
     static let brandSecondary = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.31, green: 0.49, blue: 0.33, alpha: 1)   // #507C55
+            ? UIColor(red: 0.76, green: 0.60, blue: 0.44, alpha: 1)   // warm tan
             : UIColor(red: 0.28, green: 0.17, blue: 0.11, alpha: 1)   // #472C1B
     })
 
-    /// Screen background behind lists and scroll views.
+    /// Screen background behind lists and scroll views. Dark mode is a deep,
+    /// desaturated green-olive — dark counterpart to the cream, not a hue swap.
     static let background = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.18, green: 0.21, blue: 0.11, alpha: 1)   // #2F361B
+            ? UIColor(red: 0.10, green: 0.12, blue: 0.08, alpha: 1)   // ~#1A1F15
             : UIColor(red: 0.93, green: 0.91, blue: 0.75, alpha: 1)   // #EDE9C0
     })
 
@@ -67,12 +68,11 @@ enum Theme {
             : UIColor(red: 0.28, green: 0.17, blue: 0.11, alpha: 0.10)
     })
 
-    /// Elevated surface for tiles/cards/list rows on `background`. Dark mode
-    /// uses the brand brown (#472C1B) so brown carries the dark appearance;
-    /// light mode uses a lifted cream so green accents carry the light one.
+    /// Elevated surface for tiles/cards/list rows on `background` — same
+    /// hue family as the background, one step lifted, in both appearances.
     static let surface = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.28, green: 0.17, blue: 0.11, alpha: 1)   // #472C1B
+            ? UIColor(red: 0.16, green: 0.18, blue: 0.13, alpha: 1)   // lifted olive
             : UIColor(red: 0.97, green: 0.96, blue: 0.88, alpha: 1)   // lifted #EDE9C0
     })
 }
