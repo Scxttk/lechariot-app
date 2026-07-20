@@ -52,7 +52,7 @@ struct MarketPickerView: View {
     var body: some View {
         List {
             Section {
-                Label("Wähle deine Filialen – nur deren Angebote werden dir angezeigt.", systemImage: "info.circle")
+                Label("Wähle die Läden, in die du wirklich gehst. Nur deren Angebote zählen für deine Liste.", systemImage: "info.circle")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -83,11 +83,11 @@ struct MarketPickerView: View {
                                     .foregroundStyle(.secondary)
                                 Text("Keine Daten verfügbar")
                                     .font(.caption)
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Image(systemName: "star.slash")
-                                .foregroundStyle(.tertiary)
+                            Image(systemName: "circle.slash")
+                                .foregroundStyle(.secondary)
                         }
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("\(chain), keine Daten verfügbar, nicht wählbar")
@@ -107,7 +107,7 @@ struct MarketPickerView: View {
 
             if markets.isEmpty && !isLoading && query.isEmpty {
                 Section {
-                    Text(errorMessage ?? "Für deine Regionen wurden noch keine Märkte gefunden.")
+                    Text(errorMessage ?? "Für deine Regionen wurden noch keine Filialen gefunden.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -124,8 +124,9 @@ struct MarketPickerView: View {
                 }
             }
         }
+        .themedScreen()
         .searchable(text: $query, prompt: "Kette, Filiale oder PLZ")
-        .overlay { if isLoading { ProgressView("Märkte werden geladen…") } }
+        .overlay { if isLoading { ProgressView("Filialen werden geladen …") } }
         .navigationTitle("Filialen wählen")
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
@@ -152,9 +153,13 @@ struct MarketPickerView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Image(systemName: isFav ? "star.fill" : "star")
-                    .foregroundStyle(isFav ? Color.yellow : Color.secondary)
+                // Checkmark, not a star: this is a selection, not a rating —
+                // and `Color.yellow` on the cream surface measured 1.37:1,
+                // far below the 3:1 that a meaning-carrying glyph needs.
+                Image(systemName: isFav ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isFav ? Theme.accent : Color.secondary)
                     .font(.title3)
+                    .contentTransition(.symbolEffect(.replace))
             }
         }
         .buttonStyle(.plain)
@@ -162,7 +167,7 @@ struct MarketPickerView: View {
         .accessibilityLabel(
             "\(market.chain), \(market.isNationwide ? "deutschlandweit" : market.branchName)"
         )
-        .accessibilityValue(isFav ? "Wunschmarkt" : "kein Wunschmarkt")
+        .accessibilityValue(isFav ? "ausgewählt" : "nicht ausgewählt")
         .accessibilityHint(isFav ? "Doppeltippen zum Entfernen" : "Doppeltippen zum Hinzufügen")
         .accessibilityAddTraits(isFav ? [.isSelected] : [])
     }
@@ -173,7 +178,7 @@ struct MarketPickerView: View {
         do {
             markets = try await marketRepository.markets(plzs: plzs)
         } catch {
-            errorMessage = "Märkte konnten nicht geladen werden. Ziehe die Liste nach unten, um es erneut zu versuchen."
+            errorMessage = "Filialen konnten nicht geladen werden. Ziehe die Liste nach unten, um es erneut zu versuchen."
         }
         isLoading = false
     }

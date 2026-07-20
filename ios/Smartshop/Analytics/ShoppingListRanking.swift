@@ -1,18 +1,34 @@
 import Foundation
 
-/// One market's result for the current shopping list: how many open items it
-/// covers with offers and what the matched offers add up to.
+/// One list item paired with the offer a market has for it. Carries the whole
+/// `OfferMatch` rather than just the offer, so callers that reuse this as the
+/// row suggestion keep the true direct-vs-category kind instead of guessing.
+struct RankedItemMatch: Equatable, Identifiable {
+    let item: String
+    let match: OfferMatch
+
+    var offer: Offer { match.offer }
+    var id: String { item }
+}
+
+/// One market's result for the current shopping list: which of the open items
+/// it covers with offers, which it does not, and what the matched offers add
+/// up to.
 struct MarketListRank: Equatable, Identifiable {
     let chain: String
-    let matchedCount: Int
-    let itemCount: Int
+    /// Covered items with the cheapest offer each, in list order.
+    let matchedItems: [RankedItemMatch]
+    /// Items this market has nothing for, in list order.
+    let missingItems: [String]
     /// Sum over the cheapest priced match per item; nil when no match has a price.
     let total: Double?
 
     var id: String { chain }
+    var matchedCount: Int { matchedItems.count }
+    var itemCount: Int { matchedItems.count + missingItems.count }
 }
 
-/// Ranking of the Wunschmärkte for the shopping list. Coverage beats price:
+/// Ranking of the chosen branches for the shopping list. Coverage beats price:
 /// a market matching 5/6 items always ranks above one matching 2/6, however
 /// cheap the 2 are. Price only breaks coverage ties. The totals compare offer
 /// prices only — items without a matched offer contribute nothing, so this is
@@ -29,21 +45,25 @@ enum ShoppingListRanking {
         return chains
             .map { chain -> MarketListRank in
                 let chainOffers = byChain[chain] ?? []
-                var matched = 0
+                var matched: [RankedItemMatch] = []
+                var missing: [String] = []
                 var total: Double?
                 for item in items {
                     guard let match = ShoppingListMatcher.cheapestMatch(
                         for: item.text, in: chainOffers,
                         isRejected: { isRejected(item.text, $0) }
-                    ) else { continue }
-                    matched += 1
+                    ) else {
+                        missing.append(item.text)
+                        continue
+                    }
+                    matched.append(RankedItemMatch(item: item.text, match: match))
                     if let price = match.offer.price {
                         total = (total ?? 0) + price
                     }
                 }
                 return MarketListRank(
-                    chain: chain, matchedCount: matched,
-                    itemCount: items.count, total: total
+                    chain: chain, matchedItems: matched,
+                    missingItems: missing, total: total
                 )
             }
             .sorted { lhs, rhs in

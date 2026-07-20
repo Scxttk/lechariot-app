@@ -12,6 +12,12 @@ protocol MarketRepositoryProtocol {
     func markets(plzs: [String]) async throws -> [Market]
 }
 
+protocol ProfileRepositoryProtocol {
+    /// Appends the user's (non-identifying) onboarding answers. Insert-only —
+    /// there is no read side, the app never fetches profiles back.
+    func upload(_ profile: SyncedProfile) async throws
+}
+
 protocol RegionRepositoryProtocol {
     /// Region row for a PLZ, or nil if unknown.
     func region(plz: String) async throws -> Region?

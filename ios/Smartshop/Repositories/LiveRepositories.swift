@@ -39,6 +39,16 @@ struct LiveMarketRepository: MarketRepositoryProtocol {
     }
 }
 
+struct LiveProfileRepository: ProfileRepositoryProtocol {
+    let client: SupabaseClient
+
+    func upload(_ profile: SyncedProfile) async throws {
+        // Same anon-INSERT shape as registerRegion: the table has an insert
+        // policy but no select policy, so the anon key can write and nothing else.
+        try await client.post(path: "user_profiles", body: profile)
+    }
+}
+
 struct LiveRegionRepository: RegionRepositoryProtocol {
     let client: SupabaseClient
 

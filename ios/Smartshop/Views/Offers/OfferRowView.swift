@@ -54,7 +54,7 @@ struct OfferRowView: View {
             }
             Text(validityText)
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
         }
     }
 

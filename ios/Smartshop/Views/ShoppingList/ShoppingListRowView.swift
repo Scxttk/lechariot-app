@@ -9,6 +9,8 @@ struct ShoppingListRowView: View {
     /// Opens the match-detail sheet; nil hides the affordance (checked items).
     var onShowMatches: (() -> Void)? = nil
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.md) {
             Button(action: onToggle) {
@@ -41,23 +43,43 @@ struct ShoppingListRowView: View {
     @ViewBuilder
     private var suggestion: some View {
         if let match {
-            let offer = match.offer
             Button(action: { onShowMatches?() }) {
+                suggestionContent(match.offer)
+                    // Screen background as nested fill: reads as "recessed into
+                    // the row" and stays in the brand palette instead of system gray.
+                    .padding(Theme.Spacing.sm)
+                    .background(
+                        Theme.background,
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                            .strokeBorder(Theme.stroke)
+                    )
+            }
+            .buttonStyle(TactileButtonStyle())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(suggestionSummary(match))
+            .accessibilityHint("Zeigt alle passenden Angebote")
+        } else {
+            Text("Diese Woche nirgends im Angebot")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    /// At accessibility sizes the price no longer fits beside a truncated
+    /// product name; stack the tile instead of shrinking it to nothing.
+    @ViewBuilder
+    private func suggestionContent(_ offer: Offer) -> some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 HStack(spacing: Theme.Spacing.sm) {
                     OfferThumbnail(imageUrl: offer.imageUrl, emoji: offer.emoji, size: 32)
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: Theme.Spacing.xs) {
-                            Text(offer.product)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                            MatchKindBadge(kind: match.kind)
-                        }
-                        Text(offer.market)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                    Spacer(minLength: Theme.Spacing.sm)
+                    offerText(offer, lineLimit: nil)
+                    Spacer(minLength: 0)
+                }
+                HStack(spacing: Theme.Spacing.sm) {
                     if let discount = offer.discountPercent {
                         DiscountBadge(percent: discount)
                     }
@@ -65,26 +87,34 @@ struct ShoppingListRowView: View {
                         PriceText(amount: price)
                     }
                 }
-                .padding(Theme.Spacing.sm)
-                // Screen background as nested fill: reads as "recessed into
-                // the row" and stays in the brand palette instead of system gray.
-                .background(
-                    Theme.background,
-                    in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                        .strokeBorder(Theme.stroke)
-                )
             }
-            .buttonStyle(TactileButtonStyle())
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(suggestionSummary(match))
-            .accessibilityHint("Zeigt alle passenden Angebote")
         } else {
-            Text("Kein Angebot diese Woche")
+            HStack(spacing: Theme.Spacing.sm) {
+                OfferThumbnail(imageUrl: offer.imageUrl, emoji: offer.emoji, size: 32)
+                // Two lines: real product names ("Landliebe Butter Original")
+                // truncated to "Landliebe B…" at one line, which is not enough
+                // to tell whether the match is right.
+                offerText(offer, lineLimit: 2)
+                Spacer(minLength: Theme.Spacing.sm)
+                if let discount = offer.discountPercent {
+                    DiscountBadge(percent: discount)
+                }
+                if let price = offer.price {
+                    PriceText(amount: price)
+                }
+            }
+        }
+    }
+
+    private func offerText(_ offer: Offer, lineLimit: Int?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(offer.product)
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
+                .lineLimit(lineLimit)
+            Text(offer.market)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -100,17 +130,19 @@ struct ShoppingListRowView: View {
             parts.append("\(discount) Prozent reduziert")
         }
         parts.append("bei \(offer.market)")
-        parts.append(match.kind == .direct ? "direkter Treffer" : "Kategorie-Treffer")
         return parts.joined(separator: ", ")
     }
 }
 
-/// Small pill distinguishing exact hits from category fallback hits.
+/// Distinguishes an exact product hit from a category fallback. Only shown in
+/// the match-detail sheet, where the user is actively judging suggestions —
+/// in the list row it was noise, and "Direkt"/"Kategorie" named the matcher's
+/// internals rather than telling a shopper anything.
 struct MatchKindBadge: View {
     let kind: MatchKind
 
     var body: some View {
-        Text(kind == .direct ? "Direkt" : "Kategorie")
+        Text(kind == .direct ? "Genau das" : "Passt vielleicht")
             .font(.caption2.weight(.semibold))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)

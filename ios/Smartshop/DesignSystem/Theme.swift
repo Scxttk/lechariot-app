@@ -25,15 +25,23 @@ enum Theme {
     // MARK: Colors
 
     /// Brand palette: green + brown, green leads in BOTH appearances.
-    /// Light mode: #507C55 on cream #EDE9C0. Dark mode mirrors that look —
+    /// Light mode: #3F6444 on cream #EDE9C0. Dark mode mirrors that look —
     /// brightened green on deep green-olive; brown is demoted to secondary
-    /// there (brown surfaces on olive clashed). Red stays reserved for
-    /// discount semantics, yellow for favorites — never as decoration.
+    /// there (brown surfaces on olive clashed).
+    ///
+    /// Every color below is measured against the surface it actually sits on,
+    /// WCAG 2.1: text ≥ 4.5:1, graphics ≥ 3:1. Adding a raw SwiftUI color
+    /// (`.red`, `.orange`, `.yellow`) in a view skips that check — use a token.
+    ///
+    /// Light accent was #507C55, which reached only 3.85:1 on the cream
+    /// background and 3.63:1 as pill text on its own 15 % tint. Same hue, one
+    /// step deeper: 5.43:1 on cream, 6.12:1 on surface, 6.74:1 for white text
+    /// on top of it, 4.95:1 on the tint.
     static let accent = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            // #507C55 lacks contrast on the dark surfaces; same hue, lifted.
+            // The light green lacks contrast on the dark surfaces; same hue, lifted.
             ? UIColor(red: 0.56, green: 0.74, blue: 0.58, alpha: 1)   // ~#8FBD94
-            : UIColor(red: 0.31, green: 0.49, blue: 0.33, alpha: 1)   // #507C55
+            : UIColor(red: 0.247, green: 0.392, blue: 0.267, alpha: 1) // #3F6444
     })
 
     /// Non-dominant brand color (brown) in both appearances — warm tan in
@@ -74,6 +82,45 @@ enum Theme {
         trait.userInterfaceStyle == .dark
             ? UIColor(red: 0.16, green: 0.18, blue: 0.13, alpha: 1)   // lifted olive
             : UIColor(red: 0.97, green: 0.96, blue: 0.88, alpha: 1)   // lifted #EDE9C0
+    })
+
+    // MARK: Status colors
+    //
+    // System `.orange` / `.red` / `.green` are tuned for white and black
+    // backgrounds, not for cream and olive: `.orange` on its own 12 % tint over
+    // the cream reached 1.65:1, `.red` on the light surface 3.22:1. These
+    // replacements are measured against `surface` and `warningSurface`.
+
+    /// Warnings that are not errors — stale offers, "data may be outdated".
+    /// 7.52:1 on surface, 5.39:1 on `warningSurface`.
+    static let warning = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 1.0, green: 0.72, blue: 0.35, alpha: 1)    // #FFB859
+            : UIColor(red: 0.478, green: 0.247, blue: 0.0, alpha: 1)  // #7A3F00
+    })
+
+    /// Tinted row background behind `warning` text. Kept here rather than as an
+    /// opacity in the view so the pair stays measured together.
+    static let warningSurface = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 1.0, green: 0.72, blue: 0.35, alpha: 0.16)
+            : UIColor(red: 0.478, green: 0.247, blue: 0.0, alpha: 0.14)
+    })
+
+    /// Failure states — sync errors, invalid input. 7.17:1 light / 5.25:1 dark
+    /// on surface. Distinct from `discount`, which is a price semantic.
+    static let error = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 1.0, green: 0.45, blue: 0.42, alpha: 1)    // #FF736B
+            : UIColor(red: 0.639, green: 0.078, blue: 0.059, alpha: 1) // #A3140F
+    })
+
+    /// Confirmations — markets found during the region sync. A deeper green
+    /// than the accent so "done" never reads as "tappable". 5.76:1 / 7.48:1.
+    static let success = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0.56, green: 0.80, blue: 0.60, alpha: 1)
+            : UIColor(red: 0.20, green: 0.42, blue: 0.24, alpha: 1)
     })
 }
 
@@ -150,8 +197,10 @@ struct OfferThumbnail: View {
 
     var body: some View {
         ZStack {
+            // Screen background as the fallback tile: stays in the brand
+            // palette instead of dropping a system gray onto the cream.
             RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+                .fill(Theme.background)
             Text(emoji ?? "🛒")
                 .font(.system(size: size * 0.5))
             if let url = imageUrl.flatMap(URL.init(string:)) {
@@ -191,37 +240,6 @@ struct PriceText: View {
     }
 }
 
-// MARK: - Stat tile
-
-/// Compact key-figure tile for the Analyse tab.
-struct StatTile: View {
-    let title: String
-    let value: String
-    var footnote: String? = nil
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.title2.bold().monospacedDigit())
-                .foregroundStyle(.primary)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-            if let footnote {
-                Text(footnote)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Theme.Spacing.lg)
-        .cardSurface()
-    }
-}
-
 // MARK: - Card container
 
 extension View {
@@ -234,7 +252,7 @@ extension View {
     }
 
     /// Surface + edge + shadow without the padding, for tiles that manage
-    /// their own insets (StatTile).
+    /// their own insets.
     fileprivate func cardSurface() -> some View {
         background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
             .overlay(
@@ -287,15 +305,23 @@ extension Offer {
 
 #Preview("Bausteine") {
     VStack(spacing: Theme.Spacing.lg) {
-        HStack(spacing: Theme.Spacing.md) {
-            StatTile(title: "Angebote", value: "312", footnote: "diese Woche")
-            StatTile(title: "Ø Rabatt", value: "27 %", footnote: "über alle Märkte")
-        }
         HStack {
             DiscountBadge(percent: 33)
             PriceText(amount: 1.99)
             PriceText(amount: 2.49, emphasized: false)
         }
+        .themeCard()
+
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Label("Angebote sind möglicherweise veraltet", systemImage: "exclamationmark.triangle")
+                .foregroundStyle(Theme.warning)
+            Label("Synchronisierung fehlgeschlagen", systemImage: "xmark.octagon")
+                .foregroundStyle(Theme.error)
+            Label("Kaufland Strehlen gefunden", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(Theme.success)
+        }
+        .font(.footnote)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .themeCard()
     }
     .padding()

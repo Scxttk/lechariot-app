@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// Einstellungen tab: manage regions (PLZs) and Wunschmärkte, reusing the
-/// onboarding components; plus app/data info.
+/// Einstellungen tab: manage regions (PLZs) and branches, reusing the
+/// onboarding components; plus the profile, appearance and app info.
 struct SettingsView: View {
     @Environment(RegionStore.self) private var store
+    @Environment(ProfileStore.self) private var profile
     @AppStorage(Theme.appearanceKey) private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
 
@@ -11,10 +12,9 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 Group {
+                    marketSection
                     regionSection
-                    if let plz = store.selectedRegion {
-                        marketSection(anyPLZ: plz)
-                    }
+                    profileSection
                     appearanceSection
                     appSection
                 }
@@ -25,12 +25,62 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: Filialen
+
+    /// The branches are what the app actually filters on, so they come first.
+    private var marketSection: some View {
+        let branches = store.favoriteMarkets
+            .sorted { ($0.chain, $0.branchName) < ($1.chain, $1.branchName) }
+        return Section {
+            ForEach(branches) { market in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(market.chain)
+                        .font(.body.weight(.medium))
+                    Text(market.isNationwide
+                        ? "Deutschlandweit"
+                        : "\(market.branchName) · PLZ \(market.plz)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let plz = store.regions.first {
+                NavigationLink {
+                    EditMarketsScreen(plz: plz, marketRepository: marketRepository)
+                } label: {
+                    Label("Filialen bearbeiten", systemImage: "storefront")
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+        } header: {
+            Text("Deine Filialen")
+        } footer: {
+            Text(branches.isEmpty
+                 ? "Ohne gewählte Filiale werden keine Angebote angezeigt."
+                 : "Nur Angebote dieser Filialen zählen für deine Liste.")
+        }
+    }
+
     // MARK: Regionen
 
+    /// Regions are pure status now. There used to be a checkmark picking one
+    /// "selected" region, but list, offers and ranking all query every ready
+    /// region — the chosen branches are the filter, so the checkmark selected
+    /// nothing and only invited the user to fiddle with it.
     private var regionSection: some View {
         Section {
             ForEach(store.regions, id: \.self) { plz in
-                regionRow(plz)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("PLZ \(plz)")
+                        .font(.body.weight(.medium))
+                    syncStateLabel(store.syncState(for: plz))
+                }
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        withAnimation { store.removeRegion(plz) }
+                    } label: {
+                        Label("Entfernen", systemImage: "trash")
+                    }
+                }
             }
             NavigationLink {
                 AddRegionScreen()
@@ -42,36 +92,7 @@ struct SettingsView: View {
         } header: {
             Text("Regionen")
         } footer: {
-            Text("Die ausgewählte Region bestimmt, welche Angebote du siehst. Wische nach links, um eine Region zu entfernen.")
-        }
-    }
-
-    private func regionRow(_ plz: String) -> some View {
-        Button {
-            store.selectRegion(plz)
-        } label: {
-            HStack(spacing: Theme.Spacing.md) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("PLZ \(plz)")
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(.primary)
-                    syncStateLabel(store.syncState(for: plz))
-                }
-                Spacer()
-                if store.selectedRegion == plz {
-                    Image(systemName: "checkmark")
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Theme.accent)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                withAnimation { store.removeRegion(plz) }
-            } label: {
-                Label("Entfernen", systemImage: "trash")
-            }
+            Text("Angebote sind regional. Wohnst du an einer PLZ-Grenze, füge die Nachbar-PLZ hinzu — dann kannst du auch dort Filialen wählen. Wische nach links, um eine Region zu entfernen.")
         }
     }
 
@@ -83,52 +104,46 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .requested, .syncing:
-            Text("Wird synchronisiert …")
+            Text("Wird vorbereitet …")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .failed:
-            Text("Synchronisierung fehlgeschlagen")
+            Text("Vorbereitung fehlgeschlagen")
                 .font(.caption)
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.error)
         case .unknown:
             Text("Noch nicht geprüft")
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
         }
     }
 
-    // MARK: Wunschmärkte
+    // MARK: Profil
 
-    /// All chosen branches across every region; `anyPLZ` only seeds the
-    /// edit screen with a starting region.
-    private func marketSection(anyPLZ: String) -> some View {
-        let favorites = store.favoriteMarkets
-            .sorted { ($0.chain, $0.branchName) < ($1.chain, $1.branchName) }
-        return Section {
-            ForEach(favorites) { market in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(market.chain)
-                        .font(.body.weight(.medium))
-                    Text(market.isNationwide
-                        ? "Deutschlandweit"
-                        : "\(market.branchName) · PLZ \(market.plz)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+    private var profileSection: some View {
+        Section {
             NavigationLink {
-                EditMarketsScreen(plz: anyPLZ, marketRepository: marketRepository)
+                ProfileEditScreen()
             } label: {
-                Label("Filialen bearbeiten", systemImage: "storefront")
-                    .foregroundStyle(Theme.accent)
+                LabeledContent("Dein Profil", value: profileSummary)
             }
         } header: {
-            Text("Deine Filialen")
+            Text("Profil")
         } footer: {
-            if favorites.isEmpty {
-                Text("Ohne gewählte Filiale werden keine Angebote angezeigt.")
-            }
+            Text(profile.hasConsented
+                 ? "Deine Angaben helfen bei der Weiterentwicklung und werden anonym übermittelt. Vorname, Einkaufsliste und Filialen bleiben auf dem Gerät."
+                 : "Deine Angaben bleiben vollständig auf diesem Gerät.")
         }
+    }
+
+    private var profileSummary: String {
+        let size = profile.profile.householdSize
+        var parts = [size == 1 ? "1 Person" : "\(size) Personen"]
+        parts.append("\(profile.profile.rhythm.label)/Woche")
+        if !profile.profile.dietTags.isEmpty {
+            parts.append("\(profile.profile.dietTags.count) Angaben")
+        }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: Darstellung
@@ -149,7 +164,7 @@ struct SettingsView: View {
     private var appSection: some View {
         Section("App") {
             LabeledContent("Version", value: Self.appVersion)
-            LabeledContent("Datenquelle", value: "Supabase · wöchentliche Angebote")
+            LabeledContent("Angebote", value: "wöchentlich aktualisiert")
         }
     }
 
@@ -159,7 +174,7 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Subscreens (onboarding components reused)
+// MARK: - Subscreens
 
 /// Wraps MarketPickerView so "Fertig" pops back to the settings list.
 private struct EditMarketsScreen: View {
@@ -172,7 +187,98 @@ private struct EditMarketsScreen: View {
     }
 }
 
+/// Edits the onboarding answers after the fact, including the consent toggle.
+private struct ProfileEditScreen: View {
+    @Environment(ProfileStore.self) private var profile
+    @Environment(RegionStore.self) private var store
+
+    @State private var name = ""
+
+    var body: some View {
+        List {
+            Group {
+                Section("Name") {
+                    TextField("Vorname", text: $name)
+                        .textContentType(.givenName)
+                        .onSubmit { profile.setFirstName(name) }
+                }
+
+                Section("Haushalt") {
+                    Stepper(
+                        profile.profile.householdSize == 1
+                            ? "1 Person"
+                            : "\(profile.profile.householdSize) Personen",
+                        value: Binding(
+                            get: { profile.profile.householdSize },
+                            set: { profile.setHousehold(size: $0) }
+                        ),
+                        in: 1...10
+                    )
+                    Picker("Einkäufe pro Woche", selection: Binding(
+                        get: { profile.profile.rhythm },
+                        set: { profile.setRhythm($0) }
+                    )) {
+                        ForEach(ShoppingRhythm.allCases) { Text($0.label).tag($0) }
+                    }
+                    Picker("Wochenbudget", selection: Binding(
+                        get: { profile.profile.budget },
+                        set: { profile.setBudget($0) }
+                    )) {
+                        Text("Keine Angabe").tag(BudgetBracket?.none)
+                        ForEach(BudgetBracket.allCases) { Text($0.label).tag(BudgetBracket?.some($0)) }
+                    }
+                }
+
+                Section("Ernährung") {
+                    ForEach(DietTag.allCases) { tag in
+                        Button {
+                            profile.toggleDietTag(tag)
+                        } label: {
+                            HStack {
+                                Label(tag.label, systemImage: tag.symbol)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                if profile.profile.dietTags.contains(tag) {
+                                    Image(systemName: "checkmark")
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(Theme.accent)
+                                }
+                            }
+                        }
+                        .accessibilityAddTraits(
+                            profile.profile.dietTags.contains(tag) ? [.isSelected] : []
+                        )
+                    }
+                }
+
+                Section {
+                    Toggle("Angaben anonym übermitteln", isOn: Binding(
+                        get: { profile.hasConsented },
+                        set: { consented in
+                            profile.setConsent(consented)
+                            if consented {
+                                let plz = store.orderedReadyRegions.first
+                                Task { await profile.sync(plz: plz) }
+                            }
+                        }
+                    ))
+                    .tint(Theme.accent)
+                } footer: {
+                    Text("Übermittelt werden Haushaltsgröße, Einkaufsrhythmus, Budget-Rahmen, Ernährungsangaben und Postleitzahl — verknüpft mit einer Zufallsnummer, nicht mit dir. Vorname, Einkaufsliste und Filialen bleiben auf dem Gerät.")
+                }
+            }
+            .listRowBackground(Theme.surface)
+        }
+        .themedScreen()
+        .navigationTitle("Dein Profil")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { name = profile.profile.firstName }
+        .onDisappear { profile.setFirstName(name) }
+    }
+}
+
 #Preview {
     SettingsView(marketRepository: MockMarketRepository())
         .environment(RegionStore(repository: MockRegionRepository()))
+        .environment(ProfileStore())
 }

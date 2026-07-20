@@ -1,8 +1,14 @@
 import SwiftUI
 
-/// First onboarding step: pick a region via location (optional) or manual PLZ.
+/// Region step: pick a region via location (optional) or manual PLZ.
+///
+/// Used twice: as step 3 of onboarding (`step` set, wrapped in the shared
+/// onboarding frame) and as a pushed screen from Settings (`step` nil, plain
+/// layout — progress dots would be nonsense there).
 struct RegionSetupView: View {
     @Environment(RegionStore.self) private var store
+    /// Position in the onboarding flow; nil when opened from Settings.
+    var step: Int?
     /// Called once the region check/registration has been kicked off.
     var onPLZSubmitted: (String) -> Void
 
@@ -13,68 +19,84 @@ struct RegionSetupView: View {
     @State private var errorMessage: String?
 
     private var isBusy: Bool { isLocating || isChecking }
+    private var canSubmit: Bool { PLZValidator.isValid(manualPLZ) && !isBusy }
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
-
-            Image(systemName: "location.magnifyingglass")
-                .font(.system(size: 52))
-                .foregroundStyle(Color.accentColor)
-
-            Text("Wo kaufst du ein?")
-                .font(.title2).bold()
-            Text("Smartshop zeigt dir nur Angebote aus deiner Region.\nGib deine Postleitzahl ein oder nutze deinen Standort.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            HStack {
-                TextField("PLZ, z. B. 01219", text: $manualPLZ)
-                    .keyboardType(.numberPad)
-                    .textContentType(.postalCode)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityLabel("Postleitzahl")
-                Button("Weiter") { submit(manualPLZ) }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!PLZValidator.isValid(manualPLZ) || isBusy)
+        if let step {
+            OnboardingStepView(
+                step: step,
+                totalSteps: OnboardingStep.total,
+                title: "Wo kaufst du ein?",
+                subtitle: "Angebote sind regional. Mit deiner Postleitzahl finden wir die Märkte in deiner Nähe.",
+                primaryTitle: isChecking ? "Wird geprüft …" : "Weiter",
+                isPrimaryEnabled: canSubmit,
+                onPrimary: { submit(manualPLZ) }
+            ) {
+                fields
             }
-
-            HStack {
-                VStack { Divider() }
-                Text("oder").font(.caption).foregroundStyle(.secondary)
-                VStack { Divider() }
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                    fields
+                    Button("Weiter") { submit(manualPLZ) }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Theme.accent)
+                        .disabled(!canSubmit)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(Theme.Spacing.xl)
             }
+            .background(Theme.background)
+            .navigationTitle("Region hinzufügen")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    // MARK: Fields
+
+    private var fields: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+            TextField("PLZ, z. B. 01219", text: $manualPLZ)
+                .keyboardType(.numberPad)
+                .textContentType(.postalCode)
+                .font(.title3.monospacedDigit())
+                .padding(.horizontal, Theme.Spacing.md)
+                .frame(height: 52)
+                .background(
+                    Theme.surface,
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .strokeBorder(Theme.stroke)
+                )
+                .accessibilityLabel("Postleitzahl")
 
             Button {
                 useLocation()
             } label: {
                 Label(
-                    isLocating ? "Standort wird ermittelt…" : "Standort verwenden",
+                    isLocating ? "Standort wird ermittelt …" : "Standort verwenden",
                     systemImage: "location.fill"
                 )
+                .font(.subheadline.weight(.medium))
                 .frame(maxWidth: .infinity)
-                .padding(8)
+                .frame(height: 44)
             }
             .buttonStyle(.bordered)
+            .tint(Theme.accent)
             .disabled(isBusy)
 
-            if isChecking {
-                ProgressView("Region wird geprüft…")
-            }
-
             if let errorMessage {
-                Text(errorMessage)
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Theme.error)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer()
         }
-        .padding(24)
-        .navigationTitle("Deine Region")
     }
+
+    // MARK: Actions
 
     private func useLocation() {
         errorMessage = nil
@@ -119,7 +141,12 @@ struct AddRegionScreen: View {
     }
 }
 
-#Preview {
+#Preview("Onboarding") {
+    RegionSetupView(step: 3, onPLZSubmitted: { _ in })
+        .environment(RegionStore(repository: MockRegionRepository()))
+}
+
+#Preview("Aus den Einstellungen") {
     NavigationStack {
         RegionSetupView(onPLZSubmitted: { _ in })
             .environment(RegionStore(repository: MockRegionRepository()))

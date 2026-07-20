@@ -71,11 +71,11 @@ struct OffersView: View {
             Label("Keine Angebote", systemImage: "basket")
         } description: {
             Text(store.hasFavoriteChains
-                ? "Für deine Märkte liegen gerade keine Angebote vor. Wähle in den Einstellungen weitere Märkte, um mehr zu sehen."
+                ? "Für deine Filialen liegen gerade keine Angebote vor. Nimm in den Einstellungen weitere Filialen dazu, um mehr zu sehen."
                 : "Für deine Region liegen aktuell keine Angebote vor. Schau später noch einmal vorbei.")
         }
         .accessibilityLabel(store.hasFavoriteChains
-            ? "Keine Angebote für deine Märkte"
+            ? "Keine Angebote für deine Filialen"
             : "Keine Angebote für deine Region")
     }
 
@@ -91,6 +91,7 @@ struct OffersView: View {
             if visible.isEmpty {
                 ContentUnavailableView.search(text: search)
             } else {
+                topDealsSection
                 ForEach(OfferQuery.grouped(visible, by: grouping), id: \.key) { section in
                     Section(sectionTitle(section.key)) {
                         ForEach(section.offers) { OfferRowView(offer: $0) }
@@ -102,6 +103,23 @@ struct OffersView: View {
         .refreshable { await store.refresh() }
     }
 
+    /// The five deepest discounts, pinned above the grouped list. Hidden as
+    /// soon as the user searches or filters — then they are looking for
+    /// something specific and a "best of" list is only in the way.
+    @ViewBuilder
+    private var topDealsSection: some View {
+        let isBrowsing = search.isEmpty && !hasActiveFilter
+        let deals = isBrowsing ? OfferAnalytics.topDeals(store.offers, limit: 5) : []
+        if !deals.isEmpty {
+            Section {
+                ForEach(deals) { OfferRowView(offer: $0) }
+            } header: {
+                Text("Top-Deals der Woche")
+            }
+            .listRowBackground(Theme.surface)
+        }
+    }
+
     private var staleBanner: some View {
         Label(
             store.isOffline
@@ -110,8 +128,8 @@ struct OffersView: View {
             systemImage: "exclamationmark.triangle"
         )
         .font(.footnote)
-        .foregroundStyle(.orange)
-        .listRowBackground(Color.orange.opacity(0.12))
+        .foregroundStyle(Theme.warning)
+        .listRowBackground(Theme.warningSurface)
     }
 
     /// Market sections show the branch name when the chain has exactly one

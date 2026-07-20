@@ -96,4 +96,55 @@ final class ShoppingListRankingTests: XCTestCase {
         XCTAssertEqual(ranks[0].matchedCount, 1)
         XCTAssertEqual(ranks[0].total, 1.99)
     }
+
+    // MARK: Per-item breakdown (feeds the Einkaufsplan card)
+
+    /// The card names the covered items and the ones the user pays full price
+    /// for, so both lists must together account for every item on the list.
+    func testMatchedAndMissingItemsCoverTheWholeList() {
+        let list = items(["Milch", "Butter", "Zahnpasta"])
+        let offers = [
+            offer("Frische Milch", market: "Lidl", price: 0.99),
+            offer("Butter Markenqualität", market: "Lidl", price: 1.79),
+        ]
+        let rank = ShoppingListRanking.rank(items: list, offers: offers, chains: ["Lidl"])[0]
+
+        XCTAssertEqual(rank.matchedItems.map(\.item), ["Milch", "Butter"])
+        XCTAssertEqual(rank.missingItems, ["Zahnpasta"])
+        XCTAssertEqual(rank.matchedCount, 2)
+        XCTAssertEqual(rank.itemCount, 3)
+        XCTAssertEqual(rank.matchedCount + rank.missingItems.count, list.count)
+    }
+
+    /// The card shows the item the user typed next to the offer it resolved to;
+    /// mixing those up would make "Käse → Gouda jung" unreadable.
+    func testMatchedItemKeepsTheUserWordingAndTheOffer() {
+        let list = items(["Käse"])
+        let offers = [offer("Gouda jung", market: "Lidl", price: 1.99, matchKey: ["käse"])]
+        let rank = ShoppingListRanking.rank(items: list, offers: offers, chains: ["Lidl"])[0]
+
+        XCTAssertEqual(rank.matchedItems[0].item, "Käse")
+        XCTAssertEqual(rank.matchedItems[0].offer.product, "Gouda jung")
+    }
+
+    func testChainWithoutOffersListsEveryItemAsMissing() {
+        let list = items(["Milch", "Butter"])
+        let offers = [offer("Frische Milch", market: "Lidl", price: 0.99)]
+        let ranks = ShoppingListRanking.rank(items: list, offers: offers, chains: ["Lidl", "Konsum"])
+
+        let konsum = try! XCTUnwrap(ranks.first { $0.chain == "Konsum" })
+        XCTAssertTrue(konsum.matchedItems.isEmpty)
+        XCTAssertEqual(konsum.missingItems, ["Milch", "Butter"])
+    }
+
+    func testRejectedMatchLandsInMissing() {
+        let list = items(["Milch"])
+        let milch = offer("Frische Milch", market: "Lidl", price: 0.99)
+        let rank = ShoppingListRanking.rank(
+            items: list, offers: [milch], chains: ["Lidl"]
+        ) { _, _ in true }[0]
+
+        XCTAssertTrue(rank.matchedItems.isEmpty)
+        XCTAssertEqual(rank.missingItems, ["Milch"])
+    }
 }

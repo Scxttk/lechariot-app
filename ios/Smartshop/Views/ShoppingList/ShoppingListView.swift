@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Einkaufsliste tab: local list with per-item cheapest-offer suggestions from
-/// the current week's offers (region + Wunschmärkte, like the Angebote tab).
+/// The app's home screen: the shopping list, with the week's cheapest offer per
+/// item and — above everything — which branch covers the list best.
 struct ShoppingListView: View {
     let regions: [String]
     let favoriteMarkets: [Market]
@@ -9,9 +9,18 @@ struct ShoppingListView: View {
     @Environment(ShoppingListStore.self) private var list
     @State private var offerStore: OfferStore
     @Environment(MatchRejectionStore.self) private var rejections
+    @Environment(ProfileStore.self) private var profile
     @State private var detailItem: ShoppingItem?
     @State private var newItemText = ""
     @FocusState private var inputFocused: Bool
+
+    /// Staples that cover most first lists. The empty screen is otherwise a
+    /// text field and nothing to react to — one tap here and the app can
+    /// immediately show what it is for.
+    private static let quickAdds = [
+        "Milch", "Brot", "Butter", "Eier",
+        "Käse", "Bananen", "Kaffee", "Nudeln",
+    ]
 
     init(regions: [String], favoriteMarkets: [Market], repository: OfferRepositoryProtocol) {
         self.regions = regions
@@ -24,15 +33,29 @@ struct ShoppingListView: View {
     }
 
     /// Matches are recomputed on the fly; only rejections are persisted.
-    private func match(for item: ShoppingItem) -> OfferMatch? {
-        ShoppingListMatcher.cheapestMatch(for: item.text, in: offerStore.offers) {
+    ///
+    /// The suggestion follows the market the card recommends, not the cheapest
+    /// offer anywhere. Otherwise the screen tells two stories at once — "go to
+    /// Lidl, 19,32 €" on top, Netto and Kaufland prices in the rows — and the
+    /// sum in the card matches nothing the user can actually buy in one trip.
+    /// Items the recommended market has nothing for fall back to the cheapest
+    /// offer elsewhere; the market name on the row says where.
+    private func match(for item: ShoppingItem, plan: [MarketListRank]) -> OfferMatch? {
+        if let winner = plan.first,
+           let covered = winner.matchedItems.first(where: { $0.item == item.text }) {
+            return covered.match
+        }
+        return ShoppingListMatcher.cheapestMatch(for: item.text, in: offerStore.offers) {
             rejections.isRejected(itemText: item.text, offer: $0)
         }
     }
 
-    /// Sum of the suggested prices of all open items with a match.
-    private var matchedTotal: Double {
-        list.uncheckedItems.compactMap { match(for: $0)?.offer.price }.reduce(0, +)
+    private var ranks: [MarketListRank] {
+        ShoppingListRanking.rank(
+            items: list.uncheckedItems,
+            offers: offerStore.offers,
+            chains: chains
+        ) { rejections.isRejected(itemText: $0, offer: $1) }
     }
 
     var body: some View {
@@ -60,11 +83,23 @@ struct ShoppingListView: View {
 
     private var itemList: some View {
         List {
+            let plan = ranks
+            if !plan.isEmpty {
+                Section {
+                    ShoppingPlanCard(ranks: plan)
+                        .listRowInsets(EdgeInsets(
+                            top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
+                            bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
+                        ))
+                }
+                .listRowBackground(Color.clear)
+            }
+
             Section {
                 ForEach(list.uncheckedItems) { item in
                     ShoppingListRowView(
                         item: item,
-                        match: match(for: item),
+                        match: match(for: item, plan: plan),
                         onToggle: { withAnimation { list.toggle(item) } },
                         onShowMatches: { detailItem = item }
                     )
@@ -75,17 +110,6 @@ struct ShoppingListView: View {
                             Label("Löschen", systemImage: "trash")
                         }
                     }
-                }
-            } footer: {
-                if matchedTotal > 0 {
-                    HStack {
-                        Text("Angebots-Summe")
-                        Spacer()
-                        Text(matchedTotal, format: .currency(code: "EUR"))
-                            .monospacedDigit()
-                            .fontWeight(.semibold)
-                    }
-                    .font(.footnote)
                 }
             }
             .listRowBackground(Theme.surface)
@@ -110,11 +134,71 @@ struct ShoppingListView: View {
         }
     }
 
+    // MARK: Empty state
+
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Einkaufsliste ist leer", systemImage: "checklist")
-        } description: {
-            Text("Füge unten Artikel hinzu. Smartshop findet automatisch das günstigste passende Angebot deiner Märkte.")
+        ScrollView {
+            VStack(spacing: Theme.Spacing.xl) {
+                VStack(spacing: Theme.Spacing.sm) {
+                    Image(systemName: "checklist")
+                        .font(.system(size: 44))
+                        .foregroundStyle(Theme.accent)
+                    // The name, when we have one, earns its keep here rather
+                    // than in the navigation bar: it greets on the empty screen
+                    // and stays out of the way once the list is in daily use.
+                    Text(profile.greetingName.isEmpty
+                         ? "Was brauchst du?"
+                         : "Was brauchst du, \(profile.greetingName)?")
+                        .font(.title2.bold())
+                        .multilineTextAlignment(.center)
+                    Text("Schreib auf, was du einkaufen willst. Smartshop sagt dir, welche deiner Filialen die Liste am günstigsten abdeckt.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    Text("Häufig gekauft")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    quickAddChips
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(Theme.Spacing.xl)
+        }
+    }
+
+    private var quickAddChips: some View {
+        // Flexible grid rather than a fixed row count, so the chips reflow
+        // instead of clipping at large Dynamic Type sizes.
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 96), spacing: Theme.Spacing.sm)],
+            alignment: .leading,
+            spacing: Theme.Spacing.sm
+        ) {
+            ForEach(Self.quickAdds, id: \.self) { staple in
+                Button {
+                    // `add` is @discardableResult Bool; swallow it explicitly so
+                    // withAnimation's generic result type stays unambiguous.
+                    withAnimation { _ = list.add(staple) }
+                } label: {
+                    Text(staple)
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(
+                            Theme.surface,
+                            in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                                .strokeBorder(Theme.stroke)
+                        )
+                }
+                .buttonStyle(TactileButtonStyle())
+                .accessibilityLabel("\(staple) hinzufügen")
+            }
         }
     }
 
@@ -187,4 +271,5 @@ struct ShoppingListView: View {
     )
     .environment(ShoppingListStore())
     .environment(MatchRejectionStore())
+    .environment(ProfileStore())
 }

@@ -194,14 +194,23 @@ final class RegionStoreTests: XCTestCase {
         repo.offerCounts["04626"] = 470
 
         let observer = Task { await store.observeProgress(plz: "04626") }
-        await waitUntil(store.progress(for: "04626").offerCount == 470)
+        // observeProgress fetches markets and the count in two separate awaits.
+        // Waiting on the count alone can therefore observe a snapshot whose
+        // markets were read one poll earlier — wait for both to land.
+        await waitUntil(
+            store.progress(for: "04626").offerCount == 470
+            && store.progress(for: "04626").markets == [kaufland]
+        )
         XCTAssertEqual(store.progress(for: "04626").markets, [kaufland])
         XCTAssertEqual(store.progress(for: "04626").offerCount, 470)
 
         // Backend findet eine weitere Kette und lädt mehr Angebote hoch.
         repo.marketsByPLZ["04626"] = [kaufland, lidl]
         repo.offerCounts["04626"] = 725
-        await waitUntil(store.progress(for: "04626").offerCount == 725)
+        await waitUntil(
+            store.progress(for: "04626").offerCount == 725
+            && store.progress(for: "04626").markets == [kaufland, lidl]
+        )
         XCTAssertEqual(store.progress(for: "04626").markets, [kaufland, lidl])
 
         observer.cancel()

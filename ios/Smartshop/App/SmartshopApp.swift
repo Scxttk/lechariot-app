@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct SmartshopApp: App {
     @State private var store: RegionStore
+    @State private var profile: ProfileStore
     @AppStorage(Theme.appearanceKey) private var appearance: AppAppearance = .system
     private let marketRepository: MarketRepositoryProtocol
 
@@ -17,9 +18,11 @@ struct SmartshopApp: App {
         // Fall back to mocks when APIKeys.plist is absent (e.g. CI simulator builds).
         if let client = SupabaseClient.fromConfig() {
             _store = State(initialValue: RegionStore(repository: LiveRegionRepository(client: client)))
+            _profile = State(initialValue: ProfileStore(repository: LiveProfileRepository(client: client)))
             marketRepository = LiveMarketRepository(client: client)
         } else {
             _store = State(initialValue: RegionStore(repository: MockRegionRepository()))
+            _profile = State(initialValue: ProfileStore())
             marketRepository = MockMarketRepository()
         }
     }
@@ -28,6 +31,7 @@ struct SmartshopApp: App {
         WindowGroup {
             ContentView(marketRepository: marketRepository)
                 .environment(store)
+                .environment(profile)
                 // App-wide accent, so onboarding matches the tabs instead of
                 // falling back to system blue.
                 .tint(Theme.accent)

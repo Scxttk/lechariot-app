@@ -59,6 +59,16 @@ struct MockMarketRepository: MarketRepositoryProtocol {
     }
 }
 
+/// Records uploads instead of sending them, so tests can assert that a profile
+/// without consent never reaches the network.
+final class MockProfileRepository: ProfileRepositoryProtocol, @unchecked Sendable {
+    private(set) var uploaded: [SyncedProfile] = []
+
+    func upload(_ profile: SyncedProfile) async throws {
+        uploaded.append(profile)
+    }
+}
+
 struct MockRegionRepository: RegionRepositoryProtocol {
     var fixtures: [Region] = [MockFixtures.region]
 

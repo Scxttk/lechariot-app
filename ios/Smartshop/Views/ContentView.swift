@@ -6,6 +6,14 @@ struct ContentView: View {
 
     @State private var shoppingList = ShoppingListStore()
     @State private var rejections = MatchRejectionStore()
+    /// Every cold start lands on the shopping list — that is the screen the app
+    /// exists for. Deliberately not persisted: reopening the app mid-week must
+    /// not drop the user wherever they happened to leave off.
+    @State private var selectedTab: Tab = .liste
+
+    private enum Tab {
+        case liste, angebote, einstellungen
+    }
 
     var body: some View {
         if store.isOnboardingComplete {
@@ -16,30 +24,26 @@ struct ContentView: View {
     }
 
     private var mainTabs: some View {
-        TabView {
-            offersTab
-                .tabItem {
-                    Label("Angebote", systemImage: "tag")
-                }
-
+        TabView(selection: $selectedTab) {
             allRegionScoped { regions, markets in
                 ShoppingListView(regions: regions, favoriteMarkets: markets, repository: Self.offerRepository)
             }
             .tabItem {
-                Label("Einkaufsliste", systemImage: "checklist")
+                Label("Liste", systemImage: "checklist")
             }
+            .tag(Tab.liste)
 
-            allRegionScoped { regions, markets in
-                AnalyseView(regions: regions, favoriteMarkets: markets, repository: Self.offerRepository)
-            }
-            .tabItem {
-                Label("Analyse", systemImage: "chart.bar.xaxis")
-            }
+            offersTab
+                .tabItem {
+                    Label("Angebote", systemImage: "tag")
+                }
+                .tag(Tab.angebote)
 
             SettingsView(marketRepository: marketRepository)
                 .tabItem {
                     Label("Einstellungen", systemImage: "gearshape")
                 }
+                .tag(Tab.einstellungen)
         }
         .environment(shoppingList)
         .environment(rejections)
@@ -62,8 +66,8 @@ struct ContentView: View {
         }
     }
 
-    /// Einkaufsliste and Analyse span all ready regions, like Angebote — the
-    /// chosen branches are the filter, not the selected region.
+    /// Einkaufsliste spans all ready regions, like Angebote — the chosen
+    /// branches are the filter, not the selected region.
     @ViewBuilder
     private func allRegionScoped(
         @ViewBuilder content: ([String], [Market]) -> some View

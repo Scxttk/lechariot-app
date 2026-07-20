@@ -27,6 +27,8 @@ struct WaitingView: View {
                 .font(.subheadline)
         }
         .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.background)
         .navigationTitle("Region \(plz)")
         // Progress-Polling lebt exakt so lange wie diese View sichtbar ist;
         // bei ready/failed kehrt observeProgress von selbst zurück.
@@ -38,7 +40,7 @@ struct WaitingView: View {
         return VStack(spacing: 16) {
             ProgressView()
                 .controlSize(.large)
-            Text("Deine Region wird vorbereitet")
+            Text("Fast fertig")
                 .font(.title2).bold()
             Text("Wir sammeln gerade die Angebote für \(plz).\nDas dauert meist nur wenige Minuten.")
                 .font(.subheadline)
@@ -71,7 +73,7 @@ struct WaitingView: View {
             ForEach(markets, id: \.marketId) { market in
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Theme.success)
                     Text("\(market.chain) \(market.branchName)")
                         .lineLimit(1)
                 }
@@ -89,7 +91,7 @@ struct WaitingView: View {
         VStack(spacing: 16) {
             Image(systemName: "moon.zzz.fill")
                 .font(.system(size: 52))
-                .foregroundStyle(.indigo)
+                .foregroundStyle(Theme.accent)
             Text("Das dauert etwas länger")
                 .font(.title2).bold()
             Text("Deine Region \(plz) ist vorgemerkt. Die Angebote kommen spätestens über Nacht – schau einfach morgen wieder vorbei.")
@@ -104,7 +106,7 @@ struct WaitingView: View {
         VStack(spacing: 16) {
             Image(systemName: "wifi.exclamationmark")
                 .font(.system(size: 52))
-                .foregroundStyle(.orange)
+                .foregroundStyle(Theme.warning)
             Text("Verbindung fehlgeschlagen")
                 .font(.title2).bold()
             Text("Der Status deiner Region konnte nicht abgefragt werden. Bitte prüfe deine Internetverbindung.")

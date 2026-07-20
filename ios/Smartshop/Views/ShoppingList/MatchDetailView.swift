@@ -40,13 +40,13 @@ struct MatchDetailView: View {
                             matchRow(match, isRejected: false)
                         }
                     } footer: {
-                        Text("Passt ein Treffer nicht, lehne ihn mit ✕ ab — er wird dann nicht mehr vorgeschlagen.")
+                        Text("Passt ein Angebot nicht zu deinem Artikel? Leg es weg — dann schlägt Smartshop es nicht mehr vor.")
                     }
                     .listRowBackground(Theme.surface)
                 }
 
                 if !rejected.isEmpty {
-                    Section("Abgelehnt") {
+                    Section("Weggelegt") {
                         ForEach(rejected) { match in
                             matchRow(match, isRejected: true)
                         }
@@ -99,7 +99,7 @@ struct MatchDetailView: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(TactileButtonStyle())
-            .accessibilityLabel(isRejected ? "Ablehnung zurücknehmen" : "Treffer ablehnen")
+            .accessibilityLabel(isRejected ? "Wieder vorschlagen" : "Weglegen")
         }
         .opacity(isRejected ? 0.5 : 1)
     }
