@@ -171,10 +171,13 @@ final class OnboardingJourneyTests: XCTestCase {
         app.buttons["markets.done"].tap()
     }
 
-    /// The tab bar is a floating control on current iOS; query it by button
-    /// label rather than assuming a `tabBars` container exists.
+    /// The tab bar is a floating control on current iOS, so query it by button
+    /// label rather than assuming a `tabBars` container exists. On iPad the
+    /// same tab turns up more than once in the hierarchy — both are the real
+    /// control, so take the first rather than failing on the ambiguity.
     private func openTab(_ name: String) {
-        let tab = app.tabBars.buttons[name].exists ? app.tabBars.buttons[name] : app.buttons[name]
+        let inBar = app.tabBars.buttons[name]
+        let tab = inBar.exists ? inBar : app.buttons[name].firstMatch
         XCTAssertTrue(tab.waitForExistence(timeout: 15), "tab \(name) missing")
         tab.tap()
     }

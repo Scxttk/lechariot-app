@@ -45,6 +45,7 @@ struct RegionSetupView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .padding(Theme.Spacing.xl)
+                .readableWidth()
             }
             .background(Theme.background)
             .navigationTitle("Region hinzufügen")

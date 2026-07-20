@@ -38,6 +38,7 @@ struct OnboardingStepView<Content: View>: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(Theme.Spacing.xl)
+                .readableWidth()
             }
 
             footer
@@ -87,6 +88,9 @@ struct OnboardingStepView<Content: View>: View {
         .padding(.horizontal, Theme.Spacing.xl)
         .padding(.top, Theme.Spacing.md)
         .padding(.bottom, Theme.Spacing.sm)
+        .readableWidth()
+        // The bar spans the full width even where the buttons do not — a
+        // floating strip in the middle of an iPad would read as a dialog.
         .background(.bar)
     }
 }

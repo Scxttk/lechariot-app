@@ -22,9 +22,13 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Dein Standort wird einmalig verwendet, um deine Postleitzahl zu ermitteln. Du kannst sie auch manuell eingeben."
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        # iPad may rotate; the iPhone stays portrait — a one-handed shopping
+        # list has nothing to gain from landscape.
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 0.1.0
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
   SmartshopTests:
     type: bundle.unit-test
     platform: iOS

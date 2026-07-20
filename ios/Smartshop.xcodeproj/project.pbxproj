@@ -18,6 +18,7 @@
 		1F65F563962458CA759F9DB3 /* OnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE3F1F17B17DE3B92506C9F /* OnboardingStepView.swift */; };
 		1F78D51A22ADDAB72D20F6FA /* AdSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5FA268ACCB17FC037B2400 /* AdSlot.swift */; };
 		23B43B5A1A80E5C81121035C /* OfferMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7002CAEC0771B195B6EF2198 /* OfferMatcher.swift */; };
+		2455DBCCE907F95A3FAFA9FF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A4E4B984333AB78B6C5CD1C /* Assets.xcassets */; };
 		24D1909C7DA029EF9C37FBBE /* ShoppingListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BC88CEB73009984290A2F9C /* ShoppingListView.swift */; };
 		24ECE9C01AE520A888B7F588 /* OfferStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F6AA8757179BD940639D76 /* OfferStoreTests.swift */; };
 		27E4A7F5CEB3C983C4C605E6 /* LoadFailure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B2CFE31D2A16B89A0CF2FC9 /* LoadFailure.swift */; };
@@ -127,6 +128,7 @@
 		844C4E818E4E0A2188DF2EC5 /* RegionSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionSetupView.swift; sourceTree = "<group>"; };
 		863A1058C1028198058B3773 /* MarketPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketPickerView.swift; sourceTree = "<group>"; };
 		868B074D7B32CF7410B7D479 /* RegionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionStore.swift; sourceTree = "<group>"; };
+		8A4E4B984333AB78B6C5CD1C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8A55AEE68082C0FC0867C922 /* ShoppingListStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingListStoreTests.swift; sourceTree = "<group>"; };
 		8A5FA268ACCB17FC037B2400 /* AdSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdSlot.swift; sourceTree = "<group>"; };
 		8FB4C53FE9EBB125EFE83FFF /* SmartshopUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SmartshopUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -383,6 +385,7 @@
 		FEABFB6E1A3D728A696EDD31 /* Smartshop */ = {
 			isa = PBXGroup;
 			children = (
+				8A4E4B984333AB78B6C5CD1C /* Assets.xcassets */,
 				28C051F99974362C23224CDF /* Analytics */,
 				D4B5FCA8AEA37E1F9E5AEB72 /* App */,
 				4E466500B64A5754ABF250C7 /* Config */,
@@ -505,6 +508,7 @@
 			files = (
 				1CA11265C97F7B910BC773DC /* APIKeys.example.plist in Resources */,
 				E9A35414E0F415D5F256DAB8 /* APIKeys.plist in Resources */,
+				2455DBCCE907F95A3FAFA9FF /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -637,6 +641,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -644,7 +649,7 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.skoehler.smartshop;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -659,6 +664,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -666,7 +672,7 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.skoehler.smartshop;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

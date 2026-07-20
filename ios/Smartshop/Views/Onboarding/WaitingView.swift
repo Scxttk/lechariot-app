@@ -29,7 +29,8 @@ struct WaitingView: View {
                 .font(.subheadline)
         }
         .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .readableWidth()
+        .frame(maxHeight: .infinity)
         .background(Theme.background)
         .navigationTitle("Region \(plz)")
         // Progress polling lives exactly as long as this view is on screen;

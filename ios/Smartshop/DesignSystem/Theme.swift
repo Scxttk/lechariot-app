@@ -163,10 +163,34 @@ extension Theme {
 
 extension View {
     /// Replaces the default grouped background of a List/ScrollView screen
-    /// with the brand background (cream / dark olive).
+    /// with the brand background (cream / dark olive), and keeps the content
+    /// itself to a readable column — see `readableWidth()`.
     func themedScreen() -> some View {
         scrollContentBackground(.hidden)
+            .readableWidth()
             .background(Theme.background)
+    }
+}
+
+// MARK: - Reading width
+
+extension Theme {
+    /// Widest a column of text or form controls may get.
+    ///
+    /// Every screen here was drawn for a hand's width. On an iPad the same
+    /// layout stretches a sentence across 1000 pt and turns "Los geht's" into a
+    /// button the width of the display — legible, but nothing a person wants to
+    /// read or aim at. 640 pt keeps line length near the usual 60–75 characters
+    /// and leaves buttons a plausible size; on any iPhone it never applies.
+    static let maxContentWidth: CGFloat = 640
+}
+
+extension View {
+    /// Caps the content at `Theme.maxContentWidth` and centres it. No effect
+    /// where the screen is narrower than that, i.e. on every iPhone.
+    func readableWidth() -> some View {
+        frame(maxWidth: Theme.maxContentWidth)
+            .frame(maxWidth: .infinity)
     }
 }
 

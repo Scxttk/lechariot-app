@@ -232,6 +232,8 @@ struct ShoppingListView: View {
         }
         .padding(.horizontal, Theme.Spacing.lg)
         .padding(.vertical, Theme.Spacing.sm)
+        .readableWidth()
+        // Bar across the whole width, field only as wide as the list above it.
         .background(.bar)
     }
 
