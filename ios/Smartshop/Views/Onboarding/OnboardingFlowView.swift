@@ -71,6 +71,10 @@ struct OnboardingFlowView: View {
             case .ready:
                 MarketPickerView(plz: plz, marketRepository: marketRepository) {
                     store.selectRegion(plz)
+                    // The only place that records onboarding as done. "Fertig"
+                    // is disabled until a branch is picked, so reaching here
+                    // always means a usable setup.
+                    store.completeOnboarding()
                 }
             case .requested, .syncing, .failed:
                 WaitingView(plz: plz) {

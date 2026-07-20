@@ -160,11 +160,18 @@ final class OfferStore {
         guard !regions.isEmpty else { return }
         isRefreshing = true
         defer { isRefreshing = false }
+        // The regions this run is for. A second `load()` can change `regions`
+        // while the fetch is in flight (user adds a PLZ, tab reappears); without
+        // the comparison below the slower answer would win and the screen would
+        // show offers for a region set the user has moved on from.
+        let requested = regions
         do {
-            let fresh = try await repository.offers(regions: regions)
+            let fresh = try await repository.offers(regions: requested)
+            try Task.checkCancellation()
+            guard requested == regions else { return }
             let now = Date.now
             let byRegion = Dictionary(grouping: fresh, by: \.region)
-            for region in regions {
+            for region in requested {
                 try? cache?.replaceAll(byRegion[region] ?? [], region: region, fetchedAt: now)
             }
             offers = filteredToChains(fresh)
@@ -172,10 +179,15 @@ final class OfferStore {
             isOffline = false
             state = offers.isEmpty ? .empty : .loaded
         } catch {
+            // A cancelled fetch is not a failure: `.task(id: regions)` restarts
+            // this whenever the regions change and cancels the previous run, and
+            // leaving the tab cancels it too. Treating that as "offline" put a
+            // warning banner on perfectly fresh data.
+            guard !LoadFailure.isCancellation(error) else { return }
             isOffline = true
             // Keep showing cached data; only surface the error when there is none.
             if offers.isEmpty {
-                state = .error(error.localizedDescription)
+                state = .error(LoadFailure.message(for: error, subject: "Die Angebote"))
             }
         }
     }

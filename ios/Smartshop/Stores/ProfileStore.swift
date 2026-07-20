@@ -97,4 +97,15 @@ final class ProfileStore {
             defaults.set(data, forKey: Self.key)
         }
     }
+
+    #if DEBUG
+    /// See `DebugReset`. Mints a **new** install id on purpose: a reset is meant
+    /// to look like a different device, otherwise repeated test runs all land on
+    /// the same `install_id` in Supabase and the rows are indistinguishable.
+    func resetAllData() {
+        defaults.removeObject(forKey: Self.key)
+        profile = UserProfile()
+        persist()
+    }
+    #endif
 }

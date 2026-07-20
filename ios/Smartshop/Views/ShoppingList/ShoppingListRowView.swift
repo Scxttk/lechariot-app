@@ -58,7 +58,9 @@ struct ShoppingListRowView: View {
                     )
             }
             .buttonStyle(TactileButtonStyle())
-            .accessibilityElement(children: .ignore)
+            // See MarketPickerView.marketRow: `.accessibilityElement(children:
+            // .ignore)` on a Button drops the label that follows it, so the tile
+            // was read out as its raw parts instead of one sentence.
             .accessibilityLabel(suggestionSummary(match))
             .accessibilityHint("Zeigt alle passenden Angebote")
         } else {

@@ -6,18 +6,14 @@ struct OffersView: View {
     let regions: [String]
     let favoriteMarkets: [Market]
 
-    @State private var store: OfferStore
+    /// Shared with the shopping list — see `ContentView.offerStore`.
+    let store: OfferStore
+
     @State private var search = ""
     @State private var grouping: OfferGrouping = .market
     @State private var sort: OfferSort = .standard
     @State private var categoryFilter: String?
     @State private var marketFilter: String?
-
-    init(regions: [String], favoriteMarkets: [Market], repository: OfferRepositoryProtocol) {
-        self.regions = regions
-        self.favoriteMarkets = favoriteMarkets
-        _store = State(initialValue: OfferStore(repository: repository, cache: try? OfferCache()))
-    }
 
     private var chains: [String] {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
@@ -32,6 +28,14 @@ struct OffersView: View {
                 .toolbar { filterMenu }
         }
         .task(id: regions) { await store.load(regions: regions, chains: chains) }
+        // A market filter can outlive the branch it names — unfavourite Netto in
+        // the settings and the Angebote tab was left filtering on a chain that no
+        // longer has offers, i.e. permanently empty with no visible cause.
+        .onChange(of: chains) { _, updated in
+            if let marketFilter, !updated.contains(marketFilter) {
+                self.marketFilter = nil
+            }
+        }
     }
 
     @ViewBuilder
@@ -73,10 +77,37 @@ struct OffersView: View {
             Text(store.hasFavoriteChains
                 ? "Für deine Filialen liegen gerade keine Angebote vor. Nimm in den Einstellungen weitere Filialen dazu, um mehr zu sehen."
                 : "Für deine Region liegen aktuell keine Angebote vor. Schau später noch einmal vorbei.")
+        } actions: {
+            // The empty state has no list, so there is nothing to pull down —
+            // without this button a user who suspects a hiccup can only kill
+            // the app and hope.
+            Button("Erneut laden") {
+                Task { await store.refresh() }
+            }
+            .buttonStyle(.bordered)
         }
         .accessibilityLabel(store.hasFavoriteChains
             ? "Keine Angebote für deine Filialen"
             : "Keine Angebote für deine Region")
+    }
+
+    /// Everything was filtered away. Distinct from `emptyState`: here the data
+    /// is fine and the user's own filter is in the way, so the fix is one tap.
+    private var noFilterMatchState: some View {
+        ContentUnavailableView {
+            Label("Nichts für diesen Filter", systemImage: "line.3.horizontal.decrease.circle")
+        } description: {
+            Text("Für die gewählte Kategorie oder den gewählten Markt gibt es diese Woche keine Angebote.")
+        } actions: {
+            Button("Filter zurücksetzen") { resetFilters() }
+                .buttonStyle(.borderedProminent)
+        }
+    }
+
+    private func resetFilters() {
+        categoryFilter = nil
+        marketFilter = nil
+        sort = .standard
     }
 
     private var offerList: some View {
@@ -89,14 +120,27 @@ struct OffersView: View {
                 category: categoryFilter, market: marketFilter, sort: sort
             )
             if visible.isEmpty {
-                ContentUnavailableView.search(text: search)
+                // Two different dead ends that used to look identical: an empty
+                // search still rendered the search-empty view, which reads as
+                // "Keine Ergebnisse für ‚‘" when only a filter was to blame.
+                if !search.trimmingCharacters(in: .whitespaces).isEmpty {
+                    ContentUnavailableView.search(text: search)
+                } else {
+                    noFilterMatchState
+                }
             } else {
                 topDealsSection
-                ForEach(OfferQuery.grouped(visible, by: grouping), id: \.key) { section in
+                ForEach(Array(OfferQuery.grouped(visible, by: grouping).enumerated()), id: \.element.key) { index, section in
                     Section(sectionTitle(section.key)) {
                         ForEach(section.offers) { OfferRowView(offer: $0) }
                     }
                     .listRowBackground(Theme.surface)
+                    // Reserved ad position: after the first market section, so a
+                    // creative can never be read as part of a group. Renders
+                    // nothing today — see `AdSlot`.
+                    if index == 0 {
+                        AdSlotView(slot: .offerListInline)
+                    }
                 }
             }
         }
@@ -177,6 +221,6 @@ struct OffersView: View {
     OffersView(
         regions: ["01219"],
         favoriteMarkets: MockFixtures.markets,
-        repository: MockOfferRepository()
+        store: OfferStore(repository: MockOfferRepository(), cache: nil)
     )
 }

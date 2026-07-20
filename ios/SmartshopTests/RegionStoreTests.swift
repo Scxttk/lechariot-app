@@ -265,6 +265,7 @@ final class RegionStoreTests: XCTestCase {
         await store.addRegion("01219")
         let market = Market(chain: "Lidl", branchName: "Dresden Reick", marketId: "lidl-01219-1", plz: "01219")
         store.toggleFavorite(market)
+        store.completeOnboarding()
         XCTAssertTrue(store.isOnboardingComplete)
 
         // Fresh store over the same defaults simulates an app relaunch.
@@ -274,11 +275,101 @@ final class RegionStoreTests: XCTestCase {
         XCTAssertEqual(relaunched.favoriteMarkets, [market])
         XCTAssertEqual(relaunched.syncState(for: "01219"), .ready)
         XCTAssertTrue(relaunched.isOnboardingComplete)
-
-        relaunched.toggleFavorite(market)
-        XCTAssertTrue(relaunched.favoriteMarkets.isEmpty)
-        XCTAssertFalse(relaunched.isOnboardingComplete)
     }
+
+    // MARK: Onboarding completion
+
+    func testFreshStoreIsNotOnboarded() {
+        let store = makeStore(repository: ControllableRegionRepository())
+        XCTAssertFalse(store.isOnboardingComplete)
+        XCTAssertFalse(store.hasFavorites)
+    }
+
+    /// The regression that motivated the sticky flag: removing the last branch
+    /// used to flip `isOnboardingComplete` back to false, which yanked the whole
+    /// app out from under a user standing in the settings.
+    func testRemovingTheLastBranchKeepsTheUserInTheApp() async {
+        let repo = ControllableRegionRepository()
+        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
+        let store = makeStore(repository: repo)
+        await store.addRegion("01219")
+        let market = Market(chain: "Lidl", branchName: "Reick", marketId: "lidl-1", plz: "01219")
+        store.toggleFavorite(market)
+        store.completeOnboarding()
+
+        store.toggleFavorite(market)
+
+        XCTAssertTrue(store.favoriteMarkets.isEmpty)
+        XCTAssertFalse(store.hasFavorites, "the tabs need to know a branch is missing")
+        XCTAssertTrue(store.isOnboardingComplete, "but that must not restart onboarding")
+    }
+
+    func testRemovingTheLastRegionKeepsTheUserInTheApp() async {
+        let repo = ControllableRegionRepository()
+        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
+        let store = makeStore(repository: repo)
+        await store.addRegion("01219")
+        store.toggleFavorite(Market(chain: "Lidl", branchName: "Reick", marketId: "lidl-1", plz: "01219"))
+        store.completeOnboarding()
+
+        store.removeRegion("01219")
+
+        XCTAssertTrue(store.orderedReadyRegions.isEmpty)
+        XCTAssertTrue(store.isOnboardingComplete)
+    }
+
+    /// Installs that predate the flag must not be sent through onboarding again
+    /// just because their defaults have no `onboardingCompleted` key.
+    func testInstallFromBeforeTheFlagCountsAsOnboarded() throws {
+        let market = Market(chain: "Lidl", branchName: "Reick", marketId: "lidl-1", plz: "01219")
+        defaults.set(["01219"], forKey: "region.plzs")
+        defaults.set(["01219"], forKey: "region.readyPLZs")
+        defaults.set(try JSONEncoder().encode([market]), forKey: "region.favoriteMarkets")
+
+        let store = makeStore(repository: ControllableRegionRepository())
+
+        XCTAssertTrue(store.isOnboardingComplete)
+        // …and the migration is written through, so it survives the next launch
+        // even if the user then removes the branch.
+        XCTAssertTrue(defaults.bool(forKey: "region.onboardingCompleted"))
+    }
+
+    /// An install that never finished onboarding (region added, no branch
+    /// picked) must not be migrated into the app.
+    func testHalfFinishedInstallIsNotMigrated() {
+        defaults.set(["01219"], forKey: "region.plzs")
+        defaults.set(["01219"], forKey: "region.readyPLZs")
+
+        let store = makeStore(repository: ControllableRegionRepository())
+
+        XCTAssertFalse(store.isOnboardingComplete)
+    }
+
+    #if DEBUG
+    func testDebugResetRestoresFirstLaunchState() async {
+        let repo = ControllableRegionRepository()
+        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
+        let store = makeStore(repository: repo)
+        await store.addRegion("01219")
+        store.toggleFavorite(Market(chain: "Lidl", branchName: "Reick", marketId: "lidl-1", plz: "01219"))
+        store.completeOnboarding()
+
+        store.resetAllData()
+
+        XCTAssertFalse(store.isOnboardingComplete)
+        XCTAssertTrue(store.regions.isEmpty)
+        XCTAssertTrue(store.favoriteMarkets.isEmpty)
+        XCTAssertTrue(store.orderedReadyRegions.isEmpty)
+        XCTAssertNil(store.selectedRegion)
+        XCTAssertEqual(store.syncState(for: "01219"), .unknown)
+
+        // Deterministic: a relaunch over the same defaults sees nothing either,
+        // so the reset can be repeated without drift.
+        let relaunched = makeStore(repository: repo)
+        XCTAssertFalse(relaunched.isOnboardingComplete)
+        XCTAssertTrue(relaunched.regions.isEmpty)
+    }
+    #endif
 
     func testRemoveRegionClearsFavoritesAndSelection() async {
         let repo = ControllableRegionRepository()

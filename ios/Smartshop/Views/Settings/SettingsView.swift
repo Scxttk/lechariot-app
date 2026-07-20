@@ -5,8 +5,12 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(RegionStore.self) private var store
     @Environment(ProfileStore.self) private var profile
+    @Environment(ShoppingListStore.self) private var list
+    @Environment(MatchRejectionStore.self) private var rejections
     @AppStorage(Theme.appearanceKey) private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
+
+    @State private var showResetConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -17,6 +21,9 @@ struct SettingsView: View {
                     profileSection
                     appearanceSection
                     appSection
+                    #if DEBUG
+                    debugSection
+                    #endif
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -165,6 +172,9 @@ struct SettingsView: View {
         Section("App") {
             LabeledContent("Version", value: Self.appVersion)
             LabeledContent("Angebote", value: "wöchentlich aktualisiert")
+            // Reserved ad position — see `AdSlot`. Lowest-value slot, kept as the
+            // natural home for a house ad (e.g. a werbefreie Variante).
+            AdSlotView(slot: .settingsFooter)
         }
     }
 
@@ -172,6 +182,40 @@ struct SettingsView: View {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         return version ?? "–"
     }
+
+    // MARK: Debug
+
+    #if DEBUG
+    /// Only compiled into debug builds — a release build has no reset button and
+    /// no code path leading to one.
+    private var debugSection: some View {
+        Section {
+            Button("Onboarding zurücksetzen", systemImage: "arrow.counterclockwise", role: .destructive) {
+                showResetConfirmation = true
+            }
+            .foregroundStyle(Theme.error)
+            .confirmationDialog(
+                "Alles zurücksetzen?",
+                isPresented: $showResetConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Zurücksetzen", role: .destructive) {
+                    DebugReset.everything(
+                        regions: store, profile: profile,
+                        list: list, rejections: rejections
+                    )
+                }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                Text("Regionen, Filialen, Profil, Einkaufsliste, abgelehnte Treffer und der Angebots-Cache werden gelöscht. Die App startet danach beim Willkommensbildschirm.")
+            }
+        } header: {
+            Text("Debug")
+        } footer: {
+            Text("Nur in Entwicklungs-Builds sichtbar.")
+        }
+    }
+    #endif
 }
 
 // MARK: - Subscreens
@@ -200,7 +244,12 @@ private struct ProfileEditScreen: View {
                 Section("Name") {
                     TextField("Vorname", text: $name)
                         .textContentType(.givenName)
-                        .onSubmit { profile.setFirstName(name) }
+                        // Saved as it is typed. It used to be written on submit
+                        // and on disappear, which loses the edit whenever iOS
+                        // kills the app in the background — and every other
+                        // field on this screen already saves immediately, so
+                        // the name was the odd one out.
+                        .onChange(of: name) { _, edited in profile.setFirstName(edited) }
                 }
 
                 Section("Haushalt") {
@@ -273,7 +322,6 @@ private struct ProfileEditScreen: View {
         .navigationTitle("Dein Profil")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { name = profile.profile.firstName }
-        .onDisappear { profile.setFirstName(name) }
     }
 }
 
@@ -281,4 +329,6 @@ private struct ProfileEditScreen: View {
     SettingsView(marketRepository: MockMarketRepository())
         .environment(RegionStore(repository: MockRegionRepository()))
         .environment(ProfileStore())
+        .environment(ShoppingListStore())
+        .environment(MatchRejectionStore())
 }

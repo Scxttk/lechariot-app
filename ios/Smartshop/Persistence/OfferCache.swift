@@ -8,6 +8,14 @@ final class OfferCache {
     /// Cached data older than this counts as stale.
     static let maxAge: TimeInterval = 24 * 60 * 60
 
+    /// The app's single cache instance.
+    ///
+    /// A `ModelContainer` is expensive and opens the store file. SwiftUI
+    /// re-evaluates `@State` initial values on every view init and throws all
+    /// but the first away, so building one inline meant constructing containers
+    /// over and over — for the same file — and discarding them.
+    static let shared: OfferCache? = try? OfferCache()
+
     private let container: ModelContainer
 
     init(inMemory: Bool = false) throws {
@@ -32,6 +40,13 @@ final class OfferCache {
         for offer in offers {
             context.insert(CachedOffer(offer: offer, fetchedAt: fetchedAt))
         }
+        try context.save()
+    }
+
+    /// Drops every cached row of every region.
+    func deleteAll() throws {
+        let context = container.mainContext
+        try context.delete(model: CachedOffer.self)
         try context.save()
     }
 

@@ -87,6 +87,15 @@ struct RegionSetupView: View {
             .tint(Theme.accent)
             .disabled(isBusy)
 
+            // The number pad has no return key and "Weiter" is simply grey until
+            // the PLZ is complete, so a half-typed code left the user with two
+            // dead controls and no idea why.
+            if !manualPLZ.isEmpty && !PLZValidator.isValid(manualPLZ) {
+                Text("Eine Postleitzahl hat fünf Ziffern.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             if let errorMessage {
                 Label(errorMessage, systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
@@ -117,6 +126,13 @@ struct RegionSetupView: View {
 
     private func submit(_ rawPLZ: String) {
         guard let plz = PLZValidator.normalized(rawPLZ) else { return }
+        // `addRegion` quietly does nothing once the limit is reached. Without
+        // this the flow would report success and move on with a region that was
+        // never stored.
+        guard store.canAddRegion || store.regions.contains(plz) else {
+            errorMessage = "Mehr als \(RegionStore.maxRegions) Regionen gehen nicht. Entferne in den Einstellungen eine, die du nicht mehr brauchst."
+            return
+        }
         errorMessage = nil
         isChecking = true
         Task {

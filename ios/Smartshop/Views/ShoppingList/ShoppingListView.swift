@@ -7,7 +7,8 @@ struct ShoppingListView: View {
     let favoriteMarkets: [Market]
 
     @Environment(ShoppingListStore.self) private var list
-    @State private var offerStore: OfferStore
+    /// Shared with the offers tab — see `ContentView.offerStore`.
+    let offerStore: OfferStore
     @Environment(MatchRejectionStore.self) private var rejections
     @Environment(ProfileStore.self) private var profile
     @State private var detailItem: ShoppingItem?
@@ -21,12 +22,6 @@ struct ShoppingListView: View {
         "Milch", "Brot", "Butter", "Eier",
         "Käse", "Bananen", "Kaffee", "Nudeln",
     ]
-
-    init(regions: [String], favoriteMarkets: [Market], repository: OfferRepositoryProtocol) {
-        self.regions = regions
-        self.favoriteMarkets = favoriteMarkets
-        _offerStore = State(initialValue: OfferStore(repository: repository, cache: try? OfferCache()))
-    }
 
     private var chains: [String] {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
@@ -131,6 +126,10 @@ struct ShoppingListView: View {
                 }
                 .listRowBackground(Theme.surface)
             }
+
+            // Reserved ad position: below everything, well clear of the plan
+            // card and the suggestion tiles. Renders nothing today — see `AdSlot`.
+            AdSlotView(slot: .shoppingListFooter)
         }
     }
 
@@ -267,7 +266,7 @@ struct ShoppingListView: View {
     ShoppingListView(
         regions: ["01219"],
         favoriteMarkets: MockFixtures.markets,
-        repository: MockOfferRepository()
+        offerStore: OfferStore(repository: MockOfferRepository(), cache: nil)
     )
     .environment(ShoppingListStore())
     .environment(MatchRejectionStore())

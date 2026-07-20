@@ -97,6 +97,25 @@ struct MarketPickerView: View {
                 }
             }
 
+            // The error gets its own section regardless of what is already on
+            // screen: a failed *reload* used to be invisible whenever markets
+            // from an earlier attempt were still listed, so the user waited for
+            // a list that was never coming.
+            if let errorMessage {
+                Section {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                        Label(errorMessage, systemImage: "wifi.exclamationmark")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.error)
+                        Button("Erneut versuchen") {
+                            Task { await loadMarkets() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding(.vertical, Theme.Spacing.xs)
+                }
+            }
+
             if filtered.isEmpty && !isLoading && !query.isEmpty {
                 Section {
                     Text("Keine Filiale passt zu \u{201E}\(query)\u{201C}.")
@@ -105,9 +124,9 @@ struct MarketPickerView: View {
                 }
             }
 
-            if markets.isEmpty && !isLoading && query.isEmpty {
+            if markets.isEmpty && !isLoading && query.isEmpty && errorMessage == nil {
                 Section {
-                    Text(errorMessage ?? "Für deine Regionen wurden noch keine Filialen gefunden.")
+                    Text("Für deine Regionen wurden noch keine Filialen gefunden.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -126,12 +145,31 @@ struct MarketPickerView: View {
         }
         .themedScreen()
         .searchable(text: $query, prompt: "Kette, Filiale oder PLZ")
-        .overlay { if isLoading { ProgressView("Filialen werden geladen …") } }
+        // Only cover the list on the *first* load — during a pull-to-refresh the
+        // list already has its own spinner, and two at once looked broken.
+        .overlay { if isLoading && markets.isEmpty { ProgressView("Filialen werden geladen …") } }
         .navigationTitle("Filialen wählen")
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Fertig") { onDone() }
                     .disabled(!hasAnyFavorites)
+                    .accessibilityIdentifier("markets.done")
+                    // A disabled button with no explanation is a dead end;
+                    // VoiceOver users get nothing at all from it.
+                    .accessibilityHint(hasAnyFavorites ? "" : "Wähle zuerst mindestens eine Filiale aus")
+            }
+        }
+        // Tells the user what the greyed-out "Fertig" is waiting for, without
+        // adding a second permanent line once they have chosen something.
+        .safeAreaInset(edge: .bottom) {
+            if !hasAnyFavorites && !isLoading {
+                Text("Wähle mindestens eine Filiale, um fortzufahren.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Theme.Spacing.sm)
+                    .background(.bar)
+                    .accessibilityHidden(true)
             }
         }
         .task { await loadMarkets() }
@@ -161,9 +199,17 @@ struct MarketPickerView: View {
                     .font(.title3)
                     .contentTransition(.symbolEffect(.replace))
             }
+            // Without this the row only reacts where something is drawn — and
+            // the middle of the row is the `Spacer`. Tapping the obvious target,
+            // the gap between branch name and checkmark, did nothing at all.
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
+        // No `.accessibilityElement(children: .ignore)` here: on a Button it
+        // shadows the element VoiceOver actually focuses, and the label below
+        // was silently dropped — the row announced "Dresden Reick, PLZ 01219"
+        // with no chain name and no selected/not-selected state. A Button takes
+        // an overriding label directly.
         .accessibilityLabel(
             "\(market.chain), \(market.isNationwide ? "deutschlandweit" : market.branchName)"
         )
@@ -178,7 +224,12 @@ struct MarketPickerView: View {
         do {
             markets = try await marketRepository.markets(plzs: plzs)
         } catch {
-            errorMessage = "Filialen konnten nicht geladen werden. Ziehe die Liste nach unten, um es erneut zu versuchen."
+            // Leaving the screen cancels this; that is not something to report.
+            guard !LoadFailure.isCancellation(error) else {
+                isLoading = false
+                return
+            }
+            errorMessage = LoadFailure.message(for: error, subject: "Die Filialen")
         }
         isLoading = false
     }

@@ -8,6 +8,8 @@ struct WaitingView: View {
     /// Lets the user go back and pick a different PLZ.
     var onChangeRegion: () -> Void
 
+    @State private var isRetrying = false
+
     var body: some View {
         VStack(spacing: 20) {
             Spacer()
@@ -30,8 +32,8 @@ struct WaitingView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
         .navigationTitle("Region \(plz)")
-        // Progress-Polling lebt exakt so lange wie diese View sichtbar ist;
-        // bei ready/failed kehrt observeProgress von selbst zurück.
+        // Progress polling lives exactly as long as this view is on screen;
+        // observeProgress returns by itself once the region is ready or failed.
         .task(id: plz) { await store.observeProgress(plz: plz) }
     }
 
@@ -66,8 +68,9 @@ struct WaitingView: View {
         .animation(.default, value: progress)
     }
 
-    /// Chips der bereits gefundenen Märkte — sie erscheinen nacheinander,
-    /// während der Server-Sync die Ketten abarbeitet.
+    /// The markets found so far — they appear one by one while the server sync
+    /// works through the chains, which is the only honest progress signal we
+    /// have (no total is known).
     private func foundMarketsList(_ markets: [Market]) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(markets, id: \.marketId) { market in
@@ -117,14 +120,26 @@ struct WaitingView: View {
         }
     }
 
+    /// The retry itself is a network round trip that can take seconds and, if it
+    /// fails again, leaves the screen looking exactly as before. Without the
+    /// busy state the button swallowed taps silently and invited hammering.
     private var retryButton: some View {
         Button {
-            Task { await store.retry(plz) }
+            guard !isRetrying else { return }
+            isRetrying = true
+            Task {
+                await store.retry(plz)
+                isRetrying = false
+            }
         } label: {
-            Label("Erneut versuchen", systemImage: "arrow.clockwise")
-                .padding(.horizontal, 8)
+            Label(
+                isRetrying ? "Wird geprüft …" : "Erneut versuchen",
+                systemImage: "arrow.clockwise"
+            )
+            .padding(.horizontal, 8)
         }
         .buttonStyle(.borderedProminent)
+        .disabled(isRetrying)
     }
 }
 

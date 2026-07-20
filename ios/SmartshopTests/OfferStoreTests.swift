@@ -103,7 +103,32 @@ final class OfferStoreTests: XCTestCase {
 
         await store.load(regions: ["01219"], chains: [])
 
-        XCTAssertEqual(store.state, .error("kaputt"))
+        // The message is written for a shopper, so the store must not simply
+        // forward whatever the networking layer threw — `SupabaseError` has no
+        // localization at all and used to surface as "The operation couldn't be
+        // completed. (Smartshop.SupabaseError error 2.)".
+        guard case .error(let message) = store.state else {
+            return XCTFail("expected an error state, got \(store.state)")
+        }
+        XCTAssertFalse(message.contains("kaputt"), "internal error text must not reach the screen")
+        XCTAssertTrue(message.contains("Angebote"))
+    }
+
+    /// A cancelled fetch is routine — `.task(id: regions)` restarts on every
+    /// region change and leaving the tab cancels too. It must not be mistaken
+    /// for the network being down.
+    func testCancellationIsNotTreatedAsAnError() async throws {
+        let store = OfferStore(
+            repository: StubOfferRepository(result: .failure(CancellationError())),
+            cache: try makeCache()
+        )
+
+        await store.load(regions: ["01219"], chains: [])
+
+        XCTAssertFalse(store.isOffline)
+        if case .error = store.state {
+            XCTFail("a cancelled load must not surface as an error")
+        }
     }
 
     func testLoadErrorWithCacheKeepsCachedDataAndFlagsStale() async throws {

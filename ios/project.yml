@@ -36,15 +36,28 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skoehler.smartshopTests
         GENERATE_INFOPLIST_FILE: true
+  SmartshopUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: SmartshopUITests
+    dependencies:
+      - target: Smartshop
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.skoehler.smartshopUITests
+        GENERATE_INFOPLIST_FILE: true
 schemes:
   Smartshop:
     build:
       targets:
         Smartshop: all
         SmartshopTests: [test]
+        SmartshopUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
         - SmartshopTests
+        - SmartshopUITests

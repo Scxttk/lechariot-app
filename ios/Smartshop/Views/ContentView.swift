@@ -6,6 +6,16 @@ struct ContentView: View {
 
     @State private var shoppingList = ShoppingListStore()
     @State private var rejections = MatchRejectionStore()
+    /// One offer store for the whole app.
+    ///
+    /// Liste and Angebote used to build one each. Both then fetched the full
+    /// weekly set over the network and both called `replaceAll` on the same
+    /// SwiftData rows — twice the traffic for identical data, and two writers
+    /// racing on one cache. They show the same offers, so they share the store.
+    @State private var offerStore = OfferStore(
+        repository: AppRepositories.offers,
+        cache: OfferCache.shared
+    )
     /// Every cold start lands on the shopping list — that is the screen the app
     /// exists for. Deliberately not persisted: reopening the app mid-week must
     /// not drop the user wherever they happened to leave off.
@@ -26,7 +36,7 @@ struct ContentView: View {
     private var mainTabs: some View {
         TabView(selection: $selectedTab) {
             allRegionScoped { regions, markets in
-                ShoppingListView(regions: regions, favoriteMarkets: markets, repository: Self.offerRepository)
+                ShoppingListView(regions: regions, favoriteMarkets: markets, offerStore: offerStore)
             }
             .tabItem {
                 Label("Liste", systemImage: "checklist")
@@ -54,39 +64,56 @@ struct ContentView: View {
     /// users see offers from every region they added.
     @ViewBuilder
     private var offersTab: some View {
-        let regions = store.orderedReadyRegions
-        if regions.isEmpty {
-            ContentUnavailableView("Keine Region ausgewählt", systemImage: "mappin.slash")
-        } else {
+        allRegionScoped { regions, markets in
             OffersView(
                 regions: regions,
-                favoriteMarkets: store.favoriteMarkets(in: regions),
-                repository: Self.offerRepository
+                favoriteMarkets: markets,
+                store: offerStore
             )
         }
     }
 
-    /// Einkaufsliste spans all ready regions, like Angebote — the chosen
-    /// branches are the filter, not the selected region.
+    /// Both content tabs span all ready regions — the chosen branches are the
+    /// filter, not a selected region.
+    ///
+    /// Since onboarding completion became sticky, a user can legitimately end up
+    /// here with no region or no branch (they removed the last one in the
+    /// settings). Neither is an error, and neither is a dead end any more: both
+    /// states name the missing piece and hand over a button to the screen that
+    /// restores it.
     @ViewBuilder
     private func allRegionScoped(
         @ViewBuilder content: ([String], [Market]) -> some View
     ) -> some View {
         let regions = store.orderedReadyRegions
         if regions.isEmpty {
-            ContentUnavailableView("Keine Region ausgewählt", systemImage: "mappin.slash")
+            setupNeeded(
+                title: "Keine Region bereit",
+                symbol: "mappin.slash",
+                message: "Füge in den Einstellungen eine Postleitzahl hinzu — dann lädt Smartshop die Angebote deiner Gegend."
+            )
+        } else if !store.hasFavorites {
+            setupNeeded(
+                title: "Keine Filiale gewählt",
+                symbol: "storefront",
+                message: "Smartshop vergleicht nur die Läden, in die du wirklich gehst. Wähle mindestens eine Filiale aus."
+            )
         } else {
             content(regions, store.favoriteMarkets(in: regions))
         }
     }
 
-    /// Mirrors the live-or-mock fallback used in SmartshopApp for the other repositories.
-    private static let offerRepository: OfferRepositoryProtocol = {
-        if let client = SupabaseClient.fromConfig() {
-            return LiveOfferRepository(client: client)
+    private func setupNeeded(title: String, symbol: String, message: String) -> some View {
+        ContentUnavailableView {
+            Label(title, systemImage: symbol)
+        } description: {
+            Text(message)
+        } actions: {
+            Button("Zu den Einstellungen") { selectedTab = .einstellungen }
+                .buttonStyle(.borderedProminent)
         }
-        return MockOfferRepository()
-    }()
+        .themedScreen()
+    }
 }
 
 #Preview {

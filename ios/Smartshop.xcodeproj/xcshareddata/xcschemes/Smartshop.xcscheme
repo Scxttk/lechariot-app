@@ -35,6 +35,20 @@
                ReferencedContainer = "container:Smartshop.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "810DEB68BC39EA88AADB7DF3"
+               BuildableName = "SmartshopUITests.xctest"
+               BlueprintName = "SmartshopUITests"
+               ReferencedContainer = "container:Smartshop.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -61,6 +75,17 @@
                BlueprintIdentifier = "2700211C78E5A6655B8CBB3B"
                BuildableName = "SmartshopTests.xctest"
                BlueprintName = "SmartshopTests"
+               ReferencedContainer = "container:Smartshop.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "810DEB68BC39EA88AADB7DF3"
+               BuildableName = "SmartshopUITests.xctest"
+               BlueprintName = "SmartshopUITests"
                ReferencedContainer = "container:Smartshop.xcodeproj">
             </BuildableReference>
          </TestableReference>

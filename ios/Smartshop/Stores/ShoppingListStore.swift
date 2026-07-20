@@ -94,4 +94,13 @@ final class ShoppingListStore {
             defaults.set(data, forKey: Self.key)
         }
     }
+
+    #if DEBUG
+    /// See `DebugReset`. Clears memory and disk, not just the array — a
+    /// `clearAll()` would leave an empty-but-present record behind.
+    func resetAllData() {
+        items = []
+        defaults.removeObject(forKey: Self.key)
+    }
+    #endif
 }

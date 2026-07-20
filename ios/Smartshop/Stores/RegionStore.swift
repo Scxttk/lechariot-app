@@ -80,6 +80,9 @@ final class RegionStore {
     private(set) var syncStates: [String: RegionSyncState] = [:]
     /// Live progress per PLZ while a sync runs (fed by `observeProgress`).
     private(set) var syncProgress: [String: RegionSyncProgress] = [:]
+    /// Set once the user has walked through onboarding, and never cleared by
+    /// normal use. See `isOnboardingComplete`.
+    private(set) var hasCompletedOnboarding: Bool
 
     private var pollTasks: [String: Task<Void, Never>] = [:]
 
@@ -88,6 +91,9 @@ final class RegionStore {
         static let selected = "region.selected"
         static let favorites = "region.favoriteMarkets"
         static let ready = "region.readyPLZs"
+        static let onboarded = "region.onboardingCompleted"
+
+        static let all = [regions, selected, favorites, ready, onboarded]
     }
 
     init(
@@ -105,6 +111,7 @@ final class RegionStore {
         self.regions = defaults.stringArray(forKey: Keys.regions) ?? []
         self.selectedRegion = defaults.string(forKey: Keys.selected)
         self.readyRegions = Set(defaults.stringArray(forKey: Keys.ready) ?? [])
+        self.hasCompletedOnboarding = defaults.bool(forKey: Keys.onboarded)
         if let data = defaults.data(forKey: Keys.favorites),
            let markets = try? JSONDecoder().decode([Market].self, from: data) {
             self.favoriteMarkets = markets
@@ -122,6 +129,12 @@ final class RegionStore {
         for plz in readyRegions {
             syncStates[plz] = .ready
         }
+        // Installs from before the flag existed: they earned their way through
+        // onboarding under the old derived rule, so honour it once and store it.
+        if !hasCompletedOnboarding, !readyRegions.isEmpty, !favoriteMarkets.isEmpty {
+            hasCompletedOnboarding = true
+        }
+        persist()
     }
 
     // MARK: Derived state
@@ -134,10 +147,26 @@ final class RegionStore {
         regions.filter { readyRegions.contains($0) }
     }
 
-    /// Onboarding is done once at least one region is ready and at least one
-    /// Wunschmarkt is chosen.
-    var isOnboardingComplete: Bool {
-        !readyRegions.intersection(regions).isEmpty && !favoriteMarkets.isEmpty
+    /// Whether the main app UI may be shown.
+    ///
+    /// This used to be derived from "has a ready region AND a chosen branch",
+    /// which made it reversible: removing the last branch in the settings threw
+    /// the user out of the app and back into onboarding, mid-tap, with the
+    /// settings screen yanked away underneath them. Onboarding is a one-time
+    /// event, so it is recorded as one. Missing regions or branches are now
+    /// ordinary empty states inside the tabs, right next to the settings that
+    /// fix them.
+    var isOnboardingComplete: Bool { hasCompletedOnboarding }
+
+    /// True once at least one branch is chosen — without one, nothing can be
+    /// matched and both content tabs have nothing honest to show.
+    var hasFavorites: Bool { !favoriteMarkets.isEmpty }
+
+    /// Records that onboarding was walked through. Idempotent.
+    func completeOnboarding() {
+        guard !hasCompletedOnboarding else { return }
+        hasCompletedOnboarding = true
+        persist()
     }
 
     func syncState(for plz: String) -> RegionSyncState {
@@ -290,8 +319,27 @@ final class RegionStore {
         defaults.set(regions, forKey: Keys.regions)
         defaults.set(selectedRegion, forKey: Keys.selected)
         defaults.set(Array(readyRegions), forKey: Keys.ready)
+        defaults.set(hasCompletedOnboarding, forKey: Keys.onboarded)
         if let data = try? JSONEncoder().encode(favoriteMarkets) {
             defaults.set(data, forKey: Keys.favorites)
         }
     }
+
+    #if DEBUG
+    /// Wipes every trace of this store, in memory and on disk, so the next
+    /// render is indistinguishable from a first launch. Debug builds only —
+    /// see `DebugReset`.
+    func resetAllData() {
+        for task in pollTasks.values { task.cancel() }
+        pollTasks.removeAll()
+        regions = []
+        selectedRegion = nil
+        favoriteMarkets = []
+        readyRegions = []
+        syncStates = [:]
+        syncProgress = [:]
+        hasCompletedOnboarding = false
+        for key in Keys.all { defaults.removeObject(forKey: key) }
+    }
+    #endif
 }

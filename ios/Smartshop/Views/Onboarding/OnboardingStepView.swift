@@ -70,12 +70,18 @@ struct OnboardingStepView<Content: View>: View {
             .buttonStyle(.borderedProminent)
             .tint(Theme.accent)
             .disabled(!isPrimaryEnabled)
+            // Stable handle for the UI journeys: several steps put a text field
+            // on screen, and the software keyboard contributes its own buttons
+            // labelled "Weiter" and "Fertig" that are otherwise indistinguishable
+            // from these by label alone.
+            .accessibilityIdentifier("onboarding.primary")
 
             if let skip {
                 Button(skip.title, action: skip.action)
                     .font(.subheadline)
                     .tint(Theme.accent)
                     .frame(minHeight: 44)
+                    .accessibilityIdentifier("onboarding.skip")
             }
         }
         .padding(.horizontal, Theme.Spacing.xl)
