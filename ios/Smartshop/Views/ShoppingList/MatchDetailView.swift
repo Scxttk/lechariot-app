@@ -119,4 +119,9 @@ struct MatchDetailView: View {
 #Preview {
     MatchDetailView(item: ShoppingItem(text: "Milch"), offers: MockFixtures.offers)
         .environment(MatchRejectionStore())
+        // Beide neu seit der Rückfrage: die Ablehnung liest den Schalter,
+        // das Sheet die install_id. Fehlt einer, stürzt die Preview beim
+        // ersten Tippen auf ✕ ab statt sie nur anders auszusehen.
+        .environment(MatchFeedbackStore())
+        .environment(ProfileStore())
 }

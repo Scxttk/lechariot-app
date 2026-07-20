@@ -121,4 +121,8 @@ struct ContentView: View {
 #Preview {
     ContentView(marketRepository: MockMarketRepository())
         .environment(RegionStore(repository: MockRegionRepository()))
+        // Liste, Einstellungen und Onboarding lesen alle das Profil; im echten
+        // Start kommt es aus `SmartshopApp`. Ohne das hier stürzt die Preview
+        // beim Wechsel in die Einstellungen ab.
+        .environment(ProfileStore())
 }

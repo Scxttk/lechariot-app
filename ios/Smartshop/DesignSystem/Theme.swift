@@ -305,6 +305,11 @@ struct TactileButtonStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+            // Ohne das ist nur der gezeichnete Inhalt antippbar — bei einem
+            // Icon in einem 44-pt-Rahmen also der Glyph, nicht der Rahmen.
+            // Der Accessibility-Audit hat genau das am Weglegen-Knopf gemeldet;
+            // dieselbe Falle wie die tote Mitte der Filialzeile in Phase 8.
+            .contentShape(Rectangle())
     }
 }
 

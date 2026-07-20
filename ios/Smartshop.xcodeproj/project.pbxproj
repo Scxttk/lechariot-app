@@ -26,6 +26,7 @@
 		2ACE35BC3D6B25DEA4DAA0DB /* Repositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9067D38E35AD37E75F0399D0 /* Repositories.swift */; };
 		2D26416495DC7325CC715D1C /* RegionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B96A835BFBDEAD6596C4A2D7 /* RegionStoreTests.swift */; };
 		2F362391D7A9A655E53746B8 /* CachedOffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E45E1256E34DE2781CBF860E /* CachedOffer.swift */; };
+		2F44692E1ADD3DEEABB2EC24 /* AccessibilityAuditTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA9689939755DC7F4A597F7 /* AccessibilityAuditTests.swift */; };
 		40DD889262FF2BC3BA791FD9 /* MarketPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863A1058C1028198058B3773 /* MarketPickerView.swift */; };
 		41672127D26EB44E5BFD0BB6 /* ProfileStepsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE7256204AE9324388462677 /* ProfileStepsView.swift */; };
 		51848D45B3928B6DDB8CB3DC /* MatchRejectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E891BCC1A8EAA8D316A08E4 /* MatchRejectionStore.swift */; };
@@ -116,6 +117,7 @@
 		370489AA970D79373393E3E3 /* OfferQueryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferQueryTests.swift; sourceTree = "<group>"; };
 		39F6AA8757179BD940639D76 /* OfferStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferStoreTests.swift; sourceTree = "<group>"; };
 		39F7BDB9E68A73D6A55891AF /* ShoppingPlanCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingPlanCard.swift; sourceTree = "<group>"; };
+		4AA9689939755DC7F4A597F7 /* AccessibilityAuditTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuditTests.swift; sourceTree = "<group>"; };
 		4D18C603BE777876E0579A32 /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
 		4D2AA9D14BC4A0DE3E94A637 /* Categories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Categories.swift; sourceTree = "<group>"; };
 		5138CD4A48A9D6A2F90BC9E5 /* ShoppingListRankingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingListRankingTests.swift; sourceTree = "<group>"; };
@@ -346,6 +348,7 @@
 		C6565E9CB9EA9EBEEAD79C94 /* SmartshopUITests */ = {
 			isa = PBXGroup;
 			children = (
+				4AA9689939755DC7F4A597F7 /* AccessibilityAuditTests.swift */,
 				53E90C2C8C872343C416B7B8 /* MatchFeedbackJourneyTests.swift */,
 				A9E55D4008AD91AD7BE5D837 /* OnboardingJourneyTests.swift */,
 			);
@@ -612,6 +615,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2F44692E1ADD3DEEABB2EC24 /* AccessibilityAuditTests.swift in Sources */,
 				A8543BF6AC50BCDC4B8E93B9 /* MatchFeedbackJourneyTests.swift in Sources */,
 				6EE84D0B46C83A66CA5546FB /* OnboardingJourneyTests.swift in Sources */,
 			);
