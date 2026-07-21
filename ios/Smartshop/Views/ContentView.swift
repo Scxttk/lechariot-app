@@ -113,6 +113,7 @@ struct ContentView: View {
         } actions: {
             Button("Zu den Einstellungen") { selectedTab = .einstellungen }
                 .buttonStyle(.borderedProminent)
+                .foregroundStyle(Theme.onAccent)
         }
         .themedScreen()
     }

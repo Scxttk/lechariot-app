@@ -40,6 +40,7 @@ struct RegionSetupView: View {
                     fields
                     Button("Weiter") { submit(manualPLZ) }
                         .buttonStyle(.borderedProminent)
+                        .foregroundStyle(Theme.onAccent)
                         .tint(Theme.accent)
                         .disabled(!canSubmit)
                         .frame(maxWidth: .infinity)

@@ -44,6 +44,19 @@ enum Theme {
             : UIColor(red: 0.247, green: 0.392, blue: 0.267, alpha: 1) // #3F6444
     })
 
+    /// Beschriftung **auf** einer Akzentfläche (gefüllte Knöpfe).
+    ///
+    /// `.borderedProminent` setzt seine Schrift automatisch auf Weiß. Im hellen
+    /// Modus stimmt das (6,74:1 auf `#3F6444`), im dunklen nicht: dort ist der
+    /// Akzent das aufgehellte `#8FBD94`, und Weiß darauf erreicht **2,13:1** —
+    /// am echten Gerät nachgemessen, auf dem Hauptknopf jedes
+    /// Onboarding-Schritts. Auf dem hellen Grün gehört das dunkle Olivgrün.
+    static let onAccent = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0.10, green: 0.12, blue: 0.08, alpha: 1)   // ~#1A1F15, 7,9:1
+            : .white
+    })
+
     /// Non-dominant brand color (brown) in both appearances — warm tan in
     /// dark, deep brown in light. For secondary highlights only, never controls.
     static let brandSecondary = Color(uiColor: UIColor { trait in

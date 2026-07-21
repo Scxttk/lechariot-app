@@ -61,6 +61,7 @@ struct OffersView: View {
                     Task { await store.refresh() }
                 }
                 .buttonStyle(.borderedProminent)
+                .foregroundStyle(Theme.onAccent)
             }
         case .loaded:
             offerList
@@ -101,6 +102,7 @@ struct OffersView: View {
         } actions: {
             Button("Filter zurücksetzen") { resetFilters() }
                 .buttonStyle(.borderedProminent)
+                .foregroundStyle(Theme.onAccent)
         }
     }
 

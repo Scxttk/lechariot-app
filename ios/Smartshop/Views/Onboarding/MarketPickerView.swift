@@ -111,6 +111,7 @@ struct MarketPickerView: View {
                             Task { await loadMarkets() }
                         }
                         .buttonStyle(.borderedProminent)
+                        .foregroundStyle(Theme.onAccent)
                     }
                     .padding(.vertical, Theme.Spacing.xs)
                 }

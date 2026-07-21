@@ -140,6 +140,7 @@ struct WaitingView: View {
             .padding(.horizontal, 8)
         }
         .buttonStyle(.borderedProminent)
+        .foregroundStyle(Theme.onAccent)
         .disabled(isRetrying)
     }
 }

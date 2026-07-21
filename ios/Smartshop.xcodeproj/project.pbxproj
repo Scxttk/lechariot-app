@@ -53,6 +53,7 @@
 		A8543BF6AC50BCDC4B8E93B9 /* MatchFeedbackJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53E90C2C8C872343C416B7B8 /* MatchFeedbackJourneyTests.swift */; };
 		A93A216D0F51335CB746EE3F /* MatchFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B1936416A3621E934AC2D2 /* MatchFeedback.swift */; };
 		ABD7A60CF74E723F56600DB2 /* AppRepositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAE42C6EFFE3C1C8E391DCEF /* AppRepositories.swift */; };
+		AD0B03D183433BB064B6DB11 /* RestartJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 904A26CC4494E22B2E625EE0 /* RestartJourneyTests.swift */; };
 		B44EAB0044377C0209499951 /* SmartshopApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B1F93C13CC269E5A352AC9 /* SmartshopApp.swift */; };
 		BBA2786106C7620FA1A66D6B /* OfferCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B04789095121747D2E831 /* OfferCache.swift */; };
 		C449C113A932F2C6E74C4F0C /* ShoppingListRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD4F8974D73BB460271D3C4 /* ShoppingListRowView.swift */; };
@@ -141,6 +142,7 @@
 		8A55AEE68082C0FC0867C922 /* ShoppingListStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingListStoreTests.swift; sourceTree = "<group>"; };
 		8A5FA268ACCB17FC037B2400 /* AdSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdSlot.swift; sourceTree = "<group>"; };
 		8FB4C53FE9EBB125EFE83FFF /* SmartshopUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SmartshopUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		904A26CC4494E22B2E625EE0 /* RestartJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestartJourneyTests.swift; sourceTree = "<group>"; };
 		9067D38E35AD37E75F0399D0 /* Repositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repositories.swift; sourceTree = "<group>"; };
 		94DEA83EC6F1AB3BE5F30366 /* OfferAnalyticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferAnalyticsTests.swift; sourceTree = "<group>"; };
 		971ADEDD8EDD5BD80EE09E88 /* MarketFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketFilter.swift; sourceTree = "<group>"; };
@@ -351,6 +353,7 @@
 				4AA9689939755DC7F4A597F7 /* AccessibilityAuditTests.swift */,
 				53E90C2C8C872343C416B7B8 /* MatchFeedbackJourneyTests.swift */,
 				A9E55D4008AD91AD7BE5D837 /* OnboardingJourneyTests.swift */,
+				904A26CC4494E22B2E625EE0 /* RestartJourneyTests.swift */,
 			);
 			path = SmartshopUITests;
 			sourceTree = "<group>";
@@ -618,6 +621,7 @@
 				2F44692E1ADD3DEEABB2EC24 /* AccessibilityAuditTests.swift in Sources */,
 				A8543BF6AC50BCDC4B8E93B9 /* MatchFeedbackJourneyTests.swift in Sources */,
 				6EE84D0B46C83A66CA5546FB /* OnboardingJourneyTests.swift in Sources */,
+				AD0B03D183433BB064B6DB11 /* RestartJourneyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

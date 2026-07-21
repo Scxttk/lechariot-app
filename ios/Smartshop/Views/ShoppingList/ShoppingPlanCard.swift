@@ -17,18 +17,31 @@ struct ShoppingPlanCard: View {
 
     var body: some View {
         if let winner {
-            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            // Spacing 0 with explicit padding: the details block must be able
+            // to collapse to a true zero height, and a VStack spacing would
+            // leave its gap behind even then.
+            VStack(alignment: .leading, spacing: 0) {
                 headline(winner)
 
                 if !winner.matchedItems.isEmpty || !others.isEmpty {
                     Divider()
+                        .padding(.vertical, Theme.Spacing.md)
                     disclosureButton
                     if isExpanded {
                         details(winner)
+                            // Behält die eigene Höhe, statt sich von der noch
+                            // wachsenden Karte stauchen zu lassen — das war die
+                            // Ursache dafür, dass „Weniger anzeigen" und „Bei
+                            // Lidl im Angebot" ein paar Bilder lang übereinander
+                            // lagen. Was noch nicht freigelegt ist, schneidet
+                            // das `.clipped()` unten weg.
+                            .fixedSize(horizontal: false, vertical: true)
+                            .transition(.opacity)
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .clipped()
             .themeCard()
             // One animation for the whole card. A `DisclosureGroup` inside a
             // `List` row animated in three separate steps — the row height by
@@ -110,9 +123,15 @@ struct ShoppingPlanCard: View {
     private var disclosureButton: some View {
         Button { isExpanded.toggle() } label: {
             HStack(spacing: Theme.Spacing.sm) {
+                // Bewusst ohne `contentTransition`: eine Kreuzblende zwischen
+                // zwei verschieden langen Wörtern zeigt sie ein paar Bilder
+                // lang übereinander, und „Weniger anzeigen" über „Was heißt
+                // das?" ist genau das Matschbild, das hier weg sollte. Der
+                // Wechsel fällt mit dem eigenen Tippen zusammen und liest sich
+                // dadurch als Reaktion, nicht als Sprung.
                 Text(isExpanded ? "Weniger anzeigen" : "Was heißt das?")
                     .font(.subheadline.weight(.medium))
-                    .contentTransition(.opacity)
+                    .animation(nil, value: isExpanded)
                 Spacer(minLength: Theme.Spacing.sm)
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
@@ -154,9 +173,9 @@ struct ShoppingPlanCard: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        // Fade only. A sliding transition would draw the text outside the
-        // card while its background is still growing to the new height.
-        .transition(.opacity)
+        // Eigener Abstand nach oben statt VStack-Spacing: er gehört zur
+        // gemessenen Höhe und verschwindet damit im eingeklappten Zustand mit.
+        .padding(.top, Theme.Spacing.md)
     }
 
     private func itemGroup(

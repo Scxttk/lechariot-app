@@ -17,14 +17,22 @@ enum UITestSupport {
 
     private static let suiteName = "com.skoehler.smartshop.uitests"
 
-    /// An empty defaults suite for this launch, or `nil` outside test runs.
+    /// Launched with `-uiTestingKeepState`: use the test suite but do **not**
+    /// empty it. Without this there is no way to test that anything survives
+    /// an app restart — every launch would look like a fresh install, which is
+    /// exactly the opposite of what such a journey asserts.
+    private static let keepsState =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingKeepState")
+
+    /// The defaults suite for this launch, emptied unless the launch asked to
+    /// keep it. `nil` outside test runs.
     ///
-    /// Emptying it here rather than in `tearDown` keeps each launch independent
+    /// Emptying here rather than in `tearDown` keeps each launch independent
     /// of whether the previous test finished cleanly — a crashed journey must
     /// not leak its state into the next one.
     static func freshSuite() -> UserDefaults? {
         guard isActive, let suite = UserDefaults(suiteName: suiteName) else { return nil }
-        suite.removePersistentDomain(forName: suiteName)
+        if !keepsState { suite.removePersistentDomain(forName: suiteName) }
         return suite
     }
 }

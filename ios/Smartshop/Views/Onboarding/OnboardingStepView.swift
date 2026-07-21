@@ -69,6 +69,7 @@ struct OnboardingStepView<Content: View>: View {
                     .frame(height: 50)
             }
             .buttonStyle(.borderedProminent)
+            .foregroundStyle(Theme.onAccent)
             .tint(Theme.accent)
             .disabled(!isPrimaryEnabled)
             // Stable handle for the UI journeys: several steps put a text field

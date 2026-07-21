@@ -8,8 +8,15 @@ import XCTest
 /// das den gerenderten Bildschirm prüft: Kontrast, Trefferflächen, abgeschnittene
 /// Beschriftungen, Elemente ohne Label.
 ///
-/// Läuft am Simulator und in jedem Testlauf mit, statt einmalig von Hand durch
-/// den Accessibility Inspector geklickt zu werden.
+/// Läuft in jedem Testlauf mit, statt einmalig von Hand durch den
+/// Accessibility Inspector geklickt zu werden.
+///
+/// **Gedacht für den Simulator im hellen Modus** — dort steht das Gate. Auf
+/// einem Gerät, das im Dunkelmodus läuft, meldet der Audit zusätzlich die
+/// sekundäre Systemfarbe als harten Durchfaller; die ist real (gemessen
+/// 3,15:1 auf der Creme, 3,93:1 auf den Karten), betrifft 41 Stellen quer
+/// durch die App und steht als eigener Umbau im Backlog. Bis der gemacht ist,
+/// wäre ein Gate darauf nur Dauerrot.
 final class AccessibilityAuditTests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -158,6 +165,11 @@ final class AccessibilityAuditTests: XCTestCase {
     /// Kategorien scharf schaltet, bekommt Dauerrot und schaut bald gar nicht
     /// mehr hin.
     private func audit(_ screen: String, failOnContrast: Bool = true) throws {
+        // Erst zur Ruhe kommen lassen. Wird während eines Übergangs gemessen —
+        // Tabwechsel, einblendende Liste —, liest der Audit Mischwerte und
+        // meldet Kontrastfehler für Texte, die im Ruhezustand einwandfrei sind.
+        // Dieselbe Falle wie im dunklen Modus, siehe oben.
+        Thread.sleep(forTimeInterval: 1.2)
         try app.performAccessibilityAudit { issue in
             let element = issue.element?.description ?? "kein benanntes Element"
             print("AUDIT|\(screen)|\(issue.auditType.rawValue)|\(issue.compactDescription)|\(element.prefix(120))")
