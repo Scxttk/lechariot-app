@@ -19,8 +19,10 @@ struct OfferMatch: Equatable, Identifiable {
 ///
 /// Stage 1 (direct): every query token must hit a product-title token —
 /// exactly, or with Levenshtein distance ≤ 1 when both tokens have ≥ 5
-/// characters (catches typos and singular/plural, but keeps short words
-/// strict so "Käse" never fuzzy-matches "Kekse").
+/// characters and different lengths (catches dropped letters and
+/// singular/plural, but keeps short words strict so "Käse" never
+/// fuzzy-matches "Kekse", and same-length words exact so "Butter" never
+/// hits "Bitter").
 ///
 /// Stage 2 (category): query tokens are compared against the offer's
 /// `match_key` tags with the same token rule. The tags come from the backend
@@ -40,10 +42,13 @@ enum OfferMatcher {
         normalize(text).split(separator: " ").map(String.init).filter { $0.count >= 2 }
     }
 
-    /// Token equality with typo tolerance for longer tokens.
+    /// Token equality with typo tolerance for longer tokens. Fuzziness only
+    /// applies when the lengths differ (a dropped or doubled letter, or
+    /// singular/plural) — a same-length substitution turns one word into
+    /// another ("Butter" is not "Bitter", real user report 2026-07-21).
     static func tokensMatch(_ a: String, _ b: String) -> Bool {
         if a == b { return true }
-        guard a.count >= 5, b.count >= 5 else { return false }
+        guard a.count >= 5, b.count >= 5, a.count != b.count else { return false }
         return levenshtein(a, b) <= 1
     }
 

@@ -53,6 +53,19 @@ final class OfferMatcherTests: XCTestCase {
         XCTAssertTrue(direct.isEmpty)
     }
 
+    func testButterDoesNotFuzzyMatchBitter() {
+        // Real match_feedback rows from 2026-07-21: "Butter" direct-hit
+        // "CAMPARI Bitter" and "Aperol Aperitif Bitter" via Levenshtein 1.
+        // Same-length substitutions are different words, not typos.
+        let offers = [
+            offer("CAMPARI Bitter", matchKey: []),
+            offer("Aperol Aperitif Bitter", matchKey: []),
+        ]
+        let direct = OfferMatcher.matches(for: "Butter", in: offers)
+            .filter { $0.kind == .direct }
+        XCTAssertTrue(direct.isEmpty)
+    }
+
     func testMultiwordQueryRequiresAllTokens() {
         let offers = [
             offer("Gouda jung", matchKey: ["käse"]),
