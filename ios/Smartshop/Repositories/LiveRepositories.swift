@@ -67,6 +67,19 @@ struct LiveRegionRepository: RegionRepositoryProtocol {
     }
 
     func registerRegion(plz: String) async throws {
+        // Inserts only {plz} with the anon key. The regions INSERT policy is now
+        // hardened server-side (supabase/migration_regions.sql): anon may set
+        // ONLY the plz column (not last_synced/active), and the plz must be a
+        // 5-digit string — so this single-{plz} request keeps working unchanged.
+        //
+        // Residual client-side hardening (recommended follow-up, F5): the anon
+        // key is extractable from the app bundle, so a caller can still POST many
+        // distinct valid PLZs directly. The DB dispatch trigger (backend repo)
+        // gets a per-PLZ cooldown to bound CI cost; the fuller client fix is to
+        // route registration through an authenticated, rate-limited edge function
+        // that enforces a per-install quota and mirrors the server-side maxRegions.
+        // That is a larger change (new function + auth/quota state) and is left as
+        // a follow-up rather than half-implemented here.
         try await client.post(path: "regions", body: ["plz": plz], acceptConflict: true)
     }
 

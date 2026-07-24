@@ -18,10 +18,31 @@ drop policy if exists "Public read" on public.regions;
 create policy "Public read" on public.regions
     for select using (true);
 
--- App darf neue Regionen anfordern (anon INSERT von {plz}, RegionService.requestRegion)
+-- App darf neue Regionen anfordern (anon INSERT von {plz}, RegionService.requestRegion).
+--
+-- Härtung (F5/F13): anon/authenticated dürfen NUR die `plz` liefern, nicht die
+-- Queue-Steuer-Spalten `last_synced`/`active`. Ohne diese Einschränkung könnte
+-- jeder Halter des öffentlichen anon key den 24h-Cache vordatieren (last_synced
+-- setzen → Sync-Queue aushungern) oder Regionen (de)aktivieren (active). Deshalb
+-- Spalten-Grant nur auf (plz); die übrigen Spalten füllen ihre Defaults
+-- (last_synced → NULL, active → true). Der Service-Sync schreibt über
+-- service_role (BYPASSRLS) und ist von Grant und Policy nicht betroffen.
+--
+-- Hinweis (F13/F5, Dispatch-Throttle): Der AFTER-INSERT-Trigger, der pro neuer
+-- PLZ einen GitHub-workflow_dispatch mit dem Vault-PAT anstößt, ist in DIESEM
+-- Repo nicht definiert (liegt im Backend-Repo). Der Per-PLZ-Cooldown gegen
+-- unbegrenzte CI-Läufe wird deshalb im Backend-Patch am Trigger umgesetzt; hier
+-- bleibt es bei der Policy-/Spalten-Härtung.
+revoke insert on public.regions from anon, authenticated;
+grant  insert (plz) on public.regions to anon, authenticated;
+
 drop policy if exists "Anon request region" on public.regions;
 create policy "Anon request region" on public.regions
-    for insert with check (plz ~ '^[0-9]{5}$');
+    for insert with check (
+        plz ~ '^[0-9]{5}$'
+        and last_synced is null
+        and active is true
+    );
 
 drop policy if exists "Service write" on public.regions;
 create policy "Service write" on public.regions

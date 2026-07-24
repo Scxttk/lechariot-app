@@ -16,9 +16,58 @@ function json(body: Record<string, unknown>, status = 200): Response {
   });
 }
 
+// Konstant-zeitiger Vergleich zweier Strings. Wir HMAC-en beide Werte mit einem
+// pro Aufruf zufälligen Schlüssel und vergleichen die (fest 32 Byte langen)
+// Digests bitweise — dadurch ist die Laufzeit unabhängig von Inhalt und Länge,
+// ein Timing-Orakel auf das Geheimnis ist so nicht möglich.
+async function constantTimeEqual(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const rawKey = crypto.getRandomValues(new Uint8Array(32));
+  const key = await crypto.subtle.importKey(
+    "raw", rawKey, { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const ha = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(a)));
+  const hb = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(b)));
+  let diff = 0;
+  for (let i = 0; i < ha.length; i++) diff |= ha[i] ^ hb[i];
+  return diff === 0;
+}
+
+function bearerToken(req: Request): string {
+  const header = req.headers.get("Authorization") ?? "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : "";
+}
+
+// Autorisierung des Aufrufers. sync-region schreibt mit dem SERVICE_ROLE_KEY
+// (regions + offers) und löst über den regions-Insert einen GitHub-Workflow aus;
+// das darf NUR der CI-Cron (.github/workflows/region_refresh.yml). Der Gateway-
+// Default (verify_jwt) akzeptiert jeden gültigen Projekt-Key — auch den in der
+// App gebündelten öffentlichen anon/publishable key. Deshalb prüfen wir das
+// Bearer-Token hier zusätzlich selbst, konstant-zeitig gegen das Service-
+// Geheimnis. region_refresh.yml sendet "Authorization: Bearer <SERVICE_ROLE_KEY>"
+// und passiert diese Prüfung unverändert. Optional kann der Betreiber ein
+// dediziertes SYNC_REGION_SECRET setzen, um den Service-Key nicht wiederzuverwenden.
+async function isAuthorized(req: Request): Promise<boolean> {
+  const presented = bearerToken(req);
+  if (!presented) return false;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const sharedSecret = Deno.env.get("SYNC_REGION_SECRET") ?? "";
+  const okService = serviceKey.length > 0 && await constantTimeEqual(presented, serviceKey);
+  const okShared = sharedSecret.length > 0 && await constantTimeEqual(presented, sharedSecret);
+  return okService || okShared;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "POST erwartet" }, 405);
 
+  // Ohne gültiges Service-Geheimnis kein service-role-Schreibzugriff und kein
+  // erzwungener Sync — ein anon-key-Halter wird hier abgewiesen (schließt F12/F14).
+  if (!(await isAuthorized(req))) return json({ error: "Nicht autorisiert" }, 401);
+
+  // Ab hier ist der Aufrufer der autorisierte Service-Caller (CI-Cron), daher
+  // ist `force` unten unbedenklich — ein anon-Pfad, der `force` respektieren
+  // müsste, existiert nicht mehr.
   let zip = "", force = false;
   try {
     const body = await req.json();
