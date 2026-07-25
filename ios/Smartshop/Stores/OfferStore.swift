@@ -3,6 +3,24 @@ import Observation
 
 // MARK: - Display helpers
 
+extension DateFormatter {
+    /// "13.7." — the short validity form used in rows and the price history.
+    static let offerDay: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.dateFormat = "d.M."
+        return formatter
+    }()
+
+    /// "13. Juli" — the detail sheet has room for the long form.
+    static let offerDayLong: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.dateFormat = "d. MMMM"
+        return formatter
+    }()
+}
+
 extension Offer {
     /// Discount in percent vs. the regular price, or nil when not computable.
     var discountPercent: Int? {
@@ -10,6 +28,34 @@ extension Offer {
             return nil
         }
         return Int(((regularPrice - price) / regularPrice * 100).rounded())
+    }
+
+    var validityText: String {
+        let from = DateFormatter.offerDay.string(from: validFrom)
+        let until = DateFormatter.offerDay.string(from: validUntil)
+        return "Gültig \(from) – \(until)"
+    }
+
+    /// One sensible VoiceOver utterance: product, price, discount, regular
+    /// price, market and validity instead of a scatter of fragments.
+    ///
+    /// Lives on the model, not in the row: the row is the *label of a Button*
+    /// now, and the button owns the accessibility element.
+    var voiceOverSummary: String {
+        var parts: [String] = [product]
+        if let unit { parts.append(unit) }
+        if let price {
+            parts.append(price.formatted(.currency(code: "EUR")))
+        }
+        if let discountPercent {
+            parts.append("\(discountPercent) Prozent reduziert")
+        }
+        if let regularPrice {
+            parts.append("statt \(regularPrice.formatted(.currency(code: "EUR")))")
+        }
+        parts.append("bei \(market)")
+        parts.append("gültig bis \(DateFormatter.offerDay.string(from: validUntil))")
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -55,6 +101,73 @@ enum OfferQuery {
             result.sort { ($0.discountPercent ?? -1) > ($1.discountPercent ?? -1) }
         }
         return result
+    }
+
+    /// Key for "this is the same offer, published twice".
+    ///
+    /// Market + product + price, deliberately WITHOUT region and WITHOUT the
+    /// validity dates — those are exactly the two ways a duplicate arises:
+    ///  · dates out — Kaufland/Lidl/Penny publish the week row (23.–29.7.) and
+    ///    a one-day "Knüller" row (24.7.) for the same product at the same
+    ///    price. The offers table keys on `valid_from`, so both survive.
+    ///  · region out — a user with two ready PLZ gets the identical row twice,
+    ///    and both land in the same "Kaufland" section because `Offer.id`
+    ///    contains the region.
+    /// Price stays IN: of the 65 duplicate (market, product) pairs measured in
+    /// region 01219, 26 carry different prices — next week's row, or a
+    /// genuinely different variant. Those must both survive.
+    ///
+    /// `unit` is deliberately out too: the one-day row often drops it, and
+    /// keeping it in the key would leave the duplicate on screen.
+    static func duplicateKey(_ offer: Offer) -> String {
+        let product = offer.product
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        // Cents, not the Double: 1.99 from two sources can differ in the last bit.
+        let cents = offer.price.map { String(Int(($0 * 100).rounded())) } ?? "-"
+        return "\(offer.market.lowercased())|\(product)|\(cents)"
+    }
+
+    /// Which of two rows sharing a `duplicateKey` the user should see:
+    /// a row valid today beats one that only starts later, then the wider
+    /// window (the week beats the one-day row), then the earlier start — and
+    /// `id` as the final tiebreak so the result never depends on input order.
+    static func preferred(_ lhs: Offer, _ rhs: Offer, now: Date) -> Offer {
+        // Offer dates are Berlin midnights; comparing against `now` directly
+        // would call a row that expires today already invalid.
+        let today = Calendar.supabase.startOfDay(for: now)
+        func isCurrent(_ offer: Offer) -> Bool {
+            offer.validFrom <= today && today <= offer.validUntil
+        }
+        if isCurrent(lhs) != isCurrent(rhs) {
+            return isCurrent(lhs) ? lhs : rhs
+        }
+        let width = (
+            lhs.validUntil.timeIntervalSince(lhs.validFrom),
+            rhs.validUntil.timeIntervalSince(rhs.validFrom)
+        )
+        if width.0 != width.1 { return width.0 > width.1 ? lhs : rhs }
+        if lhs.validFrom != rhs.validFrom {
+            return lhs.validFrom < rhs.validFrom ? lhs : rhs
+        }
+        return lhs.id <= rhs.id ? lhs : rhs
+    }
+
+    /// Collapses rows published twice. The order of the survivors is the input
+    /// order, so callers can still sort afterwards.
+    static func deduplicated(_ offers: [Offer], now: Date = .now) -> [Offer] {
+        var best: [String: Offer] = [:]
+        var order: [String] = []
+        for offer in offers {
+            let key = duplicateKey(offer)
+            if let incumbent = best[key] {
+                best[key] = preferred(incumbent, offer, now: now)
+            } else {
+                best[key] = offer
+                order.append(key)
+            }
+        }
+        return order.compactMap { best[$0] }
     }
 
     /// Sections in display order. Market sections alphabetical; category
@@ -135,7 +248,7 @@ final class OfferStore {
         let cached = regions.compactMap { try? cache?.load(region: $0) }
         let cachedOffers = cached.flatMap(\.offers)
         if !cachedOffers.isEmpty {
-            offers = filteredToChains(cachedOffers)
+            offers = display(cachedOffers)
             // The oldest region determines staleness of the combined list.
             fetchedAt = cached.compactMap(\.fetchedAt).min()
             state = offers.isEmpty ? .empty : .loaded
@@ -170,11 +283,14 @@ final class OfferStore {
             try Task.checkCancellation()
             guard requested == regions else { return }
             let now = Date.now
+            // The cache keeps the RAW rows — it is the per-region KW dataset,
+            // and dedupe is a display concern applied on read. Written before
+            // `offers` for exactly that reason; don't fold the two together.
             let byRegion = Dictionary(grouping: fresh, by: \.region)
             for region in requested {
                 try? cache?.replaceAll(byRegion[region] ?? [], region: region, fetchedAt: now)
             }
-            offers = filteredToChains(fresh)
+            offers = display(fresh)
             fetchedAt = now
             isOffline = false
             state = offers.isEmpty ? .empty : .loaded
@@ -190,6 +306,15 @@ final class OfferStore {
                 state = .error(LoadFailure.message(for: error, subject: "Die Angebote"))
             }
         }
+    }
+
+    /// The single funnel every offer takes on its way to the screen: narrowed
+    /// to the favorited chains, then collapsed where a chain published the same
+    /// offer twice. Both `offers` assignments go through here, so the Angebote
+    /// list, the Top-Deals section and the shopping-list matcher — all of which
+    /// read `store.offers` — see the same set.
+    private func display(_ offers: [Offer]) -> [Offer] {
+        OfferQuery.deduplicated(filteredToChains(offers))
     }
 
     /// The cache stores all chains of a region as fetched; narrow to the

@@ -7,16 +7,23 @@ final class OfferQueryTests: XCTestCase {
         market: String = "Lidl",
         category: String = "Sonstiges",
         price: Double? = 1.0,
-        regular: Double? = nil
+        regular: Double? = nil,
+        from: String = "2026-07-13",
+        until: String = "2026-07-19",
+        region: String = "01219",
+        unit: String? = nil
     ) -> Offer {
         Offer(
             market: market, product: product, price: price, regularPrice: regular,
-            unit: nil, category: category, emoji: nil,
-            validFrom: MockFixtures.day.date(from: "2026-07-13")!,
-            validUntil: MockFixtures.day.date(from: "2026-07-19")!,
-            basePrice: nil, baseUnit: nil, region: "01219"
+            unit: unit, category: category, emoji: nil,
+            validFrom: MockFixtures.day.date(from: from)!,
+            validUntil: MockFixtures.day.date(from: until)!,
+            basePrice: nil, baseUnit: nil, region: region
         )
     }
+
+    /// Fixed "today" for every dedupe test — `.now` would rot the suite.
+    private let today = MockFixtures.day.date(from: "2026-07-15")!
 
     // MARK: Discount
 
@@ -79,5 +86,106 @@ final class OfferQueryTests: XCTestCase {
         ]
         let sections = OfferQuery.grouped(offers, by: .category)
         XCTAssertEqual(sections.map(\.key), ["Obst & Gemüse", "Getränke", "Sonstiges"])
+    }
+
+    // MARK: Dedupe
+
+    /// Kaufland publishes the same product both in the week's flyer and in a
+    /// one-day "Knüller" section. Both rows are real, both are the same offer.
+    func testWeekRowAndOneDayRowAtTheSamePriceCollapse() {
+        let week = offer(price: 1.99, from: "2026-07-13", until: "2026-07-19")
+        let knueller = offer(price: 1.99, from: "2026-07-15", until: "2026-07-15")
+
+        let result = OfferQuery.deduplicated([week, knueller], now: today)
+
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result.first?.validUntil, week.validUntil, "the week row is the truthful one")
+    }
+
+    /// Same market, same product, different price: next week's row, or a
+    /// different pack size the flyer titles identically. Both must survive.
+    func testDifferentPricesForTheSameProductBothSurvive() {
+        let offers = [offer(price: 1.99), offer(price: 2.49)]
+
+        XCTAssertEqual(OfferQuery.deduplicated(offers, now: today).count, 2)
+    }
+
+    /// Two ready PLZ deliver the identical row twice, and both land in the same
+    /// market section — `Offer.id` contains the region, so nothing else catches it.
+    func testTheSameOfferFromTwoRegionsCollapses() {
+        let offers = [offer(region: "01219"), offer(region: "01067")]
+
+        XCTAssertEqual(OfferQuery.deduplicated(offers, now: today).count, 1)
+    }
+
+    func testACurrentlyValidRowBeatsAFutureOne() {
+        let next = offer(from: "2026-07-20", until: "2026-07-26")
+        let current = offer(from: "2026-07-13", until: "2026-07-19")
+
+        let result = OfferQuery.deduplicated([next, current], now: today)
+
+        XCTAssertEqual(result.map(\.validFrom), [current.validFrom])
+    }
+
+    /// An offer that ends today is still valid today — comparing against the
+    /// wall clock instead of the start of the day would drop it.
+    func testARowEndingTodayStillCountsAsCurrent() {
+        let endingToday = offer(from: "2026-07-13", until: "2026-07-15")
+        let future = offer(from: "2026-07-20", until: "2026-08-20")
+        let noon = today.addingTimeInterval(12 * 3600)
+
+        let result = OfferQuery.deduplicated([future, endingToday], now: noon)
+
+        XCTAssertEqual(result.map(\.validUntil), [endingToday.validUntil])
+    }
+
+    func testAmongCurrentRowsTheWiderWindowWins() {
+        let oneDay = offer(from: "2026-07-15", until: "2026-07-15")
+        let week = offer(from: "2026-07-13", until: "2026-07-19")
+
+        let result = OfferQuery.deduplicated([oneDay, week], now: today)
+
+        XCTAssertEqual(result.map(\.validFrom), [week.validFrom])
+    }
+
+    /// The unit is not part of the key: the one-day row often drops it, and a
+    /// duplicate that differs only there is still a duplicate.
+    func testDifferingUnitsDoNotKeepADuplicateAlive() {
+        let offers = [offer(unit: "je 1 l"), offer(unit: nil)]
+
+        XCTAssertEqual(OfferQuery.deduplicated(offers, now: today).count, 1)
+    }
+
+    func testOffersWithoutAPriceStillCollapseWithTheirTwin() {
+        let offers = [offer(price: nil), offer(price: nil)]
+
+        XCTAssertEqual(OfferQuery.deduplicated(offers, now: today).count, 1)
+    }
+
+    func testDedupeIsOrderIndependentAndIdempotent() {
+        let offers = [
+            offer(product: "A", price: 1.99, from: "2026-07-15", until: "2026-07-15"),
+            offer(product: "A", price: 1.99),
+            offer(product: "B", price: 2.49),
+            offer(product: "B", price: 3.49),
+        ]
+
+        let forward = OfferQuery.deduplicated(offers, now: today)
+        let backward = OfferQuery.deduplicated(offers.reversed(), now: today)
+
+        XCTAssertEqual(Set(forward.map(\.id)), Set(backward.map(\.id)))
+        XCTAssertEqual(
+            OfferQuery.deduplicated(forward, now: today).map(\.id),
+            forward.map(\.id),
+            "running it twice must not change anything"
+        )
+    }
+
+    func testDedupePreservesTheInputOrderOfSurvivors() {
+        let offers = [offer(product: "Zitrone"), offer(product: "Apfel"), offer(product: "Zitrone")]
+
+        let result = OfferQuery.deduplicated(offers, now: today)
+
+        XCTAssertEqual(result.map(\.product), ["Zitrone", "Apfel"])
     }
 }

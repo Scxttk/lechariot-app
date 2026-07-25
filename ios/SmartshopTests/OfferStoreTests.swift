@@ -167,20 +167,33 @@ final class OfferStoreTests: XCTestCase {
 
     // MARK: Multi-region
 
-    private func offer(region: String, market: String = "Lidl") -> Offer {
+    /// Products differ by default: an offer that is identical in everything but
+    /// the region is a display duplicate now and gets collapsed — which is what
+    /// `testTheSameOfferInTwoRegionsIsShownOnce` is for.
+    private func offer(
+        region: String,
+        market: String = "Lidl",
+        product: String = MockFixtures.offers[0].product,
+        price: Double? = MockFixtures.offers[0].price,
+        from: Date? = nil,
+        until: Date? = nil
+    ) -> Offer {
         let base = MockFixtures.offers[0]
         return Offer(
-            market: market, product: base.product, price: base.price,
+            market: market, product: product, price: price,
             regularPrice: base.regularPrice, unit: base.unit,
             category: base.category, emoji: base.emoji,
-            validFrom: base.validFrom, validUntil: base.validUntil,
+            validFrom: from ?? base.validFrom, validUntil: until ?? base.validUntil,
             basePrice: base.basePrice, baseUnit: base.baseUnit, region: region
         )
     }
 
     func testLoadQueriesAllRegionsInOneCall() async throws {
         let repository = RecordingOfferRepository()
-        repository.result = [offer(region: "01219"), offer(region: "01067")]
+        repository.result = [
+            offer(region: "01219", product: "Bio Vollmilch"),
+            offer(region: "01067", product: "Butter"),
+        ]
         let store = OfferStore(repository: repository, cache: try makeCache())
 
         await store.load(regions: ["01219", "01067"], chains: ["Lidl", "Aldi"])
@@ -188,6 +201,76 @@ final class OfferStoreTests: XCTestCase {
         XCTAssertEqual(repository.lastRegions, ["01219", "01067"])
         XCTAssertEqual(store.offers.count, 2)
         XCTAssertEqual(Set(store.offers.map(\.region)), ["01219", "01067"])
+    }
+
+    // MARK: Dedupe for display
+
+    /// The week row and the one-day row are one offer on screen — but the cache
+    /// is the region's complete KW dataset and keeps both.
+    func testDuplicatesAreCollapsedForDisplayWhileTheCacheKeepsRawRows() async throws {
+        let cache = try makeCache()
+        let day = MockFixtures.day
+        let week = offer(
+            region: "01219",
+            from: day.date(from: "2026-07-13")!, until: day.date(from: "2026-07-19")!
+        )
+        let knueller = offer(
+            region: "01219",
+            from: day.date(from: "2026-07-16")!, until: day.date(from: "2026-07-16")!
+        )
+        let store = OfferStore(
+            repository: StubOfferRepository(result: .success([week, knueller])),
+            cache: cache
+        )
+
+        await store.load(regions: ["01219"], chains: [])
+
+        XCTAssertEqual(store.offers.count, 1)
+        XCTAssertEqual(try cache.load(region: "01219").offers.count, 2)
+    }
+
+    func testTheSameOfferInTwoRegionsIsShownOnce() async throws {
+        let cache = try makeCache()
+        let store = OfferStore(
+            repository: StubOfferRepository(
+                result: .success([offer(region: "01219"), offer(region: "01067")])
+            ),
+            cache: cache
+        )
+
+        await store.load(regions: ["01219", "01067"], chains: [])
+
+        XCTAssertEqual(store.offers.count, 1)
+        // Each region keeps its own row — the user may drop one PLZ later.
+        XCTAssertEqual(try cache.load(region: "01219").offers.count, 1)
+        XCTAssertEqual(try cache.load(region: "01067").offers.count, 1)
+    }
+
+    /// The cached path in `load()` must dedupe too — otherwise the duplicates
+    /// come back the moment the app opens offline.
+    func testOffersServedFromCacheAreDeduplicatedAsWell() async throws {
+        let cache = try makeCache()
+        let day = MockFixtures.day
+        let stale = Date.now.addingTimeInterval(-OfferCache.maxAge - 60)
+        try cache.replaceAll(
+            [
+                offer(region: "01219"),
+                offer(
+                    region: "01219",
+                    from: day.date(from: "2026-07-16")!, until: day.date(from: "2026-07-16")!
+                ),
+            ],
+            region: "01219", fetchedAt: stale
+        )
+        let store = OfferStore(
+            repository: StubOfferRepository(result: .failure(StubError())),
+            cache: cache
+        )
+
+        await store.load(regions: ["01219"], chains: [])
+
+        XCTAssertEqual(store.offers.count, 1)
+        XCTAssertTrue(store.isOffline)
     }
 
     func testRefreshReplacesCachePerRegion() async throws {
@@ -207,8 +290,12 @@ final class OfferStoreTests: XCTestCase {
     func testCachedOffersOfAllRegionsAreServedWhenOffline() async throws {
         let cache = try makeCache()
         let stale = Date.now.addingTimeInterval(-OfferCache.maxAge - 60)
-        try cache.replaceAll([offer(region: "01219")], region: "01219", fetchedAt: stale)
-        try cache.replaceAll([offer(region: "01067")], region: "01067", fetchedAt: stale)
+        try cache.replaceAll(
+            [offer(region: "01219", product: "Bio Vollmilch")], region: "01219", fetchedAt: stale
+        )
+        try cache.replaceAll(
+            [offer(region: "01067", product: "Butter")], region: "01067", fetchedAt: stale
+        )
         let store = OfferStore(
             repository: StubOfferRepository(result: .failure(StubError())),
             cache: cache
