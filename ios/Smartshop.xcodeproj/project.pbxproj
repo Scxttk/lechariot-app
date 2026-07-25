@@ -33,6 +33,7 @@
 		41672127D26EB44E5BFD0BB6 /* ProfileStepsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE7256204AE9324388462677 /* ProfileStepsView.swift */; };
 		45EBB6F8A89A37BED7669FCD /* PriceHistoryPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 480C567509901B66E2B4A474 /* PriceHistoryPoint.swift */; };
 		47D19FCF3775B07115C0AF63 /* OfferDetailJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8DD2CE33A96A406D0C2FA1A /* OfferDetailJourneyTests.swift */; };
+		4C204652ACD16B1D6A95033D /* BranchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A3B686F29AAA994BFD72B27 /* BranchTests.swift */; };
 		51848D45B3928B6DDB8CB3DC /* MatchRejectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E891BCC1A8EAA8D316A08E4 /* MatchRejectionStore.swift */; };
 		51FFDA8362C9C80E3D9B0AF8 /* ShoppingListStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A55AEE68082C0FC0867C922 /* ShoppingListStoreTests.swift */; };
 		566BC1AA401083B61633BBA5 /* OffersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9272CDFCBA41FED9DC6789D /* OffersView.swift */; };
@@ -45,6 +46,7 @@
 		6CAEFA276FB0987B4A7F334A /* MarketTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09410A87BA1B641089F1FB1F /* MarketTests.swift */; };
 		6EE84D0B46C83A66CA5546FB /* OnboardingJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E55D4008AD91AD7BE5D837 /* OnboardingJourneyTests.swift */; };
 		72E32E7237ED6CA49D353E29 /* MatchFeedbackStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6993DC0DDAB8719E32CDD83 /* MatchFeedbackStoreTests.swift */; };
+		7A1DC75C2D2D798E0CFE95C2 /* Branch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A93062216ADB20D12195B14 /* Branch.swift */; };
 		7B5721EC9105507FAF6A8420 /* UITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13A0CD8E61A0241FC7673975 /* UITestSupport.swift */; };
 		7D323F4158711B185CAEE8B4 /* Market.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA5E2F1FD07970ECF93D078 /* Market.swift */; };
 		800FDB245BEBA1AD7B61AB07 /* Offer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF672C84046EBB21ACA1088B /* Offer.swift */; };
@@ -111,6 +113,7 @@
 		1329B01BEF7B45706988C564 /* LiveRepositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRepositories.swift; sourceTree = "<group>"; };
 		13A0CD8E61A0241FC7673975 /* UITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestSupport.swift; sourceTree = "<group>"; };
 		13ECC9CF0E2A44A998133CA6 /* DebugReset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugReset.swift; sourceTree = "<group>"; };
+		1A3B686F29AAA994BFD72B27 /* BranchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BranchTests.swift; sourceTree = "<group>"; };
 		1A44C846C5DD8BA72F5A67F6 /* AppDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDefaults.swift; sourceTree = "<group>"; };
 		1A904AAEB1F1923CA63EEDBB /* PriceHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceHistoryTests.swift; sourceTree = "<group>"; };
 		1B70F1AA0433221D95BBAEAB /* MockRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockRepositoryTests.swift; sourceTree = "<group>"; };
@@ -135,6 +138,7 @@
 		61214BBE083A49EEB0734BC8 /* APIKeys.example.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = APIKeys.example.plist; sourceTree = "<group>"; };
 		64A0A73C2B5FEF9C28CB9A27 /* OfferAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferAnalytics.swift; sourceTree = "<group>"; };
 		68B1936416A3621E934AC2D2 /* MatchFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchFeedback.swift; sourceTree = "<group>"; };
+		6A93062216ADB20D12195B14 /* Branch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Branch.swift; sourceTree = "<group>"; };
 		6BC88CEB73009984290A2F9C /* ShoppingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingListView.swift; sourceTree = "<group>"; };
 		6F2DDDDD47286121089C49FF /* OfferDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferDetailView.swift; sourceTree = "<group>"; };
 		7002CAEC0771B195B6EF2198 /* OfferMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferMatcher.swift; sourceTree = "<group>"; };
@@ -287,6 +291,7 @@
 		59F55FF0EAB9C235BE1EACA9 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				6A93062216ADB20D12195B14 /* Branch.swift */,
 				4D2AA9D14BC4A0DE3E94A637 /* Categories.swift */,
 				2DA5E2F1FD07970ECF93D078 /* Market.swift */,
 				971ADEDD8EDD5BD80EE09E88 /* MarketFilter.swift */,
@@ -332,6 +337,7 @@
 		B5721556CE68C53738BA7E7B /* SmartshopTests */ = {
 			isa = PBXGroup;
 			children = (
+				1A3B686F29AAA994BFD72B27 /* BranchTests.swift */,
 				1288BFEE69CC731FD2467645 /* MarketFilterTests.swift */,
 				09410A87BA1B641089F1FB1F /* MarketTests.swift */,
 				A6993DC0DDAB8719E32CDD83 /* MatchFeedbackStoreTests.swift */,
@@ -560,6 +566,7 @@
 				58D51B390C1A66256F9F7AA0 /* AppDefaults.swift in Sources */,
 				ABD7A60CF74E723F56600DB2 /* AppRepositories.swift in Sources */,
 				F0B0DC2A452F3EA8C8DBC463 /* AppearanceWindowBridge.swift in Sources */,
+				7A1DC75C2D2D798E0CFE95C2 /* Branch.swift in Sources */,
 				2F362391D7A9A655E53746B8 /* CachedOffer.swift in Sources */,
 				12160FAC3E4AC59459DAC26A /* Categories.swift in Sources */,
 				8C4FDBDC98A0CF742BCC62F1 /* ConsentStepView.swift in Sources */,
@@ -615,6 +622,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4C204652ACD16B1D6A95033D /* BranchTests.swift in Sources */,
 				F37C9EB36CAD104F7E90BAF6 /* MarketFilterTests.swift in Sources */,
 				6CAEFA276FB0987B4A7F334A /* MarketTests.swift in Sources */,
 				72E32E7237ED6CA49D353E29 /* MatchFeedbackStoreTests.swift in Sources */,

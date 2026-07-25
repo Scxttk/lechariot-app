@@ -64,6 +64,19 @@ enum MockFixtures {
     ]
 
     static let region = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
+
+    /// Three real Dresden stores, two of them the ones the PLZ model could
+    /// never reach: the second REWE in a postcode and the Netto in the
+    /// Johannes-Paul-Thilman-Straße.
+    static let branches: [Branch] = [
+        Branch(marketId: "1766063", chain: "REWE", name: "REWE Ketzscher oHG am Postplatz",
+               street: "Wallstr. 2b", plz: "01067", city: "Dresden", lat: 51.0504, lon: 13.7317),
+        Branch(marketId: "1766160", chain: "REWE", name: "REWE Friedrichstadt",
+               street: "Friedrichstr. 7", plz: "01067", city: "Dresden", lat: 51.0561, lon: 13.7203),
+        Branch(marketId: "4816", chain: "Netto", name: "Netto Marken-Discount Dresden-Strehlen",
+               street: "Johannes-Paul-Thilman-Str. 3", plz: "01219", city: "Dresden",
+               lat: 51.0155, lon: 13.7669),
+    ]
 }
 
 struct MockOfferRepository: OfferRepositoryProtocol {
@@ -79,6 +92,25 @@ struct MockPriceHistoryRepository: PriceHistoryRepositoryProtocol {
 
     func history(market: String, product: String, region: String) async throws -> [PriceHistoryPoint] {
         fixtures.filter { $0.market == market && $0.product == product && $0.region == region }
+    }
+}
+
+struct MockBranchRepository: BranchRepositoryProtocol {
+    var fixtures: [Branch] = MockFixtures.branches
+
+    func nearby(lat: Double, lon: Double, radiusKm: Double) async throws -> [Branch] {
+        fixtures
+            .compactMap { branch -> (Branch, Double)? in
+                guard let distance = branch.distanceKm(from: lat, lon), distance <= radiusKm
+                else { return nil }
+                return (branch, distance)
+            }
+            .sorted { $0.1 < $1.1 }
+            .map(\.0)
+    }
+
+    func branch(marketId: String) async throws -> Branch? {
+        fixtures.first { $0.marketId == marketId }
     }
 }
 

@@ -47,6 +47,43 @@ struct LivePriceHistoryRepository: PriceHistoryRepositoryProtocol {
     }
 }
 
+/// Reads the store directory `public.branches` (migration v12). Public read,
+/// no writes — the directory is backend data, not a queue.
+struct LiveBranchRepository: BranchRepositoryProtocol {
+    let client: SupabaseClient
+    /// Upper bound per query. A city block has tens of stores, not hundreds;
+    /// anything beyond this is a runaway box, not a list anyone scrolls.
+    private let limit = 200
+    private let columns = "select=market_id,chain,name,street,plz,city,lat,lon"
+
+    func nearby(lat: Double, lon: Double, radiusKm: Double) async throws -> [Branch] {
+        let box = Geo.boundingBox(lat: lat, lon: lon, radiusKm: radiusKm)
+        // A box, not a radius: without PostGIS the two btree columns behind
+        // `branches_lat_lon_idx` can answer a range, not a circle. The corners
+        // it adds are cut off below, in Swift, where the real distance is
+        // known anyway because the list is sorted by it.
+        let query = columns
+            + "&lat=gte.\(box.minLat)&lat=lte.\(box.maxLat)"
+            + "&lon=gte.\(box.minLon)&lon=lte.\(box.maxLon)"
+            + "&limit=\(limit)"
+        let rows = try await client.getList(Branch.self, path: "branches", query: query)
+        return rows
+            .compactMap { branch -> (Branch, Double)? in
+                guard let distance = branch.distanceKm(from: lat, lon), distance <= radiusKm
+                else { return nil }
+                return (branch, distance)
+            }
+            .sorted { $0.1 < $1.1 }
+            .map(\.0)
+    }
+
+    func branch(marketId: String) async throws -> Branch? {
+        guard let marketId = SupabaseClient.filterValue(marketId) else { return nil }
+        let query = columns + "&market_id=eq.\(marketId)&limit=1"
+        return try await client.getList(Branch.self, path: "branches", query: query).first
+    }
+}
+
 struct LiveMarketRepository: MarketRepositoryProtocol {
     let client: SupabaseClient
 

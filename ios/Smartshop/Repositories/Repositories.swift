@@ -19,6 +19,16 @@ protocol MarketRepositoryProtocol {
     func markets(plzs: [String]) async throws -> [Market]
 }
 
+protocol BranchRepositoryProtocol {
+    /// Stores within `radiusKm` of a point, nearest first. Rows without
+    /// coordinates never appear here — they cannot be placed on a map and the
+    /// query filters on a bounding box.
+    func nearby(lat: Double, lon: Double, radiusKm: Double) async throws -> [Branch]
+    /// One store by its id, or nil if the directory doesn't know it. Used when
+    /// a stored favourite has to be shown again after a restart.
+    func branch(marketId: String) async throws -> Branch?
+}
+
 protocol ProfileRepositoryProtocol {
     /// Appends the user's (non-identifying) onboarding answers. Insert-only —
     /// there is no read side, the app never fetches profiles back.

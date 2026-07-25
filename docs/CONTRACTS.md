@@ -60,6 +60,32 @@ percent-encoded (they may contain spaces, e.g. `Netto Marken-Discount`).
 GET /rest/v1/markets?select=chain,branch_name,market_id,plz&plz=in.(01219)&order=chain.asc,branch_name.asc
 ```
 
+### `branches`
+
+The store directory (backend migration v12). Different question from
+`markets`: that table holds the *one* store the backend scraped per chain and
+PLZ, which is why the second REWE in a postcode was unreachable. `branches`
+holds every store the chains' own finders know about, with coordinates.
+Public read, no writes — it is backend data, not a queue.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `market_id` | text | Primary key, the chain's own branch id |
+| `chain` | text | Chain name, identical to `offers.market` |
+| `name` | text | Branch name |
+| `street`, `plz`, `city` | text? | Optional — the eight finders return different detail |
+| `lat`, `lon` | float8? | Optional; rows without them cannot be sorted by distance |
+
+Nearby search is a **bounding box**, not a radius: there is no PostGIS in the
+free tier, and two btree columns (`branches_lat_lon_idx`) answer a range
+instantly. The box is larger than the circle, so the client drops what lies
+outside the radius itself (`Geo`, `LiveBranchRepository`).
+
+```
+GET /rest/v1/branches?select=market_id,chain,name,street,plz,city,lat,lon&lat=gte.50.96&lat=lte.51.14&lon=gte.13.59&lon=lte.13.87&limit=200
+GET /rest/v1/branches?select=…&market_id=eq.1766063&limit=1
+```
+
 ### `regions`
 
 | Column | Type | Notes |
