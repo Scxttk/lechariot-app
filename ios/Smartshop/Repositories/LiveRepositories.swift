@@ -115,6 +115,32 @@ struct LiveMatchFeedbackRepository: MatchFeedbackRepositoryProtocol {
     }
 }
 
+/// Requests offers for a single store (`public.branch_requests`, backend
+/// migration v14).
+struct LiveBranchRequestRepository: BranchRequestRepositoryProtocol {
+    let client: SupabaseClient
+
+    func request(marketId: String) async throws -> BranchRequest? {
+        guard let marketId = SupabaseClient.filterValue(marketId) else { return nil }
+        let query = "select=market_id,last_synced,active&market_id=eq.\(marketId)"
+        return try await client.get([BranchRequest].self, path: "branch_requests", query: query).first
+    }
+
+    func requestBranch(marketId: String) async throws {
+        // Only {market_id} goes over the wire, and that is all the server
+        // accepts: the INSERT grant is column-restricted, and the policy
+        // additionally requires the id to exist in `branches`. Both were
+        // verified against the live database with this very key on
+        // 2026-07-25 — an invented id comes back as 42501, and naming any
+        // control column fails with "permission denied for column".
+        try await client.post(
+            path: "branch_requests",
+            body: ["market_id": marketId],
+            acceptConflict: true
+        )
+    }
+}
+
 struct LiveRegionRepository: RegionRepositoryProtocol {
     let client: SupabaseClient
 

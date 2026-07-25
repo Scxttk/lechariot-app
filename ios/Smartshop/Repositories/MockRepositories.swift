@@ -114,6 +114,30 @@ struct MockBranchRepository: BranchRepositoryProtocol {
     }
 }
 
+/// Records requests instead of sending them, and can be told which stores the
+/// backend already has — so tests can drive the wait state without a network.
+final class MockBranchRequestRepository: BranchRequestRepositoryProtocol, @unchecked Sendable {
+    /// Stores that already carry a `last_synced`.
+    var ready: Set<String> = []
+    /// Stores whose row exists but is still pending.
+    var pending: Set<String> = []
+    private(set) var requested: [String] = []
+
+    func request(marketId: String) async throws -> BranchRequest? {
+        if ready.contains(marketId) {
+            return BranchRequest(marketId: marketId, lastSynced: "2026-07-25T16:56:48Z", active: true)
+        }
+        if pending.contains(marketId) || requested.contains(marketId) {
+            return BranchRequest(marketId: marketId, lastSynced: nil, active: true)
+        }
+        return nil
+    }
+
+    func requestBranch(marketId: String) async throws {
+        requested.append(marketId)
+    }
+}
+
 struct MockMarketRepository: MarketRepositoryProtocol {
     var fixtures: [Market] = MockFixtures.markets
 

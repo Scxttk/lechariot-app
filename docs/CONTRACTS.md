@@ -86,6 +86,34 @@ GET /rest/v1/branches?select=market_id,chain,name,street,plz,city,lat,lon&lat=gt
 GET /rest/v1/branches?select=…&market_id=eq.1766063&limit=1
 ```
 
+### `branch_requests`
+
+The app's way of asking for one store's offers (backend migration v14). Same
+shape as `regions`, one level more precise: inserting a row fires the trigger
+`on_branch_request_insert`, which dispatches the backend's `nightly.yml` with
+`inputs.market_id`; the app polls `last_synced`.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `market_id` | text | Primary key; **must exist in `branches`** |
+| `last_synced` | text? | null = still waiting |
+| `active` | bool? | Whether the store is kept in sync |
+
+The insert is restricted server-side to the `market_id` column, and the id has
+to be in the directory. Verified with the app's own publishable key on
+2026-07-25: an invented id is rejected with `42501`, naming a control column
+fails with "permission denied for column", reading is allowed. That check is
+what the PLZ path never had — it is how the non-existent postcode 94108 became
+an active region.
+
+Measured the same day, end to end: insert → dispatched workflow **1 second**,
+insert → 162 finished offers **43 seconds**.
+
+```
+GET  /rest/v1/branch_requests?select=market_id,last_synced,active&market_id=eq.1763556
+POST /rest/v1/branch_requests   body: {"market_id": "1763556"}   (409 = already requested, treat as success)
+```
+
 ### `regions`
 
 | Column | Type | Notes |
