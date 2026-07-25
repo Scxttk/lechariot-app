@@ -3,7 +3,6 @@ import SwiftUI
 /// The app's home screen: the shopping list, with the week's cheapest offer per
 /// item and — above everything — which branch covers the list best.
 struct ShoppingListView: View {
-    let regions: [String]
     let favoriteMarkets: [Market]
 
     @Environment(ShoppingListStore.self) private var list
@@ -65,8 +64,8 @@ struct ShoppingListView: View {
             .toolbar { toolbarMenu }
             .safeAreaInset(edge: .bottom) { inputBar }
         }
-        .task(id: regions) {
-            await offerStore.load(regions: regions, chains: chains, branchIds: branchIds)
+        .task(id: branchIds) {
+            await offerStore.load(branchIds: branchIds, chains: chains)
         }
         .sheet(item: $detailItem) { item in
             MatchDetailView(item: item, offers: offerStore.offers)
@@ -293,7 +292,6 @@ struct ShoppingListView: View {
 
 #Preview {
     ShoppingListView(
-        regions: ["01219"],
         favoriteMarkets: MockFixtures.markets,
         offerStore: OfferStore(repository: MockOfferRepository(), cache: nil)
     )

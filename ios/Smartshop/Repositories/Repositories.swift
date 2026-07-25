@@ -1,10 +1,10 @@
 import Foundation
 
 protocol OfferRepositoryProtocol {
-    /// ALL offers for the given PLZ regions, newest validity first — never
+    /// ALL offers of the given branches, newest validity first — never
     /// narrowed to chains: the cache must hold the complete tagged set per
     /// region (KW-Cache), display filtering happens in memory (OfferStore).
-    func offers(regions: [String]) async throws -> [Offer]
+    func offers(branchIds: [String]) async throws -> [Offer]
 }
 
 protocol PriceHistoryRepositoryProtocol {

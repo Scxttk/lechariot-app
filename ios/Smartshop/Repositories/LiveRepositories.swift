@@ -4,20 +4,21 @@ struct LiveOfferRepository: OfferRepositoryProtocol {
     let client: SupabaseClient
     private let pageSize = 1000
 
-    func offers(regions: [String]) async throws -> [Offer] {
-        guard !regions.isEmpty else { return [] }
+    func offers(branchIds: [String]) async throws -> [Offer] {
+        guard !branchIds.isEmpty else { return [] }
         var all: [Offer] = []
         var offset = 0
         while true {
             // Legacy rows (pre-enrichment sources) carry null validity dates and
             // would fail decoding; the contract requires both dates to be set.
-            // `region.is.null` pulls the nationwide rows in alongside the
-            // regional ones: ALDI is stored once for the whole country, so a
-            // plain `region=in.(…)` would leave both ALDI chains off the
-            // screen entirely.
+            // Asked for by BRANCH, not by postcode. A postcode fetched every
+            // store in it — in 01067 that is three REWE flyers at once, of
+            // which the user walks into one. The rows without a region come
+            // along because they belong to every branch of their chain
+            // (ALDI, stored once for the whole country).
             let query = "select=*&order=valid_from.desc"
                 + "&valid_from=not.is.null&valid_until=not.is.null"
-                + "&or=(region.in.(\(regions.joined(separator: ","))),region.is.null)"
+                + "&or=(market_id.in.(\(branchIds.joined(separator: ","))),region.is.null)"
                 + "&limit=\(pageSize)&offset=\(offset)"
             // Decode per element so one malformed row cannot sink the fetch.
             // Pagination must count raw rows, not surviving ones, so the raw

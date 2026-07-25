@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// Offer cache: replace-all per region on each successful refresh.
+/// Offer cache: replace-all on each successful refresh.
 /// Cached rows are served instantly on launch; `fetchedAt` drives staleness.
 @MainActor
 final class OfferCache {
@@ -26,46 +26,65 @@ final class OfferCache {
         return try? OfferCache()
     }()
 
-    private let container: ModelContainer
+    /// Key under which the branch selection the cache was written for is kept.
+    private static let branchesKey = "offerCache.branchIds"
 
-    init(inMemory: Bool = false) throws {
+    private let container: ModelContainer
+    private let defaults: UserDefaults
+
+    init(inMemory: Bool = false, defaults: UserDefaults = AppDefaults.shared) throws {
         let config = ModelConfiguration(isStoredInMemoryOnly: inMemory)
         container = try ModelContainer(for: CachedOffer.self, configurations: config)
+        self.defaults = defaults
     }
 
-    /// Cached offers for a region plus the time they were fetched (nil if empty).
-    /// `region: nil` addresses the nationwide bucket (ALDI) — its rows belong
-    /// to no postcode and are kept in their own bucket rather than copied into
-    /// each one.
-    func load(region: String?) throws -> (offers: [Offer], fetchedAt: Date?) {
+    /// The branches the cached rows were fetched for.
+    ///
+    /// Persisted next to the rows, not held in memory: after a cold start the
+    /// store has no idea what the cache contains, and an in-memory field would
+    /// have made every launch look like a changed selection and refetch —
+    /// which is exactly what the KW cache exists to avoid.
+    var cachedBranchIds: [String] {
+        defaults.stringArray(forKey: Self.branchesKey) ?? []
+    }
+
+    /// Everything in the cache plus the time it was fetched (nil if empty).
+    ///
+    /// No bucket parameter any more. Since the app asks for its chosen
+    /// branches in a single query, the cache holds exactly one answer — the
+    /// per-region buckets only ever existed because several postcodes were
+    /// split out of one response afterwards.
+    func load() throws -> (offers: [Offer], fetchedAt: Date?) {
         let descriptor = FetchDescriptor<CachedOffer>(
-            predicate: #Predicate { $0.region == region },
             sortBy: [SortDescriptor(\.validFrom, order: .reverse)]
         )
         let rows = try container.mainContext.fetch(descriptor)
         return (rows.map(\.offer), rows.first?.fetchedAt)
     }
 
-    /// Drops all cached rows of `region` and stores `offers` in their place.
-    func replaceAll(_ offers: [Offer], region: String?, fetchedAt: Date = .now) throws {
+    /// Drops the whole cache and stores `offers` in its place, remembering
+    /// which branches they were fetched for.
+    func replaceAll(_ offers: [Offer], branchIds: [String] = [], fetchedAt: Date = .now) throws {
         let context = container.mainContext
-        try context.delete(model: CachedOffer.self, where: #Predicate { $0.region == region })
+        try context.delete(model: CachedOffer.self)
         for offer in offers {
             context.insert(CachedOffer(offer: offer, fetchedAt: fetchedAt))
         }
         try context.save()
+        defaults.set(branchIds, forKey: Self.branchesKey)
     }
 
-    /// Drops every cached row of every region.
+    /// Drops every cached row.
     func deleteAll() throws {
         let context = container.mainContext
         try context.delete(model: CachedOffer.self)
         try context.save()
+        defaults.removeObject(forKey: Self.branchesKey)
     }
 
     /// True when there is no fetch timestamp, it is older than `maxAge`, or it
-    /// is from an earlier calendar week — the cache key is Region+KW, so a week
-    /// rollover always invalidates even a fresh-looking cache.
+    /// is from an earlier calendar week — the cache key is Filialen+KW, so a
+    /// week rollover always invalidates even a fresh-looking cache.
     static func isStale(fetchedAt: Date?, now: Date = .now) -> Bool {
         guard let fetchedAt else { return true }
         return now.timeIntervalSince(fetchedAt) > maxAge

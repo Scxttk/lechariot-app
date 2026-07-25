@@ -3,37 +3,33 @@ import XCTest
 
 @MainActor
 final class OfferCacheTests: XCTestCase {
-    func testReplaceAllReplacesOnlyTheGivenRegion() throws {
+    /// Seit die App ihre Filialen in EINER Abfrage holt, hält der Cache genau
+    /// eine Antwort — die Regions-Eimer gab es nur, weil mehrere PLZ nachträglich
+    /// aus einer Antwort herausgeschnitten wurden. `replaceAll` ersetzt deshalb
+    /// alles; eine halb ersetzte Woche wäre eine Mischung aus zwei Läufen.
+    func testReplaceAllReplacesTheWholeCache() throws {
         let cache = try OfferCache(inMemory: true)
-        var otherRegion = MockFixtures.offers[0]
-        otherRegion = Offer(
-            market: otherRegion.market, product: "Berliner Ware", price: 1.0,
-            regularPrice: nil, unit: nil, category: "Sonstiges", emoji: nil,
-            validFrom: otherRegion.validFrom, validUntil: otherRegion.validUntil,
-            basePrice: nil, baseUnit: nil, region: "10115"
-        )
-        try cache.replaceAll(MockFixtures.offers, region: "01219")
-        try cache.replaceAll([otherRegion], region: "10115")
+        try cache.replaceAll(MockFixtures.offers)
+        XCTAssertEqual(try cache.load().offers.count, MockFixtures.offers.count)
 
-        // Replace 01219 with a single offer; 10115 must survive untouched.
-        try cache.replaceAll([MockFixtures.offers[0]], region: "01219")
+        try cache.replaceAll([MockFixtures.offers[0]])
 
-        XCTAssertEqual(try cache.load(region: "01219").offers.count, 1)
-        XCTAssertEqual(try cache.load(region: "10115").offers.count, 1)
+        XCTAssertEqual(try cache.load().offers.count, 1)
+        XCTAssertEqual(try cache.load().offers.first?.product, MockFixtures.offers[0].product)
     }
 
     func testLoadReturnsFetchedAt() throws {
         let cache = try OfferCache(inMemory: true)
         let stamp = Date(timeIntervalSince1970: 1_784_000_000)
-        try cache.replaceAll(MockFixtures.offers, region: "01219", fetchedAt: stamp)
+        try cache.replaceAll(MockFixtures.offers, fetchedAt: stamp)
 
-        let loaded = try cache.load(region: "01219")
+        let loaded = try cache.load()
         XCTAssertEqual(loaded.fetchedAt, stamp)
     }
 
-    func testEmptyRegionLoadsEmptyWithNilFetchedAt() throws {
+    func testEmptyCacheLoadsEmptyWithNilFetchedAt() throws {
         let cache = try OfferCache(inMemory: true)
-        let loaded = try cache.load(region: "99999")
+        let loaded = try cache.load()
         XCTAssertTrue(loaded.offers.isEmpty)
         XCTAssertNil(loaded.fetchedAt)
     }
@@ -45,9 +41,9 @@ final class OfferCacheTests: XCTestCase {
         var withoutImage = MockFixtures.offers[1]
         withoutImage.imageUrl = nil
 
-        try cache.replaceAll([withImage, withoutImage], region: "01219")
+        try cache.replaceAll([withImage, withoutImage])
 
-        let loaded = try cache.load(region: "01219").offers
+        let loaded = try cache.load().offers
         XCTAssertEqual(Set(loaded.map(\.imageUrl)), [withImage.imageUrl, nil])
     }
 
@@ -61,7 +57,7 @@ final class OfferCacheTests: XCTestCase {
         XCTAssertFalse(OfferCache.isStale(fetchedAt: now.addingTimeInterval(-23 * 3600), now: now))
     }
 
-    /// Cache key is Region+KW: a new ISO week invalidates even a young cache.
+    /// Cache key is Filialen+KW: a new ISO week invalidates even a young cache.
     func testWeekRolloverInvalidatesYoungCache() {
         let cal = Calendar(identifier: .iso8601)
         let sunday = cal.date(from: DateComponents(year: 2026, month: 7, day: 19, hour: 22))!
