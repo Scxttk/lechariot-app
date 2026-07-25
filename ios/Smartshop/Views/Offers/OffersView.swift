@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// Angebote tab: cached-first offer list across all ready regions, restricted
-/// to the user's Wunschmärkte. Decoupled from RegionStore — takes regions + markets.
+/// Angebote tab: cached-first offer list of the chosen branches. Decoupled
+/// from RegionStore — it takes the markets, nothing else.
 struct OffersView: View {
-    let regions: [String]
     let favoriteMarkets: [Market]
 
     /// Shared with the shopping list — see `ContentView.offerStore`.
@@ -47,8 +46,8 @@ struct OffersView: View {
                     )
                 }
         }
-        .task(id: regions) {
-            await store.load(regions: regions, chains: chains, branchIds: branchIds)
+        .task(id: branchIds) {
+            await store.load(branchIds: branchIds, chains: chains)
         }
         // A market filter can outlive the branch it names — unfavourite Netto in
         // the settings and the Angebote tab was left filtering on a chain that no
@@ -262,7 +261,6 @@ struct OffersView: View {
 
 #Preview {
     OffersView(
-        regions: ["01219"],
         favoriteMarkets: MockFixtures.markets,
         store: OfferStore(repository: MockOfferRepository(), cache: nil),
         priceHistoryRepository: MockPriceHistoryRepository()

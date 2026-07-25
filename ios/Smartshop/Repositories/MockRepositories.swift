@@ -4,8 +4,26 @@ import Foundation
 enum MockFixtures {
     static let day = DateFormatter.supabaseDay
 
+    /// Validity of the CURRENT calendar week rather than a fixed date.
+    ///
+    /// The fixtures used to carry 13.–19.07.2026 hard-coded, so from 20.07.
+    /// onwards every preview and UI-test run showed an offer that had expired
+    /// — harmless for the assertions, misleading for anyone looking at the
+    /// screen, and drifting further every week.
+    static let weekStart: Date = {
+        Calendar(identifier: .iso8601).dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
+    }()
+    static let weekEnd: Date = weekStart.addingTimeInterval(6 * 24 * 60 * 60)
+
+    /// `n` weeks before the current one — for the price history.
+    static func weeksAgo(_ n: Int) -> (from: Date, until: Date) {
+        let from = weekStart.addingTimeInterval(TimeInterval(-n * 7 * 24 * 60 * 60))
+        return (from, from.addingTimeInterval(6 * 24 * 60 * 60))
+    }
+
     static let offers: [Offer] = [
         Offer(
+            marketId: "lidl-01219-1",
             market: "Lidl",
             product: "Bio Vollmilch",
             price: 0.99,
@@ -13,13 +31,14 @@ enum MockFixtures {
             unit: "je 1 l",
             category: "Molkerei & Eier",
             emoji: "🥛",
-            validFrom: day.date(from: "2026-07-13")!,
-            validUntil: day.date(from: "2026-07-19")!,
+            validFrom: weekStart,
+            validUntil: weekEnd,
             basePrice: 0.99,
             baseUnit: "1 l",
             region: "01219"
         ),
         Offer(
+            marketId: "aldi-01219-1",
             market: "Aldi",
             product: "Spanische Orangen",
             price: 2.49,
@@ -27,8 +46,8 @@ enum MockFixtures {
             unit: "je 2 kg Netz",
             category: "Obst & Gemüse",
             emoji: "🍊",
-            validFrom: day.date(from: "2026-07-13")!,
-            validUntil: day.date(from: "2026-07-19")!,
+            validFrom: weekStart,
+            validUntil: weekEnd,
             basePrice: 1.25,
             baseUnit: "1 kg",
             region: "01219"
@@ -41,20 +60,20 @@ enum MockFixtures {
         PriceHistoryPoint(
             market: "Lidl", product: "Bio Vollmilch", region: "01219",
             price: 1.29, regularPrice: 1.29,
-            validFrom: day.date(from: "2026-06-29")!,
-            validUntil: day.date(from: "2026-07-05")!
+            validFrom: weeksAgo(2).from,
+            validUntil: weeksAgo(2).until
         ),
         PriceHistoryPoint(
             market: "Lidl", product: "Bio Vollmilch", region: "01219",
             price: 1.19, regularPrice: 1.29,
-            validFrom: day.date(from: "2026-07-06")!,
-            validUntil: day.date(from: "2026-07-12")!
+            validFrom: weeksAgo(1).from,
+            validUntil: weeksAgo(1).until
         ),
         PriceHistoryPoint(
             market: "Lidl", product: "Bio Vollmilch", region: "01219",
             price: 0.99, regularPrice: 1.29,
-            validFrom: day.date(from: "2026-07-13")!,
-            validUntil: day.date(from: "2026-07-19")!
+            validFrom: weekStart,
+            validUntil: weekEnd
         ),
     ]
 
@@ -91,9 +110,9 @@ enum MockFixtures {
 struct MockOfferRepository: OfferRepositoryProtocol {
     var fixtures: [Offer] = MockFixtures.offers
 
-    func offers(regions: [String]) async throws -> [Offer] {
-        // Nationwide rows have no region and belong to every one of them.
-        fixtures.filter { $0.isNationwide || regions.contains($0.region ?? "") }
+    func offers(branchIds: [String]) async throws -> [Offer] {
+        // Nationwide rows belong to every branch of their chain.
+        fixtures.filter { $0.isNationwide || branchIds.contains($0.marketId ?? "") }
     }
 }
 

@@ -2,14 +2,18 @@ import XCTest
 @testable import Smartshop
 
 final class MockRepositoryTests: XCTestCase {
-    func testMockOfferRepositoryFiltersByRegion() async throws {
+    func testMockOfferRepositoryFiltersByBranch() async throws {
         let repository = MockOfferRepository()
 
-        let matching = try await repository.offers(regions: ["01219"])
-        XCTAssertEqual(matching.count, MockFixtures.offers.count)
-        XCTAssertTrue(matching.allSatisfy { $0.region == "01219" })
+        let both = try await repository.offers(branchIds: ["lidl-01219-1", "aldi-01219-1"])
+        XCTAssertEqual(both.count, MockFixtures.offers.count)
 
-        let empty = try await repository.offers(regions: ["10115"])
+        // Eine Filiale liefert nur ihre eigenen Angebote — das ist der ganze
+        // Unterschied zur PLZ-Abfrage, die immer alle Läden der Gegend brachte.
+        let onlyLidl = try await repository.offers(branchIds: ["lidl-01219-1"])
+        XCTAssertEqual(onlyLidl.map(\.market), ["Lidl"])
+
+        let empty = try await repository.offers(branchIds: ["gibt-es-nicht"])
         XCTAssertTrue(empty.isEmpty)
     }
 

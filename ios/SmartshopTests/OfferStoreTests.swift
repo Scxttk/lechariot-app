@@ -5,7 +5,7 @@ import XCTest
 private struct StubOfferRepository: OfferRepositoryProtocol {
     var result: Result<[Offer], Error> = .success([])
 
-    func offers(regions: [String]) async throws -> [Offer] {
+    func offers(branchIds: [String]) async throws -> [Offer] {
         try result.get()
     }
 }
@@ -17,11 +17,11 @@ private struct StubError: LocalizedError {
 /// Records the query the store composes so tests can assert multi-region calls.
 private final class RecordingOfferRepository: OfferRepositoryProtocol {
     var result: [Offer] = []
-    private(set) var lastRegions: [String]?
+    private(set) var lastBranchIds: [String]?
     private(set) var callCount = 0
 
-    func offers(regions: [String]) async throws -> [Offer] {
-        lastRegions = regions
+    func offers(branchIds: [String]) async throws -> [Offer] {
+        lastBranchIds = branchIds
         callCount += 1
         return result
     }
@@ -29,8 +29,11 @@ private final class RecordingOfferRepository: OfferRepositoryProtocol {
 
 @MainActor
 final class OfferStoreTests: XCTestCase {
+    /// Eigene Defaults je Test: Der Cache merkt sich dort die Filialwahl, und
+    /// `.standard` würde die Tests aneinander koppeln.
     private func makeCache() throws -> OfferCache {
-        try OfferCache(inMemory: true)
+        let suite = UserDefaults(suiteName: "offercache-\(UUID().uuidString)")!
+        return try OfferCache(inMemory: true, defaults: suite)
     }
 
     func testLoadSuccessReachesLoadedAndFillsCache() async throws {
@@ -40,12 +43,12 @@ final class OfferStoreTests: XCTestCase {
             cache: cache
         )
 
-        await store.load(regions: ["01219"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         XCTAssertEqual(store.state, .loaded)
         XCTAssertEqual(store.offers.count, MockFixtures.offers.count)
         XCTAssertFalse(store.isStale)
-        let cached = try cache.load(region: "01219")
+        let cached = try cache.load()
         XCTAssertEqual(cached.offers.count, MockFixtures.offers.count)
     }
 
@@ -55,7 +58,7 @@ final class OfferStoreTests: XCTestCase {
             cache: try makeCache()
         )
 
-        await store.load(regions: ["01219"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         XCTAssertEqual(store.state, .empty)
     }
@@ -66,7 +69,7 @@ final class OfferStoreTests: XCTestCase {
             cache: try makeCache()
         )
 
-        await store.load(regions: ["01219"], chains: ["Kaufland"])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: ["Kaufland"])
 
         XCTAssertTrue(store.isEmptyAfterLoad)
         XCTAssertTrue(store.hasFavoriteChains)
@@ -78,7 +81,7 @@ final class OfferStoreTests: XCTestCase {
             cache: try makeCache()
         )
 
-        await store.load(regions: ["01219"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         XCTAssertTrue(store.isEmptyAfterLoad)
         XCTAssertFalse(store.hasFavoriteChains)
@@ -90,7 +93,7 @@ final class OfferStoreTests: XCTestCase {
             cache: try makeCache()
         )
 
-        await store.load(regions: ["01219"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         XCTAssertFalse(store.isEmptyAfterLoad)
     }
@@ -101,7 +104,7 @@ final class OfferStoreTests: XCTestCase {
             cache: try makeCache()
         )
 
-        await store.load(regions: ["01219"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         // The message is written for a shopper, so the store must not simply
         // forward whatever the networking layer threw — `SupabaseError` has no
@@ -123,7 +126,7 @@ final class OfferStoreTests: XCTestCase {
             cache: try makeCache()
         )
 
-        await store.load(regions: ["01219"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         XCTAssertFalse(store.isOffline)
         if case .error = store.state {
@@ -135,7 +138,7 @@ final class OfferStoreTests: XCTestCase {
         let cache = try makeCache()
         // Stale timestamp so the store attempts (and fails) a network refresh.
         try cache.replaceAll(
-            MockFixtures.offers, region: "01219",
+            MockFixtures.offers,
             fetchedAt: .now.addingTimeInterval(-OfferCache.maxAge - 60)
         )
         let store = OfferStore(
@@ -143,7 +146,7 @@ final class OfferStoreTests: XCTestCase {
             cache: cache
         )
 
-        await store.load(regions: ["01219"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         XCTAssertEqual(store.state, .loaded)
         XCTAssertEqual(store.offers.count, MockFixtures.offers.count)
@@ -153,14 +156,17 @@ final class OfferStoreTests: XCTestCase {
 
     func testCachedOffersAreNarrowedToFavoriteChains() async throws {
         let cache = try makeCache()
-        try cache.replaceAll(MockFixtures.offers, region: "01219", fetchedAt: .now)
+        try cache.replaceAll(MockFixtures.offers, fetchedAt: .now)
         let store = OfferStore(
             repository: StubOfferRepository(result: .failure(StubError())),
             cache: cache
         )
 
-        await store.load(regions: ["01219"], chains: ["Lidl"])
+        await store.load(branchIds: ["lidl-01219-1"], chains: ["Lidl"])
 
+        // Gefiltert wird über die FILIALE, nicht über die Kette: Die Fixtures
+        // tragen seit Phase 12 ihre market_id, und genau die ist der Filter,
+        // der zu dem passt, was im Picker angetippt wurde.
         XCTAssertTrue(store.offers.allSatisfy { $0.market == "Lidl" })
         XCTAssertFalse(store.offers.isEmpty)
     }
@@ -188,7 +194,8 @@ final class OfferStoreTests: XCTestCase {
         )
     }
 
-    func testLoadQueriesAllRegionsInOneCall() async throws {
+    /// Alle gewählten Filialen in EINER Abfrage — nicht eine pro Filiale.
+    func testLoadQueriesAllBranchesInOneCall() async throws {
         let repository = RecordingOfferRepository()
         repository.result = [
             offer(region: "01219", product: "Bio Vollmilch"),
@@ -196,11 +203,43 @@ final class OfferStoreTests: XCTestCase {
         ]
         let store = OfferStore(repository: repository, cache: try makeCache())
 
-        await store.load(regions: ["01219", "01067"], chains: ["Lidl", "Aldi"])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: ["Lidl", "Aldi"])
 
-        XCTAssertEqual(repository.lastRegions, ["01219", "01067"])
+        XCTAssertEqual(repository.lastBranchIds, ["lidl-01219-1", "aldi-01219-1"])
+        XCTAssertEqual(repository.callCount, 1)
         XCTAssertEqual(store.offers.count, 2)
-        XCTAssertEqual(Set(store.offers.map(\.region)), ["01219", "01067"])
+    }
+
+    /// Ohne gewählte Filiale gibt es nichts zu fragen — die App darf dann auch
+    /// keinen leeren Request abschicken, sondern zeigt ihren Leerzustand.
+    func testWithoutBranchesNothingIsFetched() async throws {
+        let repository = RecordingOfferRepository()
+        let store = OfferStore(repository: repository, cache: try makeCache())
+
+        await store.load(branchIds: [], chains: [])
+
+        XCTAssertEqual(repository.callCount, 0)
+        XCTAssertEqual(store.state, .empty)
+    }
+
+    /// Eine geänderte Filialwahl macht den Cache unvollständig, auch wenn er
+    /// taufrisch ist. Ohne diese Prüfung zeigte ein neu gewählter Laden bis zum
+    /// nächsten Kalenderwochenwechsel nichts.
+    func testANewBranchSelectionRefetchesEvenWithAFreshCache() async throws {
+        let repository = RecordingOfferRepository()
+        repository.result = [offer(region: "01219", product: "Bio Vollmilch")]
+        let store = OfferStore(repository: repository, cache: try makeCache())
+
+        await store.load(branchIds: ["lidl-01219-1"], chains: [])
+        XCTAssertEqual(repository.callCount, 1)
+
+        // Dieselbe Auswahl: der Cache reicht.
+        await store.load(branchIds: ["lidl-01219-1"], chains: [])
+        XCTAssertEqual(repository.callCount, 1)
+
+        // Eine Filiale dazu: neu holen.
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
+        XCTAssertEqual(repository.callCount, 2)
     }
 
     // MARK: Dedupe for display
@@ -223,10 +262,10 @@ final class OfferStoreTests: XCTestCase {
             cache: cache
         )
 
-        await store.load(regions: ["01219"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         XCTAssertEqual(store.offers.count, 1)
-        XCTAssertEqual(try cache.load(region: "01219").offers.count, 2)
+        XCTAssertEqual(try cache.load().offers.count, 2)
     }
 
     func testTheSameOfferInTwoRegionsIsShownOnce() async throws {
@@ -238,12 +277,12 @@ final class OfferStoreTests: XCTestCase {
             cache: cache
         )
 
-        await store.load(regions: ["01219", "01067"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         XCTAssertEqual(store.offers.count, 1)
-        // Each region keeps its own row — the user may drop one PLZ later.
-        XCTAssertEqual(try cache.load(region: "01219").offers.count, 1)
-        XCTAssertEqual(try cache.load(region: "01067").offers.count, 1)
+        // Der Cache behält beide Rohzeilen — Dedupe ist eine Anzeigefrage und
+        // wird beim Lesen angewandt, nicht beim Schreiben.
+        XCTAssertEqual(try cache.load().offers.count, 2)
     }
 
     /// The cached path in `load()` must dedupe too — otherwise the duplicates
@@ -259,52 +298,53 @@ final class OfferStoreTests: XCTestCase {
                     region: "01219",
                     from: day.date(from: "2026-07-16")!, until: day.date(from: "2026-07-16")!
                 ),
-            ],
-            region: "01219", fetchedAt: stale
+            ], fetchedAt: stale
         )
         let store = OfferStore(
             repository: StubOfferRepository(result: .failure(StubError())),
             cache: cache
         )
 
-        await store.load(regions: ["01219"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         XCTAssertEqual(store.offers.count, 1)
         XCTAssertTrue(store.isOffline)
     }
 
-    func testRefreshReplacesCachePerRegion() async throws {
+    /// Der Refresh ersetzt den ganzen Cache. Eine alte Zeile, die der neue Lauf
+    /// nicht mehr liefert, muss verschwinden — sonst zeigt die App einen Laden,
+    /// den der Nutzer längst abgewählt hat.
+    func testRefreshReplacesTheWholeCache() async throws {
         let cache = try makeCache()
-        // Stale row that the fresh (empty) result for 01067 must clear.
-        try cache.replaceAll([offer(region: "01067")], region: "01067", fetchedAt: .now)
+        try cache.replaceAll([offer(region: "01067", product: "Alte Ware")], fetchedAt: .now)
         let repository = RecordingOfferRepository()
-        repository.result = [offer(region: "01219")]
+        repository.result = [offer(region: "01219", product: "Neue Ware")]
         let store = OfferStore(repository: repository, cache: cache)
 
-        await store.load(regions: ["01219", "01067"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
-        XCTAssertEqual(try cache.load(region: "01219").offers.count, 1)
-        XCTAssertTrue(try cache.load(region: "01067").offers.isEmpty)
+        XCTAssertEqual(try cache.load().offers.map(\.product), ["Neue Ware"])
     }
 
-    func testCachedOffersOfAllRegionsAreServedWhenOffline() async throws {
+    func testCachedOffersOfAllBranchesAreServedWhenOffline() async throws {
         let cache = try makeCache()
         let stale = Date.now.addingTimeInterval(-OfferCache.maxAge - 60)
         try cache.replaceAll(
-            [offer(region: "01219", product: "Bio Vollmilch")], region: "01219", fetchedAt: stale
-        )
-        try cache.replaceAll(
-            [offer(region: "01067", product: "Butter")], region: "01067", fetchedAt: stale
+            [
+                offer(region: "01219", product: "Bio Vollmilch"),
+                offer(region: "01067", product: "Butter"),
+            ],
+            fetchedAt: stale
         )
         let store = OfferStore(
             repository: StubOfferRepository(result: .failure(StubError())),
             cache: cache
         )
 
-        await store.load(regions: ["01219", "01067"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         XCTAssertEqual(store.state, .loaded)
-        XCTAssertEqual(Set(store.offers.map(\.region)), ["01219", "01067"])
+        XCTAssertEqual(Set(store.offers.map(\.product)), ["Bio Vollmilch", "Butter"])
         XCTAssertTrue(store.isOffline)
     }
 
@@ -312,11 +352,13 @@ final class OfferStoreTests: XCTestCase {
 
     func testFreshCompleteCacheSkipsNetworkRefresh() async throws {
         let cache = try makeCache()
-        try cache.replaceAll(MockFixtures.offers, region: "01219", fetchedAt: .now)
+        try cache.replaceAll(
+            MockFixtures.offers, branchIds: ["lidl-01219-1", "aldi-01219-1"], fetchedAt: .now
+        )
         let repository = RecordingOfferRepository()
         let store = OfferStore(repository: repository, cache: cache)
 
-        await store.load(regions: ["01219"], chains: [])
+        await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
 
         XCTAssertEqual(repository.callCount, 0)
         XCTAssertEqual(store.state, .loaded)
@@ -327,9 +369,9 @@ final class OfferStoreTests: XCTestCase {
         let cache = try makeCache()
         var tagged = MockFixtures.offers[0]
         tagged.matchKey = ["milch"]
-        try cache.replaceAll([tagged], region: "01219", fetchedAt: .now)
+        try cache.replaceAll([tagged], fetchedAt: .now)
 
-        let cached = try cache.load(region: "01219")
+        let cached = try cache.load()
 
         XCTAssertEqual(cached.offers.first?.matchKeys, ["milch"])
     }

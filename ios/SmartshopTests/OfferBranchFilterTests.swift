@@ -10,7 +10,7 @@ import XCTest
 /// into.
 private struct StubOfferRepository: OfferRepositoryProtocol {
     var result: [Offer] = []
-    func offers(regions: [String]) async throws -> [Offer] { result }
+    func offers(branchIds: [String]) async throws -> [Offer] { result }
 }
 
 @MainActor
@@ -50,7 +50,7 @@ final class OfferBranchFilterTests: XCTestCase {
     func testChosenBranchHidesTheNeighbourBranchOfTheSameChain() async {
         let store = store(koeln1067)
 
-        await store.load(regions: ["01067"], chains: ["REWE"], branchIds: ["1766063"])
+        await store.load(branchIds: ["1766063"], chains: ["REWE"])
 
         XCTAssertEqual(store.offers.map(\.product), ["Coca-Cola"])
         XCTAssertEqual(store.offers.first?.price, 0.75, "Der Preis der GEWÄHLTEN Filiale")
@@ -59,25 +59,26 @@ final class OfferBranchFilterTests: XCTestCase {
     func testTwoChosenBranchesShowBothFlyers() async {
         let store = store(koeln1067)
 
-        await store.load(
-            regions: ["01067"], chains: ["REWE"], branchIds: ["1766063", "1766160"]
-        )
+        await store.load(branchIds: ["1766063", "1766160"], chains: ["REWE"])
 
         // Beide Cola-Zeilen überleben: verschiedene Preise sind verschiedene
         // Angebote, das entscheidet der Dedupe-Schlüssel über die Cents.
         XCTAssertEqual(Set(store.offers.map(\.price)), [0.75, 1.49, 12.99])
     }
 
-    /// Without branch ids the old chain rule has to survive untouched —
-    /// installs whose favourites predate the branch key rely on it.
-    func testWithoutBranchIdsTheChainFilterStillApplies() async {
+    /// Ohne gewählte Filiale gibt es nichts zu fragen. Seit die Abfrage über
+    /// Filialen läuft, ist die leere Auswahl kein „zeig alles" mehr, sondern
+    /// ein Leerzustand — den `ContentView` ohnehin abfängt, bevor die Tabs
+    /// überhaupt erscheinen („Keine Filiale gewählt").
+    func testWithoutBranchIdsThereIsNothingToShow() async {
         var offers = koeln1067
         offers.append(offer(branch: "4816", chain: "Netto", product: "Butter", price: 1.99))
         let store = store(offers)
 
-        await store.load(regions: ["01067"], chains: ["Netto"], branchIds: [])
+        await store.load(branchIds: [], chains: ["Netto"])
 
-        XCTAssertEqual(store.offers.map(\.product), ["Butter"])
+        XCTAssertTrue(store.offers.isEmpty)
+        XCTAssertEqual(store.state, .empty)
     }
 
     /// A dataset from before migration v13 has no branch on its rows. Applying
@@ -90,7 +91,7 @@ final class OfferBranchFilterTests: XCTestCase {
         ]
         let store = store(legacy)
 
-        await store.load(regions: ["01067"], chains: ["REWE"], branchIds: ["1766063"])
+        await store.load(branchIds: ["1766063"], chains: ["REWE"])
 
         XCTAssertEqual(store.offers.map(\.product), ["Coca-Cola"])
     }
@@ -103,9 +104,7 @@ final class OfferBranchFilterTests: XCTestCase {
         ]
         let store = store(mixed)
 
-        await store.load(
-            regions: ["01067"], chains: ["REWE", "Netto"], branchIds: ["1766063"]
-        )
+        await store.load(branchIds: ["1766063"], chains: ["REWE", "Netto"])
 
         XCTAssertEqual(Set(store.offers.map(\.product)), ["Coca-Cola", "Butter"])
     }
@@ -180,11 +179,7 @@ final class NationwideOfferTests: XCTestCase {
     func testANationwideOfferSurvivesTheBranchFilter() async {
         let store = store(mixed)
 
-        await store.load(
-            regions: ["01067"],
-            chains: ["ALDI Nord", "REWE"],
-            branchIds: ["ALDI_NORD_4711", "1766063"]
-        )
+        await store.load(branchIds: ["ALDI_NORD_4711", "1766063"], chains: ["ALDI Nord", "REWE"])
 
         XCTAssertEqual(Set(store.offers.map(\.product)), ["Ofenkäse", "Coca-Cola"])
     }
@@ -194,9 +189,7 @@ final class NationwideOfferTests: XCTestCase {
     func testANationwideChainThatIsNotChosenStaysAway() async {
         let store = store(mixed)
 
-        await store.load(
-            regions: ["01067"], chains: ["ALDI Nord"], branchIds: ["ALDI_NORD_4711"]
-        )
+        await store.load(branchIds: ["ALDI_NORD_4711"], chains: ["ALDI Nord"])
 
         XCTAssertEqual(store.offers.map(\.product), ["Ofenkäse"])
     }
@@ -207,24 +200,22 @@ final class NationwideOfferTests: XCTestCase {
     func testAtTheAldiEquatorBothCataloguesAreShown() async {
         let store = store(mixed)
 
-        await store.load(
-            regions: ["96515"],
-            chains: ["ALDI Nord", "ALDI SÜD"],
-            branchIds: ["ALDI_NORD_NEUHAUS", "ALDI_SUED_SONNEBERG"]
-        )
+        await store.load(branchIds: ["ALDI_NORD_NEUHAUS", "ALDI_SUED_SONNEBERG"], chains: ["ALDI Nord", "ALDI SÜD"])
 
         XCTAssertEqual(Set(store.offers.map(\.market)), ["ALDI Nord", "ALDI SÜD"])
         XCTAssertEqual(Set(store.offers.map(\.product)), ["Ofenkäse", "Rispentomaten"])
     }
 
-    /// Ohne gewählte Filialen bleibt alles wie vorher — die Ketten-Regel gilt
-    /// für bundesweite Zeilen genauso.
-    func testWithoutBranchIdsTheChainRuleStillApplies() async {
+    /// Die Ketten-Regel gilt für bundesweite Zeilen weiterhin — sie tragen
+    /// eine National-ID, die in keiner Filialwahl vorkommt, und wären mit einem
+    /// reinen Filial-Abgleich unsichtbar. Hier gewählt: eine REWE-Filiale und
+    /// ALDI SÜD; der Nord-Katalog bleibt trotzdem weg.
+    func testTheChainRuleGovernsNationwideRows() async {
         let store = store(mixed)
 
-        await store.load(regions: ["01067"], chains: ["ALDI SÜD"], branchIds: [])
+        await store.load(branchIds: ["1766063", "ALDI_SUED_IRGENDWO"], chains: ["ALDI SÜD", "REWE"])
 
-        XCTAssertEqual(store.offers.map(\.product), ["Rispentomaten"])
+        XCTAssertEqual(Set(store.offers.map(\.product)), ["Rispentomaten", "Coca-Cola"])
     }
 
     /// `Offer.id` muss eine bundesweite Zeile von einer regionalen trennen,

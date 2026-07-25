@@ -218,11 +218,10 @@ final class OfferStore {
 
     private let repository: OfferRepositoryProtocol
     private let cache: OfferCache?
-    private var regions: [String] = []
     private var chains: [String] = []
-    /// Branch ids of the chosen stores. Empty = show every branch (the state
-    /// before a user has picked any, and the state of installs that predate
-    /// the branch key).
+    /// Branch ids of the chosen stores — what is fetched AND what is shown.
+    /// Empty = nothing to ask for; the screen stays in its empty state with a
+    /// route into the settings.
     private var branchIds: [String] = []
 
     var isStale: Bool {
@@ -243,82 +242,73 @@ final class OfferStore {
         self.cache = cache
     }
 
-    /// Shows cached offers for the regions immediately (if any), then refreshes.
-    /// A single fetch spans all regions (offers query: `region=in.(...)`), so a
-    /// user near a PLZ border sees favorites from every ready region at once.
+    /// Shows the cached offers immediately (if any), then refreshes.
     ///
-    /// `branchIds` narrows the *display* to the chosen stores. The fetch and
-    /// the cache stay per region on purpose: the cache is the complete tagged
-    /// week of a region (KW-Cache), and which stores of it the user wants to
-    /// see is a display question — the same reason the chain filter has always
-    /// worked this way.
-    func load(regions: [String], chains: [String], branchIds: [String] = []) async {
-        self.regions = regions
-        self.chains = chains
+    /// Asked for by **branch**, not by postcode. A postcode fetched every store
+    /// in it — in 01067 that is three REWE flyers at once (146 + 162 + 243
+    /// rows), of which the user walks into one. `chains` only still exists for
+    /// the section labels and the market filter menu.
+    func load(branchIds: [String], chains: [String]) async {
         self.branchIds = branchIds
-        let cached = regions.compactMap { try? cache?.load(region: $0) }
-        // The nationwide bucket rides along but is not part of the region
-        // count below: a user whose chosen chains happen to include no
-        // nationwide chain has an empty bucket, and that must not look like a
-        // cold cache and force a fetch on every launch.
-        let national = (try? cache?.load(region: nil)) ?? nil
-        let cachedOffers = cached.flatMap(\.offers) + (national?.offers ?? [])
+        self.chains = chains
+        guard !branchIds.isEmpty else {
+            offers = []
+            state = .empty
+            return
+        }
+        let cached = (try? cache?.load()) ?? nil
+        let cachedOffers = cached?.offers ?? []
         if !cachedOffers.isEmpty {
             offers = display(cachedOffers)
-            // The oldest region determines staleness of the combined list.
-            fetchedAt = (cached.compactMap(\.fetchedAt) + [national?.fetchedAt].compactMap { $0 })
-                .min()
+            fetchedAt = cached?.fetchedAt
             state = offers.isEmpty ? .empty : .loaded
         } else {
             state = .loading
         }
-        // KW-Cache: skip the network while EVERY region has cached offers from
-        // the current calendar week younger than maxAge; a week rollover or an
-        // empty region forces a refresh.
-        let cacheComplete = cached.count == regions.count
-            && cached.allSatisfy { !$0.offers.isEmpty }
-        if cacheComplete && !OfferCache.isStale(fetchedAt: fetchedAt) {
+        // KW-Cache: skip the network while the cache holds this week's answer
+        // for exactly this set of branches. A week rollover, an empty cache or
+        // a changed selection all force a refresh.
+        // A different selection makes the cache incomplete even when it is
+        // fresh — otherwise a newly picked store showed nothing until the next
+        // calendar week.
+        if !cachedOffers.isEmpty
+            && cache?.cachedBranchIds == branchIds
+            && !OfferCache.isStale(fetchedAt: fetchedAt) {
             return
         }
         await refresh()
     }
 
-    /// Fetches the COMPLETE offer set of all regions in one query (no chain
-    /// filter — the cache is the per-region KW dataset) and replaces the cache
-    /// per region; display is narrowed to the favorited chains in memory.
+    /// Fetches the COMPLETE offer set of the chosen branches in one query (no
+    /// chain filter — the cache is the whole tagged week of those branches) and
+    /// replaces the cache; display narrowing happens in memory.
     func refresh() async {
-        guard !regions.isEmpty else { return }
+        guard !branchIds.isEmpty else { return }
         isRefreshing = true
         defer { isRefreshing = false }
-        // The regions this run is for. A second `load()` can change `regions`
-        // while the fetch is in flight (user adds a PLZ, tab reappears); without
-        // the comparison below the slower answer would win and the screen would
-        // show offers for a region set the user has moved on from.
-        let requested = regions
+        // The branches this run is for. A second `load()` can change them while
+        // the fetch is in flight (user picks another store, tab reappears);
+        // without the comparison below the slower answer would win and the
+        // screen would show stores the user has moved on from.
+        let requested = branchIds
         do {
-            let fresh = try await repository.offers(regions: requested)
+            let fresh = try await repository.offers(branchIds: requested)
             try Task.checkCancellation()
-            guard requested == regions else { return }
+            guard requested == branchIds else { return }
             let now = Date.now
-            // The cache keeps the RAW rows — it is the per-region KW dataset,
-            // and dedupe is a display concern applied on read. Written before
-            // `offers` for exactly that reason; don't fold the two together.
-            let byRegion = Dictionary(grouping: fresh, by: \.region)
-            for region in requested {
-                try? cache?.replaceAll(byRegion[region] ?? [], region: region, fetchedAt: now)
-            }
-            // …plus the nationwide bucket. Rewritten on every refresh like any
-            // other, so a week rollover clears it too.
-            try? cache?.replaceAll(byRegion[nil] ?? [], region: nil, fetchedAt: now)
+            // The cache keeps the RAW rows — dedupe is a display concern
+            // applied on read. Written before `offers` for exactly that reason;
+            // don't fold the two together.
+            try? cache?.replaceAll(fresh, branchIds: requested, fetchedAt: now)
             offers = display(fresh)
             fetchedAt = now
             isOffline = false
             state = offers.isEmpty ? .empty : .loaded
         } catch {
-            // A cancelled fetch is not a failure: `.task(id: regions)` restarts
-            // this whenever the regions change and cancels the previous run, and
-            // leaving the tab cancels it too. Treating that as "offline" put a
-            // warning banner on perfectly fresh data.
+            // A cancelled fetch is not a failure: `.task(id: branchIds)`
+            // restarts this whenever the selection changes and cancels the
+            // previous run, and leaving the tab cancels it too. Treating that
+            // as "offline" put a warning banner on perfectly fresh data.
             guard !LoadFailure.isCancellation(error) else { return }
             isOffline = true
             // Keep showing cached data; only surface the error when there is none.

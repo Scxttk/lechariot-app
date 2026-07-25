@@ -36,8 +36,8 @@ struct ContentView: View {
 
     private var mainTabs: some View {
         TabView(selection: $selectedTab) {
-            allRegionScoped { regions, markets in
-                ShoppingListView(regions: regions, favoriteMarkets: markets, offerStore: offerStore)
+            allRegionScoped { markets in
+                ShoppingListView(favoriteMarkets: markets, offerStore: offerStore)
             }
             .tabItem {
                 Label("Liste", systemImage: "checklist")
@@ -66,12 +66,8 @@ struct ContentView: View {
     /// users see offers from every region they added.
     @ViewBuilder
     private var offersTab: some View {
-        allRegionScoped { regions, markets in
-            OffersView(
-                regions: regions,
-                favoriteMarkets: markets,
-                store: offerStore
-            )
+        allRegionScoped { markets in
+            OffersView(favoriteMarkets: markets, store: offerStore)
         }
     }
 
@@ -85,7 +81,7 @@ struct ContentView: View {
     /// restores it.
     @ViewBuilder
     private func allRegionScoped(
-        @ViewBuilder content: ([String], [Market]) -> some View
+        @ViewBuilder content: ([Market]) -> some View
     ) -> some View {
         let regions = store.orderedReadyRegions
         if regions.isEmpty {
@@ -101,7 +97,7 @@ struct ContentView: View {
                 message: "Smartshop vergleicht nur die Läden, in die du wirklich gehst. Wähle mindestens eine Filiale aus."
             )
         } else {
-            content(regions, store.favoriteMarkets(in: regions))
+            content(store.favoriteMarkets(in: regions))
         }
     }
 
