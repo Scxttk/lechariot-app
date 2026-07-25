@@ -1,6 +1,8 @@
 # Smartshop
 
-Monorepo for the Smartshop app — grocery offers for your region, backed by Supabase (data sourced via the Marktguru API).
+Monorepo for the Smartshop app — grocery offers for your region, backed by Supabase.
+
+Offers are scraped by the Rust backend in [smartshop-backend](https://github.com/Scxttk/smartshop-backend) and pushed to Supabase; this repo only reads them. Seven of the eight chains come from the retailers' own endpoints (Kaufland, REWE, Netto, Penny, EDEKA, ALDI Nord, ALDI SÜD). Lidl is the exception: its own API requires OAuth, so those offers come via the public Marktguru web API — roughly 30 % of all rows.
 
 ## Structure
 
