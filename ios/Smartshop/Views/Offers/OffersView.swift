@@ -9,7 +9,12 @@ struct OffersView: View {
     /// Shared with the shopping list — see `ContentView.offerStore`.
     let store: OfferStore
 
+    /// Only the detail sheet needs it, and only after a tap — defaulted so
+    /// neither `ContentView` nor the preview has to know about it.
+    var priceHistoryRepository: PriceHistoryRepositoryProtocol = AppRepositories.priceHistory
+
     @State private var search = ""
+    @State private var selectedOffer: Offer?
     @State private var grouping: OfferGrouping = .market
     @State private var sort: OfferSort = .standard
     @State private var categoryFilter: String?
@@ -26,6 +31,13 @@ struct OffersView: View {
                 .navigationTitle("Angebote")
                 .searchable(text: $search, prompt: "Produkt suchen")
                 .toolbar { filterMenu }
+                .sheet(item: $selectedOffer) { offer in
+                    OfferDetailView(
+                        offer: offer,
+                        favoriteMarkets: favoriteMarkets,
+                        historyRepository: priceHistoryRepository
+                    )
+                }
         }
         .task(id: regions) { await store.load(regions: regions, chains: chains) }
         // A market filter can outlive the branch it names — unfavourite Netto in
@@ -43,7 +55,9 @@ struct OffersView: View {
         switch store.state {
         case .loading:
             // Skeleton matching the loaded list shape — no layout jump when
-            // real offers arrive.
+            // real offers arrive. Bare rows on purpose: a disabled Button would
+            // dim the already-redacted placeholder a second time, and the list
+            // carries its own "wird geladen" label below.
             List(Offer.skeleton) { OfferRowView(offer: $0).listRowBackground(Theme.surface) }
                 .redacted(reason: .placeholder)
                 .disabled(true)
@@ -134,7 +148,7 @@ struct OffersView: View {
                 topDealsSection
                 ForEach(Array(OfferQuery.grouped(visible, by: grouping).enumerated()), id: \.element.key) { index, section in
                     Section(sectionTitle(section.key)) {
-                        ForEach(section.offers) { OfferRowView(offer: $0) }
+                        ForEach(section.offers) { offerRow($0) }
                     }
                     .listRowBackground(Theme.surface)
                     // Reserved ad position: after the first market section, so a
@@ -149,6 +163,27 @@ struct OffersView: View {
         .refreshable { await store.refresh() }
     }
 
+    /// A row whose whole width opens the detail sheet.
+    ///
+    /// The Button owns the accessibility element — no
+    /// `.accessibilityElement(children: .ignore)` anywhere in this chain, or
+    /// the label below is swallowed (see `OfferRowView`). `TactileButtonStyle`
+    /// brings its own `.contentShape(Rectangle())`, so the gap between product
+    /// text and price is tappable too.
+    private func offerRow(_ offer: Offer) -> some View {
+        Button {
+            selectedOffer = offer
+        } label: {
+            OfferRowView(offer: offer)
+        }
+        .buttonStyle(TactileButtonStyle())
+        .accessibilityLabel(offer.voiceOverSummary)
+        .accessibilityHint("Zeigt Details und Preisverlauf")
+        // Stable handle for the UI journeys — the label itself is a whole
+        // sentence built from whichever offer happens to be live.
+        .accessibilityIdentifier("offers.row")
+    }
+
     /// The five deepest discounts, pinned above the grouped list. Hidden as
     /// soon as the user searches or filters — then they are looking for
     /// something specific and a "best of" list is only in the way.
@@ -158,7 +193,7 @@ struct OffersView: View {
         let deals = isBrowsing ? OfferAnalytics.topDeals(store.offers, limit: 5) : []
         if !deals.isEmpty {
             Section {
-                ForEach(deals) { OfferRowView(offer: $0) }
+                ForEach(deals) { offerRow($0) }
             } header: {
                 Text("Top-Deals der Woche")
             }
@@ -182,11 +217,7 @@ struct OffersView: View {
     /// favorited branch across the shown regions.
     private func sectionTitle(_ key: String) -> String {
         guard grouping == .market else { return key }
-        let branches = favoriteMarkets.filter { $0.chain == key }
-        if branches.count == 1, !branches[0].branchName.isEmpty {
-            return "\(key) – \(branches[0].branchName)"
-        }
-        return key
+        return Market.displayTitle(chain: key, favorites: favoriteMarkets)
     }
 
     private var filterMenu: some ToolbarContent {
@@ -223,6 +254,7 @@ struct OffersView: View {
     OffersView(
         regions: ["01219"],
         favoriteMarkets: MockFixtures.markets,
-        store: OfferStore(repository: MockOfferRepository(), cache: nil)
+        store: OfferStore(repository: MockOfferRepository(), cache: nil),
+        priceHistoryRepository: MockPriceHistoryRepository()
     )
 }

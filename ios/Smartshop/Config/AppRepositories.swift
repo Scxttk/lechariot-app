@@ -36,6 +36,11 @@ enum AppRepositories {
         return LiveOfferRepository(client: client)
     }()
 
+    static let priceHistory: PriceHistoryRepositoryProtocol = {
+        guard let client else { return MockPriceHistoryRepository() }
+        return LivePriceHistoryRepository(client: client)
+    }()
+
     /// nil disables profile sync entirely — `ProfileStore` then never uploads,
     /// which is what a mock run should do.
     static func profiles() -> ProfileRepositoryProtocol? {

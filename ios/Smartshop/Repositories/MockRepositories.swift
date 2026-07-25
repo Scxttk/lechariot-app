@@ -35,6 +35,29 @@ enum MockFixtures {
         ),
     ]
 
+    /// Three recorded weeks for the first offer fixture — enough for the
+    /// detail sheet's price history to show up in previews and UI tests.
+    static let priceHistory: [PriceHistoryPoint] = [
+        PriceHistoryPoint(
+            market: "Lidl", product: "Bio Vollmilch", region: "01219",
+            price: 1.29, regularPrice: 1.29,
+            validFrom: day.date(from: "2026-06-29")!,
+            validUntil: day.date(from: "2026-07-05")!
+        ),
+        PriceHistoryPoint(
+            market: "Lidl", product: "Bio Vollmilch", region: "01219",
+            price: 1.19, regularPrice: 1.29,
+            validFrom: day.date(from: "2026-07-06")!,
+            validUntil: day.date(from: "2026-07-12")!
+        ),
+        PriceHistoryPoint(
+            market: "Lidl", product: "Bio Vollmilch", region: "01219",
+            price: 0.99, regularPrice: 1.29,
+            validFrom: day.date(from: "2026-07-13")!,
+            validUntil: day.date(from: "2026-07-19")!
+        ),
+    ]
+
     static let markets: [Market] = [
         Market(chain: "Aldi", branchName: "Dresden Prohlis", marketId: "aldi-01219-1", plz: "01219"),
         Market(chain: "Lidl", branchName: "Dresden Reick", marketId: "lidl-01219-1", plz: "01219"),
@@ -48,6 +71,14 @@ struct MockOfferRepository: OfferRepositoryProtocol {
 
     func offers(regions: [String]) async throws -> [Offer] {
         fixtures.filter { regions.contains($0.region) }
+    }
+}
+
+struct MockPriceHistoryRepository: PriceHistoryRepositoryProtocol {
+    var fixtures: [PriceHistoryPoint] = MockFixtures.priceHistory
+
+    func history(market: String, product: String, region: String) async throws -> [PriceHistoryPoint] {
+        fixtures.filter { $0.market == market && $0.product == product && $0.region == region }
     }
 }
 

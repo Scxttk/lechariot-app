@@ -1,16 +1,16 @@
 import SwiftUI
 
+/// One offer in the Angebote list.
+///
+/// Deliberately carries **no** accessibility element of its own: the callers
+/// wrap it in a Button and put `offer.voiceOverSummary` there. An
+/// `.accessibilityElement(children: .ignore)` on a Button swallows the label
+/// that follows it — the same trap that once emptied the market picker
+/// (`MarketPickerView.marketRow`).
 struct OfferRowView: View {
     let offer: Offer
 
     @Environment(\.dynamicTypeSize) private var typeSize
-
-    private static let day: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "de_DE")
-        formatter.dateFormat = "d.M."
-        return formatter
-    }()
 
     var body: some View {
         // At accessibility sizes the trailing price column no longer fits next
@@ -34,8 +34,6 @@ struct OfferRowView: View {
             }
         }
         .padding(.vertical, 2)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilitySummary)
     }
 
     private var productInfo: some View {
@@ -52,7 +50,7 @@ struct OfferRowView: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
-            Text(validityText)
+            Text(offer.validityText)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -74,33 +72,12 @@ struct OfferRowView: View {
             }
         }
     }
-
-    private var validityText: String {
-        let from = Self.day.string(from: offer.validFrom)
-        let until = Self.day.string(from: offer.validUntil)
-        return "Gültig \(from) – \(until)"
-    }
-
-    /// One sensible VoiceOver utterance: product, price, discount, regular
-    /// price, market and validity instead of a scatter of fragments.
-    private var accessibilitySummary: String {
-        var parts: [String] = [offer.product]
-        if let unit = offer.unit { parts.append(unit) }
-        if let price = offer.price {
-            parts.append(price.formatted(.currency(code: "EUR")))
-        }
-        if let discount = offer.discountPercent {
-            parts.append("\(discount) Prozent reduziert")
-        }
-        if let regular = offer.regularPrice {
-            parts.append("statt \(regular.formatted(.currency(code: "EUR")))")
-        }
-        parts.append("bei \(offer.market)")
-        parts.append("gültig bis \(Self.day.string(from: offer.validUntil))")
-        return parts.joined(separator: ", ")
-    }
 }
 
 #Preview {
-    List(MockFixtures.offers) { OfferRowView(offer: $0) }
+    List(MockFixtures.offers) { offer in
+        Button {} label: { OfferRowView(offer: offer) }
+            .buttonStyle(TactileButtonStyle())
+            .accessibilityLabel(offer.voiceOverSummary)
+    }
 }

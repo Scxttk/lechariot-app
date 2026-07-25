@@ -27,6 +27,26 @@ struct LiveOfferRepository: OfferRepositoryProtocol {
     }
 }
 
+struct LivePriceHistoryRepository: PriceHistoryRepositoryProtocol {
+    let client: SupabaseClient
+    /// Half a year of weeks is more than anyone reads in a sheet.
+    private let limit = 26
+
+    func history(market: String, product: String, region: String) async throws -> [PriceHistoryPoint] {
+        // Product names carry spaces, umlauts and percent signs — unencoded
+        // they don't survive `URL(string:)`. See SupabaseClient.filterValue.
+        guard let market = SupabaseClient.filterValue(market),
+              let product = SupabaseClient.filterValue(product),
+              let region = SupabaseClient.filterValue(region)
+        else { return [] }
+        let query = "select=market,product,region,price,regular_price,valid_from,valid_until"
+            + "&region=eq.\(region)&market=eq.\(market)&product=eq.\(product)"
+            + "&valid_from=not.is.null&valid_until=not.is.null"
+            + "&order=valid_from.asc&limit=\(limit)"
+        return try await client.getList(PriceHistoryPoint.self, path: "price_history", query: query)
+    }
+}
+
 struct LiveMarketRepository: MarketRepositoryProtocol {
     let client: SupabaseClient
 
