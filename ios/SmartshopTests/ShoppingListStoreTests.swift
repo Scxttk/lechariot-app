@@ -128,6 +128,47 @@ final class ShoppingListStoreTests: XCTestCase {
         XCTAssertEqual(match?.offer.product, "Butter 500g")
     }
 
+    // MARK: Quick-add suggestions
+
+    /// The point of the strip: take one staple, the others are still there.
+    func testTakingASuggestionLeavesTheOthersStanding() {
+        let remaining = ShoppingSuggestions.remaining(for: [ShoppingItem(text: "Milch")])
+
+        XCTAssertFalse(remaining.contains("Milch"))
+        XCTAssertEqual(remaining.count, ShoppingSuggestions.staples.count - 1)
+        XCTAssertEqual(remaining.first, "Brot")
+    }
+
+    /// `add` refuses duplicates case-insensitively — suggesting one anyway
+    /// would offer a chip that does nothing when tapped.
+    func testSuggestionsMatchTheListCaseInsensitively() {
+        let remaining = ShoppingSuggestions.remaining(for: [ShoppingItem(text: "milch")])
+
+        XCTAssertFalse(remaining.contains("Milch"))
+    }
+
+    /// Re-suggesting what the user just ticked off would be the app arguing
+    /// with them.
+    func testACheckedItemIsStillOnTheList() {
+        let remaining = ShoppingSuggestions.remaining(
+            for: [ShoppingItem(text: "Brot", isChecked: true)]
+        )
+
+        XCTAssertFalse(remaining.contains("Brot"))
+    }
+
+    func testNothingLeftToSuggestReturnsAnEmptyStrip() {
+        let items = ShoppingSuggestions.staples.map { ShoppingItem(text: $0) }
+
+        XCTAssertTrue(ShoppingSuggestions.remaining(for: items).isEmpty)
+    }
+
+    func testUnrelatedItemsLeaveTheSuggestionsAlone() {
+        let remaining = ShoppingSuggestions.remaining(for: [ShoppingItem(text: "Schokolade")])
+
+        XCTAssertEqual(remaining, ShoppingSuggestions.staples)
+    }
+
     // MARK: Corrupt persistence
 
     func testCorruptPersistedDataResetsToEmptyList() {
