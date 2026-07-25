@@ -18,6 +18,11 @@ struct OnboardingFlowView: View {
     @Environment(RegionStore.self) private var store
     @Environment(ProfileStore.self) private var profile
     let marketRepository: MarketRepositoryProtocol
+    /// Follows a request for a store the backend has never fetched. Created
+    /// here so it outlives a single picker appearance.
+    @State private var branchRequests = BranchRequestStore(
+        repository: AppRepositories.branchRequests()
+    )
 
     @State private var phase: Phase = .welcome
     /// PLZ currently going through the flow; nil while none was submitted yet.
@@ -69,12 +74,22 @@ struct OnboardingFlowView: View {
         if let plz = currentPLZ {
             switch store.syncState(for: plz) {
             case .ready:
-                MarketPickerView(plz: plz, marketRepository: marketRepository) {
+                MarketPickerView(
+                    plz: plz,
+                    marketRepository: marketRepository,
+                    branchRequests: branchRequests
+                ) {
                     store.selectRegion(plz)
                     // The only place that records onboarding as done. "Fertig"
                     // is disabled until a branch is picked, so reaching here
                     // always means a usable setup.
                     store.completeOnboarding()
+                    // Second sync, now that the branches are known. The consent
+                    // step runs BEFORE the picker, so the first upload can only
+                    // ever carry an empty branch list — without this the column
+                    // added in migration v15 would stay empty for everyone.
+                    let branchIds = store.favoriteMarkets.map(\.marketId)
+                    Task { await profile.sync(plz: plz, branchIds: branchIds) }
                 }
             case .requested, .syncing, .failed:
                 WaitingView(plz: plz) {

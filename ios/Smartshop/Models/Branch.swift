@@ -52,6 +52,19 @@ extension Branch {
     }
 }
 
+extension Branch {
+    /// The directory entry as the selection model the rest of the app uses.
+    ///
+    /// `Market` is what favourites, the offer sections and the detail sheet
+    /// are built on, and it wants a postcode. A directory row without one is
+    /// rare (every one of the 3,115 rows measured on 2026-07-25 had it) but
+    /// possible, and an empty string keeps it selectable instead of dropping
+    /// a real store over a missing field.
+    var asMarket: Market {
+        Market(chain: chain, branchName: name, marketId: marketId, plz: plz ?? "")
+    }
+}
+
 /// The two pieces of geometry the store directory needs. Deliberately not
 /// CoreLocation: this has to run in unit tests without a location manager, and
 /// both formulas are four lines.

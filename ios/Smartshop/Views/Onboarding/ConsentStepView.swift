@@ -41,13 +41,13 @@ struct ConsentStepView: View {
                     "checkmark.circle",
                     Theme.success,
                     "Übermittelt werden",
-                    "Haushaltsgröße, wie oft du einkaufst, dein Budget-Rahmen, deine Ernährungsangaben und deine Postleitzahl."
+                    "Haushaltsgröße, wie oft du einkaufst, dein Budget-Rahmen, deine Ernährungsangaben, deine Postleitzahl und die Filialen, die du wählst."
                 )
                 detail(
                     "iphone",
                     Theme.accent,
                     "Bleibt auf dem Gerät",
-                    "Dein Vorname, deine Einkaufsliste und die Filialen, die du gewählt hast."
+                    "Dein Vorname und deine Einkaufsliste."
                 )
                 detail(
                     "person.fill.questionmark",

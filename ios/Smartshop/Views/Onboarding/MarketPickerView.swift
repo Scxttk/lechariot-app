@@ -1,17 +1,38 @@
 import SwiftUI
 
-/// Branch picker ("Wunschmärkte"): one cross-chain, searchable list of all
-/// branches in the user's regions, grouped by chain. Search matches chain,
-/// branch name and PLZ. Chains without backend data (see
-/// `MarketFilter.chainsWithoutData`) are listed but not selectable.
+/// Branch picker ("Wunschmärkte"): one cross-chain, searchable list of the
+/// stores near the user, grouped by chain and sorted by distance within each
+/// chain. Search matches chain, branch name and PLZ. Chains without backend
+/// data (see `MarketFilter.chainsWithoutData`) are listed but not selectable.
 /// At least one selected branch is required to continue.
+///
+/// The list comes from the **directory** (`public.branches`, backend migration
+/// v12), not from `markets`. That is the whole point of Phase 12: `markets`
+/// holds exactly one store per chain and postcode — whichever the store finder
+/// happened to return first — which is why Scott's REWE am Postplatz was not
+/// selectable at all. The directory holds every store the chains' own finders
+/// know about.
+///
+/// `markets` stays as the fallback: if geocoding the postcode fails or the
+/// directory has no entry for the area yet, an empty picker would be a dead
+/// end, and the old list is still a usable answer.
 struct MarketPickerView: View {
     @Environment(RegionStore.self) private var store
     let plz: String
     let marketRepository: MarketRepositoryProtocol
+    var branchRepository: BranchRepositoryProtocol = AppRepositories.branches
+    /// Requests offers for a store the backend has never fetched. Optional so
+    /// previews and the settings path work without one.
+    var branchRequests: BranchRequestStore?
     var onDone: () -> Void
 
     @State private var markets: [Market] = []
+    /// Distance in km per market id — only for stores that came from the
+    /// directory, so the row can say how far away it is.
+    @State private var distances: [String: Double] = [:]
+    /// Street/city per market id, same source.
+    @State private var addresses: [String: String] = [:]
+    @State private var usedDirectory = false
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var query = ""
@@ -27,11 +48,30 @@ struct MarketPickerView: View {
         MarketFilter.filter(markets, query: query)
     }
 
-    /// Local branches grouped by chain, chains alphabetical, branches by name.
+    /// Local branches grouped by chain, chains alphabetical. Within a chain the
+    /// nearest store first — with three REWE in one postcode, alphabetical
+    /// order says nothing about which one the user means.
     private var chainGroups: [(chain: String, markets: [Market])] {
         Dictionary(grouping: filtered.filter { !$0.isNationwide }, by: \.chain)
-            .map { (chain: $0.key, markets: $0.value.sorted { $0.branchName < $1.branchName }) }
+            .map { (chain: $0.key, markets: $0.value.sorted(by: nearerFirst)) }
             .sorted { $0.chain < $1.chain }
+    }
+
+    private func nearerFirst(_ lhs: Market, _ rhs: Market) -> Bool {
+        switch (distances[lhs.marketId], distances[rhs.marketId]) {
+        case let (l?, r?) where l != r: return l < r
+        // Stores without a distance sort last, but keep a stable order among
+        // themselves — otherwise the list reshuffles on every redraw.
+        case (nil, _?): return false
+        case (_?, nil): return true
+        default: return lhs.branchName < rhs.branchName
+        }
+    }
+
+    /// "1,2 km" — one decimal below 10 km, none above. Nobody navigates by
+    /// 100 m at that distance, and the extra digit only adds noise.
+    private func distanceLabel(_ km: Double) -> String {
+        km < 10 ? String(format: "%.1f km", km) : String(format: "%.0f km", km)
     }
 
     private var nationwideMarkets: [Market] {
@@ -181,13 +221,23 @@ struct MarketPickerView: View {
         let isFav = store.isFavorite(market)
         return Button {
             withAnimation { store.toggleFavorite(market) }
+            // Picking a store the backend has never fetched is the whole
+            // reason `branch_requests` exists: the region sync only ever
+            // scraped ONE branch per chain, so choosing the second REWE of a
+            // postcode used to select a store with no offers behind it.
+            // Measured on 2026-07-25: the request is answered in about 40
+            // seconds, so this happens quietly in the background rather than
+            // behind a modal.
+            if store.isFavorite(market), let branchRequests {
+                Task { await branchRequests.request(market.marketId) }
+            }
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(market.isNationwide ? market.chain : market.branchName)
                         .font(.body.weight(.medium))
                         .foregroundStyle(.primary)
-                    Text(market.isNationwide ? "Deutschlandweit" : "PLZ \(market.plz)")
+                    Text(subtitle(for: market))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -214,16 +264,42 @@ struct MarketPickerView: View {
         .accessibilityLabel(
             "\(market.chain), \(market.isNationwide ? "deutschlandweit" : market.branchName)"
         )
+        // Adresse und Entfernung stehen im Hinweis, nicht im Label: Das Label
+        // ist der Name, auf den auch die UI-Journeys zeigen, und ein Label,
+        // das sich mit der Entfernung ändert, wäre kein Name mehr.
+        .accessibilityHint(
+            [subtitle(for: market),
+             isFav ? "Doppeltippen zum Entfernen" : "Doppeltippen zum Hinzufügen"]
+                .joined(separator: ". ")
+        )
         .accessibilityValue(isFav ? "ausgewählt" : "nicht ausgewählt")
-        .accessibilityHint(isFav ? "Doppeltippen zum Entfernen" : "Doppeltippen zum Hinzufügen")
         .accessibilityAddTraits(isFav ? [.isSelected] : [])
+    }
+
+    /// What the user needs to tell two stores of the same chain apart: the
+    /// street, and how far it is. Falls back to the postcode when the row came
+    /// from `markets` instead of the directory — that one has no address.
+    private func subtitle(for market: Market) -> String {
+        if market.isNationwide { return "Deutschlandweit" }
+        let address = addresses[market.marketId] ?? ""
+        let distance = distances[market.marketId].map(distanceLabel)
+        let joined = [address.isEmpty ? nil : address, distance]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+        return joined.isEmpty ? "PLZ \(market.plz)" : joined
     }
 
     private func loadMarkets() async {
         isLoading = true
         errorMessage = nil
         do {
-            markets = try await marketRepository.markets(plzs: plzs)
+            if let directory = try await loadDirectory(), !directory.isEmpty {
+                markets = directory
+                usedDirectory = true
+            } else {
+                markets = try await marketRepository.markets(plzs: plzs)
+                usedDirectory = false
+            }
         } catch {
             // Leaving the screen cancels this; that is not something to report.
             guard !LoadFailure.isCancellation(error) else {
@@ -233,6 +309,49 @@ struct MarketPickerView: View {
             errorMessage = LoadFailure.message(for: error, subject: "Die Filialen")
         }
         isLoading = false
+    }
+
+    /// Stores near the picked postcodes, from the directory. Returns nil when
+    /// no postcode could be geocoded — the caller then falls back to `markets`
+    /// rather than showing an empty list.
+    ///
+    /// The radius is deliberately generous: the store on the way home may sit
+    /// two postcodes away, and the list is sorted by distance anyway, so a
+    /// further one costs a scroll, not a wrong answer.
+    private func loadDirectory() async throws -> [Market]? {
+        var found: [String: (market: Market, distance: Double)] = [:]
+        var geocoded = false
+        for plz in plzs {
+            guard let point = try? await Self.locate(plz) else { continue }
+            geocoded = true
+            let branches = try await branchRepository.nearby(
+                lat: point.lat, lon: point.lon, radiusKm: Self.radiusKm
+            )
+            for branch in branches {
+                let distance = branch.distanceKm(from: point.lat, point.lon) ?? .greatestFiniteMagnitude
+                // The same store shows up around two neighbouring postcodes;
+                // keep the smaller distance, that is the one the user cares
+                // about.
+                if let existing = found[branch.marketId], existing.distance <= distance { continue }
+                found[branch.marketId] = (branch.asMarket, distance)
+                addresses[branch.marketId] = branch.addressLine
+            }
+        }
+        guard geocoded else { return nil }
+        distances = found.mapValues(\.distance)
+        return found.values.map(\.market)
+    }
+
+    /// How far around each postcode the directory is searched.
+    static let radiusKm: Double = 10
+
+    /// Postcode → coordinates. Real geocoding talks to Apple's servers, which
+    /// a mock run must never do: UI tests would depend on the network and on
+    /// whatever the geocoder feels like answering. Mock runs therefore use a
+    /// fixed point — Dresden, where the fixtures live.
+    private static func locate(_ plz: String) async throws -> (lat: Double, lon: Double) {
+        guard !AppRepositories.usesMockData else { return (51.0504, 13.7317) }
+        return try await PLZLocator.coordinates(forPLZ: plz)
     }
 }
 

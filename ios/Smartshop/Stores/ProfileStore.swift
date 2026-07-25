@@ -85,9 +85,11 @@ final class ProfileStore {
     /// consent or without a configured repository. Failures are swallowed on
     /// purpose: a profile that did not upload must never block the user from
     /// getting into the app.
-    func sync(plz: String?) async {
+    func sync(plz: String?, branchIds: [String] = []) async {
         guard profile.hasConsentedToSync, let repository else { return }
-        try? await repository.upload(SyncedProfile(profile: profile, plz: plz))
+        try? await repository.upload(
+            SyncedProfile(profile: profile, plz: plz, branchIds: branchIds)
+        )
     }
 
     // MARK: Persistence

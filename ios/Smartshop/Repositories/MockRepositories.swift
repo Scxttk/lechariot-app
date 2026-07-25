@@ -69,6 +69,15 @@ enum MockFixtures {
     /// never reach: the second REWE in a postcode and the Netto in the
     /// Johannes-Paul-Thilman-Straße.
     static let branches: [Branch] = [
+        // Dieselben beiden wie in `markets` — Mock-Läufe (UI-Journeys) müssen
+        // dieselben Filialen sehen wie vorher, sonst zeigt der Picker über
+        // Nacht andere Läden.
+        Branch(marketId: "lidl-01219-1", chain: "Lidl", name: "Dresden Reick",
+               street: "Reicker Str. 100", plz: "01219", city: "Dresden",
+               lat: 51.0166, lon: 13.7727),
+        Branch(marketId: "aldi-01219-1", chain: "Aldi", name: "Dresden Prohlis",
+               street: "Prohliser Allee 10", plz: "01219", city: "Dresden",
+               lat: 51.0011, lon: 13.7899),
         Branch(marketId: "1766063", chain: "REWE", name: "REWE Ketzscher oHG am Postplatz",
                street: "Wallstr. 2b", plz: "01067", city: "Dresden", lat: 51.0504, lon: 13.7317),
         Branch(marketId: "1766160", chain: "REWE", name: "REWE Friedrichstadt",
