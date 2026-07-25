@@ -4,6 +4,9 @@ import SwiftData
 /// SwiftData mirror of `Offer` plus the timestamp of the refresh that stored it.
 @Model
 final class CachedOffer {
+    /// Default keeps the lightweight SwiftData migration of stores written
+    /// before the branch key working — those rows simply have no branch.
+    var marketId: String?
     var market: String
     var product: String
     var price: Double?
@@ -22,6 +25,7 @@ final class CachedOffer {
     var fetchedAt: Date
 
     init(offer: Offer, fetchedAt: Date) {
+        self.marketId = offer.marketId
         self.market = offer.market
         self.product = offer.product
         self.price = offer.price
@@ -41,6 +45,7 @@ final class CachedOffer {
 
     var offer: Offer {
         Offer(
+            marketId: marketId,
             market: market,
             product: product,
             price: price,

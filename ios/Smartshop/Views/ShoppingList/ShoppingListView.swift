@@ -19,6 +19,12 @@ struct ShoppingListView: View {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
     }
 
+    /// The chosen branches — the filter that matches what the user picked
+    /// since the backend keys offers by branch (migration v13).
+    private var branchIds: [String] {
+        favoriteMarkets.map(\.marketId).sorted()
+    }
+
     /// Matches are recomputed on the fly; only rejections are persisted.
     ///
     /// The suggestion follows the market the card recommends, not the cheapest
@@ -59,7 +65,9 @@ struct ShoppingListView: View {
             .toolbar { toolbarMenu }
             .safeAreaInset(edge: .bottom) { inputBar }
         }
-        .task(id: regions) { await offerStore.load(regions: regions, chains: chains) }
+        .task(id: regions) {
+            await offerStore.load(regions: regions, chains: chains, branchIds: branchIds)
+        }
         .sheet(item: $detailItem) { item in
             MatchDetailView(item: item, offers: offerStore.offers)
                 .environment(rejections)

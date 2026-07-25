@@ -24,6 +24,14 @@ struct OffersView: View {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
     }
 
+    /// The chosen branches themselves. Since the backend keys offers by branch
+    /// (migration v13), this is the filter that actually matches what the user
+    /// picked — the chain list above only still exists for the section labels
+    /// and the market filter menu.
+    private var branchIds: [String] {
+        favoriteMarkets.map(\.marketId).sorted()
+    }
+
     var body: some View {
         NavigationStack {
             content
@@ -39,7 +47,9 @@ struct OffersView: View {
                     )
                 }
         }
-        .task(id: regions) { await store.load(regions: regions, chains: chains) }
+        .task(id: regions) {
+            await store.load(regions: regions, chains: chains, branchIds: branchIds)
+        }
         // A market filter can outlive the branch it names — unfavourite Netto in
         // the settings and the Angebote tab was left filtering on a chain that no
         // longer has offers, i.e. permanently empty with no visible cause.
