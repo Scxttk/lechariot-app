@@ -34,7 +34,10 @@ final class OfferCache {
     }
 
     /// Cached offers for a region plus the time they were fetched (nil if empty).
-    func load(region: String) throws -> (offers: [Offer], fetchedAt: Date?) {
+    /// `region: nil` addresses the nationwide bucket (ALDI) — its rows belong
+    /// to no postcode and are kept in their own bucket rather than copied into
+    /// each one.
+    func load(region: String?) throws -> (offers: [Offer], fetchedAt: Date?) {
         let descriptor = FetchDescriptor<CachedOffer>(
             predicate: #Predicate { $0.region == region },
             sortBy: [SortDescriptor(\.validFrom, order: .reverse)]
@@ -44,7 +47,7 @@ final class OfferCache {
     }
 
     /// Drops all cached rows of `region` and stores `offers` in their place.
-    func replaceAll(_ offers: [Offer], region: String, fetchedAt: Date = .now) throws {
+    func replaceAll(_ offers: [Offer], region: String?, fetchedAt: Date = .now) throws {
         let context = container.mainContext
         try context.delete(model: CachedOffer.self, where: #Predicate { $0.region == region })
         for offer in offers {

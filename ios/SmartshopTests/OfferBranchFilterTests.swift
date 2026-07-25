@@ -128,3 +128,132 @@ final class OfferBranchFilterTests: XCTestCase {
         XCTAssertEqual(offer.marketId, "1766063")
     }
 }
+
+// MARK: - Bundesweite Angebote (ALDI, Phase 12 Schritt 5)
+
+/// ALDI Nord und ALDI SÜD veröffentlichen einen Katalog für ganz Deutschland;
+/// ihre Zeilen tragen weder Filiale noch Region. Vorher speicherte das Backend
+/// trotzdem eine Kopie pro Region — 2.965 Zeilen für rund 320 Angebote —, weil
+/// diese App `region=in.(…)` fragte und eine Zeile ohne Region nie gesehen
+/// hätte.
+@MainActor
+final class NationwideOfferTests: XCTestCase {
+    private let day = Calendar.supabase.date(from: DateComponents(year: 2026, month: 7, day: 20))!
+    private let until = Calendar.supabase.date(from: DateComponents(year: 2026, month: 7, day: 25))!
+
+    private func offer(
+        branch: String?,
+        chain: String,
+        product: String,
+        price: Double,
+        region: String?
+    ) -> Offer {
+        Offer(
+            marketId: branch, market: chain, product: product, price: price,
+            regularPrice: nil, unit: nil, category: "Molkerei", emoji: "🧀",
+            validFrom: day, validUntil: until, basePrice: nil, baseUnit: nil,
+            region: region
+        )
+    }
+
+    private var mixed: [Offer] {
+        [
+            offer(branch: "ALDI_NORD_DE", chain: "ALDI Nord", product: "Ofenkäse",
+                  price: 2.22, region: nil),
+            offer(branch: "ALDI_SUED_DE", chain: "ALDI SÜD", product: "Rispentomaten",
+                  price: 1.11, region: nil),
+            offer(branch: "1766063", chain: "REWE", product: "Coca-Cola",
+                  price: 0.75, region: "01067"),
+            offer(branch: "1766160", chain: "REWE", product: "Aperol",
+                  price: 12.99, region: "01067"),
+        ]
+    }
+
+    private func store(_ offers: [Offer]) -> OfferStore {
+        OfferStore(repository: StubOfferRepository(result: offers), cache: nil)
+    }
+
+    /// Der Kern: Die gewählte ALDI-Filiale heißt `ALDI_NORD_4711`, die Zeile
+    /// trägt `ALDI_NORD_DE`. Ein reiner Filial-Abgleich würde ALDI komplett
+    /// vom Bildschirm nehmen — genau der Fehler, der Schritt 5 vorher blockiert
+    /// hat.
+    func testANationwideOfferSurvivesTheBranchFilter() async {
+        let store = store(mixed)
+
+        await store.load(
+            regions: ["01067"],
+            chains: ["ALDI Nord", "REWE"],
+            branchIds: ["ALDI_NORD_4711", "1766063"]
+        )
+
+        XCTAssertEqual(Set(store.offers.map(\.product)), ["Ofenkäse", "Coca-Cola"])
+    }
+
+    /// Bundesweit heißt nicht „immer sichtbar": Wer ALDI SÜD nicht gewählt hat,
+    /// bekommt den Süd-Katalog auch nicht zu sehen.
+    func testANationwideChainThatIsNotChosenStaysAway() async {
+        let store = store(mixed)
+
+        await store.load(
+            regions: ["01067"], chains: ["ALDI Nord"], branchIds: ["ALDI_NORD_4711"]
+        )
+
+        XCTAssertEqual(store.offers.map(\.product), ["Ofenkäse"])
+    }
+
+    /// Am Aldi-Äquator (96515 Sonneberg) stehen beide Ketten nebeneinander.
+    /// Keine verdrängt die andere — sie tragen verschiedene Ketten und
+    /// verschiedene National-IDs.
+    func testAtTheAldiEquatorBothCataloguesAreShown() async {
+        let store = store(mixed)
+
+        await store.load(
+            regions: ["96515"],
+            chains: ["ALDI Nord", "ALDI SÜD"],
+            branchIds: ["ALDI_NORD_NEUHAUS", "ALDI_SUED_SONNEBERG"]
+        )
+
+        XCTAssertEqual(Set(store.offers.map(\.market)), ["ALDI Nord", "ALDI SÜD"])
+        XCTAssertEqual(Set(store.offers.map(\.product)), ["Ofenkäse", "Rispentomaten"])
+    }
+
+    /// Ohne gewählte Filialen bleibt alles wie vorher — die Ketten-Regel gilt
+    /// für bundesweite Zeilen genauso.
+    func testWithoutBranchIdsTheChainRuleStillApplies() async {
+        let store = store(mixed)
+
+        await store.load(regions: ["01067"], chains: ["ALDI SÜD"], branchIds: [])
+
+        XCTAssertEqual(store.offers.map(\.product), ["Rispentomaten"])
+    }
+
+    /// `Offer.id` muss eine bundesweite Zeile von einer regionalen trennen,
+    /// sonst zeigt die SwiftUI-Liste eine von beiden oder keine.
+    func testTheIdOfANationwideRowDiffersFromARegionalOne() {
+        let national = offer(branch: "ALDI_NORD_DE", chain: "ALDI Nord",
+                             product: "Ofenkäse", price: 2.22, region: nil)
+        let regional = offer(branch: "ALDI_NORD_DE", chain: "ALDI Nord",
+                             product: "Ofenkäse", price: 2.22, region: "01067")
+
+        XCTAssertNotEqual(national.id, regional.id)
+        XCTAssertTrue(national.isNationwide)
+        XCTAssertFalse(regional.isNationwide)
+    }
+
+    /// Eine Zeile ohne `region` muss überhaupt erst durch den Decoder kommen —
+    /// vorher war das Feld nicht optional und die Zeile fiel still weg.
+    func testARowWithoutARegionDecodes() throws {
+        let json = """
+        {"market_id":"ALDI_NORD_DE","market":"ALDI Nord","product":"Ofenkäse",
+         "price":2.22,"regular_price":null,"unit":null,"category":"Molkerei",
+         "emoji":"🧀","valid_from":"2026-07-20","valid_until":"2026-07-25",
+         "base_price":null,"base_unit":null,"region":null,"image_url":null,
+         "match_key":["käse"]}
+        """
+        let decoded = try JSONDecoder.supabase.decode(Offer.self, from: Data(json.utf8))
+
+        XCTAssertNil(decoded.region)
+        XCTAssertTrue(decoded.isNationwide)
+        XCTAssertEqual(decoded.marketId, "ALDI_NORD_DE")
+    }
+}

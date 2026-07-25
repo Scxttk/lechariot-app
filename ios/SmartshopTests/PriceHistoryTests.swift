@@ -4,7 +4,7 @@ import XCTest
 private struct StubPriceHistoryRepository: PriceHistoryRepositoryProtocol {
     var result: Result<[PriceHistoryPoint], Error> = .success([])
 
-    func history(market: String, product: String, region: String) async throws -> [PriceHistoryPoint] {
+    func history(market: String, product: String, region: String?) async throws -> [PriceHistoryPoint] {
         try result.get()
     }
 }

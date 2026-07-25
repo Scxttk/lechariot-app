@@ -11,7 +11,9 @@ import Foundation
 struct PriceHistoryPoint: Codable, Equatable, Identifiable {
     let market: String
     let product: String
-    let region: String
+    /// nil = nationwide, exactly as in `Offer.region`: ALDI's history rows
+    /// carry no postcode either.
+    let region: String?
     let price: Double?
     let regularPrice: Double?
     /// Non-optional although the column is nullable: the query filters
@@ -19,7 +21,7 @@ struct PriceHistoryPoint: Codable, Equatable, Identifiable {
     let validFrom: Date
     let validUntil: Date
 
-    var id: String { "\(market)|\(product)|\(region)|\(validFrom.timeIntervalSince1970)" }
+    var id: String { "\(market)|\(product)|\(region ?? "DE")|\(validFrom.timeIntervalSince1970)" }
 
     /// Calendar week of the offer window, for the row label.
     var weekOfYear: Int {
