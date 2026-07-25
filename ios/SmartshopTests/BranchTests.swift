@@ -77,8 +77,13 @@ final class BranchTests: XCTestCase {
         // Postplatz itself first, Friedrichstadt second, Strehlen (~5 km) out.
         XCTAssertEqual(near.map(\.marketId), ["1766063", "1766160"])
 
+        // 10 km erreicht auch Strehlen, Reick und Prohlis — die Reihenfolge ist
+        // die Entfernung, nicht das Alphabet und nicht die Fixture-Reihenfolge.
         let wide = try await repo.nearby(lat: postplatz.lat, lon: postplatz.lon, radiusKm: 10)
-        XCTAssertEqual(wide.map(\.marketId), ["1766063", "1766160", "4816"])
+        XCTAssertEqual(
+            wide.map(\.marketId),
+            ["1766063", "1766160", "4816", "lidl-01219-1", "aldi-01219-1"]
+        )
     }
 
     func testNearbyIgnoresBranchesWithoutCoordinates() async throws {

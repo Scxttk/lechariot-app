@@ -11,9 +11,13 @@ struct LiveOfferRepository: OfferRepositoryProtocol {
         while true {
             // Legacy rows (pre-enrichment sources) carry null validity dates and
             // would fail decoding; the contract requires both dates to be set.
+            // `region.is.null` pulls the nationwide rows in alongside the
+            // regional ones: ALDI is stored once for the whole country, so a
+            // plain `region=in.(…)` would leave both ALDI chains off the
+            // screen entirely.
             let query = "select=*&order=valid_from.desc"
                 + "&valid_from=not.is.null&valid_until=not.is.null"
-                + "&region=in.(\(regions.joined(separator: ",")))"
+                + "&or=(region.in.(\(regions.joined(separator: ","))),region.is.null)"
                 + "&limit=\(pageSize)&offset=\(offset)"
             // Decode per element so one malformed row cannot sink the fetch.
             // Pagination must count raw rows, not surviving ones, so the raw
@@ -32,15 +36,23 @@ struct LivePriceHistoryRepository: PriceHistoryRepositoryProtocol {
     /// Half a year of weeks is more than anyone reads in a sheet.
     private let limit = 26
 
-    func history(market: String, product: String, region: String) async throws -> [PriceHistoryPoint] {
+    func history(market: String, product: String, region: String?) async throws -> [PriceHistoryPoint] {
         // Product names carry spaces, umlauts and percent signs — unencoded
         // they don't survive `URL(string:)`. See SupabaseClient.filterValue.
         guard let market = SupabaseClient.filterValue(market),
-              let product = SupabaseClient.filterValue(product),
-              let region = SupabaseClient.filterValue(region)
+              let product = SupabaseClient.filterValue(product)
         else { return [] }
+        // A nationwide offer has no region; `eq.` never matches NULL, so the
+        // history sheet would have stayed empty for both ALDI chains.
+        let regionFilter: String
+        if let region {
+            guard let encoded = SupabaseClient.filterValue(region) else { return [] }
+            regionFilter = "region=eq.\(encoded)"
+        } else {
+            regionFilter = "region=is.null"
+        }
         let query = "select=market,product,region,price,regular_price,valid_from,valid_until"
-            + "&region=eq.\(region)&market=eq.\(market)&product=eq.\(product)"
+            + "&\(regionFilter)&market=eq.\(market)&product=eq.\(product)"
             + "&valid_from=not.is.null&valid_until=not.is.null"
             + "&order=valid_from.asc&limit=\(limit)"
         return try await client.getList(PriceHistoryPoint.self, path: "price_history", query: query)

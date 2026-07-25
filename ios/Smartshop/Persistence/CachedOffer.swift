@@ -18,7 +18,10 @@ final class CachedOffer {
     var validUntil: Date
     var basePrice: Double?
     var baseUnit: String?
-    var region: String
+    /// nil = nationwide (see `Offer.region`). Optional also keeps the
+    /// lightweight SwiftData migration of stores written before Phase 12
+    /// working — those rows all have a region.
+    var region: String?
     var imageUrl: String?
     /// Default value keeps lightweight migration of pre-match_key stores working.
     var matchKey: [String] = []

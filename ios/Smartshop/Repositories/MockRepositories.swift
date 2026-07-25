@@ -92,14 +92,15 @@ struct MockOfferRepository: OfferRepositoryProtocol {
     var fixtures: [Offer] = MockFixtures.offers
 
     func offers(regions: [String]) async throws -> [Offer] {
-        fixtures.filter { regions.contains($0.region) }
+        // Nationwide rows have no region and belong to every one of them.
+        fixtures.filter { $0.isNationwide || regions.contains($0.region ?? "") }
     }
 }
 
 struct MockPriceHistoryRepository: PriceHistoryRepositoryProtocol {
     var fixtures: [PriceHistoryPoint] = MockFixtures.priceHistory
 
-    func history(market: String, product: String, region: String) async throws -> [PriceHistoryPoint] {
+    func history(market: String, product: String, region: String?) async throws -> [PriceHistoryPoint] {
         fixtures.filter { $0.market == market && $0.product == product && $0.region == region }
     }
 }

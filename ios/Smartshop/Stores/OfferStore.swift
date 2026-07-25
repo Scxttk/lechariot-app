@@ -257,11 +257,17 @@ final class OfferStore {
         self.chains = chains
         self.branchIds = branchIds
         let cached = regions.compactMap { try? cache?.load(region: $0) }
-        let cachedOffers = cached.flatMap(\.offers)
+        // The nationwide bucket rides along but is not part of the region
+        // count below: a user whose chosen chains happen to include no
+        // nationwide chain has an empty bucket, and that must not look like a
+        // cold cache and force a fetch on every launch.
+        let national = (try? cache?.load(region: nil)) ?? nil
+        let cachedOffers = cached.flatMap(\.offers) + (national?.offers ?? [])
         if !cachedOffers.isEmpty {
             offers = display(cachedOffers)
             // The oldest region determines staleness of the combined list.
-            fetchedAt = cached.compactMap(\.fetchedAt).min()
+            fetchedAt = (cached.compactMap(\.fetchedAt) + [national?.fetchedAt].compactMap { $0 })
+                .min()
             state = offers.isEmpty ? .empty : .loaded
         } else {
             state = .loading
@@ -301,6 +307,9 @@ final class OfferStore {
             for region in requested {
                 try? cache?.replaceAll(byRegion[region] ?? [], region: region, fetchedAt: now)
             }
+            // …plus the nationwide bucket. Rewritten on every refresh like any
+            // other, so a week rollover clears it too.
+            try? cache?.replaceAll(byRegion[nil] ?? [], region: nil, fetchedAt: now)
             offers = display(fresh)
             fetchedAt = now
             isOffline = false
@@ -340,7 +349,19 @@ final class OfferStore {
     /// were stored before the branch key and rows the backend pushed before
     /// migration v13 — dropping those silently would empty the screen for
     /// exactly the users who cannot see why.
+    /// A nationwide row belongs to no branch and therefore to every branch of
+    /// its chain — ALDI's `market_id` is `ALDI_NORD_DE`, never the branch the
+    /// user picked. Matching it against the chosen branch ids would drop both
+    /// ALDI chains off the screen; the chain rule is the right one for it.
     private func filteredToChosenStores(_ offers: [Offer]) -> [Offer] {
+        let (nationwide, regional) = (
+            offers.filter(\.isNationwide),
+            offers.filter { !$0.isNationwide }
+        )
+        return filteredToChains(nationwide) + filteredToChosenBranches(regional)
+    }
+
+    private func filteredToChosenBranches(_ offers: [Offer]) -> [Offer] {
         if !branchIds.isEmpty {
             let chosen = Set(branchIds)
             let known = offers.filter { $0.marketId != nil }
