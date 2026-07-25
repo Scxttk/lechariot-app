@@ -86,28 +86,16 @@ Tierbedarf, Kinder, Sonstiges
 `valid_from` / `valid_until` are plain `yyyy-MM-dd` strings (no time, no timezone).
 The app decodes them with a fixed `DateFormatter` (`en_US_POSIX`, format `yyyy-MM-dd`).
 
-## Edge Functions
+## On-demand region sync
 
-### `sync-region`
+There is no Edge Function. Inserting a row into `regions` fires the database
+trigger `on_region_insert`, which dispatches the `nightly.yml` workflow in
+[smartshop-backend](https://github.com/Scxttk/smartshop-backend) via `pg_net`.
+The app writes the row (`LiveRegionRepository.registerRegion`, publishable key,
+insert is column-restricted to `plz`) and then polls `regions.last_synced` for
+the result. Measured 2026-07-25: insert to finished offers took two minutes.
 
-On-demand offer sync for a region via Marktguru (source of truth:
-`supabase/functions/sync-region/`, deploy with `supabase functions deploy sync-region`).
-
-```
-POST {SupabaseURL}/functions/v1/sync-region   body: {"zip": "04626"}
-```
-
-Headers as above (publishable key is sufficient). Optional `"force": true`
-bypasses the 24h cache (used by the daily refresh workflow, service key).
-
-Responses:
-
-```
-{"cached": true,  "zip": "04626", "count": 2513}                      // cache fresh (<24h)
-{"cached": false, "zip": "04626", "markets": 4, "count": 1543, "failed": []}
-```
-
-Behavior: claims `regions.last_synced` first (parallel calls return `cached`),
-resolves the region's retailers from the Marktguru search API, upserts offers
-with `region = zip` on conflict `(market, product, valid_from, region)`.
-`markets` is owned by the branch pipeline and never written here.
+The Deno function `sync-region` that used to do this was removed on 2026-07-25
+along with the `region_refresh.yml` workflow. It fetched every chain from
+Marktguru and was fully superseded by the Rust scrapers, which read seven of
+the eight chains from the retailers themselves.

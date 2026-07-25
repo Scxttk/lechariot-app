@@ -9,5 +9,9 @@ xcuserdata/
 *.xcscmblueprint
 *.xccheckout
 
+# Supabase CLI scratch (project ref, pooler URL, service versions) — local
+# state of whichever project the CLI is linked to, not part of the source.
+supabase/.temp/
+
 # Secrets
 APIKeys.plist
