@@ -96,6 +96,25 @@ struct SupabaseClient {
         return total
     }
 
+    /// A value safe to paste into a PostgREST filter (`product=eq.<value>`).
+    ///
+    /// `get(_:path:query:)` builds its URL by string concatenation, so an
+    /// unencoded product name ("Bio Vollmilch 3,5 %") makes `URL(string:)`
+    /// return nil and the fetch throws `invalidURL` before it starts.
+    /// `urlQueryAllowed` alone is not enough: it keeps `& = + , ( ) ? /`, and
+    /// each of those is either a query separator or — for `+` — decoded back
+    /// into a space server-side. Quoting the value instead of encoding it does
+    /// NOT work; PostgREST then matches the quotes and returns [].
+    static func filterValue(_ raw: String) -> String? {
+        raw.addingPercentEncoding(withAllowedCharacters: filterAllowed)
+    }
+
+    private static let filterAllowed: CharacterSet = {
+        var set = CharacterSet.urlQueryAllowed
+        set.remove(charactersIn: "&=+,()?/#;:@$!*'")
+        return set
+    }()
+
     private func applyHeaders(_ request: inout URLRequest) {
         request.setValue(apiKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -138,5 +157,17 @@ extension DateFormatter {
         formatter.timeZone = TimeZone(identifier: "Europe/Berlin")
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
+    }()
+}
+
+extension Calendar {
+    /// Matches `DateFormatter.supabaseDay`: offer dates are Berlin midnights,
+    /// so anything asking "is this valid today?" or "which calendar week?" has
+    /// to ask in the same time zone the dates were parsed in.
+    static let supabase: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "de_DE")
+        calendar.timeZone = TimeZone(identifier: "Europe/Berlin") ?? .current
+        return calendar
     }()
 }

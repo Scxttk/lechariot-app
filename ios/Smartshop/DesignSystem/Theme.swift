@@ -237,26 +237,20 @@ struct OfferThumbnail: View {
     var size: CGFloat = 48
 
     var body: some View {
-        ZStack {
-            // Screen background as the fallback tile: stays in the brand
-            // palette instead of dropping a system gray onto the cream.
-            RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                .fill(Theme.background)
-            Text(emoji ?? "🛒")
-                .font(.system(size: size * 0.5))
-            if let url = imageUrl.flatMap(URL.init(string:)) {
-                // Fade the loaded image in over the emoji tile instead of popping.
-                AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
-                    if case .success(let image) = phase {
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .transition(.opacity)
-                    }
-                }
-            }
-        }
+        OfferImageContent(
+            imageUrl: imageUrl,
+            emoji: emoji,
+            emojiSize: size * 0.5,
+            contentMode: .fill
+        )
         .frame(width: size, height: size)
+        // Screen background as the tile: stays in the brand palette instead of
+        // dropping a system gray onto the cream. Carries a cut-out product
+        // photo too, now that the emoji no longer sits behind it.
+        .background(
+            Theme.background,
+            in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+        )
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous))
         // Inset hairline so photo edges don't blur into the surface —
         // neutral alpha, never brand-tinted.
@@ -268,16 +262,110 @@ struct OfferThumbnail: View {
     }
 }
 
+/// Large product image for the offer detail sheet. Same fallback rules as
+/// `OfferThumbnail`, but fits instead of fills: cropping a cut-out product
+/// photo to a square loses the product.
+struct OfferHeroImage: View {
+    let imageUrl: String?
+    let emoji: String?
+    var height: CGFloat = 200
+
+    var body: some View {
+        OfferImageContent(
+            imageUrl: imageUrl,
+            emoji: emoji,
+            emojiSize: height * 0.4,
+            contentMode: .fit
+        )
+        .padding(Theme.Spacing.md)
+        .frame(maxWidth: .infinity)
+        .frame(height: height)
+        // Surface, not background: on the detail sheet this is a card among
+        // cards, and on the cream page a background-colored tile would be
+        // invisible apart from its stroke.
+        .background(
+            Theme.surface,
+            in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .strokeBorder(Theme.stroke)
+        )
+        // The header right below repeats product, price and market — an image
+        // description here would only make VoiceOver say everything twice.
+        .accessibilityHidden(true)
+    }
+}
+
+/// Image-or-emoji, shared by `OfferThumbnail` and `OfferHeroImage`.
+///
+/// The emoji is a *fallback*, not a backdrop. It used to be a permanent ZStack
+/// layer underneath the AsyncImage, which stayed invisible only as long as
+/// every chain shipped JPEGs. REWE mirrors PNG→WebP (alpha preserved, on
+/// purpose) and Netto delivers WebP cut-outs — through both, a 🥛 shone
+/// straight through the product.
+private struct OfferImageContent: View {
+    let imageUrl: String?
+    let emoji: String?
+    let emojiSize: CGFloat
+    let contentMode: ContentMode
+
+    var body: some View {
+        if let url = imageUrl.flatMap(URL.init(string:)) {
+            // Fade the loaded image in over the emoji instead of popping.
+            AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: contentMode)
+                        .transition(.opacity)
+                case .empty, .failure:
+                    // Loading and failure both keep the emoji.
+                    fallback
+                @unknown default:
+                    fallback
+                }
+            }
+        } else {
+            fallback
+        }
+    }
+
+    private var fallback: some View {
+        Text(emoji ?? "🛒")
+            .font(.system(size: emojiSize))
+            .transition(.opacity)
+    }
+}
+
 // MARK: - Price text
 
 /// Price label with tabular digits so columns of prices align optically.
 struct PriceText: View {
+    /// Type scale, independent of `emphasized` (which is about weight).
+    enum Size {
+        case regular
+        /// The one price a screen is about — the detail sheet's headline price.
+        case large
+    }
+
     let amount: Double
     var emphasized = true
+    var size: Size = .regular
 
     var body: some View {
         Text(amount, format: .currency(code: "EUR"))
-            .font(emphasized ? .body.bold().monospacedDigit() : .caption.monospacedDigit())
+            .font(font)
+    }
+
+    private var font: Font {
+        switch (size, emphasized) {
+        // .title2, not .title: at AX5 a .title price breaks the € onto its own line.
+        case (.large, _): .title2.bold().monospacedDigit()
+        case (.regular, true): .body.bold().monospacedDigit()
+        case (.regular, false): .caption.monospacedDigit()
+        }
     }
 }
 
@@ -353,8 +441,24 @@ extension Offer {
     VStack(spacing: Theme.Spacing.lg) {
         HStack {
             DiscountBadge(percent: 33)
+            PriceText(amount: 1.99, size: .large)
             PriceText(amount: 1.99)
             PriceText(amount: 2.49, emphasized: false)
+        }
+        .themeCard()
+
+        // Regression anchor for the transparency bug: the first tile loads a
+        // cut-out with an alpha channel (REWE/Netto ship those). No emoji may
+        // remain visible behind it once it has loaded — the second tile is what
+        // a missing image is supposed to look like.
+        HStack(spacing: Theme.Spacing.md) {
+            OfferThumbnail(
+                imageUrl: "https://cddubgdnasmzvcfhmrzj.supabase.co/storage/v1/object/public/offer-images/"
+                    + "be7a9b49efa5913c541f1866936ac77b9fc04620335dce190d892cdb8e9f01e8.png",
+                emoji: "🧀"
+            )
+            OfferThumbnail(imageUrl: nil, emoji: "🥛")
+            OfferHeroImage(imageUrl: nil, emoji: "🍊", height: 120)
         }
         .themeCard()
 

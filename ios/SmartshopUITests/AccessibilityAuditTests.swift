@@ -129,6 +129,23 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(label.count > 20, "klingt nach Bruchstück statt Satz: \(label)")
     }
 
+    /// Dieselbe Falle, zweite Stelle: Die Angebotszeile ist jetzt ein Button,
+    /// und `.accessibilityElement(children: .ignore)` auf einem Button
+    /// verschluckt das Label, das danach kommt. Ohne diesen Test würde die
+    /// Zeile stumm oder als Schnipselsalat gelesen, ohne dass es auffällt.
+    func testTheOfferRowIsOneButtonWithAWholeSentence() {
+        completeOnboarding()
+        openTab("Angebote")
+
+        let row = app.buttons["offers.row"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15))
+        let label = row.label
+        XCTAssertTrue(label.contains("Bio Vollmilch"), "Produkt fehlt in der Äußerung: \(label)")
+        XCTAssertTrue(label.contains("Lidl"), "Markt fehlt in der Äußerung: \(label)")
+        XCTAssertTrue(label.contains("€"), "Preis fehlt in der Äußerung: \(label)")
+        XCTAssertTrue(label.count > 20, "klingt nach Bruchstück statt Satz: \(label)")
+    }
+
     /// Die Einkaufsplan-Karte wird als Ganzes gelesen — ihre Kopfzeile ist ein
     /// Element mit einer Zusammenfassung, nicht vier einzelne Textschnipsel.
     func testThePlanCardIsReadAsAWhole() {

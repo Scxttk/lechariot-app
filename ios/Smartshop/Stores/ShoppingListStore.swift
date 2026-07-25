@@ -27,6 +27,33 @@ enum ShoppingListMatcher {
     }
 }
 
+// MARK: - Quick-add suggestions
+
+/// The staples offered as one-tap chips on the shopping list.
+///
+/// Lives outside the view so the "what is still worth suggesting" rule is
+/// testable — it used to be a private constant behind the empty state, where
+/// the whole strip vanished the moment the first chip was tapped.
+enum ShoppingSuggestions {
+    /// Staples that cover most first lists. The empty screen is otherwise a
+    /// text field and nothing to react to — one tap here and the app can
+    /// immediately show what it is for.
+    static let staples = [
+        "Milch", "Brot", "Butter", "Eier",
+        "Käse", "Bananen", "Kaffee", "Nudeln",
+    ]
+
+    /// The staples not on the list yet, in their fixed order.
+    ///
+    /// Checked items count as on the list: re-suggesting what the user just
+    /// ticked off would be the app arguing with them, and `add` would refuse
+    /// the duplicate anyway.
+    static func remaining(for items: [ShoppingItem], from staples: [String] = staples) -> [String] {
+        let taken = Set(items.map { $0.text.lowercased() })
+        return staples.filter { !taken.contains($0.lowercased()) }
+    }
+}
+
 // MARK: - Store
 
 /// Local source of truth for the shopping list.

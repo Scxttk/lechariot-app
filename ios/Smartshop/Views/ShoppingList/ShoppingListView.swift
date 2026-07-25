@@ -15,14 +15,6 @@ struct ShoppingListView: View {
     @State private var newItemText = ""
     @FocusState private var inputFocused: Bool
 
-    /// Staples that cover most first lists. The empty screen is otherwise a
-    /// text field and nothing to react to — one tap here and the app can
-    /// immediately show what it is for.
-    private static let quickAdds = [
-        "Milch", "Brot", "Butter", "Eier",
-        "Käse", "Bananen", "Kaffee", "Nudeln",
-    ]
-
     private var chains: [String] {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
     }
@@ -109,6 +101,8 @@ struct ShoppingListView: View {
             }
             .listRowBackground(Theme.surface)
 
+            suggestionSection
+
             if !list.checkedItems.isEmpty {
                 Section("Erledigt") {
                     ForEach(list.checkedItems) { item in
@@ -160,7 +154,7 @@ struct ShoppingListView: View {
                     Text("Häufig gekauft")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    quickAddChips
+                    suggestionChips(ShoppingSuggestions.remaining(for: list.items))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -168,7 +162,32 @@ struct ShoppingListView: View {
         }
     }
 
-    private var quickAddChips: some View {
+    // MARK: Suggestions
+
+    /// The chips stay reachable once the list has its first item.
+    ///
+    /// They used to live only behind the empty state, so the whole strip
+    /// disappeared with the very first tap — and adding a second staple meant
+    /// typing it. What is already on the list drops out, so the strip shrinks
+    /// as it is used and is gone once nothing is left to suggest.
+    @ViewBuilder
+    private var suggestionSection: some View {
+        let remaining = ShoppingSuggestions.remaining(for: list.items)
+        if !remaining.isEmpty {
+            Section("Häufig gekauft") {
+                suggestionChips(remaining)
+                    .listRowInsets(EdgeInsets(
+                        top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
+                        bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
+                    ))
+            }
+            // The chips carry their own surface; a second one behind them
+            // would draw a card around a card.
+            .listRowBackground(Color.clear)
+        }
+    }
+
+    private func suggestionChips(_ staples: [String]) -> some View {
         // Flexible grid rather than a fixed row count, so the chips reflow
         // instead of clipping at large Dynamic Type sizes.
         LazyVGrid(
@@ -176,7 +195,7 @@ struct ShoppingListView: View {
             alignment: .leading,
             spacing: Theme.Spacing.sm
         ) {
-            ForEach(Self.quickAdds, id: \.self) { staple in
+            ForEach(staples, id: \.self) { staple in
                 Button {
                     // `add` is @discardableResult Bool; swallow it explicitly so
                     // withAnimation's generic result type stays unambiguous.

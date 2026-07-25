@@ -138,6 +138,27 @@ final class OnboardingJourneyTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Milch"].waitForExistence(timeout: 5))
     }
 
+    /// The quick-add chips used to sit behind the empty state alone, so the
+    /// whole strip vanished with the first tap and the second staple had to be
+    /// typed. Taking one must leave the rest reachable.
+    func testTakingAQuickAddLeavesTheOtherSuggestionsReachable() {
+        completeOnboarding(name: "Scott")
+
+        let milch = app.buttons["Milch hinzufügen"]
+        XCTAssertTrue(milch.waitForExistence(timeout: 15))
+        milch.tap()
+
+        XCTAssertTrue(app.staticTexts["Milch"].waitForExistence(timeout: 5))
+        let brot = app.buttons["Brot hinzufügen"]
+        XCTAssertTrue(brot.waitForExistence(timeout: 5),
+                      "the remaining suggestions must survive the first tap")
+        brot.tap()
+
+        XCTAssertTrue(app.staticTexts["Brot"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Milch hinzufügen"].exists,
+                       "a staple already on the list must stop being suggested")
+    }
+
     // MARK: Helpers
 
     /// The onboarding steps are addressed by identifier rather than label: the
