@@ -31,6 +31,18 @@ enum AppRepositories {
         return LiveMarketRepository(client: client)
     }
 
+    /// The store directory. Read-only and public, so there is nothing to gate
+    /// beyond the usual mock/live decision.
+    static let branches: BranchRepositoryProtocol = {
+        guard let client else { return MockBranchRepository() }
+        return LiveBranchRepository(client: client)
+    }()
+
+    static func branchRequests() -> BranchRequestRepositoryProtocol {
+        guard let client else { return MockBranchRequestRepository() }
+        return LiveBranchRequestRepository(client: client)
+    }
+
     static let offers: OfferRepositoryProtocol = {
         guard let client else { return MockOfferRepository() }
         return LiveOfferRepository(client: client)

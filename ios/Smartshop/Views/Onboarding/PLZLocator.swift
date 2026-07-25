@@ -1,6 +1,13 @@
 import CoreLocation
 import Foundation
 
+/// Builds the string CLGeocoder wants for a bare postcode. Without the country
+/// a five-digit code matches postcodes all over the world, and the geocoder
+/// happily returns the first one it likes.
+enum CNPostalAddressStub {
+    static func german(plz: String) -> String { "\(plz), Deutschland" }
+}
+
 /// One-shot CoreLocation → PLZ lookup via reverse geocoding.
 @MainActor
 final class PLZLocator: NSObject, CLLocationManagerDelegate {
@@ -44,6 +51,17 @@ final class PLZLocator: NSObject, CLLocationManagerDelegate {
             throw LocatorError.noPLZ
         }
         return plz
+    }
+
+    /// Coordinates of a postcode's centre. Used to fill the branch picker
+    /// before the user has granted location access — a PLZ centre is a couple
+    /// of kilometres off at worst, and the list is sorted by distance, not
+    /// gated on it.
+    static func coordinates(forPLZ plz: String) async throws -> (lat: Double, lon: Double) {
+        let address = CNPostalAddressStub.german(plz: plz)
+        let placemarks = try await CLGeocoder().geocodeAddressString(address)
+        guard let location = placemarks.first?.location else { throw LocatorError.noPLZ }
+        return (location.coordinate.latitude, location.coordinate.longitude)
     }
 
     private func resume(_ result: Result<CLLocation, Error>) {

@@ -141,7 +141,7 @@ struct SettingsView: View {
             Text("Profil")
         } footer: {
             Text(profile.hasConsented
-                 ? "Deine Angaben helfen bei der Weiterentwicklung und werden anonym übermittelt. Vorname, Einkaufsliste und Filialen bleiben auf dem Gerät."
+                 ? "Deine Angaben helfen bei der Weiterentwicklung und werden anonym übermittelt. Vorname und Einkaufsliste bleiben auf dem Gerät."
                  : "Deine Angaben bleiben vollständig auf diesem Gerät.")
         }
     }
@@ -327,13 +327,14 @@ private struct ProfileEditScreen: View {
                             profile.setConsent(consented)
                             if consented {
                                 let plz = store.orderedReadyRegions.first
-                                Task { await profile.sync(plz: plz) }
+                                let branchIds = store.favoriteMarkets.map(\.marketId)
+                                Task { await profile.sync(plz: plz, branchIds: branchIds) }
                             }
                         }
                     ))
                     .tint(Theme.accent)
                 } footer: {
-                    Text("Übermittelt werden Haushaltsgröße, Einkaufsrhythmus, Budget-Rahmen, Ernährungsangaben und Postleitzahl — verknüpft mit einer Zufallsnummer, nicht mit dir. Vorname, Einkaufsliste und Filialen bleiben auf dem Gerät.")
+                    Text("Übermittelt werden Haushaltsgröße, Einkaufsrhythmus, Budget-Rahmen, Ernährungsangaben, Postleitzahl und die gewählten Filialen — verknüpft mit einer Zufallsnummer, nicht mit dir. Vorname und Einkaufsliste bleiben auf dem Gerät.")
                 }
             }
             .listRowBackground(Theme.surface)

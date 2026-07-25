@@ -96,6 +96,15 @@ struct SyncedProfile: Encodable, Equatable, Sendable {
     let weeklyBudget: Int?
     let dietTags: [String]
     let plz: String?
+    /// Ids of the branches the user picked (migration v15). Sorted, so two
+    /// identical profiles serialize identically. Empty when nothing is picked.
+    ///
+    /// This reverses the original "never transmitted" rule for branches, and
+    /// only for branches — first name and shopping list stay on the device.
+    /// A branch id is more precise than a PLZ, but `plz` has been in this
+    /// table from the start and three branches in one postcode say little
+    /// more than the postcode does.
+    let branchIds: [String]
 
     enum CodingKeys: String, CodingKey {
         case installId = "install_id"
@@ -104,9 +113,10 @@ struct SyncedProfile: Encodable, Equatable, Sendable {
         case weeklyBudget = "weekly_budget"
         case dietTags = "diet_tags"
         case plz
+        case branchIds = "branch_ids"
     }
 
-    init(profile: UserProfile, plz: String?) {
+    init(profile: UserProfile, plz: String?, branchIds: [String] = []) {
         self.installId = profile.installId
         self.householdSize = profile.householdSize
         self.tripsPerWeek = profile.rhythm.rawValue
@@ -114,5 +124,6 @@ struct SyncedProfile: Encodable, Equatable, Sendable {
         // Sorted so two identical profiles serialize identically.
         self.dietTags = profile.dietTags.map(\.rawValue).sorted()
         self.plz = plz
+        self.branchIds = branchIds.sorted()
     }
 }

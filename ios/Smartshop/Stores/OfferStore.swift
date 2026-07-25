@@ -220,6 +220,10 @@ final class OfferStore {
     private let cache: OfferCache?
     private var regions: [String] = []
     private var chains: [String] = []
+    /// Branch ids of the chosen stores. Empty = show every branch (the state
+    /// before a user has picked any, and the state of installs that predate
+    /// the branch key).
+    private var branchIds: [String] = []
 
     var isStale: Bool {
         isOffline || OfferCache.isStale(fetchedAt: fetchedAt)
@@ -242,9 +246,16 @@ final class OfferStore {
     /// Shows cached offers for the regions immediately (if any), then refreshes.
     /// A single fetch spans all regions (offers query: `region=in.(...)`), so a
     /// user near a PLZ border sees favorites from every ready region at once.
-    func load(regions: [String], chains: [String]) async {
+    ///
+    /// `branchIds` narrows the *display* to the chosen stores. The fetch and
+    /// the cache stay per region on purpose: the cache is the complete tagged
+    /// week of a region (KW-Cache), and which stores of it the user wants to
+    /// see is a display question — the same reason the chain filter has always
+    /// worked this way.
+    func load(regions: [String], chains: [String], branchIds: [String] = []) async {
         self.regions = regions
         self.chains = chains
+        self.branchIds = branchIds
         let cached = regions.compactMap { try? cache?.load(region: $0) }
         let cachedOffers = cached.flatMap(\.offers)
         if !cachedOffers.isEmpty {
@@ -309,16 +320,41 @@ final class OfferStore {
     }
 
     /// The single funnel every offer takes on its way to the screen: narrowed
-    /// to the favorited chains, then collapsed where a chain published the same
+    /// to the chosen stores, then collapsed where a chain published the same
     /// offer twice. Both `offers` assignments go through here, so the Angebote
     /// list, the Top-Deals section and the shopping-list matcher — all of which
     /// read `store.offers` — see the same set.
     private func display(_ offers: [Offer]) -> [Offer] {
-        OfferQuery.deduplicated(filteredToChains(offers))
+        OfferQuery.deduplicated(filteredToChosenStores(offers))
     }
 
-    /// The cache stores all chains of a region as fetched; narrow to the
-    /// currently favorited chains for display.
+    /// The cache stores every store of a region as fetched; narrow it for
+    /// display.
+    ///
+    /// By branch when the user has chosen branches — that is the whole point of
+    /// the branch key: in 01067 the chain filter shows all three REWE flyers at
+    /// once (146 + 162 + 243 rows), the branch filter shows the one the user
+    /// actually walks into.
+    ///
+    /// By chain otherwise, unchanged. That covers installs whose favourites
+    /// were stored before the branch key and rows the backend pushed before
+    /// migration v13 — dropping those silently would empty the screen for
+    /// exactly the users who cannot see why.
+    private func filteredToChosenStores(_ offers: [Offer]) -> [Offer] {
+        if !branchIds.isEmpty {
+            let chosen = Set(branchIds)
+            let known = offers.filter { $0.marketId != nil }
+            if !known.isEmpty {
+                let byBranch = known.filter { chosen.contains($0.marketId ?? "") }
+                // Rows without a branch id keep the chain rule, so a mixed
+                // dataset (mid-migration) never loses a whole chain.
+                let legacy = offers.filter { $0.marketId == nil }
+                return byBranch + filteredToChains(legacy)
+            }
+        }
+        return filteredToChains(offers)
+    }
+
     private func filteredToChains(_ offers: [Offer]) -> [Offer] {
         guard !chains.isEmpty else { return offers }
         return offers.filter { chains.contains($0.market) }
