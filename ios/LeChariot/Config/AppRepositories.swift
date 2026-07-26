@@ -43,6 +43,29 @@ enum AppRepositories {
         return LiveBranchRequestRepository(client: client)
     }
 
+    static func areaRequests() -> AreaRequestRepositoryProtocol {
+        guard let client else {
+            let mock = MockAreaRequestRepository()
+            #if DEBUG
+            // Der Gebiets-Lauf dauert ~3 Minuten und überspannt Sitzungen —
+            // eine Journey kann darauf nicht warten. Also fängt sie mit dem
+            // Zustand an, den ein früherer Start hinterlassen hätte.
+            // Über `AppDefaults.shared`, nicht über einen selbst gebauten
+            // Suite-Namen: Der Testlauf leert seine Suite beim Start, und ein
+            // zweiter Zugriff auf denselben Namen könnte den Saatwert wieder
+            // wegräumen, je nachdem was zuerst dran ist.
+            if UITestSupport.seedsFinishedArea {
+                mock.ready = [UITestSupport.seededAreaAnchor]
+                AreaRequestStore.seedPendingArea(
+                    UITestSupport.seededAreaAnchor, in: AppDefaults.shared
+                )
+            }
+            #endif
+            return mock
+        }
+        return LiveAreaRequestRepository(client: client)
+    }
+
     static let offers: OfferRepositoryProtocol = {
         guard let client else { return MockOfferRepository() }
         return LiveOfferRepository(client: client)

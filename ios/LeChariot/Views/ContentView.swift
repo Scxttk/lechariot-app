@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(RegionStore.self) private var store
+    @Environment(AreaRequestStore.self) private var areaRequests
     let marketRepository: MarketRepositoryProtocol
 
     @State private var shoppingList = ShoppingListStore()
@@ -60,6 +61,60 @@ struct ContentView: View {
         .environment(rejections)
         .environment(feedback)
         .tint(Theme.accent)
+        // Über den Tabs, nicht in einem davon: Der Lauf ist minuten- bis
+        // tagelang her, der Nutzer kann überall stehen.
+        .safeAreaInset(edge: .top) {
+            if areaRequests.areaJustCompleted {
+                areaCompletedNotice
+            }
+        }
+    }
+
+    /// Der Gebiets-Lauf dauert ~3 Minuten und überlebt die App. Wer ihn
+    /// auslöst, ist längst weitergezogen — ohne diesen Hinweis erführe niemand,
+    /// dass jetzt mehr zur Auswahl steht, und die kurze Liste vom Onboarding
+    /// bliebe für immer die Wahrheit, die er kennt.
+    private var areaCompletedNotice: some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.md) {
+            Image(systemName: "storefront")
+                .foregroundStyle(Theme.accent)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                Text("Deine Gegend ist jetzt vollständig")
+                    .font(.subheadline.bold())
+                Text("Wir haben die übrigen Supermärkte in deiner Nähe nachgeladen. Schau nach, ob dein Markt jetzt dabei ist.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.secondaryText)
+
+                Button("Filialen wählen") {
+                    areaRequests.dismissCompletionNotice()
+                    selectedTab = .einstellungen
+                }
+                .font(.footnote.bold())
+                .padding(.top, Theme.Spacing.xs)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                areaRequests.dismissCompletionNotice()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.footnote.bold())
+                    .foregroundStyle(Theme.secondaryText)
+                    .padding(Theme.Spacing.sm)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Hinweis ausblenden")
+        }
+        .padding(Theme.Spacing.md)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card).stroke(Theme.stroke)
+        )
+        .padding(.horizontal, Theme.Spacing.lg)
+        .padding(.bottom, Theme.Spacing.sm)
     }
 
     /// Angebote spans all ready regions with their favorites, so PLZ-border
@@ -122,4 +177,5 @@ struct ContentView: View {
         // Start kommt es aus `LeChariotApp`. Ohne das hier stürzt die Preview
         // beim Wechsel in die Einstellungen ab.
         .environment(ProfileStore())
+        .environment(AreaRequestStore(repository: MockAreaRequestRepository()))
 }

@@ -167,6 +167,33 @@ final class MockBranchRequestRepository: BranchRequestRepositoryProtocol, @unche
     }
 }
 
+/// Same shape as `MockBranchRequestRepository`, one level up: the area, not
+/// the single store.
+final class MockAreaRequestRepository: AreaRequestRepositoryProtocol, @unchecked Sendable {
+    /// Anchors whose area run has finished.
+    var ready: Set<String> = []
+    /// Anchors whose row exists but whose run is still going.
+    var pending: Set<String> = []
+    private(set) var requested: [String] = []
+
+    func request(marketId: String) async throws -> AreaRequest? {
+        if ready.contains(marketId) {
+            return AreaRequest(
+                marketId: marketId, plz: "04639",
+                lastSynced: "2026-07-26T08:36:50Z", active: true
+            )
+        }
+        if pending.contains(marketId) || requested.contains(marketId) {
+            return AreaRequest(marketId: marketId, plz: "04639", lastSynced: nil, active: true)
+        }
+        return nil
+    }
+
+    func requestArea(marketId: String) async throws {
+        requested.append(marketId)
+    }
+}
+
 struct MockMarketRepository: MarketRepositoryProtocol {
     var fixtures: [Market] = MockFixtures.markets
 

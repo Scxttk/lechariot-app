@@ -24,6 +24,19 @@ enum UITestSupport {
     private static let keepsState =
         ProcessInfo.processInfo.arguments.contains("-uiTestingKeepState")
 
+    /// Launched with `-uiTestingAreaJustFetched`: pretend an earlier launch
+    /// asked for this area's directory and the run has since finished.
+    ///
+    /// The whole point of that flow is that it spans app sessions — the run
+    /// takes about three minutes and the user is long gone. A journey cannot
+    /// wait three minutes for a real backend, so the state it would leave
+    /// behind is seeded instead. The anchor is the Lidl the onboarding
+    /// journeys pick, so it exists in the mock directory.
+    static let seedsFinishedArea =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingAreaJustFetched")
+
+    static let seededAreaAnchor = "lidl-01219-1"
+
     /// The defaults suite for this launch, emptied unless the launch asked to
     /// keep it. `nil` outside test runs.
     ///

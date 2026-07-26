@@ -24,6 +24,7 @@ struct MarketPickerView: View {
     /// Requests offers for a store the backend has never fetched. Optional so
     /// previews and the settings path work without one.
     var branchRequests: BranchRequestStore?
+    @Environment(AreaRequestStore.self) private var areaRequests
     var onDone: () -> Void
 
     @State private var markets: [Market] = []
@@ -238,6 +239,20 @@ struct MarketPickerView: View {
         }
         // Tells the user what the greyed-out "Fertig" is waiting for, without
         // adding a second permanent line once they have chosen something.
+        // Kein Wartebildschirm: Der Gebiets-Lauf dauert ~3 Minuten, so lange
+        // das Onboarding zu blockieren wäre schlimmer als eine kurze Liste,
+        // die nachwächst. Deshalb nur ein Hinweis über der Liste.
+        .safeAreaInset(edge: .top) {
+            if areaRequests.isFetchingArea {
+                Text("Wir holen gerade die übrigen Märkte in deiner Gegend — das dauert etwa drei Minuten. Du kannst schon wählen; wir sagen Bescheid, sobald mehr da ist.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(Theme.Spacing.sm)
+                    .background(.bar)
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             if !hasAnyFavorites && !isLoading {
                 Text("Wähle mindestens eine Filiale, um fortzufahren.")
@@ -356,6 +371,7 @@ struct MarketPickerView: View {
     /// further one costs a scroll, not a wrong answer.
     private func loadDirectory() async throws -> [Market]? {
         var found: [String: (market: Market, distance: Double)] = [:]
+        var nearest: [String: (branch: Branch, distance: Double)] = [:]
         var geocoded = false
         for plz in plzs {
             guard let point = try? await Self.locate(plz) else { continue }
@@ -370,12 +386,35 @@ struct MarketPickerView: View {
                 // about.
                 if let existing = found[branch.marketId], existing.distance <= distance { continue }
                 found[branch.marketId] = (branch.asMarket, distance)
+                nearest[branch.marketId] = (branch, distance)
                 addresses[branch.marketId] = branch.addressLine
             }
         }
         guard geocoded else { return nil }
         distances = found.mapValues(\.distance)
+        await requestAreaIfOnlyNationwideChainsAreNear(Array(nearest.values))
         return found.values.map(\.market)
+    }
+
+    /// Six of the eight chains are only in the directory where somebody asked
+    /// for them; Kaufland and Penny are always there because their whole
+    /// German list costs one request. So a list made **exclusively** of those
+    /// two is not a thin area — it is an area nobody has fetched yet.
+    ///
+    /// Measured on 2026-07-26 in Gößnitz (04639): Penny plus two Kauflands on
+    /// screen, while Netto, Lidl and REWE existed a few streets away and were
+    /// simply not in `branches`. The request goes out silently and takes about
+    /// three minutes; the picker says so, and the user is told again when it
+    /// lands, because by then they will have moved on.
+    private func requestAreaIfOnlyNationwideChainsAreNear(
+        _ found: [(branch: Branch, distance: Double)]
+    ) async {
+        let branches = found.map(\.branch)
+        guard AreaRequestStore.areaLooksUnfetched(branches) else { return }
+        // The nearest store is the anchor: the backend derives the area from
+        // its postcode, so the closest one describes where the user is best.
+        guard let anchor = found.min(by: { $0.distance < $1.distance })?.branch else { return }
+        await areaRequests.requestArea(anchor: anchor.marketId)
     }
 
     /// How far around each postcode the directory is searched to begin with.
