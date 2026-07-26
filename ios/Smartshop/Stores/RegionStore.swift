@@ -194,9 +194,6 @@ final class RegionStore {
             if let markets = try? await repository.foundMarkets(plz: plz) {
                 snapshot.markets = markets
             }
-            if let count = try? await repository.offerCount(plz: plz) {
-                snapshot.offerCount = count
-            }
             if !Task.isCancelled, syncProgress[plz] != snapshot {
                 syncProgress[plz] = snapshot
             }
@@ -206,8 +203,18 @@ final class RegionStore {
 
     // MARK: Region flow
 
-    /// Checks a PLZ against the backend, registers it if unknown, and polls
-    /// until it is synced. Drives `syncStates[plz]` through the state machine.
+    /// Adds a postcode. **Nothing is asked of the backend any more.**
+    ///
+    /// Until migration v16 the app registered the postcode in `public.regions`,
+    /// a trigger started a scrape and the user watched a waiting screen. That
+    /// table is gone: since Phase 12 the postcode is nothing but a *location*
+    /// — it geocodes so the picker can list nearby branches from the
+    /// directory, and the directory is filled independently of anyone asking.
+    /// What still needs fetching is a **branch**, and choosing one that the
+    /// backend has never fetched triggers `branch_requests` right there in the
+    /// picker.
+    ///
+    /// So the postcode is ready the moment it is typed.
     func addRegion(_ rawPLZ: String) async {
         guard let plz = PLZValidator.normalized(rawPLZ), canAddRegion else { return }
         if !regions.contains(plz) {
@@ -215,12 +222,13 @@ final class RegionStore {
             if selectedRegion == nil { selectedRegion = plz }
             persist()
         }
-        await checkAndSync(plz: plz)
+        markReady(plz)
     }
 
-    /// Re-runs the check/poll flow, e.g. after a failure.
+    /// Kept so the failure path in the UI still compiles; with no backend
+    /// round-trip there is nothing left that could fail.
     func retry(_ plz: String) async {
-        await checkAndSync(plz: plz)
+        markReady(plz)
     }
 
     func removeRegion(_ plz: String) {
@@ -240,44 +248,6 @@ final class RegionStore {
         persist()
     }
 
-    private func checkAndSync(plz: String) async {
-        pollTasks[plz]?.cancel()
-        do {
-            if let region = try await repository.region(plz: plz) {
-                if region.lastSynced != nil {
-                    markReady(plz)
-                } else {
-                    syncStates[plz] = .syncing
-                    startPolling(plz: plz)
-                }
-            } else {
-                try await repository.registerRegion(plz: plz)
-                syncStates[plz] = .requested
-                startPolling(plz: plz)
-            }
-        } catch {
-            syncStates[plz] = .failed(.network)
-        }
-    }
-
-    private func startPolling(plz: String) {
-        pollTasks[plz] = Task { [weak self] in
-            guard let self else { return }
-            for _ in 0..<maxPollAttempts {
-                try? await Task.sleep(for: pollInterval)
-                if Task.isCancelled { return }
-                if let region = try? await repository.region(plz: plz) {
-                    if region.lastSynced != nil {
-                        markReady(plz)
-                        return
-                    }
-                    // Row now exists → backend picked the request up.
-                    if syncStates[plz] == .requested { syncStates[plz] = .syncing }
-                }
-            }
-            if !Task.isCancelled { syncStates[plz] = .failed(.timedOut) }
-        }
-    }
 
     private func markReady(_ plz: String) {
         syncStates[plz] = .ready

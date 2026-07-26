@@ -180,3 +180,90 @@ final class ShoppingListStoreTests: XCTestCase {
         XCTAssertEqual(makeStore().items.map(\.text), ["Milch"])
     }
 }
+
+// MARK: - Vorschläge wachsen nach (Backlog 2026-07-25)
+
+@MainActor
+final class SuggestionStripTests: XCTestCase {
+    private let day = Calendar.supabase.date(from: DateComponents(year: 2026, month: 7, day: 20))!
+
+    private func offer(_ product: String, tags: [String], price: Double, was: Double?) -> Offer {
+        Offer(
+            marketId: "lidl-01219-1", market: "Lidl", product: product, price: price,
+            regularPrice: was, unit: nil, category: "Sonstiges", emoji: nil,
+            validFrom: day, validUntil: day, basePrice: nil, baseUnit: nil,
+            nationwide: false, matchKey: tags
+        )
+    }
+
+    /// Der eigentliche Punkt: Der Streifen behält seine Länge, statt mit jedem
+    /// Tippen zu schrumpfen. Vorher war er nach acht Grundnahrungsmitteln weg.
+    func testTheStripKeepsItsLengthAsStaplesAreUsedUp() {
+        let items = ShoppingSuggestions.staples.map { ShoppingItem(text: $0) }
+        let offers = (1...12).map {
+            offer("Angebot \($0)", tags: ["ware\($0)"], price: 1.0, was: 2.0)
+        }
+
+        let strip = ShoppingSuggestions.strip(for: items, offers: offers)
+
+        XCTAssertEqual(strip.count, ShoppingSuggestions.stripLength)
+        // Nichts davon steht schon auf der Liste.
+        XCTAssertTrue(strip.allSatisfy { !ShoppingSuggestions.staples.contains($0) })
+    }
+
+    /// Solange Grundnahrungsmittel übrig sind, führen sie — sie sind die
+    /// wahrscheinlichere Wahl als ein zufälliges Wochenangebot.
+    func testStaplesComeFirst() {
+        let strip = ShoppingSuggestions.strip(
+            for: [], offers: [offer("Sekt", tags: ["sekt"], price: 3.0, was: 9.0)]
+        )
+
+        XCTAssertEqual(Array(strip.prefix(ShoppingSuggestions.staples.count)),
+                       ShoppingSuggestions.staples)
+    }
+
+    /// Der Nachschub ist nach Rabatt sortiert — dann hat der Vorschlag einen
+    /// Grund, und genau das unterscheidet ihn von einer längeren festen Liste.
+    func testTopUpsAreOrderedByDiscount() {
+        let items = ShoppingSuggestions.staples.map { ShoppingItem(text: $0) }
+        let offers = [
+            offer("Wenig reduziert", tags: ["mehl"], price: 1.80, was: 2.00),   // 10 %
+            offer("Stark reduziert", tags: ["sekt"], price: 3.00, was: 9.00),   // 67 %
+            offer("Ohne Streichpreis", tags: ["reis"], price: 1.00, was: nil),  //  0 %
+        ]
+
+        let strip = ShoppingSuggestions.strip(for: items, offers: offers)
+
+        XCTAssertEqual(strip, ["Sekt", "Mehl", "Reis"])
+    }
+
+    /// Non-Food ist kein Einkaufslisten-Eintrag. Ein Akkuschrauber im Prospekt
+    /// darf nicht als Vorschlag auftauchen.
+    func testNonFoodIsNeverSuggested() {
+        let items = ShoppingSuggestions.staples.map { ShoppingItem(text: $0) }
+        let offers = [
+            offer("Akku-Schrauber", tags: ["nonfood"], price: 29.99, was: 59.99),
+            offer("Gouda", tags: ["gouda"], price: 1.99, was: 2.49),
+        ]
+
+        let strip = ShoppingSuggestions.strip(for: items, offers: offers)
+
+        XCTAssertEqual(strip, ["Gouda"])
+    }
+
+    /// Was schon auf der Liste steht, kommt nicht als Angebot zurück.
+    func testAnItemAlreadyOnTheListIsNotSuggestedAgain() {
+        let items = ShoppingSuggestions.staples.map { ShoppingItem(text: $0) }
+            + [ShoppingItem(text: "gouda")]
+        let offers = [offer("Gouda", tags: ["gouda"], price: 1.99, was: 2.49)]
+
+        XCTAssertTrue(ShoppingSuggestions.strip(for: items, offers: offers).isEmpty)
+    }
+
+    /// Ohne Angebote bleibt es beim alten Verhalten — kein Absturz, keine
+    /// leeren Kacheln.
+    func testWithoutOffersTheStaplesStillWork() {
+        XCTAssertEqual(ShoppingSuggestions.strip(for: [], offers: []),
+                       ShoppingSuggestions.staples)
+    }
+}

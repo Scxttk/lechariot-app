@@ -180,7 +180,4 @@ struct LiveRegionRepository: RegionRepositoryProtocol {
         return try await client.getList(Market.self, path: "markets", query: query)
     }
 
-    func offerCount(plz: String) async throws -> Int {
-        try await client.count(path: "offers", query: "region=eq.\(plz)")
-    }
 }

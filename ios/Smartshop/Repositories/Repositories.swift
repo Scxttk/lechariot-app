@@ -58,5 +58,4 @@ protocol RegionRepositoryProtocol {
     /// appears here before its offers land). Lightweight; safe to poll.
     func foundMarkets(plz: String) async throws -> [Market]
     /// Number of offer rows already uploaded for a PLZ (HEAD count, no body).
-    func offerCount(plz: String) async throws -> Int
 }

@@ -58,7 +58,7 @@ struct ConsentStepView: View {
 
                 Text("Sagst du Nein, funktioniert die App genau gleich. Du kannst es in den Einstellungen jederzeit ändern.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
             }
         }
         .onAppear { isOn = profile.hasConsented }
@@ -78,7 +78,7 @@ struct ConsentStepView: View {
                 Text(title).font(.subheadline.weight(.semibold))
                 Text(text)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

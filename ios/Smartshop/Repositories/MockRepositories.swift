@@ -208,7 +208,4 @@ struct MockRegionRepository: RegionRepositoryProtocol {
         MockFixtures.markets.filter { $0.plz == plz }
     }
 
-    func offerCount(plz: String) async throws -> Int {
-        MockFixtures.offers.count
-    }
 }

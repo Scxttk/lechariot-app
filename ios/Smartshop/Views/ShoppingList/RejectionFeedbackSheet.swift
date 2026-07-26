@@ -79,7 +79,7 @@ struct RejectionFeedbackSheet: View {
                         .font(.body)
                     Text(option.hint)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.secondaryText)
                 }
                 Spacer(minLength: Theme.Spacing.sm)
                 Image(systemName: "checkmark")

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Row of the Supabase `offers` table. See docs/CONTRACTS.md.
-struct Offer: Codable, Equatable, Identifiable {
+struct Offer: Codable, Equatable, Hashable, Identifiable {
     /// Branch the offer belongs to (backend migration v13). Optional only so
     /// rows pushed before that migration still decode — every live row has it,
     /// and the column is NOT NULL.

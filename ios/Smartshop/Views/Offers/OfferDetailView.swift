@@ -17,42 +17,69 @@ struct OfferDetailView: View {
     init(
         offer: Offer,
         favoriteMarkets: [Market],
-        historyRepository: PriceHistoryRepositoryProtocol
+        historyRepository: PriceHistoryRepositoryProtocol,
+        presentation: Presentation = .sheet
     ) {
         self.offer = offer
         self.favoriteMarkets = favoriteMarkets
+        self.presentation = presentation
         _history = State(initialValue: PriceHistoryStore(repository: historyRepository))
     }
 
+    /// Presented as a sheet from the Angebote tab, and **pushed** from the
+    /// match list in the shopping list — where a second sheet on top of the
+    /// first would stack two cards for one drill-down.
+    enum Presentation {
+        case sheet
+        case pushed
+    }
+
+    var presentation: Presentation = .sheet
+
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                    OfferHeroImage(imageUrl: offer.imageUrl, emoji: offer.emoji, height: heroHeight)
-                    header
-                    facts
-                    PriceHistorySection(store: history)
-                }
-                .padding(Theme.Spacing.lg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .themedScreen()
-            .navigationTitle(offer.product)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Fertig") { dismiss() }
-                }
+        Group {
+            switch presentation {
+            case .sheet:
+                NavigationStack { content }
+            case .pushed:
+                content
             }
         }
         // At accessibility sizes the medium detent shows the image and nothing
         // else — then the sheet may as well open full height right away.
+        // Detents are a sheet thing; on a pushed screen they do nothing.
         .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)
         // Without this a scroll inside the sheet resizes the sheet instead of
         // scrolling its content.
         .presentationContentInteraction(.scrolls)
         .task { await history.load(for: offer) }
+    }
+
+    private var content: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                OfferHeroImage(imageUrl: offer.imageUrl, emoji: offer.emoji, height: heroHeight)
+                header
+                facts
+                PriceHistorySection(store: history)
+            }
+            .padding(Theme.Spacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .themedScreen()
+        .navigationTitle(offer.product)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // Nur im Sheet: Auf einem geschobenen Bildschirm gibt es den
+            // Zurück-Pfeil, und ein „Fertig" daneben wäre ein zweiter Ausgang
+            // mit anderer Bedeutung.
+            if presentation == .sheet {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Fertig") { dismiss() }
+                }
+            }
+        }
     }
 
     /// The image must not grow with the text: at accessibility sizes a 200 pt
@@ -69,7 +96,7 @@ struct OfferDetailView: View {
             if let unit = offer.unit {
                 Text(unit)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
             }
             priceBlock
         }
@@ -90,7 +117,7 @@ struct OfferDetailView: View {
                 Text(regular, format: .currency(code: "EUR"))
                     .font(.subheadline.monospacedDigit())
                     .strikethrough()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
             }
         }
         // Badge, price and struck-through price stop fitting on one line at
@@ -127,7 +154,7 @@ struct OfferDetailView: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
             Text(value)
                 .font(monospaced ? .body.monospacedDigit() : .body)
                 .fixedSize(horizontal: false, vertical: true)
@@ -186,7 +213,7 @@ private struct PriceHistorySection: View {
             if let cheapest {
                 Text("Günstigster erfasster Preis: \(cheapest.formatted(.currency(code: "EUR")))")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -201,7 +228,7 @@ private struct PriceHistorySection: View {
                     .font(.subheadline)
                 Text(point.windowText)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
             }
             Spacer(minLength: Theme.Spacing.sm)
             if let delta {

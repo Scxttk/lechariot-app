@@ -57,6 +57,28 @@ struct MarketPickerView: View {
             .sorted { $0.chain < $1.chain }
     }
 
+    /// How many stores of one chain the list shows before it stops.
+    ///
+    /// Since the picker draws from the directory rather than from `markets`,
+    /// a city chain brings dozens: measured on 2026-07-26, the 10 km around
+    /// Dresden-Strehlen hold **44 Netto branches**. Listing all of them turns
+    /// the first screen of the app into a scroll through 142 rows. The nearest
+    /// five answer the question for almost everyone; the rest are one tap away
+    /// and, if the store is even further out, the search field finds it by name.
+    static let visiblePerChain = 5
+
+    /// Chains the user unfolded to see every branch.
+    @State private var expandedChains: Set<String> = []
+
+    private func visibleMarkets(_ group: (chain: String, markets: [Market])) -> [Market] {
+        // While searching, showing everything is the point — the query IS the
+        // narrowing, and hiding matches behind "show all" would hide the hit.
+        guard query.trimmingCharacters(in: .whitespaces).isEmpty,
+              !expandedChains.contains(group.chain)
+        else { return group.markets }
+        return Array(group.markets.prefix(Self.visiblePerChain))
+    }
+
     private func nearerFirst(_ lhs: Market, _ rhs: Market) -> Bool {
         switch (distances[lhs.marketId], distances[rhs.marketId]) {
         case let (l?, r?) where l != r: return l < r
@@ -94,12 +116,26 @@ struct MarketPickerView: View {
             Section {
                 Label("Wähle die Läden, in die du wirklich gehst. Nur deren Angebote zählen für deine Liste.", systemImage: "info.circle")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
             }
 
             ForEach(chainGroups, id: \.chain) { group in
                 Section(group.chain) {
-                    ForEach(group.markets) { marketRow($0) }
+                    let shown = visibleMarkets(group)
+                    ForEach(shown) { marketRow($0) }
+                    if shown.count < group.markets.count {
+                        let hidden = group.markets.count - shown.count
+                        Button {
+                            withAnimation { _ = expandedChains.insert(group.chain) }
+                        } label: {
+                            Label(
+                                "\(hidden) weitere \(group.chain)-Filialen",
+                                systemImage: "chevron.down"
+                            )
+                            .font(.subheadline)
+                        }
+                        .accessibilityHint("Zeigt alle Filialen dieser Kette")
+                    }
                 }
             }
 
@@ -120,14 +156,14 @@ struct MarketPickerView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(chain)
                                     .font(.body.weight(.medium))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.secondaryText)
                                 Text("Keine Daten verfügbar")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.secondaryText)
                             }
                             Spacer()
                             Image(systemName: "circle.slash")
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.secondaryText)
                         }
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("\(chain), keine Daten verfügbar, nicht wählbar")
@@ -161,7 +197,7 @@ struct MarketPickerView: View {
                 Section {
                     Text("Keine Filiale passt zu \u{201E}\(query)\u{201C}.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.secondaryText)
                 }
             }
 
@@ -169,7 +205,7 @@ struct MarketPickerView: View {
                 Section {
                     Text("Für deine Regionen wurden noch keine Filialen gefunden.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.secondaryText)
                 }
             }
 
@@ -206,7 +242,7 @@ struct MarketPickerView: View {
             if !hasAnyFavorites && !isLoading {
                 Text("Wähle mindestens eine Filiale, um fortzufahren.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Theme.Spacing.sm)
                     .background(.bar)
@@ -239,7 +275,7 @@ struct MarketPickerView: View {
                         .foregroundStyle(.primary)
                     Text(subtitle(for: market))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.secondaryText)
                 }
                 Spacer()
                 // Checkmark, not a star: this is a selection, not a rating —
@@ -324,8 +360,8 @@ struct MarketPickerView: View {
         for plz in plzs {
             guard let point = try? await Self.locate(plz) else { continue }
             geocoded = true
-            let branches = try await branchRepository.nearby(
-                lat: point.lat, lon: point.lon, radiusKm: Self.radiusKm
+            let branches = try await Self.nearbyWideningIfSparse(
+                repository: branchRepository, lat: point.lat, lon: point.lon
             )
             for branch in branches {
                 let distance = branch.distanceKm(from: point.lat, point.lon) ?? .greatestFiniteMagnitude
@@ -342,8 +378,42 @@ struct MarketPickerView: View {
         return found.values.map(\.market)
     }
 
-    /// How far around each postcode the directory is searched.
+    /// How far around each postcode the directory is searched to begin with.
     static let radiusKm: Double = 10
+
+    /// Below this many stores the search widens — a village with two shops is
+    /// not a finished list, it is a radius that is too small.
+    static let minBranches = 6
+
+    /// The widest the search goes before giving up.
+    static let maxRadiusKm: Double = 40
+
+    /// Searches `radiusKm` and doubles until enough stores turn up or
+    /// `maxRadiusKm` is reached.
+    ///
+    /// 10 km is right for a city — Dresden has 142 stores in it — and too
+    /// small in the countryside. Measured on 2026-07-25 for 96515 Sonneberg:
+    /// the only ALDI Nord of the area sits in Neuhaus am Rennweg, **15 km**
+    /// away, and was therefore not selectable at all. Raising the radius
+    /// globally would have made city dwellers scroll through 300 entries
+    /// instead; growing it only where the list stays short costs a second
+    /// request exactly where one is needed.
+    ///
+    /// The directory has the data either way — `branches-sync` fills 25 km
+    /// around each area.
+    static func nearbyWideningIfSparse(
+        repository: BranchRepositoryProtocol,
+        lat: Double,
+        lon: Double
+    ) async throws -> [Branch] {
+        var radius = radiusKm
+        var branches = try await repository.nearby(lat: lat, lon: lon, radiusKm: radius)
+        while branches.count < minBranches && radius < maxRadiusKm {
+            radius = min(radius * 2, maxRadiusKm)
+            branches = try await repository.nearby(lat: lat, lon: lon, radiusKm: radius)
+        }
+        return branches
+    }
 
     /// Postcode → coordinates. Real geocoding talks to Apple's servers, which
     /// a mock run must never do: UI tests would depend on the network and on

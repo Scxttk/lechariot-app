@@ -95,7 +95,7 @@ struct RegionSetupView: View {
             if !manualPLZ.isEmpty && !PLZValidator.isValid(manualPLZ) {
                 Text("Eine Postleitzahl hat fünf Ziffern.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
             }
 
             if let errorMessage {

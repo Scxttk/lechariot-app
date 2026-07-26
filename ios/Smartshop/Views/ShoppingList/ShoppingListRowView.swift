@@ -69,7 +69,7 @@ struct ShoppingListRowView: View {
         } else {
             Text("Diese Woche nirgends im Angebot")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
         }
     }
 
@@ -115,11 +115,11 @@ struct ShoppingListRowView: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(offer.product)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
                 .lineLimit(lineLimit)
             Text(offer.market)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
         }
     }
 
