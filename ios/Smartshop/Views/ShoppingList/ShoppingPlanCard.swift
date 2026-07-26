@@ -57,7 +57,7 @@ struct ShoppingPlanCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             Text(winner.matchedCount == 0 ? "Noch kein Treffer" : "Am besten zu")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
                 .textCase(.uppercase)
                 .tracking(0.5)
 
@@ -87,7 +87,7 @@ struct ShoppingPlanCard: View {
 
             Text(coverageText(winner))
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
                 // Inside a List row a Text defaults to a single truncated line;
                 // this lets it grow downwards instead ("deckt 6 von …").
                 .fixedSize(horizontal: false, vertical: true)
@@ -169,7 +169,7 @@ struct ShoppingPlanCard: View {
             }
             Text("Erst Abdeckung, dann Preis. Die Summe zählt nur die gefundenen Angebote — Normalpreise sind nicht dabei.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -187,7 +187,7 @@ struct ShoppingPlanCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
             ForEach(items, id: \.self) { item in
                 HStack(spacing: Theme.Spacing.sm) {
                     Image(systemName: symbol)
@@ -207,7 +207,7 @@ struct ShoppingPlanCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             Text("Deine anderen Filialen")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
             ForEach(others) { rank in
                 HStack(spacing: Theme.Spacing.sm) {
                     Text(rank.chain)
@@ -215,7 +215,7 @@ struct ShoppingPlanCard: View {
                     Spacer(minLength: Theme.Spacing.sm)
                     Text("\(rank.matchedCount)/\(rank.itemCount)")
                         .font(.subheadline.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.secondaryText)
                     if let total = rank.total {
                         Text(total, format: .currency(code: "EUR"))
                             .font(.subheadline.monospacedDigit())
@@ -223,7 +223,7 @@ struct ShoppingPlanCard: View {
                     } else {
                         Text("–")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.secondaryText)
                             .frame(minWidth: 60, alignment: .trailing)
                     }
                 }

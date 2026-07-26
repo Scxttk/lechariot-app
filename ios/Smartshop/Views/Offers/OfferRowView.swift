@@ -43,16 +43,16 @@ struct OfferRowView: View {
             if let unit = offer.unit {
                 Text(unit)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
             }
             if let basePrice = offer.basePrice, let baseUnit = offer.baseUnit {
                 Text("\(basePrice, format: .currency(code: "EUR")) / \(baseUnit)")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
             }
             Text(offer.validityText)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
         }
     }
 
@@ -68,7 +68,7 @@ struct OfferRowView: View {
                 Text(regular, format: .currency(code: "EUR"))
                     .font(.caption.monospacedDigit())
                     .strikethrough()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
             }
         }
     }

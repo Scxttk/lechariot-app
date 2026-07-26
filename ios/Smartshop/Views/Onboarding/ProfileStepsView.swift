@@ -30,7 +30,7 @@ struct WelcomeStepView: View {
                 .frame(width: 32)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.body.weight(.semibold))
-                Text(text).font(.subheadline).foregroundStyle(.secondary)
+                Text(text).font(.subheadline).foregroundStyle(Theme.secondaryText)
             }
         }
         .accessibilityElement(children: .combine)
@@ -183,7 +183,7 @@ struct HouseholdStepView: View {
     private func label(_ text: String) -> some View {
         Text(text)
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.secondaryText)
     }
 }
 

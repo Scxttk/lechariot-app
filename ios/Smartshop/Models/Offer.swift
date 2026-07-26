@@ -1,7 +1,7 @@
 import Foundation
 
 /// Row of the Supabase `offers` table. See docs/CONTRACTS.md.
-struct Offer: Codable, Equatable, Identifiable {
+struct Offer: Codable, Equatable, Hashable, Identifiable {
     /// Branch the offer belongs to (backend migration v13). Optional only so
     /// rows pushed before that migration still decode — every live row has it,
     /// and the column is NOT NULL.
@@ -23,15 +23,14 @@ struct Offer: Codable, Equatable, Identifiable {
     let validUntil: Date
     let basePrice: Double?
     let baseUnit: String?
-    /// Postcode the offer was scraped for — `nil` means **nationwide**.
+    /// Does this offer apply country-wide instead of at one branch?
     ///
-    /// ALDI Nord and ALDI SÜD publish one catalogue for the whole country;
-    /// their offers have no branch and no region. Before Phase 12 the backend
-    /// wrote one copy per region anyway (2,965 rows for ~320 offers) because
-    /// this app asked `region=in.(…)` and would never have seen a row without
-    /// one. Now such a row belongs to every branch of its chain — see
-    /// `isNationwide`.
-    let region: String?
+    /// ALDI Nord and ALDI SÜD publish one catalogue for all of Germany; their
+    /// offers have no branch of their own. Until migration v16 the same fact
+    /// was carried by an absent `region` — the column said "postcode" and
+    /// answered "nationwide", so it was renamed to what it means. Optional
+    /// only so rows written before v16 still decode; the column is NOT NULL.
+    var nationwide: Bool? = nil
     /// Public Supabase-Storage URL of the product image; nil = emoji only.
     /// Default keeps the memberwise initializer source-compatible.
     var imageUrl: String? = nil
@@ -43,18 +42,17 @@ struct Offer: Codable, Equatable, Identifiable {
     /// branches of one chain in one region collapses to a single row id, and
     /// SwiftUI lists show one of them or neither.
     var id: String {
-        "\(marketId ?? market)|\(product)|\(region ?? "DE")|\(validFrom.timeIntervalSince1970)"
+        "\(marketId ?? market)|\(product)|\(validFrom.timeIntervalSince1970)"
     }
 
-    /// A nationwide offer: no region, and therefore valid at every branch of
-    /// its chain rather than at one.
-    var isNationwide: Bool { region == nil }
+    /// Valid at every branch of its chain rather than at one.
+    var isNationwide: Bool { nationwide == true }
 
     /// Tags for category-fallback matching; empty when untagged.
     var matchKeys: [String] { matchKey ?? [] }
 
     enum CodingKeys: String, CodingKey {
-        case market, product, price, unit, category, emoji, region
+        case market, product, price, unit, category, emoji, nationwide
         case marketId = "market_id"
         case regularPrice = "regular_price"
         case validFrom = "valid_from"

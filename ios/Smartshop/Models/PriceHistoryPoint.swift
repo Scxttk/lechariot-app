@@ -11,9 +11,9 @@ import Foundation
 struct PriceHistoryPoint: Codable, Equatable, Identifiable {
     let market: String
     let product: String
-    /// nil = nationwide, exactly as in `Offer.region`: ALDI's history rows
-    /// carry no postcode either.
-    let region: String?
+    /// Country-wide instead of at one branch — same meaning as
+    /// `Offer.nationwide`, and written by the same push.
+    var nationwide: Bool? = nil
     let price: Double?
     let regularPrice: Double?
     /// Non-optional although the column is nullable: the query filters
@@ -21,7 +21,7 @@ struct PriceHistoryPoint: Codable, Equatable, Identifiable {
     let validFrom: Date
     let validUntil: Date
 
-    var id: String { "\(market)|\(product)|\(region ?? "DE")|\(validFrom.timeIntervalSince1970)" }
+    var id: String { "\(market)|\(product)|\(validFrom.timeIntervalSince1970)" }
 
     /// Calendar week of the offer window, for the row label.
     var weekOfYear: Int {
@@ -35,7 +35,7 @@ struct PriceHistoryPoint: Codable, Equatable, Identifiable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case market, product, region, price
+        case market, product, nationwide, price
         case regularPrice = "regular_price"
         case validFrom = "valid_from"
         case validUntil = "valid_until"

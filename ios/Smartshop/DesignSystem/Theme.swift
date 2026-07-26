@@ -97,6 +97,25 @@ enum Theme {
             : UIColor(red: 0.97, green: 0.96, blue: 0.88, alpha: 1)   // lifted #EDE9C0
     })
 
+    /// Secondary text — labels, footnotes, sub-lines.
+    ///
+    /// Replaces Apple's `.secondary`, which the accessibility audit caught at
+    /// **3.15:1 on the cream and 3.30:1 on the cards** (measured 2026-07-20,
+    /// recomputed 2026-07-26). The project set itself 4.5:1, and Phase 7 did
+    /// the arithmetic for its **own** tokens — `.secondary` is a system colour
+    /// and was never in that calculation. It is tuned for white and black
+    /// backgrounds, not for cream and olive.
+    ///
+    /// Measured against both surfaces it can appear on:
+    /// light **5.21:1** on the background, **5.89:1** on the cards;
+    /// dark **8.34:1** and **6.90:1**. Warm rather than grey, so it stays in
+    /// the same family as the brown — a neutral grey looks dirty on cream.
+    static let secondaryText = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0.72, green: 0.72, blue: 0.64, alpha: 1)
+            : UIColor(red: 0.42, green: 0.36, blue: 0.28, alpha: 1)
+    })
+
     // MARK: Status colors
     //
     // System `.orange` / `.red` / `.green` are tuned for white and black
@@ -432,7 +451,7 @@ extension Offer {
             validUntil: .now,
             basePrice: nil,
             baseUnit: nil,
-            region: "0000\(index)"
+            nationwide: false
         )
     }
 }

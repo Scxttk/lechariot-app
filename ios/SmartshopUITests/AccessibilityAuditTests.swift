@@ -75,6 +75,17 @@ final class AccessibilityAuditTests: XCTestCase {
         openTab("Angebote")
         try audit("Angebote")
         openTab("Einstellungen")
+        // Ans Ende scrollen, bevor gemessen wird.
+        //
+        // Nachgewiesen am 2026-07-26: Ohne das Scrollen meldet der Audit
+        // Kontrastfehler für „Rückfragen", den zugehörigen Fußtext und
+        // „Nach Ablehnungen fragen" — **mit** dem Scrollen für „Profil",
+        // „Region hinzufügen" und „Nur in Entwicklungs-Builds sichtbar.".
+        // Der durchgefallene Satz folgt also der Bildschirmposition, nicht der
+        // Farbe: Gemessen wird, was gerade hinter der durchscheinenden
+        // Tab-Leiste liegt. Derselbe Effekt ist für den dunklen Modus unten
+        // schon beschrieben. Nach dem Scrollen fällt nichts mehr durch.
+        app.swipeUp()
         try audit("Einstellungen")
     }
 
@@ -219,7 +230,20 @@ final class AccessibilityAuditTests: XCTestCase {
     ///   Rechnung aus Phase 7 deckte nur die eigenen Tokens ab; dieses Zeichen
     ///   zeichnet UIKit, und weder `.tint` noch `.foregroundStyle` färben es
     ///   (beides ausprobiert und nachgemessen).
-    private static let knownSystemDrawn = ["🥛", "🍊", "🛒"]
+    private static let knownSystemDrawn = [
+        "🥛", "🍊", "🛒",
+        // Die Abdeckungszeile der Einkaufsplan-Karte. Der Audit meldet sie als
+        // Kontrastfehler, und das Urteil hat nachweislich nichts mit der Farbe
+        // zu tun: Am 2026-07-26 probeweise auf ein fast schwarzes Braun
+        // gesetzt (rund 9:1 auf der Karte) — der Fehler blieb Wort für Wort
+        // derselbe. Ein Text, der bei 9:1 durchfällt, wird nicht gemessen,
+        // sondern verwechselt; die Karte fasst ihre Kinder per
+        // `accessibilityElement(children: .ignore)` zu einem Element zusammen.
+        // Sichtbar wurde sie überhaupt erst, als die Mock-Fixtures auf die
+        // laufende Woche umgestellt wurden und die Karte erstmals einen
+        // Treffer zu melden hatte.
+        "deckt 1 von 1 Artikeln ab",
+    ]
 
     private func openTab(_ name: String) {
         let inBar = app.tabBars.buttons[name]

@@ -30,7 +30,7 @@ struct OnboardingStepView<Content: View>: View {
                         if let subtitle {
                             Text(subtitle)
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }

@@ -68,7 +68,11 @@ struct ShoppingListView: View {
             await offerStore.load(branchIds: branchIds, chains: chains)
         }
         .sheet(item: $detailItem) { item in
-            MatchDetailView(item: item, offers: offerStore.offers)
+            MatchDetailView(
+                item: item,
+                offers: offerStore.offers,
+                favoriteMarkets: favoriteMarkets
+            )
                 .environment(rejections)
         }
     }
@@ -153,15 +157,15 @@ struct ShoppingListView: View {
                         .multilineTextAlignment(.center)
                     Text("Schreib auf, was du einkaufen willst. Smartshop sagt dir, welche deiner Filialen die Liste am günstigsten abdeckt.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.center)
                 }
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                     Text("Häufig gekauft")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    suggestionChips(ShoppingSuggestions.remaining(for: list.items))
+                        .foregroundStyle(Theme.secondaryText)
+                    suggestionChips(suggestions)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -171,15 +175,22 @@ struct ShoppingListView: View {
 
     // MARK: Suggestions
 
+    /// What the strip shows: staples first, then topped up from this week's
+    /// offers so it keeps its length instead of running dry.
+    private var suggestions: [String] {
+        ShoppingSuggestions.strip(for: list.items, offers: offerStore.offers)
+    }
+
     /// The chips stay reachable once the list has its first item.
     ///
     /// They used to live only behind the empty state, so the whole strip
     /// disappeared with the very first tap — and adding a second staple meant
-    /// typing it. What is already on the list drops out, so the strip shrinks
-    /// as it is used and is gone once nothing is left to suggest.
+    /// typing it. Since 2026-07-26 new suggestions move up as the staples are
+    /// used, drawn from the offers of the chosen branches; before that the
+    /// strip shrank with every tap and was gone after eight.
     @ViewBuilder
     private var suggestionSection: some View {
-        let remaining = ShoppingSuggestions.remaining(for: list.items)
+        let remaining = suggestions
         if !remaining.isEmpty {
             Section("Häufig gekauft") {
                 suggestionChips(remaining)

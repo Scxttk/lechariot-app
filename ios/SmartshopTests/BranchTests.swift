@@ -123,3 +123,72 @@ final class BranchTests: XCTestCase {
         XCTAssertEqual(branch.addressLine, "")
     }
 }
+
+// MARK: - Wachsender Umkreis (Backlog 2026-07-25)
+
+/// Zählt die Radien, mit denen gesucht wurde, und liefert je Radius eine
+/// bestimmte Menge — so lässt sich das Aufweiten prüfen, ohne ans Netz zu gehen.
+private final class RadiusRecordingRepository: BranchRepositoryProtocol, @unchecked Sendable {
+    /// Radius (km) → wie viele Filialen es dort gibt.
+    var byRadius: [Double: Int] = [:]
+    private(set) var asked: [Double] = []
+
+    func nearby(lat: Double, lon: Double, radiusKm: Double) async throws -> [Branch] {
+        asked.append(radiusKm)
+        let count = byRadius[radiusKm] ?? 0
+        return (0..<count).map { i in
+            Branch(
+                marketId: "b\(Int(radiusKm))-\(i)", chain: "REWE", name: "Filiale \(i)",
+                street: nil, plz: "96515", city: "Sonneberg", lat: lat, lon: lon
+            )
+        }
+    }
+
+    func branch(marketId: String) async throws -> Branch? { nil }
+}
+
+@MainActor
+final class WideningRadiusTests: XCTestCase {
+    /// In der Stadt bleibt es bei einem Request: 10 km reichen, Dresden hat
+    /// dort 142 Filialen.
+    func testACityStaysAtTenKilometres() async throws {
+        let repo = RadiusRecordingRepository()
+        repo.byRadius = [10: 30]
+
+        let found = try await MarketPickerView.nearbyWideningIfSparse(
+            repository: repo, lat: 51.05, lon: 13.73
+        )
+
+        XCTAssertEqual(repo.asked, [10])
+        XCTAssertEqual(found.count, 30)
+    }
+
+    /// Auf dem Land wächst er. Der Fall, der den Punkt ausgelöst hat: In 96515
+    /// Sonneberg liegt der einzige ALDI Nord der Gegend 15 km entfernt und war
+    /// bei 10 km gar nicht wählbar.
+    func testTheCountrysideWidensUntilEnoughStoresTurnUp() async throws {
+        let repo = RadiusRecordingRepository()
+        repo.byRadius = [10: 2, 20: 9]
+
+        let found = try await MarketPickerView.nearbyWideningIfSparse(
+            repository: repo, lat: 50.35, lon: 11.17
+        )
+
+        XCTAssertEqual(repo.asked, [10, 20])
+        XCTAssertEqual(found.count, 9)
+    }
+
+    /// Und es hört auf. Wo wirklich nichts ist, wird nicht bis Hamburg gesucht.
+    func testTheSearchStopsAtTheOuterLimit() async throws {
+        let repo = RadiusRecordingRepository()
+        repo.byRadius = [:]
+
+        let found = try await MarketPickerView.nearbyWideningIfSparse(
+            repository: repo, lat: 54.0, lon: 8.0
+        )
+
+        XCTAssertEqual(repo.asked, [10, 20, 40])
+        XCTAssertEqual(repo.asked.last, MarketPickerView.maxRadiusKm)
+        XCTAssertTrue(found.isEmpty)
+    }
+}

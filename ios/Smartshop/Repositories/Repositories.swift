@@ -8,10 +8,10 @@ protocol OfferRepositoryProtocol {
 }
 
 protocol PriceHistoryRepositoryProtocol {
-    /// Recorded offer weeks for one product at one market in one region,
+    /// Recorded offer weeks for one product at one market,
     /// oldest first. An empty result is a normal answer, not an error — the
     /// table only started filling up recently.
-    func history(market: String, product: String, region: String?) async throws -> [PriceHistoryPoint]
+    func history(market: String, product: String) async throws -> [PriceHistoryPoint]
 }
 
 protocol MarketRepositoryProtocol {
@@ -58,5 +58,4 @@ protocol RegionRepositoryProtocol {
     /// appears here before its offers land). Lightweight; safe to poll.
     func foundMarkets(plz: String) async throws -> [Market]
     /// Number of offer rows already uploaded for a PLZ (HEAD count, no body).
-    func offerCount(plz: String) async throws -> Int
 }

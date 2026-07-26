@@ -6,6 +6,11 @@ import SwiftUI
 struct MatchDetailView: View {
     let item: ShoppingItem
     let offers: [Offer]
+    /// The chosen branches — only used to name the branch in the detail view,
+    /// same rule as the offer list sections.
+    var favoriteMarkets: [Market] = []
+    /// Only the detail view needs it, and only after a tap.
+    var priceHistoryRepository: PriceHistoryRepositoryProtocol = AppRepositories.priceHistory
 
     @Environment(MatchRejectionStore.self) private var rejections
     @Environment(MatchFeedbackStore.self) private var feedback
@@ -70,28 +75,53 @@ struct MatchDetailView: View {
                 RejectionFeedbackSheet(itemText: item.text, match: match)
                     .environment(feedback)
             }
+            // Geschoben, nicht als zweites Sheet: Das hier IST schon ein
+            // Sheet, und zwei gestapelte Karten für ein Aufklappen sind eine
+            // Karte zu viel. Der Zurück-Pfeil führt dorthin zurück, wo man
+            // hergekommen ist — ein „Fertig" auf einem Sheet über einem Sheet
+            // wäre mehrdeutig.
+            .navigationDestination(for: Offer.self) { offer in
+                OfferDetailView(
+                    offer: offer,
+                    favoriteMarkets: favoriteMarkets,
+                    historyRepository: priceHistoryRepository,
+                    presentation: .pushed
+                )
+            }
         }
     }
 
     private func matchRow(_ match: OfferMatch, isRejected: Bool) -> some View {
         let offer = match.offer
         return HStack(spacing: Theme.Spacing.sm) {
-            OfferThumbnail(imageUrl: offer.imageUrl, emoji: offer.emoji, size: 40)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(offer.product)
-                    .font(.subheadline)
-                    .lineLimit(2)
-                HStack(spacing: Theme.Spacing.xs) {
-                    MatchKindBadge(kind: match.kind)
-                    Text(offer.market)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            // Die Zeile führt jetzt ins Detail. Vorher war sie ein reiner
+            // HStack: Man sah Produkt, Markt und Preis — und kam nicht weiter.
+            // Ausgerechnet hier, wo man vor dem Einkauf entscheidet, fehlte
+            // Packungsgröße, Gültigkeit und Preisverlauf.
+            NavigationLink(value: offer) {
+                HStack(spacing: Theme.Spacing.sm) {
+                    OfferThumbnail(imageUrl: offer.imageUrl, emoji: offer.emoji, size: 40)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(offer.product)
+                            .font(.subheadline)
+                            .lineLimit(2)
+                        HStack(spacing: Theme.Spacing.xs) {
+                            MatchKindBadge(kind: match.kind)
+                            Text(offer.market)
+                                .font(.caption)
+                                .foregroundStyle(Theme.secondaryText)
+                        }
+                    }
+                    Spacer(minLength: Theme.Spacing.sm)
+                    if let price = offer.price {
+                        PriceText(amount: price)
+                    }
                 }
+                .contentShape(Rectangle())
             }
-            Spacer(minLength: Theme.Spacing.sm)
-            if let price = offer.price {
-                PriceText(amount: price)
-            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(offer.voiceOverSummary)
+            .accessibilityHint("Öffnet die Details zum Angebot")
             Button {
                 withAnimation {
                     if isRejected {
@@ -106,7 +136,7 @@ struct MatchDetailView: View {
             } label: {
                 Image(systemName: isRejected ? "arrow.uturn.backward.circle" : "xmark.circle")
                     .font(.title3)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(TactileButtonStyle())

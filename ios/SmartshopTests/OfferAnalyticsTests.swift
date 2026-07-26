@@ -15,7 +15,7 @@ final class OfferAnalyticsTests: XCTestCase {
             unit: nil, category: category, emoji: emoji,
             validFrom: MockFixtures.day.date(from: "2026-07-13")!,
             validUntil: MockFixtures.day.date(from: "2026-07-19")!,
-            basePrice: nil, baseUnit: nil, region: "01219"
+            basePrice: nil, baseUnit: nil, nationwide: false
         )
     }
 

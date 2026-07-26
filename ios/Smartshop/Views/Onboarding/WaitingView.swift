@@ -47,7 +47,7 @@ struct WaitingView: View {
                 .font(.title2).bold()
             Text("Wir sammeln gerade die Angebote für \(plz).\nDas dauert meist nur wenige Minuten.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)
 
             if !progress.markets.isEmpty {
@@ -62,7 +62,7 @@ struct WaitingView: View {
 
             Text("Du kannst die App schließen – die Vorbereitung läuft auf unseren Servern weiter. Schau in ein paar Minuten wieder rein.")
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)
                 .padding(.top, 8)
         }
@@ -100,7 +100,7 @@ struct WaitingView: View {
                 .font(.title2).bold()
             Text("Deine Region \(plz) ist vorgemerkt. Die Angebote kommen spätestens über Nacht – schau einfach morgen wieder vorbei.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)
             retryButton
         }
@@ -115,7 +115,7 @@ struct WaitingView: View {
                 .font(.title2).bold()
             Text("Der Status deiner Region konnte nicht abgefragt werden. Bitte prüfe deine Internetverbindung.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)
             retryButton
         }

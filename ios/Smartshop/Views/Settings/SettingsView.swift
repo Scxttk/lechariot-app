@@ -50,7 +50,7 @@ struct SettingsView: View {
                         ? "Deutschlandweit"
                         : "\(market.branchName) · PLZ \(market.plz)")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.secondaryText)
                 }
             }
             if let plz = store.regions.first {
@@ -112,11 +112,11 @@ struct SettingsView: View {
         case .ready:
             Text("Bereit")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
         case .requested, .syncing:
             Text("Wird vorbereitet …")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
         case .failed:
             Text("Vorbereitung fehlgeschlagen")
                 .font(.caption)
@@ -124,7 +124,7 @@ struct SettingsView: View {
         case .unknown:
             Text("Noch nicht geprüft")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
         }
     }
 

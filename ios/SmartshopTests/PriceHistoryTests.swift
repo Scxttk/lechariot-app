@@ -4,7 +4,7 @@ import XCTest
 private struct StubPriceHistoryRepository: PriceHistoryRepositoryProtocol {
     var result: Result<[PriceHistoryPoint], Error> = .success([])
 
-    func history(market: String, product: String, region: String?) async throws -> [PriceHistoryPoint] {
+    func history(market: String, product: String) async throws -> [PriceHistoryPoint] {
         try result.get()
     }
 }
@@ -109,7 +109,7 @@ final class SupabaseFilterValueTests: XCTestCase {
 final class PriceHistoryStoreTests: XCTestCase {
     private func point(_ from: String, _ until: String, price: Double?) -> PriceHistoryPoint {
         PriceHistoryPoint(
-            market: "Lidl", product: "Bio Vollmilch", region: "01219",
+            market: "Lidl", product: "Bio Vollmilch", nationwide: false,
             price: price, regularPrice: 1.29,
             validFrom: MockFixtures.day.date(from: from)!,
             validUntil: MockFixtures.day.date(from: until)!
@@ -218,10 +218,10 @@ final class PriceHistoryStoreTests: XCTestCase {
         let repository = MockPriceHistoryRepository()
 
         let hits = try await repository.history(
-            market: "Lidl", product: "Bio Vollmilch", region: "01219"
+            market: "Lidl", product: "Bio Vollmilch"
         )
         let misses = try await repository.history(
-            market: "Lidl", product: "Etwas anderes", region: "01219"
+            market: "Lidl", product: "Etwas anderes"
         )
 
         XCTAssertEqual(hits.count, 3)

@@ -13,12 +13,12 @@ struct LiveOfferRepository: OfferRepositoryProtocol {
             // would fail decoding; the contract requires both dates to be set.
             // Asked for by BRANCH, not by postcode. A postcode fetched every
             // store in it — in 01067 that is three REWE flyers at once, of
-            // which the user walks into one. The rows without a region come
-            // along because they belong to every branch of their chain
-            // (ALDI, stored once for the whole country).
+            // which the user walks into one. The nationwide rows come along
+            // because they belong to every branch of their chain (ALDI,
+            // stored once for the whole country).
             let query = "select=*&order=valid_from.desc"
                 + "&valid_from=not.is.null&valid_until=not.is.null"
-                + "&or=(market_id.in.(\(branchIds.joined(separator: ","))),region.is.null)"
+                + "&or=(market_id.in.(\(branchIds.joined(separator: ","))),nationwide.is.true)"
                 + "&limit=\(pageSize)&offset=\(offset)"
             // Decode per element so one malformed row cannot sink the fetch.
             // Pagination must count raw rows, not surviving ones, so the raw
@@ -37,23 +37,18 @@ struct LivePriceHistoryRepository: PriceHistoryRepositoryProtocol {
     /// Half a year of weeks is more than anyone reads in a sheet.
     private let limit = 26
 
-    func history(market: String, product: String, region: String?) async throws -> [PriceHistoryPoint] {
+    func history(market: String, product: String) async throws -> [PriceHistoryPoint] {
         // Product names carry spaces, umlauts and percent signs — unencoded
         // they don't survive `URL(string:)`. See SupabaseClient.filterValue.
         guard let market = SupabaseClient.filterValue(market),
               let product = SupabaseClient.filterValue(product)
         else { return [] }
-        // A nationwide offer has no region; `eq.` never matches NULL, so the
-        // history sheet would have stayed empty for both ALDI chains.
-        let regionFilter: String
-        if let region {
-            guard let encoded = SupabaseClient.filterValue(region) else { return [] }
-            regionFilter = "region=eq.\(encoded)"
-        } else {
-            regionFilter = "region=is.null"
-        }
-        let query = "select=market,product,region,price,regular_price,valid_from,valid_until"
-            + "&\(regionFilter)&market=eq.\(market)&product=eq.\(product)"
+        // No branch filter: since migration v16 a chain publishes one price
+        // per product and week at a given branch, and the history is what that
+        // price was in the weeks before. Narrowing further would leave the
+        // sheet empty whenever the user switched branches.
+        let query = "select=market,product,nationwide,price,regular_price,valid_from,valid_until"
+            + "&market=eq.\(market)&product=eq.\(product)"
             + "&valid_from=not.is.null&valid_until=not.is.null"
             + "&order=valid_from.asc&limit=\(limit)"
         return try await client.getList(PriceHistoryPoint.self, path: "price_history", query: query)
@@ -185,7 +180,4 @@ struct LiveRegionRepository: RegionRepositoryProtocol {
         return try await client.getList(Market.self, path: "markets", query: query)
     }
 
-    func offerCount(plz: String) async throws -> Int {
-        try await client.count(path: "offers", query: "region=eq.\(plz)")
-    }
 }

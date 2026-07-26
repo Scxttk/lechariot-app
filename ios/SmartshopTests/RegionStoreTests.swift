@@ -107,56 +107,33 @@ final class RegionStoreTests: XCTestCase {
         XCTAssertTrue(repo.registeredPLZs.isEmpty)
     }
 
-    func testMissingRegionIsRegisteredAndBecomesReadyAfterPolling() async {
+    /// Seit Migration v16 fragt die App beim Hinzufügen einer PLZ **nichts**
+    /// mehr beim Backend nach. Die Tabelle `regions` gibt es nicht mehr; die
+    /// PLZ ist nur noch Standort-Eingabe für den Filial-Picker, und der holt
+    /// sein Verzeichnis selbst. Eine PLZ ist damit fertig, sobald sie getippt
+    /// ist — und der einzige Grund zu warten wäre eine **Filiale**, die das
+    /// Backend noch nie geholt hat. Die fordert der Picker selbst an.
+    func testAPostcodeIsReadyImmediatelyAndAsksNothingOfTheBackend() async {
         let repo = ControllableRegionRepository()
-        repo.fetchesUntilSynced = 2
-        repo.syncCompletesTo = Region(plz: "01219", lastSynced: "2026-07-17T05:00:00Z", active: true)
-        let store = makeStore(repository: repo, maxPollAttempts: 10)
+        let store = makeStore(repository: repo)
 
         await store.addRegion("01219")
-        XCTAssertEqual(store.syncState(for: "01219"), .requested)
-        XCTAssertEqual(repo.registeredPLZs, ["01219"])
 
-        await store.waitForPolling("01219")
         XCTAssertEqual(store.syncState(for: "01219"), .ready)
         XCTAssertTrue(store.readyRegions.contains("01219"))
+        XCTAssertTrue(repo.registeredPLZs.isEmpty, "nichts registrieren")
     }
 
-    func testExistingUnsyncedRegionPollsWithoutRegistering() async {
-        let repo = ControllableRegionRepository()
-        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: nil, active: true)
-        repo.fetchesUntilSynced = 1
-        repo.syncCompletesTo = Region(plz: "01219", lastSynced: "2026-07-17T05:00:00Z", active: true)
-        let store = makeStore(repository: repo, maxPollAttempts: 10)
-
-        await store.addRegion("01219")
-        XCTAssertEqual(store.syncState(for: "01219"), .syncing)
-        XCTAssertTrue(repo.registeredPLZs.isEmpty)
-
-        await store.waitForPolling("01219")
-        XCTAssertEqual(store.syncState(for: "01219"), .ready)
-    }
-
-    func testPollingTimesOut() async {
-        let repo = ControllableRegionRepository()
-        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: nil, active: true)
-        let store = makeStore(repository: repo, maxPollAttempts: 3)
-
-        await store.addRegion("01219")
-        await store.waitForPolling("01219")
-
-        XCTAssertEqual(store.syncState(for: "01219"), .failed(.timedOut))
-        XCTAssertFalse(store.isOnboardingComplete)
-    }
-
-    func testNetworkErrorYieldsFailedState() async {
+    /// Und ein kaputtes Backend ändert daran nichts — es wird ja nicht
+    /// gefragt. Vorher landete der Nutzer hier auf einem Fehlerbildschirm.
+    func testABrokenBackendNoLongerBlocksAddingAPostcode() async {
         let repo = ControllableRegionRepository()
         repo.shouldThrow = true
         let store = makeStore(repository: repo)
 
         await store.addRegion("01219")
 
-        XCTAssertEqual(store.syncState(for: "01219"), .failed(.network))
+        XCTAssertEqual(store.syncState(for: "01219"), .ready)
     }
 
     func testInvalidPLZIsRejected() async {
@@ -179,72 +156,18 @@ final class RegionStoreTests: XCTestCase {
         XCTAssertFalse(store.canAddRegion)
     }
 
-    // MARK: Sync progress
-
-    func testObserveProgressPicksUpGrowingMarketsAndCounts() async {
-        let repo = ControllableRegionRepository()
-        repo.regionsByPLZ["04626"] = Region(plz: "04626", lastSynced: nil, active: true)
-        let store = makeStore(repository: repo, maxPollAttempts: 10_000)
-        await store.addRegion("04626")
-        XCTAssertEqual(store.syncState(for: "04626"), .syncing)
-
-        let kaufland = Market(chain: "Kaufland", branchName: "Schmölln", marketId: "k-1", plz: "04626")
-        let lidl = Market(chain: "Lidl", branchName: "Schmölln", marketId: "l-1", plz: "04626")
-        repo.marketsByPLZ["04626"] = [kaufland]
-        repo.offerCounts["04626"] = 470
-
-        let observer = Task { await store.observeProgress(plz: "04626") }
-        // observeProgress fetches markets and the count in two separate awaits.
-        // Waiting on the count alone can therefore observe a snapshot whose
-        // markets were read one poll earlier — wait for both to land.
-        await waitUntil(
-            store.progress(for: "04626").offerCount == 470
-            && store.progress(for: "04626").markets == [kaufland]
-        )
-        XCTAssertEqual(store.progress(for: "04626").markets, [kaufland])
-        XCTAssertEqual(store.progress(for: "04626").offerCount, 470)
-
-        // Backend findet eine weitere Kette und lädt mehr Angebote hoch.
-        repo.marketsByPLZ["04626"] = [kaufland, lidl]
-        repo.offerCounts["04626"] = 725
-        await waitUntil(
-            store.progress(for: "04626").offerCount == 725
-            && store.progress(for: "04626").markets == [kaufland, lidl]
-        )
-        XCTAssertEqual(store.progress(for: "04626").markets, [kaufland, lidl])
-
-        observer.cancel()
-        await observer.value
-    }
-
-    func testObserveProgressStopsWhenRegionBecomesReady() async {
-        let repo = ControllableRegionRepository()
-        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-18T05:00:00Z", active: true)
-        let store = makeStore(repository: repo)
-        await store.addRegion("01219")
-        XCTAssertEqual(store.syncState(for: "01219"), .ready)
-
-        // Muss sofort zurückkehren, ohne einen einzigen Progress-Fetch.
-        await store.observeProgress(plz: "01219")
-        XCTAssertEqual(repo.progressFetches, 0)
-    }
-
-    // MARK: Multi-region helpers
-
     func testOrderedReadyRegionsAndFavoritesAcrossRegions() async {
         let repo = ControllableRegionRepository()
-        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
-        repo.regionsByPLZ["01067"] = Region(plz: "01067", lastSynced: "2026-07-16T05:00:00Z", active: true)
-        // Never syncs → must not appear in orderedReadyRegions.
-        repo.regionsByPLZ["10115"] = Region(plz: "10115", lastSynced: nil, active: true)
-        let store = makeStore(repository: repo, maxPollAttempts: 1)
+        let store = makeStore(repository: repo)
 
         await store.addRegion("01219")
         await store.addRegion("10115")
         await store.addRegion("01067")
-        await store.waitForPolling("10115")
 
-        XCTAssertEqual(store.orderedReadyRegions, ["01219", "01067"])
+        // Alle drei sind bereit — seit v16 gibt es keinen Zustand mehr, in dem
+        // eine PLZ auf das Backend wartet. Die Reihenfolge ist die des
+        // Hinzufügens.
+        XCTAssertEqual(store.orderedReadyRegions, ["01219", "10115", "01067"])
 
         let dresden = Market(chain: "Lidl", branchName: "Dresden Reick", marketId: "lidl-01219-1", plz: "01219")
         let mitte = Market(chain: "Aldi", branchName: "Dresden Mitte", marketId: "aldi-01067-1", plz: "01067")
