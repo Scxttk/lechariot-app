@@ -35,12 +35,15 @@ func rgb(_ hex: UInt32) -> NSColor {
     )
 }
 
+// Hell und dunkel tragen dieselben Farben: tiefes Grün, Creme statt Weiß.
+// Ein Emailschild wechselt seine Farbe nicht mit der Tageszeit — und Creme
+// glänzt nachts nicht so auf wie reines Weiß.
+let enamel = rgb(0x24402C)
+let ink = rgb(0xEDE9C0)
+
 let variants = [
-    // Hell: das Markengrün der App, reines Weiß — wie frisch emailliert.
-    Variant(name: "icon-light-1024", enamel: rgb(0x3F6444), ink: rgb(0xFFFFFF)),
-    // Dunkel: tieferes Grün, und die Schrift in der Creme der App statt in
-    // Weiß — Weiß glänzt nachts auf dem Homescreen unangenehm auf.
-    Variant(name: "icon-dark-1024", enamel: rgb(0x24402C), ink: rgb(0xEDE9C0)),
+    Variant(name: "icon-light-1024", enamel: enamel, ink: ink),
+    Variant(name: "icon-dark-1024", enamel: enamel, ink: ink),
     // Getönt: iOS erwartet Graustufen und legt den Farbton selbst darüber.
     Variant(name: "icon-tinted-1024", enamel: rgb(0x1C1C1C), ink: rgb(0xF2F2F2)),
 ]
