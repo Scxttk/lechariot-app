@@ -37,6 +37,15 @@ protocol BranchRequestRepositoryProtocol {
     func requestBranch(marketId: String) async throws
 }
 
+protocol AreaRequestRepositoryProtocol {
+    /// Request row for an area, keyed on the anchor store, or nil if nobody
+    /// has asked for it yet.
+    func request(marketId: String) async throws -> AreaRequest?
+    /// Asks the backend to fetch the whole directory around this store.
+    /// Idempotent, same as `requestBranch`.
+    func requestArea(marketId: String) async throws
+}
+
 protocol ProfileRepositoryProtocol {
     /// Appends the user's (non-identifying) onboarding answers. Insert-only —
     /// there is no read side, the app never fetches profiles back.

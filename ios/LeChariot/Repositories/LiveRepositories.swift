@@ -149,6 +149,31 @@ struct LiveBranchRequestRepository: BranchRequestRepositoryProtocol {
     }
 }
 
+/// Requests the store directory for a whole area (`public.area_requests`,
+/// backend migration v19).
+struct LiveAreaRequestRepository: AreaRequestRepositoryProtocol {
+    let client: SupabaseClient
+
+    func request(marketId: String) async throws -> AreaRequest? {
+        guard let marketId = SupabaseClient.filterValue(marketId) else { return nil }
+        let query = "select=market_id,plz,last_synced,active&market_id=eq.\(marketId)"
+        return try await client.get([AreaRequest].self, path: "area_requests", query: query).first
+    }
+
+    func requestArea(marketId: String) async throws {
+        // Only {market_id} goes over the wire, and that is all the server
+        // accepts — the INSERT grant is column-restricted and the policy
+        // requires the id to exist in `branches`. `plz` is filled in by a
+        // BEFORE INSERT trigger; the app naming it would fail outright, which
+        // is the point: an unverifiable postcode never reaches the queue.
+        try await client.post(
+            path: "area_requests",
+            body: ["market_id": marketId],
+            acceptConflict: true
+        )
+    }
+}
+
 struct LiveRegionRepository: RegionRepositoryProtocol {
     let client: SupabaseClient
 

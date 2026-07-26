@@ -4,6 +4,7 @@ import SwiftUI
 struct LeChariotApp: App {
     @State private var store: RegionStore
     @State private var profile: ProfileStore
+    @State private var areaRequests: AreaRequestStore
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     private let marketRepository: MarketRepositoryProtocol
@@ -18,6 +19,9 @@ struct LeChariotApp: App {
 
         _store = State(initialValue: RegionStore(repository: AppRepositories.regions()))
         _profile = State(initialValue: ProfileStore(repository: AppRepositories.profiles()))
+        _areaRequests = State(
+            initialValue: AreaRequestStore(repository: AppRepositories.areaRequests())
+        )
         marketRepository = AppRepositories.markets()
     }
 
@@ -26,6 +30,12 @@ struct LeChariotApp: App {
             ContentView(marketRepository: marketRepository)
                 .environment(store)
                 .environment(profile)
+                .environment(areaRequests)
+                // Beim Start und bei jeder Rückkehr prüfen, ob ein
+                // angefordertes Gebiet inzwischen fertig ist. Der Lauf dauert
+                // ~3 Minuten und überlebt die App — ohne diese Frage erführe
+                // niemand, dass jetzt mehr zur Auswahl steht.
+                .task { await areaRequests.checkPendingArea() }
                 // App-wide accent, so onboarding matches the tabs instead of
                 // falling back to system blue.
                 .tint(Theme.accent)
