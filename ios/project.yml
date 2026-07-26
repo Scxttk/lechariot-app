@@ -1,4 +1,4 @@
-name: Smartshop
+name: LeChariot
 options:
   bundleIdPrefix: com.skoehler
   deploymentTarget:
@@ -9,15 +9,18 @@ settings:
     SWIFT_VERSION: "5.9"
     DEVELOPMENT_TEAM: 3DZ9T8SGX5
 targets:
-  Smartshop:
+  LeChariot:
     type: application
     platform: iOS
     sources:
-      - path: Smartshop
+      - path: LeChariot
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.skoehler.smartshop
+        PRODUCT_BUNDLE_IDENTIFIER: com.skoehler.lechariot
         GENERATE_INFOPLIST_FILE: true
+        # Der Zielname trägt kein Leerzeichen (Modul, Schema, Ordner), der
+        # Homescreen soll aber "Le Chariot" zeigen — das ist der Markenname.
+        INFOPLIST_KEY_CFBundleDisplayName: "Le Chariot"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Dein Standort wird einmalig verwendet, um deine Postleitzahl zu ermitteln. Du kannst sie auch manuell eingeben."
@@ -29,39 +32,39 @@ targets:
         MARKETING_VERSION: 0.1.0
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-  SmartshopTests:
+  LeChariotTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: SmartshopTests
+      - path: LeChariotTests
     dependencies:
-      - target: Smartshop
+      - target: LeChariot
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.skoehler.smartshopTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.skoehler.lechariotTests
         GENERATE_INFOPLIST_FILE: true
-  SmartshopUITests:
+  LeChariotUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: SmartshopUITests
+      - path: LeChariotUITests
     dependencies:
-      - target: Smartshop
+      - target: LeChariot
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.skoehler.smartshopUITests
+        PRODUCT_BUNDLE_IDENTIFIER: com.skoehler.lechariotUITests
         GENERATE_INFOPLIST_FILE: true
 schemes:
-  Smartshop:
+  LeChariot:
     build:
       targets:
-        Smartshop: all
-        SmartshopTests: [test]
-        SmartshopUITests: [test]
+        LeChariot: all
+        LeChariotTests: [test]
+        LeChariotUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - SmartshopTests
-        - SmartshopUITests
+        - LeChariotTests
+        - LeChariotUITests

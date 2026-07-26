@@ -144,7 +144,7 @@ The app decodes them with a fixed `DateFormatter` (`en_US_POSIX`, format `yyyy-M
 
 There is no Edge Function. Inserting a row into `regions` fires the database
 trigger `on_region_insert`, which dispatches the `nightly.yml` workflow in
-[smartshop-backend](https://github.com/Scxttk/smartshop-backend) via `pg_net`.
+[lechariot-backend](https://github.com/Scxttk/lechariot-backend) via `pg_net`.
 The app writes the row (`LiveRegionRepository.registerRegion`, publishable key,
 insert is column-restricted to `plz`) and then polls `regions.last_synced` for
 the result. Measured 2026-07-25: insert to finished offers took two minutes.
