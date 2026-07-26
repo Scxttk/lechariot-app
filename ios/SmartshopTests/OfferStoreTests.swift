@@ -177,7 +177,7 @@ final class OfferStoreTests: XCTestCase {
     /// the region is a display duplicate now and gets collapsed — which is what
     /// `testTheSameOfferInTwoRegionsIsShownOnce` is for.
     private func offer(
-        region: String,
+        branch: String = "lidl-01219-1",
         market: String = "Lidl",
         product: String = MockFixtures.offers[0].product,
         price: Double? = MockFixtures.offers[0].price,
@@ -190,7 +190,7 @@ final class OfferStoreTests: XCTestCase {
             regularPrice: base.regularPrice, unit: base.unit,
             category: base.category, emoji: base.emoji,
             validFrom: from ?? base.validFrom, validUntil: until ?? base.validUntil,
-            basePrice: base.basePrice, baseUnit: base.baseUnit, region: region
+            basePrice: base.basePrice, baseUnit: base.baseUnit, nationwide: false
         )
     }
 
@@ -198,8 +198,8 @@ final class OfferStoreTests: XCTestCase {
     func testLoadQueriesAllBranchesInOneCall() async throws {
         let repository = RecordingOfferRepository()
         repository.result = [
-            offer(region: "01219", product: "Bio Vollmilch"),
-            offer(region: "01067", product: "Butter"),
+            offer(product: "Bio Vollmilch"),
+            offer(product: "Butter"),
         ]
         let store = OfferStore(repository: repository, cache: try makeCache())
 
@@ -227,7 +227,7 @@ final class OfferStoreTests: XCTestCase {
     /// nächsten Kalenderwochenwechsel nichts.
     func testANewBranchSelectionRefetchesEvenWithAFreshCache() async throws {
         let repository = RecordingOfferRepository()
-        repository.result = [offer(region: "01219", product: "Bio Vollmilch")]
+        repository.result = [offer(product: "Bio Vollmilch")]
         let store = OfferStore(repository: repository, cache: try makeCache())
 
         await store.load(branchIds: ["lidl-01219-1"], chains: [])
@@ -250,11 +250,9 @@ final class OfferStoreTests: XCTestCase {
         let cache = try makeCache()
         let day = MockFixtures.day
         let week = offer(
-            region: "01219",
             from: day.date(from: "2026-07-13")!, until: day.date(from: "2026-07-19")!
         )
         let knueller = offer(
-            region: "01219",
             from: day.date(from: "2026-07-16")!, until: day.date(from: "2026-07-16")!
         )
         let store = OfferStore(
@@ -272,7 +270,7 @@ final class OfferStoreTests: XCTestCase {
         let cache = try makeCache()
         let store = OfferStore(
             repository: StubOfferRepository(
-                result: .success([offer(region: "01219"), offer(region: "01067")])
+                result: .success([offer(), offer()])
             ),
             cache: cache
         )
@@ -293,9 +291,8 @@ final class OfferStoreTests: XCTestCase {
         let stale = Date.now.addingTimeInterval(-OfferCache.maxAge - 60)
         try cache.replaceAll(
             [
-                offer(region: "01219"),
+                offer(),
                 offer(
-                    region: "01219",
                     from: day.date(from: "2026-07-16")!, until: day.date(from: "2026-07-16")!
                 ),
             ], fetchedAt: stale
@@ -316,9 +313,9 @@ final class OfferStoreTests: XCTestCase {
     /// den der Nutzer längst abgewählt hat.
     func testRefreshReplacesTheWholeCache() async throws {
         let cache = try makeCache()
-        try cache.replaceAll([offer(region: "01067", product: "Alte Ware")], fetchedAt: .now)
+        try cache.replaceAll([offer(product: "Alte Ware")], fetchedAt: .now)
         let repository = RecordingOfferRepository()
-        repository.result = [offer(region: "01219", product: "Neue Ware")]
+        repository.result = [offer(product: "Neue Ware")]
         let store = OfferStore(repository: repository, cache: cache)
 
         await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])
@@ -331,8 +328,8 @@ final class OfferStoreTests: XCTestCase {
         let stale = Date.now.addingTimeInterval(-OfferCache.maxAge - 60)
         try cache.replaceAll(
             [
-                offer(region: "01219", product: "Bio Vollmilch"),
-                offer(region: "01067", product: "Butter"),
+                offer(product: "Bio Vollmilch"),
+                offer(product: "Butter"),
             ],
             fetchedAt: stale
         )

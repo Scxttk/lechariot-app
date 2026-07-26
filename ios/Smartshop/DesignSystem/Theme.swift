@@ -432,7 +432,7 @@ extension Offer {
             validUntil: .now,
             basePrice: nil,
             baseUnit: nil,
-            region: "0000\(index)"
+            nationwide: false
         )
     }
 }

@@ -13,7 +13,7 @@ final class ShoppingListRankingTests: XCTestCase {
             market: market, product: product, price: price,
             regularPrice: nil, unit: nil, category: base.category, emoji: nil,
             validFrom: base.validFrom, validUntil: base.validUntil,
-            basePrice: nil, baseUnit: nil, region: "01219"
+            basePrice: nil, baseUnit: nil, nationwide: false
         )
         made.matchKey = matchKey
         return made

@@ -18,7 +18,7 @@ final class OfferQueryTests: XCTestCase {
             unit: unit, category: category, emoji: nil,
             validFrom: MockFixtures.day.date(from: from)!,
             validUntil: MockFixtures.day.date(from: until)!,
-            basePrice: nil, baseUnit: nil, region: region
+            basePrice: nil, baseUnit: nil, nationwide: false
         )
     }
 
@@ -110,10 +110,10 @@ final class OfferQueryTests: XCTestCase {
         XCTAssertEqual(OfferQuery.deduplicated(offers, now: today).count, 2)
     }
 
-    /// Two ready PLZ deliver the identical row twice, and both land in the same
-    /// market section — `Offer.id` contains the region, so nothing else catches it.
-    func testTheSameOfferFromTwoRegionsCollapses() {
-        let offers = [offer(region: "01219"), offer(region: "01067")]
+    /// Dieselbe Zeile zweimal — etwa die Wochenzeile und die Ein-Tages-Zeile
+    /// derselben Kette. Der Dedupe-Schlüssel fasst sie zusammen.
+    func testTheSameOfferTwiceCollapses() {
+        let offers = [offer(), offer()]
 
         XCTAssertEqual(OfferQuery.deduplicated(offers, now: today).count, 1)
     }

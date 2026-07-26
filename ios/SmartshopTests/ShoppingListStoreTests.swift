@@ -90,7 +90,7 @@ final class ShoppingListStoreTests: XCTestCase {
             unit: nil, category: "Sonstiges", emoji: nil,
             validFrom: MockFixtures.day.date(from: "2026-07-13")!,
             validUntil: MockFixtures.day.date(from: "2026-07-19")!,
-            basePrice: basePrice, baseUnit: nil, region: "01219"
+            basePrice: basePrice, baseUnit: nil, nationwide: false
         )
     }
 

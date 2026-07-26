@@ -35,7 +35,7 @@ enum MockFixtures {
             validUntil: weekEnd,
             basePrice: 0.99,
             baseUnit: "1 l",
-            region: "01219"
+            nationwide: false
         ),
         Offer(
             marketId: "aldi-01219-1",
@@ -50,7 +50,7 @@ enum MockFixtures {
             validUntil: weekEnd,
             basePrice: 1.25,
             baseUnit: "1 kg",
-            region: "01219"
+            nationwide: false
         ),
     ]
 
@@ -58,19 +58,19 @@ enum MockFixtures {
     /// detail sheet's price history to show up in previews and UI tests.
     static let priceHistory: [PriceHistoryPoint] = [
         PriceHistoryPoint(
-            market: "Lidl", product: "Bio Vollmilch", region: "01219",
+            market: "Lidl", product: "Bio Vollmilch", nationwide: false,
             price: 1.29, regularPrice: 1.29,
             validFrom: weeksAgo(2).from,
             validUntil: weeksAgo(2).until
         ),
         PriceHistoryPoint(
-            market: "Lidl", product: "Bio Vollmilch", region: "01219",
+            market: "Lidl", product: "Bio Vollmilch", nationwide: false,
             price: 1.19, regularPrice: 1.29,
             validFrom: weeksAgo(1).from,
             validUntil: weeksAgo(1).until
         ),
         PriceHistoryPoint(
-            market: "Lidl", product: "Bio Vollmilch", region: "01219",
+            market: "Lidl", product: "Bio Vollmilch", nationwide: false,
             price: 0.99, regularPrice: 1.29,
             validFrom: weekStart,
             validUntil: weekEnd
@@ -119,8 +119,8 @@ struct MockOfferRepository: OfferRepositoryProtocol {
 struct MockPriceHistoryRepository: PriceHistoryRepositoryProtocol {
     var fixtures: [PriceHistoryPoint] = MockFixtures.priceHistory
 
-    func history(market: String, product: String, region: String?) async throws -> [PriceHistoryPoint] {
-        fixtures.filter { $0.market == market && $0.product == product && $0.region == region }
+    func history(market: String, product: String) async throws -> [PriceHistoryPoint] {
+        fixtures.filter { $0.market == market && $0.product == product }
     }
 }
 
@@ -209,6 +209,6 @@ struct MockRegionRepository: RegionRepositoryProtocol {
     }
 
     func offerCount(plz: String) async throws -> Int {
-        MockFixtures.offers.filter { $0.region == plz }.count
+        MockFixtures.offers.count
     }
 }

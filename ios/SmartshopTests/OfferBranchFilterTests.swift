@@ -23,13 +23,13 @@ final class OfferBranchFilterTests: XCTestCase {
         chain: String = "REWE",
         product: String,
         price: Double,
-        region: String = "01067"
+        nationwide: Bool = false
     ) -> Offer {
         Offer(
             marketId: branch, market: chain, product: product, price: price,
             regularPrice: nil, unit: nil, category: "Getränke", emoji: "🥤",
             validFrom: day, validUntil: until, basePrice: nil, baseUnit: nil,
-            region: region
+            nationwide: false
         )
     }
 
@@ -121,7 +121,7 @@ final class OfferBranchFilterTests: XCTestCase {
         let json = """
         {"market_id":"1766063","market":"REWE","product":"Coca-Cola","price":0.75,
          "category":"Getränke","valid_from":"2026-07-20","valid_until":"2026-07-25",
-         "region":"01067"}
+         "nationwide":false}
         """.data(using: .utf8)!
         let offer = try JSONDecoder.supabase.decode(Offer.self, from: json)
         XCTAssertEqual(offer.marketId, "1766063")
@@ -145,26 +145,26 @@ final class NationwideOfferTests: XCTestCase {
         chain: String,
         product: String,
         price: Double,
-        region: String?
+        nationwide: Bool
     ) -> Offer {
         Offer(
             marketId: branch, market: chain, product: product, price: price,
             regularPrice: nil, unit: nil, category: "Molkerei", emoji: "🧀",
             validFrom: day, validUntil: until, basePrice: nil, baseUnit: nil,
-            region: region
+            nationwide: nationwide
         )
     }
 
     private var mixed: [Offer] {
         [
             offer(branch: "ALDI_NORD_DE", chain: "ALDI Nord", product: "Ofenkäse",
-                  price: 2.22, region: nil),
+                  price: 2.22, nationwide: true),
             offer(branch: "ALDI_SUED_DE", chain: "ALDI SÜD", product: "Rispentomaten",
-                  price: 1.11, region: nil),
+                  price: 1.11, nationwide: true),
             offer(branch: "1766063", chain: "REWE", product: "Coca-Cola",
-                  price: 0.75, region: "01067"),
+                  price: 0.75, nationwide: false),
             offer(branch: "1766160", chain: "REWE", product: "Aperol",
-                  price: 12.99, region: "01067"),
+                  price: 12.99, nationwide: false),
         ]
     }
 
@@ -218,17 +218,18 @@ final class NationwideOfferTests: XCTestCase {
         XCTAssertEqual(Set(store.offers.map(\.product)), ["Rispentomaten", "Coca-Cola"])
     }
 
-    /// `Offer.id` muss eine bundesweite Zeile von einer regionalen trennen,
-    /// sonst zeigt die SwiftUI-Liste eine von beiden oder keine.
-    func testTheIdOfANationwideRowDiffersFromARegionalOne() {
-        let national = offer(branch: "ALDI_NORD_DE", chain: "ALDI Nord",
-                             product: "Ofenkäse", price: 2.22, region: nil)
-        let regional = offer(branch: "ALDI_NORD_DE", chain: "ALDI Nord",
-                             product: "Ofenkäse", price: 2.22, region: "01067")
+    /// `Offer.id` trennt die FILIALE, nicht die Reichweite. Seit Migration
+    /// v16 lautet der Datenbankschlüssel (market_id, product, valid_from) —
+    /// dieselbe Filiale kann ein Produkt in einer Woche nicht gleichzeitig
+    /// lokal und bundesweit führen, und die Id bildet genau das ab.
+    func testTheIdSeparatesBranchesNotReach() {
+        let nord = offer(branch: "ALDI_NORD_DE", chain: "ALDI Nord",
+                         product: "Ofenkäse", price: 2.22, nationwide: true)
+        let sued = offer(branch: "ALDI_SUED_DE", chain: "ALDI SÜD",
+                         product: "Ofenkäse", price: 2.22, nationwide: true)
 
-        XCTAssertNotEqual(national.id, regional.id)
-        XCTAssertTrue(national.isNationwide)
-        XCTAssertFalse(regional.isNationwide)
+        XCTAssertNotEqual(nord.id, sued.id)
+        XCTAssertTrue(nord.isNationwide)
     }
 
     /// Eine Zeile ohne `region` muss überhaupt erst durch den Decoder kommen —
@@ -238,12 +239,12 @@ final class NationwideOfferTests: XCTestCase {
         {"market_id":"ALDI_NORD_DE","market":"ALDI Nord","product":"Ofenkäse",
          "price":2.22,"regular_price":null,"unit":null,"category":"Molkerei",
          "emoji":"🧀","valid_from":"2026-07-20","valid_until":"2026-07-25",
-         "base_price":null,"base_unit":null,"region":null,"image_url":null,
+         "base_price":null,"base_unit":null,"nationwide":true,"image_url":null,
          "match_key":["käse"]}
         """
         let decoded = try JSONDecoder.supabase.decode(Offer.self, from: Data(json.utf8))
 
-        XCTAssertNil(decoded.region)
+        XCTAssertEqual(decoded.nationwide, true)
         XCTAssertTrue(decoded.isNationwide)
         XCTAssertEqual(decoded.marketId, "ALDI_NORD_DE")
     }

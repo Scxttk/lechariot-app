@@ -39,8 +39,7 @@ final class PriceHistoryStore {
         do {
             let raw = try await repository.history(
                 market: offer.market,
-                product: offer.product,
-                region: offer.region
+                product: offer.product
             )
             try Task.checkCancellation()
             state = .loaded(Self.oneRowPerWeek(raw))

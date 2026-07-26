@@ -18,7 +18,7 @@ final class ModelDecodingTests: XCTestCase {
             "valid_until": "2026-07-19",
             "base_price": 0.99,
             "base_unit": "1 l",
-            "region": "01219",
+            "nationwide": false,
             "image_url": "https://cddubgdnasmzvcfhmrzj.supabase.co/storage/v1/object/public/offer-images/abc123.jpg"
         }]
         """.data(using: .utf8)!
@@ -35,7 +35,7 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(offer.emoji, "🥛")
         XCTAssertEqual(offer.basePrice, 0.99)
         XCTAssertEqual(offer.baseUnit, "1 l")
-        XCTAssertEqual(offer.region, "01219")
+        XCTAssertFalse(offer.isNationwide)
         XCTAssertEqual(
             offer.imageUrl,
             "https://cddubgdnasmzvcfhmrzj.supabase.co/storage/v1/object/public/offer-images/abc123.jpg"
@@ -90,7 +90,7 @@ final class ModelDecodingTests: XCTestCase {
             "valid_until": "2026-07-19",
             "base_price": null,
             "base_unit": null,
-            "region": "01219",
+            "nationwide": false,
             "match_key": ["käse"]
         }
         """.data(using: .utf8)!
