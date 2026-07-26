@@ -15,6 +15,11 @@ import Foundation
 
 let SIZE: CGFloat = 1024
 
+/// Was im Schild steht.
+enum Layout { case cart, cartAndWordmark }
+
+let layout: Layout = CommandLine.arguments.contains("--wortmarke") ? .cartAndWordmark : .cart
+
 struct Variant {
     let name: String
     let enamel: NSColor
@@ -86,6 +91,60 @@ func drawLine(
     NSGraphicsContext.restoreGraphicsState()
 }
 
+/// Einkaufswagen, gezeichnet in einem Einheitsquadrat (0…1, y nach oben) und
+/// per `rect` an seinen Platz gerechnet. Griff und Korb sind Striche, die
+/// Räder Flächen — gestrichelte Räder verschwinden in Homescreen-Größe.
+func drawCart(in ctx: CGContext, rect: CGRect, color: NSColor, weight: CGFloat) {
+    func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+        CGPoint(x: rect.minX + x * rect.width, y: rect.minY + y * rect.height)
+    }
+
+    ctx.setStrokeColor(color.cgColor)
+    ctx.setFillColor(color.cgColor)
+    ctx.setLineWidth(weight)
+    ctx.setLineCap(.round)
+    ctx.setLineJoin(.round)
+
+    let topLeft = p(0.26, 0.66)
+    let topRight = p(1.00, 0.66)
+    let bottomRight = p(0.84, 0.34)
+    let bottomLeft = p(0.38, 0.34)
+
+    // Griff: kurzes Stück waagerecht, dann schräg hinunter an den Korb.
+    ctx.move(to: p(0.00, 0.93))
+    ctx.addLine(to: p(0.13, 0.93))
+    ctx.addLine(to: topLeft)
+    ctx.strokePath()
+
+    // Korb als geschlossenes Trapez.
+    ctx.move(to: topLeft)
+    ctx.addLine(to: topRight)
+    ctx.addLine(to: bottomRight)
+    ctx.addLine(to: bottomLeft)
+    ctx.closePath()
+    ctx.strokePath()
+
+    // Zwei Streben. Sie folgen der Schräge des Korbs, sonst stünden sie
+    // senkrecht in einem Gitter, das sich nach unten verjüngt.
+    for t in [0.34, 0.67] as [CGFloat] {
+        let top = CGPoint(x: topLeft.x + (topRight.x - topLeft.x) * t,
+                          y: topLeft.y + (topRight.y - topLeft.y) * t)
+        let bottom = CGPoint(x: bottomLeft.x + (bottomRight.x - bottomLeft.x) * t,
+                             y: bottomLeft.y + (bottomRight.y - bottomLeft.y) * t)
+        ctx.move(to: top)
+        ctx.addLine(to: bottom)
+    }
+    ctx.strokePath()
+
+    // Räder
+    let r = rect.width * 0.095
+    for cx in [0.47, 0.79] as [CGFloat] {
+        let c = p(cx, 0.13)
+        ctx.addEllipse(in: CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r))
+    }
+    ctx.fillPath()
+}
+
 func render(_ v: Variant, to url: URL) throws {
     let cs = CGColorSpace(name: CGColorSpace.sRGB)!
     guard let ctx = CGContext(
@@ -120,28 +179,34 @@ func render(_ v: Variant, to url: URL) throws {
     ctx.addPath(CGPath(roundedRect: hairline, cornerWidth: SIZE * 0.018, cornerHeight: SIZE * 0.018, transform: nil))
     ctx.strokePath()
 
-    // Schrift: "LE" klein oben, "CHARIOT" groß darunter — die Aufteilung der
-    // Pariser Straßenschilder ("RUE DE" über dem Namen). "CHARIOT" bestimmt
-    // die Größe, weil es die längere Zeile ist; "LE" folgt in fester Relation.
-    let bigTracking: CGFloat = 0.06
-    let big = fittedSize("CHARIOT", tracking: bigTracking, maxWidth: hairline.width * 0.90)
-    let small = big * 0.46
+    switch layout {
+    case .cart:
+        // Der Wagen allein, groß im Feld — bei Homescreen-Größe ist das die
+        // einzige Fassung, die man auf einen Blick erkennt.
+        let w = hairline.width * 0.72
+        let h = w * 0.86
+        // Nach links gerückt: die Bounding-Box reicht bis zum Griffende, die
+        // sichtbare Masse ist aber der Korb — mittig gesetzt säße der Wagen
+        // spürbar rechts.
+        let box = CGRect(x: hairline.midX - w / 2 - w * 0.07,
+                         y: hairline.midY - h / 2, width: w, height: h)
+        drawCart(in: ctx, rect: box, color: v.ink, weight: SIZE * 0.040)
 
-    // Der Satz wird als Block über seine Versalhöhen zentriert.
-    let capBig = serif(big).capHeight
-    let capSmall = serif(small).capHeight
-    let gap = capBig * 0.55
-    let blockHeight = capSmall + gap + capBig
+    case .cartAndWordmark:
+        // Wagen oben, Wortmarke darunter — trägt den Namen mit, kostet aber
+        // Erkennbarkeit, weil beides kleiner ausfallen muss.
+        let w = hairline.width * 0.44
+        let h = w * 0.86
+        let box = CGRect(x: hairline.midX - w / 2,
+                         y: hairline.midY + hairline.height * 0.03,
+                         width: w, height: h)
+        drawCart(in: ctx, rect: box, color: v.ink, weight: SIZE * 0.030)
 
-    // Kleiner optischer Hub: geometrisch mittig wirkt der Block zu tief,
-    // weil die große Zeile die untere Hälfte allein trägt.
-    let bigBaseline = hairline.midY - blockHeight / 2 + capBig * 0.12
-    let smallBaseline = bigBaseline + capBig + gap
-
-    drawLine("LE", in: ctx, size: small, tracking: 0.26,
-             baseline: smallBaseline, color: v.ink)
-    drawLine("CHARIOT", in: ctx, size: big, tracking: bigTracking,
-             baseline: bigBaseline, color: v.ink)
+        let tracking: CGFloat = 0.10
+        let size = fittedSize("LE CHARIOT", tracking: tracking, maxWidth: hairline.width * 0.78)
+        drawLine("LE CHARIOT", in: ctx, size: size, tracking: tracking,
+                 baseline: hairline.minY + hairline.height * 0.13, color: v.ink)
+    }
 
     guard let image = ctx.makeImage() else { fatalError("Bild nicht erzeugbar") }
     let rep = NSBitmapImageRep(cgImage: image)
