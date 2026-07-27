@@ -12,11 +12,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Scxttk/lechariot-app?style=flat-square" alt="MIT license"></a>
 </p>
 
-<p align="center">
-  <img src="assets/liste.png" width="260" alt="Shopping list with the winning shop at the top">
-  <img src="assets/angebote.png" width="260" alt="This week's offers, sorted by discount">
-  <img src="assets/filialen.png" width="260" alt="The seven chosen branches in Settings">
-</p>
+|  |  |  |
+|:--:|:--:|:--:|
+| <img src="assets/liste.png" width="230" alt="Shopping list with the winning shop at the top"> | <img src="assets/angebote.png" width="230" alt="This week's offers, sorted by discount"> | <img src="assets/filialen.png" width="230" alt="The seven chosen branches in Settings"> |
+| Your list, and who wins it | Everything on offer this week | The branches you actually visit |
 
 Every German supermarket publishes a weekly leaflet, and comparing them by hand is
 miserable — eight apps, eight layouts, and by the time you've checked the fourth one
