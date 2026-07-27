@@ -9,7 +9,7 @@
 <p align="center"><sub>iOS 17+ · SwiftUI, no third-party dependencies · <a href="LICENSE">MIT</a></sub></p>
 
 <p align="center">
-  <img src="assets/result-card.png" width="600" alt="Am besten zu ALDI Nord, 7,80 Euro, deckt 6 von 6 Artikeln ab">
+  <img src="assets/result-card.png" width="600" alt="Am besten zu ALDI Nord, 3,83 Euro, deckt 3 von 3 Artikeln ab">
 </p>
 
 Every German supermarket publishes a weekly leaflet, and comparing them by hand is
@@ -18,9 +18,8 @@ you've forgotten what Kaufland wanted for butter. So: type what you need, pick t
 branches you'd actually drive to, and Le Chariot names the single shop that covers the
 most of your list for the least money.
 
-That card is a real run in Dresden, not a mockup. Six items, ALDI Nord took all six for
-7,80 € — including a Haferdrink at −30 % I wasn't looking for. Penny won an earlier
-round on Sachsenmilch at 0,49 €.
+That card is a real run in Dresden, not a mockup — seven branches selected around 01219,
+three things on the list, ALDI Nord taking all three for 3,83 €.
 
 The UI is German and the offers are German. Nothing here is portable to another country,
 and I'm not pretending otherwise.
@@ -28,7 +27,7 @@ and I'm not pretending otherwise.
 ## The interesting part is the matching
 
 <p align="center">
-  <img src="assets/match-detail.png" width="560" alt="Milch matched to a Haferdrink at minus 30 percent; Kaffee matched to an Iced Coffee">
+  <img src="assets/list-card.png" width="520" alt="Milch matched to a Haferdrink at minus 30 percent, Kaffee to an Iced Coffee, Brot to Rosenbroetchen at minus 36 percent">
 </p>
 
 You type "Milch". The offer is called "SACHSEN MILCH Buttermilch 500 g". Getting from one
@@ -43,16 +42,12 @@ to the other is where the actual work lives, and it runs in two stages
    during import. The backend dictionary already blocks false composites, so Tomatenmark
    carries no `tomaten` tag and won't turn up when you ask for tomatoes.
 
-There's a feedback path in the app for when a match is wrong
-([`MatchFeedbackStore`](ios/LeChariot/Stores/MatchFeedbackStore.swift)); I go through the
-rejections periodically and fold them back into the dictionary. It is still wrong
-sometimes.
+"Brot" landing on Rosenbrötchen above is stage two doing its job. It is still wrong
+sometimes — there's a feedback path in the app for bad matches
+([`MatchFeedbackStore`](ios/LeChariot/Stores/MatchFeedbackStore.swift)), and I go through
+the rejections periodically and fold them back into the dictionary.
 
 ## Where the data comes from
-
-<p align="center">
-  <img src="assets/top-deals.png" width="520" alt="Top deals of the week: two Denver smartwatches at minus 74 percent, an air fryer at minus 72 percent">
-</p>
 
 Offers are scraped by the Rust backend in
 [lechariot-backend](https://github.com/Scxttk/lechariot-backend) and pushed to Supabase;
