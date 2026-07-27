@@ -6,11 +6,7 @@
 
 <p align="center">Write a shopping list. Find out which of your shops covers it cheapest this week.</p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/iOS-17%2B-black?style=flat-square" alt="iOS 17+">
-  <img src="https://img.shields.io/badge/SwiftUI-no%20dependencies-black?style=flat-square" alt="SwiftUI, no dependencies">
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/Scxttk/lechariot-app?style=flat-square" alt="MIT license"></a>
-</p>
+<p align="center"><img src="https://img.shields.io/badge/iOS-17%2B-black?style=flat-square" alt="iOS 17+"> <img src="https://img.shields.io/badge/SwiftUI-no%20dependencies-black?style=flat-square" alt="SwiftUI, no dependencies"> <a href="LICENSE"><img src="https://img.shields.io/github/license/Scxttk/lechariot-app?style=flat-square" alt="MIT license"></a></p>
 
 |  |  |  |
 |:--:|:--:|:--:|
