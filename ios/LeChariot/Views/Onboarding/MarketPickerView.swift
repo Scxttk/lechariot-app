@@ -109,7 +109,7 @@ struct MarketPickerView: View {
     }
 
     private var hasAnyFavorites: Bool {
-        !store.favoriteMarkets(in: plzs).isEmpty
+        store.hasFavorites
     }
 
     var body: some View {

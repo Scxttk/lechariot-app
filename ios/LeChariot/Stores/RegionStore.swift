@@ -119,10 +119,12 @@ final class RegionStore {
             self.favoriteMarkets = []
         }
         // Sanitize persisted state that got out of sync (corrupt/old defaults):
-        // everything must reference a PLZ that is still in `regions`.
+        // ready/selected must reference a PLZ that is still in `regions`.
+        // Favorites are exempt: the picker deliberately offers branches from
+        // neighbouring postcodes, so a favorite's own `plz` is often not one
+        // of the user's regions (or empty when the directory has none).
         let knownPLZs = Set(regions)
         readyRegions.formIntersection(knownPLZs)
-        favoriteMarkets.removeAll { !knownPLZs.contains($0.plz) }
         if let selected = selectedRegion, !knownPLZs.contains(selected) {
             selectedRegion = regions.first
         }
@@ -261,14 +263,6 @@ final class RegionStore {
     }
 
     // MARK: Wunschmärkte
-
-    func favoriteMarkets(in plz: String) -> [Market] {
-        favoriteMarkets.filter { $0.plz == plz }
-    }
-
-    func favoriteMarkets(in plzs: [String]) -> [Market] {
-        favoriteMarkets.filter { plzs.contains($0.plz) }
-    }
 
     func isFavorite(_ market: Market) -> Bool {
         favoriteMarkets.contains { $0.marketId == market.marketId }

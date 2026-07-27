@@ -174,8 +174,7 @@ final class RegionStoreTests: XCTestCase {
         store.toggleFavorite(dresden)
         store.toggleFavorite(mitte)
 
-        XCTAssertEqual(store.favoriteMarkets(in: ["01219", "01067"]), [dresden, mitte])
-        XCTAssertEqual(store.favoriteMarkets(in: ["01067"]), [mitte])
+        XCTAssertEqual(store.favoriteMarkets, [dresden, mitte])
     }
 
     // MARK: Persistence round-trip
@@ -318,19 +317,23 @@ final class RegionStoreTests: XCTestCase {
         XCTAssertTrue(store.favoriteMarkets.isEmpty)
     }
 
-    func testOrphanedSelectionAndFavoritesAreSanitizedOnInit() throws {
-        // Selected region and a favorite reference a PLZ that is no longer
-        // in the region list (corrupt/old defaults).
+    func testOrphanedSelectionIsSanitizedButFavoritesSurviveInit() throws {
+        // Selected region and readyPLZs reference a PLZ that is no longer in
+        // the region list (corrupt/old defaults) — those get sanitized. The
+        // favorites include a branch from a neighbouring postcode and one
+        // whose directory row has no PLZ; both are legitimate picks and must
+        // survive a relaunch (regression: they used to be pruned on init).
         defaults.set(["01219"], forKey: "region.plzs")
         defaults.set("99999", forKey: "region.selected")
         defaults.set(["01219", "99999"], forKey: "region.readyPLZs")
-        let orphan = Market(chain: "Lidl", branchName: "Weg", marketId: "lidl-99999-1", plz: "99999")
+        let neighbour = Market(chain: "Lidl", branchName: "Nachbar", marketId: "lidl-01069-1", plz: "01069")
+        let noPLZ = Market(chain: "Rewe", branchName: "Ohne PLZ", marketId: "rewe-x-1", plz: "")
         let kept = Market(chain: "EDEKA", branchName: "Reick", marketId: "edeka-01219-1", plz: "01219")
-        defaults.set(try JSONEncoder().encode([orphan, kept]), forKey: "region.favoriteMarkets")
+        defaults.set(try JSONEncoder().encode([neighbour, noPLZ, kept]), forKey: "region.favoriteMarkets")
 
         let store = makeStore(repository: ControllableRegionRepository())
         XCTAssertEqual(store.selectedRegion, "01219")
-        XCTAssertEqual(store.favoriteMarkets, [kept])
+        XCTAssertEqual(store.favoriteMarkets, [neighbour, noPLZ, kept])
         XCTAssertEqual(store.orderedReadyRegions, ["01219"])
         XCTAssertTrue(store.isOnboardingComplete)
     }

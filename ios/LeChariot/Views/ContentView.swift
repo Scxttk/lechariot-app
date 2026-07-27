@@ -152,7 +152,10 @@ struct ContentView: View {
                 message: "Le Chariot vergleicht nur die Läden, in die du wirklich gehst. Wähle mindestens eine Filiale aus."
             )
         } else {
-            content(store.favoriteMarkets(in: regions))
+            // All favorites, unfiltered: the picker offers branches from
+            // neighbouring postcodes, so a favorite's `plz` need not be one
+            // of the user's regions.
+            content(store.favoriteMarkets)
         }
     }
 
