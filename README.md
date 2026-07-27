@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="ios/LeChariot/Assets.xcassets/AppIcon.appiconset/icon-light-1024.png" width="128" alt="Le Chariot icon">
+  <img src="ios/LeChariot/Assets.xcassets/AppIcon.appiconset/icon-light-1024.png" width="112" alt="Le Chariot icon">
 </p>
 
 <h1 align="center">Le Chariot</h1>
@@ -8,37 +8,40 @@
 
 <p align="center"><sub>iOS 17+ · SwiftUI, no third-party dependencies · <a href="LICENSE">MIT</a></sub></p>
 
-|  |  |  |
-|:--:|:--:|:--:|
-| <img src="assets/liste.png" width="230" alt="Shopping list with the winning shop at the top"> | <img src="assets/angebote.png" width="230" alt="This week's offers, sorted by discount"> | <img src="assets/filialen.png" width="230" alt="The seven chosen branches in Settings"> |
-| Your list, and who wins it | Everything on offer this week | The branches you actually visit |
+<p align="center">
+  <img src="assets/result-card.png" width="600" alt="Am besten zu ALDI Nord, 7,80 Euro, deckt 6 von 6 Artikeln ab">
+</p>
 
 Every German supermarket publishes a weekly leaflet, and comparing them by hand is
 miserable — eight apps, eight layouts, and by the time you've checked the fourth one
 you've forgotten what Kaufland wanted for butter. So: type what you need, pick the
-branches you'd actually drive to, and Le Chariot tells you which single shop covers
-the most of your list for the least money.
+branches you'd actually drive to, and Le Chariot names the single shop that covers the
+most of your list for the least money.
 
-The screenshot above is a real run in Dresden. Six items, and ALDI Nord covered all
-six for 7,80 € — including a Haferdrink at −30 % that I wasn't looking for. Penny won
-an earlier round with Sachsenmilch at 0,49 €.
+That card is a real run in Dresden, not a mockup. Six items, ALDI Nord took all six for
+7,80 € — including a Haferdrink at −30 % I wasn't looking for. Penny won an earlier
+round on Sachsenmilch at 0,49 €.
 
-The UI is German and the offers are German. Nothing about the app is portable to other
-countries, and I'm not pretending otherwise.
+The UI is German and the offers are German. Nothing here is portable to another country,
+and I'm not pretending otherwise.
 
 ## The interesting part is the matching
 
-You type "Milch". The offer is called "SACHSEN MILCH Buttermilch 500 g". Getting from
-one to the other is where all the actual work lives, and it runs in two stages
+<p align="center">
+  <img src="assets/match-detail.png" width="560" alt="Milch matched to a Haferdrink at minus 30 percent; Kaffee matched to an Iced Coffee">
+</p>
+
+You type "Milch". The offer is called "SACHSEN MILCH Buttermilch 500 g". Getting from one
+to the other is where the actual work lives, and it runs in two stages
 ([`OfferMatcher.swift`](ios/LeChariot/Models/OfferMatcher.swift), 105 lines):
 
 1. **Direct** — every query token must hit a token in the product title. Typo-tolerant
    via Levenshtein distance ≤ 1, but only when both tokens are ≥ 5 characters *and*
-   differ in length. The guards matter: without them "Käse" matches "Kekse" and
-   "Butter" matches "Bitter". Ask me how I know.
+   differ in length. The guards matter: without them "Käse" matches "Kekse" and "Butter"
+   matches "Bitter". Ask me how I know.
 2. **Category** — the query is looked up against `match_key` tags the backend attaches
-   during import. The backend dictionary already blocks false composites, so
-   Tomatenmark carries no `tomaten` tag and won't show up when you ask for tomatoes.
+   during import. The backend dictionary already blocks false composites, so Tomatenmark
+   carries no `tomaten` tag and won't turn up when you ask for tomatoes.
 
 There's a feedback path in the app for when a match is wrong
 ([`MatchFeedbackStore`](ios/LeChariot/Stores/MatchFeedbackStore.swift)); I go through the
@@ -47,6 +50,10 @@ sometimes.
 
 ## Where the data comes from
 
+<p align="center">
+  <img src="assets/top-deals.png" width="520" alt="Top deals of the week: two Denver smartwatches at minus 74 percent, an air fryer at minus 72 percent">
+</p>
+
 Offers are scraped by the Rust backend in
 [lechariot-backend](https://github.com/Scxttk/lechariot-backend) and pushed to Supabase;
 this repo only reads. All eight chains come from the retailers themselves — seven via
@@ -54,9 +61,8 @@ their own endpoints (Kaufland, REWE, Netto, Penny, EDEKA, ALDI Nord, ALDI SÜD),
 its weekly leaflet PDF (`LIDL_SOURCE=prospekt`; the third-party Marktguru API remains
 only as the code's fallback when that variable is unset).
 
-Branch lists are real: enter a postcode and you get actual nearby stores with distances,
-which is why the picker in the third screenshot knows about 22 further ALDI Nord
-branches around 01219.
+Branch lists are real too. Enter a postcode and you get actual nearby stores with
+distances — 01219 turns up 27 ALDI Nord branches, nine Kauflands, and a Penny 300 m away.
 
 ## Structure
 
@@ -68,7 +74,7 @@ branches around 01219.
 
 ## iOS setup
 
-You'll need XcodeGen — the `.xcodeproj` is generated, not committed as the source of truth.
+You'll need XcodeGen — the `.xcodeproj` is generated, not the source of truth.
 
 1. `brew install xcodegen` ([XcodeGen](https://github.com/yonaskolb/XcodeGen))
 2. Copy `ios/LeChariot/Resources/APIKeys.example.plist` to `ios/LeChariot/Resources/APIKeys.plist` and fill in the Supabase publishable key.
