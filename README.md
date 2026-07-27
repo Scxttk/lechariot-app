@@ -2,7 +2,7 @@
 
 Monorepo for the Le Chariot app — grocery offers for your region, backed by Supabase.
 
-Offers are scraped by the Rust backend in [lechariot-backend](https://github.com/Scxttk/lechariot-backend) and pushed to Supabase; this repo only reads them. Seven of the eight chains come from the retailers' own endpoints (Kaufland, REWE, Netto, Penny, EDEKA, ALDI Nord, ALDI SÜD). Lidl is the exception: its own API requires OAuth, so those offers come via the public Marktguru web API — roughly 30 % of all rows.
+Offers are scraped by the Rust backend in [lechariot-backend](https://github.com/Scxttk/lechariot-backend) and pushed to Supabase; this repo only reads them. All eight chains come from the retailers themselves: seven via their own endpoints (Kaufland, REWE, Netto, Penny, EDEKA, ALDI Nord, ALDI SÜD), Lidl via its weekly leaflet PDF (`LIDL_SOURCE=prospekt`; the third-party Marktguru API remains only as the code's fallback when that variable is unset).
 
 ## Structure
 
