@@ -14,10 +14,19 @@ targets:
     platform: iOS
     sources:
       - path: LeChariot
+        # Die Vorlage gehört ins Repo, aber nicht in die App: sie landete sonst
+        # als APIKeys.example.plist im Bundle jedes Testers.
+        excludes:
+          - Resources/APIKeys.example.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skoehler.lechariot
         GENERATE_INFOPLIST_FILE: true
+        # Die App verschlüsselt nichts selbst, sie redet nur per HTTPS mit
+        # Supabase — damit greift die Standardausnahme. Ohne diesen Eintrag
+        # fragt App Store Connect die Exportbestimmungen bei *jedem* Build
+        # einzeln ab und der Build bleibt bis dahin für Tester gesperrt.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: false
         # Der Zielname trägt kein Leerzeichen (Modul, Schema, Ordner), der
         # Homescreen soll aber "Le Chariot" zeigen — das ist der Markenname.
         INFOPLIST_KEY_CFBundleDisplayName: "Le Chariot"

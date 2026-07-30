@@ -32,7 +32,6 @@
 		3D129061277F9F5EC5A41C76 /* MatchFeedbackJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A9D8435B451C3CC5B59F2F3 /* MatchFeedbackJourneyTests.swift */; };
 		3F5F6D3D2B14F07D477892A6 /* OffersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F826415F9A5019BBEFB36748 /* OffersView.swift */; };
 		418EF9D4115B6D9D97E97EAA /* PriceHistoryPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE35F9DB7EA75080DC933FE /* PriceHistoryPoint.swift */; };
-		4C3F1A5F8D0A2C2A079EB10F /* APIKeys.example.plist in Resources */ = {isa = PBXBuildFile; fileRef = 03EFB0CBC5DC39B4D3DDD2CB /* APIKeys.example.plist */; };
 		559A1718BAF84911937E0438 /* TutorialStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03A93619A50143444197378 /* TutorialStoreTests.swift */; };
 		5721DB0A53DE1E8AF91A0C46 /* TutorialJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 965633E574547736025B1070 /* TutorialJourneyTests.swift */; };
 		58A0B40A154D0516A521E3B9 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A9EABF5CFA9A2C0A694B54D /* SettingsView.swift */; };
@@ -124,7 +123,6 @@
 
 /* Begin PBXFileReference section */
 		013BBA69451C31CE72CBBF3D /* OfferCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferCache.swift; sourceTree = "<group>"; };
-		03EFB0CBC5DC39B4D3DDD2CB /* APIKeys.example.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = APIKeys.example.plist; sourceTree = "<group>"; };
 		06C2FAD7BF9107A6A5B0E813 /* LoadFailure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadFailure.swift; sourceTree = "<group>"; };
 		07359672A7664F3F184BD4BC /* AreaRequestStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaRequestStoreTests.swift; sourceTree = "<group>"; };
 		077E32320821AEDD589009C3 /* OnboardingJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingJourneyTests.swift; sourceTree = "<group>"; };
@@ -424,7 +422,6 @@
 		C6598AA8AFCFE3D567CC94DB /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				03EFB0CBC5DC39B4D3DDD2CB /* APIKeys.example.plist */,
 				2F149DE2ABC4BC50F8B39768 /* APIKeys.plist */,
 				5E0F411BD66BA0E24290F178 /* PrivacyInfo.xcprivacy */,
 			);
@@ -610,7 +607,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4C3F1A5F8D0A2C2A079EB10F /* APIKeys.example.plist in Resources */,
 				E1E8AEE2F8877334EA6D7042 /* APIKeys.plist in Resources */,
 				697C537B2AFA664B76EC9C63 /* Assets.xcassets in Resources */,
 				0CBDAC11429B86B4BD9493B0 /* PrivacyInfo.xcprivacy in Resources */,
@@ -821,6 +817,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Le Chariot";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Dein Standort wird verwendet, um deine Postleitzahl zu ermitteln und die Entfernung zu den Filialen zu berechnen. Beides geht auch ohne — die PLZ kannst du eingeben, die Entfernungen rechnen wir dann ab deren Mitte.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -845,6 +842,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Le Chariot";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Dein Standort wird verwendet, um deine Postleitzahl zu ermitteln und die Entfernung zu den Filialen zu berechnen. Beides geht auch ohne — die PLZ kannst du eingeben, die Entfernungen rechnen wir dann ab deren Mitte.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
