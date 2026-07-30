@@ -85,22 +85,25 @@ export_args=(-exportArchive
 	-exportPath "$EXPORT"
 	-allowProvisioningUpdates)
 
-# Der Upload braucht einen App-Store-Connect-API-Schlüssel. Den legst du einmal
-# unter appstoreconnect.apple.com/access/integrations/api an; die .p8-Datei
-# gehört nach ~/.appstoreconnect/private_keys/ und nicht ins Repo.
+# Am eigenen Mac reicht die Apple-ID, die in Xcode angemeldet ist — am
+# 2026-07-30 nachgefahren: Anmeldung und Team-Auflösung liefen damit durch, der
+# Lauf brach erst am fehlenden App-Eintrag ab. Ein API-Schlüssel ist nur nötig,
+# wo niemand angemeldet ist (CI). Sind die drei ASC_-Variablen gesetzt, werden
+# sie benutzt; sonst nicht, statt den Lauf daran scheitern zu lassen.
 #
 # Die Export-Optionen werden dafür kopiert statt geändert: `destination: upload`
 # im Repo hieße, dass ein versehentlicher Lauf ohne Argument gleich hochlädt.
 if [ "$upload" -eq 1 ]; then
-	: "${ASC_KEY_ID:?ASC_KEY_ID nicht gesetzt}"
-	: "${ASC_ISSUER_ID:?ASC_ISSUER_ID nicht gesetzt}"
-	: "${ASC_KEY_PATH:?ASC_KEY_PATH nicht gesetzt (Pfad zur .p8)}"
 	OPTIONS="$BUILD/ExportOptions-upload.plist"
 	cp "$IOS/ExportOptions.plist" "$OPTIONS"
 	/usr/libexec/PlistBuddy -c "Set :destination upload" "$OPTIONS"
-	export_args+=(-authenticationKeyID "$ASC_KEY_ID"
-		-authenticationKeyIssuerID "$ASC_ISSUER_ID"
-		-authenticationKeyPath "$ASC_KEY_PATH")
+	if [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ] && [ -n "${ASC_KEY_PATH:-}" ]; then
+		export_args+=(-authenticationKeyID "$ASC_KEY_ID"
+			-authenticationKeyIssuerID "$ASC_ISSUER_ID"
+			-authenticationKeyPath "$ASC_KEY_PATH")
+	else
+		echo "▸ Kein API-Schlüssel gesetzt — es gilt die in Xcode angemeldete Apple-ID."
+	fi
 fi
 
 xcodebuild "${export_args[@]}" -exportOptionsPlist "$OPTIONS"
