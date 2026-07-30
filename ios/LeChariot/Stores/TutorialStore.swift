@@ -23,24 +23,20 @@ struct TutorialStep: Identifiable, Equatable {
         case tabBar
     }
 
-    /// How the frame is left.
-    enum Advance: Equatable {
-        /// "Weiter" only.
-        case button
-        /// Mitmachen: der Rahmen geht weiter, sobald etwas auf der Liste landet.
-        /// "Weiter" bleibt trotzdem da — wer die Geste nicht findet, sitzt sonst
-        /// fest, und ein Rundgang, aus dem man nicht herauskommt, ist schlimmer
-        /// als gar keiner.
-        case itemAdded
-    }
-
     let id: String
     let title: String
     let text: String
     let spotlight: Spotlight
-    var advance: Advance = .button
     /// Berührungen erreichen das hervorgehobene Element. Alles außerhalb des
     /// Lochs ist immer tot — das ist der Zweck der Übung.
+    ///
+    /// Mitmachen heißt **nicht** weiterspringen: Die beiden Rahmen mit
+    /// `allowsInteraction` gingen bis zum 2026-07-30 von allein weiter, sobald
+    /// ein Artikel auf der Liste landete (`advance: .itemAdded`). Scotts Bruder
+    /// hat es beim ersten Anfassen gemeldet — „der erste Punkt ist automatisch
+    /// und zu schnell": Wer den Vorschlag antippt, während er noch liest, wird
+    /// mitten im Satz weitergeschoben, und der Text, der erklärt was er gerade
+    /// getan hat, ist weg. Jeder Rahmen wartet jetzt auf „Weiter".
     var allowsInteraction = false
     var tab: TutorialTab = .liste
     /// Legt beim Betreten Beispiel-Artikel auf die Liste. Ohne die gäbe es für
@@ -58,7 +54,6 @@ struct TutorialStep: Identifiable, Equatable {
             title: "Schreib auf, was du brauchst",
             text: "Tipp hier ein, was du einkaufen willst — ein Artikel pro Zeile. Probier es gleich aus.",
             spotlight: .anchor(.inputBar),
-            advance: .itemAdded,
             allowsInteraction: true
         ),
         TutorialStep(
@@ -66,7 +61,6 @@ struct TutorialStep: Identifiable, Equatable {
             title: "Oder nimm einen Vorschlag",
             text: "Häufig Gekauftes liegt schon bereit. Ein Tipp, und es steht auf der Liste.",
             spotlight: .anchor(.suggestions),
-            advance: .itemAdded,
             allowsInteraction: true
         ),
         TutorialStep(
@@ -243,8 +237,7 @@ final class TutorialStore {
         }
     }
 
-    #if DEBUG
-    /// Siehe `DebugReset`. Schlüssel nach der Zuweisung entfernen, sonst
+    /// Siehe `AppReset`. Schlüssel nach der Zuweisung entfernen, sonst
     /// schreibt ihn der nächste Lauf sofort zurück.
     func resetAllData() {
         isRunning = false
@@ -254,5 +247,4 @@ final class TutorialStore {
         defaults.removeObject(forKey: Self.key)
         defaults.removeObject(forKey: Self.seededKey)
     }
-    #endif
 }

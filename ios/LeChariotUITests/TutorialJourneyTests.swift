@@ -128,6 +128,27 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(field.isHittable, "über der Liste darf keine Sperrschicht zurückbleiben")
     }
 
+    /// Auf dem letzten Rahmen steht nur noch „Fertig". Vorher standen dort zwei
+    /// Knöpfe nebeneinander, die dasselbe taten — gemeldet am 2026-07-30.
+    func testTheLastFrameOffersOnlyOneWayOut() {
+        startTour()
+        XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["tutorial.skip"].exists, "auf dem ersten Rahmen ist er eine Wahl")
+
+        // Bis zum letzten Rahmen blättern, ohne ihn zu verlassen.
+        var taps = 0
+        while app.buttons["tutorial.skip"].exists && tourCard.exists && taps < 12 {
+            next.tap()
+            taps += 1
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+
+        XCTAssertTrue(tourCard.exists, "der Rundgang muss noch laufen")
+        XCTAssertFalse(app.buttons["tutorial.skip"].exists,
+                       "Abbruch und Fertig tun hier dasselbe, einer davon gehört weg")
+        XCTAssertTrue(next.exists)
+    }
+
     /// Die Beispiel-Artikel sind geliehen. Nach dem Rundgang ist die Liste
     /// wieder so leer, wie der Tester sie hinterlassen hat.
     func testTheDemoItemsAreTidiedAwayAfterwards() {

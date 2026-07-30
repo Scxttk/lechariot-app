@@ -42,11 +42,9 @@ final class MatchRejectionStore {
         defaults.set(Array(rejected).sorted(), forKey: Self.key)
     }
 
-    #if DEBUG
-    /// See `DebugReset`.
+    /// See `AppReset`.
     func resetAllData() {
         rejected = []
         defaults.removeObject(forKey: Self.key)
     }
-    #endif
 }

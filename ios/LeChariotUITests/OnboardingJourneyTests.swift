@@ -97,16 +97,21 @@ final class OnboardingJourneyTests: XCTestCase {
                       "…and offer the way out")
     }
 
-    /// The debug reset has to be exact and repeatable, otherwise it is worse
+    /// The reset has to be exact and repeatable, otherwise it is worse
     /// than useless — a half-reset run looks like a bug in the app.
-    func testDebugResetReturnsToTheWelcomeScreenAndCanBeRepeated() {
+    ///
+    /// Seit dem 2026-07-30 sitzt er unter Einstellungen → Hilfe und ist in
+    /// **jedem** Build da, nicht nur unter `#if DEBUG`: In TestFlight hatte
+    /// jemand, der feststeckte, sonst nur den Weg über Löschen und
+    /// Neuinstallieren.
+    func testResetReturnsToTheWelcomeScreenAndCanBeRepeated() {
         for run in 1...2 {
             completeOnboarding(name: "Scott")
 
             openTab("Einstellungen")
-            let reset = app.buttons["Onboarding zurücksetzen"]
-            // Last section of a lazy List — it is not in the hierarchy until
-            // scrolled into view.
+            let reset = app.buttons["settings.reset"]
+            // Lazy List — was nicht sichtbar ist, steht auch nicht im Baum.
+            // Die Hilfe steht weit oben, ein Wisch reicht in aller Regel.
             for _ in 0..<6 where !reset.exists { app.swipeUp() }
             XCTAssertTrue(reset.waitForExistence(timeout: 10), "run \(run)")
             reset.tap()

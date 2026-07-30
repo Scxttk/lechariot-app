@@ -21,9 +21,17 @@ struct MarketPickerView: View {
     let plz: String
     let marketRepository: MarketRepositoryProtocol
     var branchRepository: BranchRepositoryProtocol = AppRepositories.branches
-    /// Requests offers for a store the backend has never fetched. Optional so
-    /// previews and the settings path work without one.
-    var branchRequests: BranchRequestStore?
+    /// Fordert die Angebote einer Filiale an, die das Backend noch nie geholt
+    /// hat.
+    ///
+    /// Kommt seit 2026-07-30 aus der Umgebung statt als optionaler Parameter.
+    /// Als Parameter war er genau einmal gesetzt — im Onboarding —, und der Weg
+    /// über die Einstellungen ließ ihn weg. Eine dort gewählte Filiale löste
+    /// deshalb **keine** Anforderung aus und bekam nie Angebote; in der App sah
+    /// das aus wie „dieser Markt hat diese Woche nichts". Ein Optional, das an
+    /// einer von zwei Aufrufstellen fehlt, ist kein Standardwert, sondern ein
+    /// Loch.
+    @Environment(BranchRequestStore.self) private var branchRequests
     @Environment(AreaRequestStore.self) private var areaRequests
     var onDone: () -> Void
 
@@ -344,7 +352,7 @@ struct MarketPickerView: View {
             // Measured on 2026-07-25: the request is answered in about 40
             // seconds, so this happens quietly in the background rather than
             // behind a modal.
-            if store.isFavorite(market), let branchRequests {
+            if store.isFavorite(market) {
                 Task { await branchRequests.request(market.marketId) }
             }
         } label: {
@@ -484,11 +492,16 @@ struct MarketPickerView: View {
     /// chains and would have kept showing two forever.
     private func requestUnfetchedAreas(_ candidates: [PickerDirectory.AreaCandidate]) async {
         for candidate in candidates {
-            // The nearest store is the anchor: the backend derives the area
-            // from its postcode, so the closest one describes where the user is
-            // best.
+            // Der Anker ist weiter die nächstgelegene Filiale — an ihm prüft
+            // der Server, dass es diesen Ort überhaupt gibt. Was das Gebiet
+            // bestimmt, sind seit v21 aber die **Koordinaten der Regionsmitte**:
+            // Der Anker kann in der Nachbarstadt stehen, und in Ahlbeck stand er
+            // 24,5 km weit weg in Ueckermünde.
             await areaRequests.requestArea(
-                anchor: candidate.anchor.marketId, region: candidate.plz
+                anchors: candidate.anchors.map(\.marketId),
+                region: candidate.plz,
+                lat: candidate.lat,
+                lon: candidate.lon
             )
         }
     }
@@ -571,5 +584,7 @@ struct MarketPickerView: View {
     NavigationStack {
         MarketPickerView(plz: "01219", marketRepository: MockMarketRepository(), onDone: {})
             .environment(RegionStore())
+            .environment(AreaRequestStore(repository: MockAreaRequestRepository()))
+            .environment(BranchRequestStore(repository: MockBranchRequestRepository()))
     }
 }

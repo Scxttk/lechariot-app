@@ -91,7 +91,43 @@ final class PickerDirectoryTests: XCTestCase {
         let candidate = try! XCTUnwrap(plan.areaCandidates.first)
         XCTAssertEqual(candidate.plz, "17419")
         // Am Haff (~23 km) liegt näher an Ahlbeck als Karlshagen (~26 km).
-        XCTAssertEqual(candidate.anchor.marketId, pennyAmHaff.marketId)
+        XCTAssertEqual(candidate.anchor?.marketId, pennyAmHaff.marketId)
+    }
+
+    /// **Der Kern der v21-Korrektur.** Die Anforderung trägt die Mitte der
+    /// Region, nicht die Lage des Ankers.
+    ///
+    /// Genau daran hing der Fehler vom 30.07.: Der Anker war Penny Am Haff in
+    /// Ueckermünde, 24,5 km von Ahlbeck entfernt, und das Backend leitete die
+    /// PLZ aus *seiner* Verzeichniszeile ab — der ganze Lauf ging für 17373
+    /// raus. Stünde hier die Ankerposition, wäre der Fehler mit mehr Schritten
+    /// zurück, und der Lauf sähe wieder grün aus.
+    func testTheAreaCandidateCarriesTheRegionCentreNotTheAnchorPosition() {
+        let plan = PickerDirectory.plan([
+            find("17419", ahlbeck, [pennyAmHaff, pennyKarlshagen]),
+        ])
+
+        let candidate = try! XCTUnwrap(plan.areaCandidates.first)
+        XCTAssertEqual(candidate.lat, ahlbeck.lat, accuracy: 0.0001)
+        XCTAssertEqual(candidate.lon, ahlbeck.lon, accuracy: 0.0001)
+        XCTAssertNotEqual(candidate.lat, pennyAmHaff.lat, "das wäre wieder der Anker")
+    }
+
+    /// Und er trägt einen Ausweichanker. `market_id` ist der Primärschlüssel
+    /// von `area_requests`, und Am Haff ist die nächste Filiale sowohl für
+    /// Ueckermünde als auch für Ahlbeck — wer zweiter kommt, braucht einen
+    /// zweiten Anker, sonst wartet er auf den Lauf einer fremden Stadt.
+    func testTheCandidateOffersMoreThanOneAnchor() {
+        let plan = PickerDirectory.plan([
+            find("17419", ahlbeck, [pennyAmHaff, pennyKarlshagen]),
+        ])
+
+        let candidate = try! XCTUnwrap(plan.areaCandidates.first)
+        XCTAssertEqual(
+            candidate.anchors.map(\.marketId),
+            [pennyAmHaff.marketId, pennyKarlshagen.marketId],
+            "nächster zuerst"
+        )
     }
 
     /// Steht in einer Region eine der sechs gebietsweisen Ketten, ist dort

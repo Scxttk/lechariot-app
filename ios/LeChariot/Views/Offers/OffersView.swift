@@ -12,6 +12,10 @@ struct OffersView: View {
     /// neither `ContentView` nor the preview has to know about it.
     var priceHistoryRepository: PriceHistoryRepositoryProtocol = AppRepositories.priceHistory
 
+    /// Sagt, ob eine Filiale ohne Angebote gerade geholt wird oder dauerhaft
+    /// nichts liefert — siehe `unavailableBranchesSection`.
+    @Environment(BranchRequestStore.self) private var branchRequests
+
     @State private var search = ""
     @State private var selectedOffer: Offer?
     @State private var grouping: OfferGrouping = .market
@@ -91,28 +95,106 @@ struct OffersView: View {
         }
     }
 
-    /// Region is ready, but there are no offers to show. Guides the user toward
-    /// picking other markets when the empty list is a consequence of their
-    /// Wunschmärkte selection.
+    /// Region is ready, but there are no offers to show.
+    ///
+    /// Steht **jede** gewählte Filiale ohne Angebote da, erklärt die Liste
+    /// unten das Filiale für Filiale, statt einen Satz über alle zu sagen. Für
+    /// einen Tester, dessen einziger Markt seinen Prospekt nicht online stellt,
+    /// war „Für deine Filialen liegen gerade keine Angebote vor" schlicht
+    /// falsch: Da liegt nichts, und da wird auch nächste Woche nichts liegen.
+    @ViewBuilder
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Keine Angebote", systemImage: "basket")
-        } description: {
-            Text(store.hasFavoriteChains
-                ? "Für deine Filialen liegen gerade keine Angebote vor. Nimm in den Einstellungen weitere Filialen dazu, um mehr zu sehen."
-                : "Für deine Region liegen aktuell keine Angebote vor. Schau später noch einmal vorbei.")
-        } actions: {
-            // The empty state has no list, so there is nothing to pull down —
-            // without this button a user who suspects a hiccup can only kill
-            // the app and hope.
-            Button("Erneut laden") {
-                Task { await store.refresh() }
+        if !branchesWithoutOffers.isEmpty {
+            List {
+                unavailableBranchesSection
             }
-            .buttonStyle(.bordered)
+            .refreshable { await store.refresh() }
+        } else {
+            ContentUnavailableView {
+                Label("Keine Angebote", systemImage: "basket")
+            } description: {
+                Text(store.hasFavoriteChains
+                    ? "Für deine Filialen liegen gerade keine Angebote vor. Nimm in den Einstellungen weitere Filialen dazu, um mehr zu sehen."
+                    : "Für deine Region liegen aktuell keine Angebote vor. Schau später noch einmal vorbei.")
+            } actions: {
+                // The empty state has no list, so there is nothing to pull down —
+                // without this button a user who suspects a hiccup can only kill
+                // the app and hope.
+                Button("Erneut laden") {
+                    Task { await store.refresh() }
+                }
+                .buttonStyle(.bordered)
+            }
+            .accessibilityLabel(store.hasFavoriteChains
+                ? "Keine Angebote für deine Filialen"
+                : "Keine Angebote für deine Region")
         }
-        .accessibilityLabel(store.hasFavoriteChains
-            ? "Keine Angebote für deine Filialen"
-            : "Keine Angebote für deine Region")
+    }
+
+    // MARK: Filialen ohne Angebote
+
+    /// Gewählte Filialen, zu denen keine einzige Zeile geladen wurde.
+    ///
+    /// Über `marketId` gerechnet, **nicht** über die Sektionen: Die gruppieren
+    /// nach Kettenname, und zwei Filialen derselben Kette — davon eine leer —
+    /// wären dort nicht zu unterscheiden.
+    ///
+    /// Bundesweite Einträge (die beiden ALDI-Kataloge) bleiben draußen: Deren
+    /// Zeilen tragen die synthetische ID `ALDI_NORD_DE` und nie die der Filiale,
+    /// sie stünden also immer fälschlich hier.
+    private var branchesWithoutOffers: [Market] {
+        let covered = Set(store.offers.compactMap(\.marketId))
+        return favoriteMarkets
+            .filter { !$0.isNationwide && !covered.contains($0.marketId) }
+            .sorted { ($0.chain, $0.branchName) < ($1.chain, $1.branchName) }
+    }
+
+    /// Sagt je Filiale, **warum** dort nichts steht.
+    ///
+    /// Die Unterscheidung ist der ganze Punkt. Bis zum 2026-07-30 verschwand
+    /// eine Filiale ohne Angebote spurlos aus der Liste, und der Nutzer meldete
+    /// „keine Angebote" — für einen Markt, der gerade geholt wurde, für einen,
+    /// der noch nie angefordert worden war, und für einen, der online nichts
+    /// veröffentlicht, sah das identisch aus. Es sind drei verschiedene Dinge,
+    /// und nur eins davon geht vorbei.
+    @ViewBuilder
+    private var unavailableBranchesSection: some View {
+        Section {
+            ForEach(branchesWithoutOffers) { market in
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text(market.branchName.isEmpty ? market.chain : market.branchName)
+                        .font(.subheadline.weight(.medium))
+                    Text(reasonForNoOffers(market))
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                }
+                .padding(.vertical, 2)
+                .accessibilityElement(children: .combine)
+            }
+            .listRowBackground(Theme.surface)
+        } header: {
+            Text("Ohne Angebote")
+        } footer: {
+            Text("Nicht jeder Markt stellt seinen Prospekt ins Netz. Le Chariot kann nur zeigen, was die Kette selbst veröffentlicht.")
+        }
+        .accessibilityIdentifier("offers.unavailableBranches")
+    }
+
+    private func reasonForNoOffers(_ market: Market) -> String {
+        switch branchRequests.state(for: market.marketId) {
+        case .requested, .syncing:
+            "Die Angebote werden gerade geholt — das dauert etwa eine Minute."
+        case .unknown:
+            // Kommt nur noch vor, bevor die Prüfung beim Start durch ist.
+            "Die Angebote werden gleich geholt."
+        case .failed(.network):
+            "Die Angebote konnten nicht geladen werden. Prüf deine Verbindung."
+        case .ready, .failed(.timedOut):
+            // Das Backend war da und hat nichts gefunden. Bei EDEKA Böse in
+            // Ahlbeck ist das der Dauerzustand: `edeka.de` gibt für diesen
+            // Markt die Marktseite statt einer Angebotsliste zurück.
+            "Dieser Markt veröffentlicht seinen Prospekt nicht online."
+        }
     }
 
     /// Everything was filtered away. Distinct from `emptyState`: here the data
@@ -166,6 +248,15 @@ struct OffersView: View {
                     if index == 0 {
                         AdSlotView(slot: .offerListInline)
                     }
+                }
+                // Ganz unten und nur ohne Suche/Filter: Eine Filiale, die diese
+                // Woche nichts hat, ist eine Fußnote zur Liste, kein Ergebnis
+                // in ihr — und wer nach „Butter" sucht, will sie erst recht
+                // nicht dazwischen haben.
+                if search.trimmingCharacters(in: .whitespaces).isEmpty,
+                   categoryFilter == nil, marketFilter == nil,
+                   !branchesWithoutOffers.isEmpty {
+                    unavailableBranchesSection
                 }
             }
         }
@@ -265,4 +356,5 @@ struct OffersView: View {
         store: OfferStore(repository: MockOfferRepository(), cache: nil),
         priceHistoryRepository: MockPriceHistoryRepository()
     )
+    .environment(BranchRequestStore(repository: MockBranchRequestRepository()))
 }

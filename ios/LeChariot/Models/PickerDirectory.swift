@@ -51,12 +51,43 @@ enum PickerDirectory {
         var id: String { branch.marketId }
     }
 
-    /// A region whose directory has never been fetched, plus the store the
-    /// request is anchored on.
+    /// A region whose directory has never been fetched, plus the stores the
+    /// request can be anchored on.
     struct AreaCandidate {
         let plz: String
-        let anchor: Branch
+        /// **Die Mitte der Region**, um die gesucht wurde — das, was seit v21
+        /// mitgeht, und der eigentliche Inhalt dieser Korrektur.
+        ///
+        /// Bis zum 2026-07-30 wurde hier nur der Anker weitergereicht, und das
+        /// Backend schlug die PLZ aus *dessen* `branches`-Zeile nach. In
+        /// Ahlbeck (17419) ist die nächste bekannte Filiale Penny Am Haff in
+        /// Ueckermünde (17373), 24,5 km über das Haff — der Verzeichnislauf
+        /// ging für die falsche Stadt raus und meldete Erfolg.
+        ///
+        /// Nicht die Geräteposition: Die gibt es ohne Ortungsfreigabe nicht,
+        /// und der Picker fragt bewusst nicht ungefragt danach. Die
+        /// Regionsmitte ist genau der Punkt, um den hier tatsächlich gesucht
+        /// wurde, und sie steht immer zur Verfügung.
+        let lat: Double
+        let lon: Double
+        /// Nächster zuerst, höchstens drei.
+        ///
+        /// Mehrere, weil `market_id` der Primärschlüssel von `area_requests`
+        /// ist und zwei Orte denselben nächsten Anker haben können — im
+        /// gemeldeten Fall ist genau das so: Penny Am Haff ist die nächste
+        /// Filiale sowohl für Ueckermünde als auch für Ahlbeck. Wer zweiter
+        /// kommt, übernähme sonst die fremde Zeile und wartete auf einen Lauf
+        /// für die andere Stadt.
+        let anchors: [Branch]
+
+        /// Der nächstgelegene Anker; nur für Anzeige und Tests.
+        var anchor: Branch? { anchors.first }
     }
+
+    /// So viele Ausweich-Anker trägt eine Anforderung mit sich. Drei, weil in
+    /// einem nie geholten Gebiet ohnehin nur Kaufland und Penny im Verzeichnis
+    /// stehen — mehr Auswahl gibt es dort schlicht nicht.
+    static let maxAnchors = 3
 
     struct Plan {
         let entries: [Entry]
@@ -85,13 +116,13 @@ enum PickerDirectory {
         var candidates: [AreaCandidate] = []
 
         for find in finds {
-            var nearestHere: (branch: Branch, distance: Double)?
+            var nearestHere: [(branch: Branch, distance: Double)] = []
 
             for branch in find.branches {
                 let distance = branch.distanceKm(from: find.lat, find.lon)
 
-                if let distance, distance < (nearestHere?.distance ?? .greatestFiniteMagnitude) {
-                    nearestHere = (branch, distance)
+                if let distance {
+                    nearestHere.append((branch, distance))
                 }
 
                 // The same store around two neighbouring postcodes: it belongs
@@ -110,8 +141,18 @@ enum PickerDirectory {
             }
 
             // Asked per region, not once over everything — see the type's note.
-            if AreaRequestStore.areaLooksUnfetched(find.branches), let nearestHere {
-                candidates.append(AreaCandidate(plz: find.plz, anchor: nearestHere.branch))
+            if AreaRequestStore.areaLooksUnfetched(find.branches), !nearestHere.isEmpty {
+                // Stabil sortiert: Bei gleicher Entfernung entscheidet die
+                // market_id, sonst hinge die Anker-Reihenfolge an der Laune der
+                // Verzeichnisantwort — und damit auch, welche Zeile in
+                // `area_requests` entsteht.
+                let anchors = nearestHere
+                    .sorted { ($0.distance, $0.branch.marketId) < ($1.distance, $1.branch.marketId) }
+                    .prefix(maxAnchors)
+                    .map(\.branch)
+                candidates.append(
+                    AreaCandidate(plz: find.plz, lat: find.lat, lon: find.lon, anchors: Array(anchors))
+                )
             }
         }
 

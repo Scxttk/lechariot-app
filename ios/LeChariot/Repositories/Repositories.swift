@@ -43,7 +43,11 @@ protocol AreaRequestRepositoryProtocol {
     func request(marketId: String) async throws -> AreaRequest?
     /// Asks the backend to fetch the whole directory around this store.
     /// Idempotent, same as `requestBranch`.
-    func requestArea(marketId: String) async throws
+    ///
+    /// `lat`/`lon` sind die Mitte der Region, um die gesucht wurde — daraus
+    /// leitet der Server ab v21 die PLZ ab. Ohne sie fällt er auf die PLZ der
+    /// Ankerfiliale zurück, und die kann in der Nachbarstadt liegen.
+    func requestArea(marketId: String, lat: Double?, lon: Double?) async throws
 }
 
 protocol ProfileRepositoryProtocol {

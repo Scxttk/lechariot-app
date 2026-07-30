@@ -7,8 +7,9 @@ import SwiftUI
 /// the app after onboarding did not know where to start, and a tour that leaves
 /// the whole screen live is just a tooltip they can tap past by accident.
 ///
-/// Two frames are hands-on: the hole passes touches, and the frame advances as
-/// soon as something lands on the list. The rest only explain.
+/// Two frames are hands-on: the hole passes touches so the tester can actually
+/// type and tap. They still wait for "Weiter" like every other frame — see
+/// `TutorialStep.allowsInteraction`. The rest only explain.
 struct TutorialOverlay: View {
     let anchors: [TutorialTarget: Anchor<CGRect>]
     let proxy: GeometryProxy
@@ -23,10 +24,6 @@ struct TutorialOverlay: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AccessibilityFocusState private var cardFocused: Bool
-
-    /// Länge der Liste beim Betreten des Rahmens — die Mitmach-Rahmen gehen
-    /// weiter, sobald sie wächst.
-    @State private var baselineItemCount = 0
 
     /// Der Rahmen, dessen Schonfrist abgelaufen ist.
     ///
@@ -68,10 +65,6 @@ struct TutorialOverlay: View {
         .accessibilityAddTraits(.isModal)
         .onAppear(perform: enterStep)
         .onChange(of: tutorial.index) { _, _ in enterStep() }
-        .onChange(of: list.items.count) { _, count in
-            guard step.advance == .itemAdded, count > baselineItemCount else { return }
-            tutorial.next()
-        }
         .task(id: tutorial.index) {
             let index = tutorial.index
             try? await Task.sleep(for: Self.anchorGrace)
@@ -90,7 +83,6 @@ struct TutorialOverlay: View {
         if step.seedsDemoItems {
             tutorial.seedDemoItems(into: list)
         }
-        baselineItemCount = list.items.count
         cardFocused = true
     }
 
@@ -402,16 +394,23 @@ struct TutorialOverlay: View {
 
     private var controls: some View {
         HStack(spacing: Theme.Spacing.md) {
-            Button {
-                tutorial.skip()
-            } label: {
-                Text("Tour beenden")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.secondaryText)
-                    .frame(minHeight: 44)
+            // Auf dem letzten Rahmen heißt der Primärknopf „Fertig" und tut
+            // dasselbe wie der Abbruch — beide rufen `finish()`. Zwei Knöpfe
+            // nebeneinander, die dasselbe tun, lesen sich als Entscheidung, die
+            // keine ist; gemeldet am 2026-07-30. Der Abbruch bleibt auf jedem
+            // Rahmen davor, denn dort ist er eine echte Wahl.
+            if !tutorial.isLastStep {
+                Button {
+                    tutorial.skip()
+                } label: {
+                    Text("Tour beenden")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.secondaryText)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(TactileButtonStyle())
+                .accessibilityIdentifier("tutorial.skip")
             }
-            .buttonStyle(TactileButtonStyle())
-            .accessibilityIdentifier("tutorial.skip")
 
             Spacer(minLength: 0)
 

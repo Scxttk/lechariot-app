@@ -156,19 +156,32 @@ struct LiveAreaRequestRepository: AreaRequestRepositoryProtocol {
 
     func request(marketId: String) async throws -> AreaRequest? {
         guard let marketId = SupabaseClient.filterValue(marketId) else { return nil }
-        let query = "select=market_id,plz,last_synced,active&market_id=eq.\(marketId)"
+        let query = "select=market_id,plz,lat,lon,last_synced,active&market_id=eq.\(marketId)"
         return try await client.get([AreaRequest].self, path: "area_requests", query: query).first
     }
 
-    func requestArea(marketId: String) async throws {
-        // Only {market_id} goes over the wire, and that is all the server
-        // accepts — the INSERT grant is column-restricted and the policy
-        // requires the id to exist in `branches`. `plz` is filled in by a
-        // BEFORE INSERT trigger; the app naming it would fail outright, which
-        // is the point: an unverifiable postcode never reaches the queue.
+    /// Anker plus Regionsmitte — mehr nimmt der Server nicht an.
+    ///
+    /// Die INSERT-Rechte sind spaltenweise vergeben (`market_id`, `lat`, `lon`),
+    /// und die Policy verlangt, dass der Anker in `branches` steht. `plz` ist
+    /// **nicht** dabei: Sie setzt ein BEFORE-INSERT-Trigger, und würde die App
+    /// sie benennen, scheiterte der Insert an den Spaltenrechten. Genau das ist
+    /// der Zweck — eine unprüfbare Postleitzahl erreicht die Warteschlange nie.
+    ///
+    /// Die Koordinaten sind dagegen prüfbar, und deshalb dürfen sie mit: Der
+    /// Trigger misst sie gegen die Lage des Ankers und verwirft sie, wenn mehr
+    /// als 60 km dazwischen liegen. Ohne diese beiden Zahlen leitet der Server
+    /// das Gebiet weiter aus der Ankerfiliale ab — was für einen Tester in
+    /// Ahlbeck das Verzeichnis von Ueckermünde bedeutete.
+    func requestArea(marketId: String, lat: Double?, lon: Double?) async throws {
+        struct Body: Encodable {
+            let market_id: String
+            let lat: Double?
+            let lon: Double?
+        }
         try await client.post(
             path: "area_requests",
-            body: ["market_id": marketId],
+            body: Body(market_id: marketId, lat: lat, lon: lon),
             acceptConflict: true
         )
     }

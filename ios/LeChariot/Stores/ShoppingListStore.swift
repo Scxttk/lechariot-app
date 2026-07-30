@@ -180,12 +180,10 @@ final class ShoppingListStore {
         }
     }
 
-    #if DEBUG
-    /// See `DebugReset`. Clears memory and disk, not just the array — a
+    /// See `AppReset`. Clears memory and disk, not just the array — a
     /// `clearAll()` would leave an empty-but-present record behind.
     func resetAllData() {
         items = []
         defaults.removeObject(forKey: Self.key)
     }
-    #endif
 }

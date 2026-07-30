@@ -10,6 +10,7 @@ struct SettingsView: View {
     @Environment(MatchFeedbackStore.self) private var feedback
     @Environment(TutorialStore.self) private var tutorial
     @Environment(AreaRequestStore.self) private var areaRequests
+    @Environment(BranchRequestStore.self) private var branchRequests
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
@@ -31,9 +32,6 @@ struct SettingsView: View {
                     feedbackSection
                     appearanceSection
                     appSection
-                    #if DEBUG
-                    debugSection
-                    #endif
                 }
                 .listRowBackground(Theme.surface)
             }
@@ -136,10 +134,47 @@ struct SettingsView: View {
             }
             .accessibilityIdentifier("settings.tutorial")
             .tutorialAnchor(.settingsHelp)
+
+            // Der Notausgang, und ab 2026-07-30 in **jedem** Build. Vorher gab
+            // es ihn nur unter `#if DEBUG`; wer in TestFlight feststeckte,
+            // konnte die App nur löschen und neu installieren. Genau die
+            // Tester, die das am ehesten bräuchten — Scotts Großeltern —, sind
+            // die, denen man es am schwersten erklärt.
+            //
+            // Ganz unten in der Sektion und mit Rückfrage: Er steht neben einem
+            // Knopf, den man aus Neugier drückt, und tut etwas Endgültiges.
+            Button(role: .destructive) {
+                showResetConfirmation = true
+            } label: {
+                Label("App zurücksetzen", systemImage: "arrow.counterclockwise")
+                    .foregroundStyle(Theme.error)
+            }
+            .accessibilityIdentifier("settings.reset")
+            .confirmationDialog(
+                "App zurücksetzen?",
+                isPresented: $showResetConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Zurücksetzen", role: .destructive) {
+                    AppReset.everything(
+                        regions: store,
+                        profile: profile,
+                        list: list,
+                        rejections: rejections,
+                        feedback: feedback,
+                        tutorial: tutorial,
+                        areaRequests: areaRequests,
+                        branchRequests: branchRequests
+                    )
+                }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                Text("Deine Filialen, deine Einkaufsliste und deine Angaben aus dem Onboarding werden gelöscht. Danach startet Le Chariot wie nach einer Neuinstallation.")
+            }
         } header: {
             Text("Hilfe")
         } footer: {
-            Text("Zeigt die kurze Einführung auf der Einkaufsliste noch einmal. Für den Rundgang legt Le Chariot ein paar Beispiel-Artikel auf die Liste und räumt sie danach wieder ab.")
+            Text("Der Rundgang zeigt die kurze Einführung auf der Einkaufsliste noch einmal; Le Chariot legt dafür ein paar Beispiel-Artikel auf die Liste und räumt sie danach wieder ab. Zurücksetzen hilft, wenn etwas hakt — es löscht alles, was auf dem Gerät liegt.")
         }
     }
 
@@ -274,7 +309,13 @@ struct SettingsView: View {
     private var appSection: some View {
         Section("App") {
             LabeledContent("Version", value: Self.appVersion)
+            // Endmarke für den Kontrast-Audit, der ans Ende der Liste scrollen
+            // muss, bevor er misst. Ein Bezeichner und kein Text: Die Marke war
+            // zweimal deutsche Prosa und ist zweimal gebrochen, als die Prosa
+            // sich änderte — zuletzt am 2026-07-30, als der Debug-Abschnitt
+            // wegfiel, dessen Fußzeile sie war.
             LabeledContent("Angebote", value: "wöchentlich aktualisiert")
+                .accessibilityIdentifier("settings.end")
             // Reserved ad position — see `AdSlot`. Lowest-value slot, kept as the
             // natural home for a house ad (e.g. a werbefreie Variante).
             AdSlotView(slot: .settingsFooter)
@@ -286,41 +327,6 @@ struct SettingsView: View {
         return version ?? "–"
     }
 
-    // MARK: Debug
-
-    #if DEBUG
-    /// Only compiled into debug builds — a release build has no reset button and
-    /// no code path leading to one.
-    private var debugSection: some View {
-        Section {
-            Button("Onboarding zurücksetzen", systemImage: "arrow.counterclockwise", role: .destructive) {
-                showResetConfirmation = true
-            }
-            .foregroundStyle(Theme.error)
-            .confirmationDialog(
-                "Alles zurücksetzen?",
-                isPresented: $showResetConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Zurücksetzen", role: .destructive) {
-                    DebugReset.everything(
-                        regions: store, profile: profile,
-                        list: list, rejections: rejections,
-                        feedback: feedback, tutorial: tutorial,
-                        areaRequests: areaRequests
-                    )
-                }
-                Button("Abbrechen", role: .cancel) {}
-            } message: {
-                Text("Regionen, Filialen, Profil, Einkaufsliste, abgelehnte Treffer und der Angebots-Cache werden gelöscht. Die App startet danach beim Willkommensbildschirm.")
-            }
-        } header: {
-            Text("Debug")
-        } footer: {
-            Text("Nur in Entwicklungs-Builds sichtbar.")
-        }
-    }
-    #endif
 }
 
 // MARK: - Subscreens
@@ -439,4 +445,6 @@ private struct ProfileEditScreen: View {
         .environment(MatchRejectionStore())
         .environment(MatchFeedbackStore())
         .environment(TutorialStore())
+        .environment(AreaRequestStore(repository: MockAreaRequestRepository()))
+        .environment(BranchRequestStore(repository: MockBranchRequestRepository()))
 }
