@@ -54,11 +54,21 @@ final class AccessibilityAuditTests: XCTestCase {
         // Der Picker wurde bis hierher nie gemessen — und er ist der einzige
         // Bildschirm, auf dem eine Zeile ihren Zustand trägt (gewählt/nicht
         // gewählt) und ihre Entfernung im Hinweis statt im Namen.
+        //
+        // Erst eine Filiale antippen, dann messen — dieselbe Regel wie zwei
+        // Schritte weiter oben bei der Postleitzahl. Ungewählt meldet der Audit
+        // zwei Dinge, die beide nicht die Farbe betreffen: „Fertig" ist bis
+        // dahin **deaktiviert** und damit von der Anforderung ausgenommen, und
+        // die Fußzeile „Wähle mindestens eine Filiale, um fortzufahren." liegt
+        // auf `.bar` — genau die durchscheinende Fläche, für die weiter unten
+        // in dieser Datei nachgemessen ist, dass der Audit Zwischenwerte liest.
+        // Sie ist ohnehin `accessibilityHidden`, weil ihr Inhalt im Hinweis des
+        // Knopfes steht. Gemessen wird deshalb der Zustand, in dem der Nutzer
+        // tatsächlich vor der Liste sitzt.
         app.buttons["onboarding.primary"].tap()
-        XCTAssertTrue(
-            app.buttons["Lidl, Dresden Reick"].waitForExistence(timeout: 15),
-            "Picker nicht geladen"
-        )
+        let branch = app.buttons["Lidl, Dresden Reick"]
+        XCTAssertTrue(branch.waitForExistence(timeout: 15), "Picker nicht geladen")
+        branch.tap()
         try audit("Filialen wählen")
     }
 
