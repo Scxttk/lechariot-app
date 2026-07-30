@@ -2,8 +2,8 @@ import Foundation
 import Observation
 
 /// Lifecycle of one store between "user picked it" and "its offers are here".
-/// Same states as `RegionSyncState`, one level more precise — kept separate so
-/// the two flows can diverge when the PLZ path is removed (Phase 12, step 7).
+/// This is the only waiting left in the app — the PLZ path that used to have
+/// its own version was removed once the postcode became a mere location.
 enum BranchSyncState: Equatable {
     case unknown
     /// No request row existed; insert sent, waiting for the backend.
@@ -12,7 +12,14 @@ enum BranchSyncState: Equatable {
     case syncing
     /// The backend has pushed this store's offers at least once.
     case ready
-    case failed(RegionSyncFailure)
+    case failed(BranchSyncFailure)
+}
+
+enum BranchSyncFailure: Equatable {
+    /// Network/server error during check or registration.
+    case network
+    /// Polling exhausted; the backend will usually deliver overnight.
+    case timedOut
 }
 
 /// Drives "I picked a store the backend has never fetched".

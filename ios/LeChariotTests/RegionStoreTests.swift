@@ -1,53 +1,6 @@
 import XCTest
 @testable import LeChariot
 
-/// Controllable region repository: fixtures can change mid-test to simulate
-/// the backend finishing a sync while the store polls.
-final class ControllableRegionRepository: RegionRepositoryProtocol, @unchecked Sendable {
-    var regionsByPLZ: [String: Region] = [:]
-    var shouldThrow = false
-    private(set) var registeredPLZs: [String] = []
-    /// Region fetches remaining until `syncCompletesTo` is applied, if set.
-    var fetchesUntilSynced: Int?
-    var syncCompletesTo: Region?
-
-    struct TestError: Error {}
-
-    func region(plz: String) async throws -> Region? {
-        if shouldThrow { throw TestError() }
-        if let remaining = fetchesUntilSynced {
-            if remaining <= 0, let synced = syncCompletesTo, synced.plz == plz {
-                regionsByPLZ[plz] = synced
-            } else {
-                fetchesUntilSynced = remaining - 1
-            }
-        }
-        return regionsByPLZ[plz]
-    }
-
-    func registerRegion(plz: String) async throws {
-        if shouldThrow { throw TestError() }
-        registeredPLZs.append(plz)
-    }
-
-    // Mid-sync progress fixtures; mutable so tests can simulate the backend
-    // finding more markets/offers between polls.
-    var marketsByPLZ: [String: [Market]] = [:]
-    var offerCounts: [String: Int] = [:]
-    private(set) var progressFetches = 0
-
-    func foundMarkets(plz: String) async throws -> [Market] {
-        if shouldThrow { throw TestError() }
-        progressFetches += 1
-        return marketsByPLZ[plz] ?? []
-    }
-
-    func offerCount(plz: String) async throws -> Int {
-        if shouldThrow { throw TestError() }
-        return offerCounts[plz] ?? 0
-    }
-}
-
 @MainActor
 final class RegionStoreTests: XCTestCase {
     private var defaults: UserDefaults!
@@ -58,17 +11,8 @@ final class RegionStoreTests: XCTestCase {
         defaults.removePersistentDomain(forName: "RegionStoreTests")
     }
 
-    private func makeStore(
-        repository: RegionRepositoryProtocol,
-        maxPollAttempts: Int = 3
-    ) -> RegionStore {
-        RegionStore(
-            repository: repository,
-            defaults: defaults,
-            pollInterval: .milliseconds(1),
-            maxPollAttempts: maxPollAttempts,
-            progressPollInterval: .milliseconds(1)
-        )
+    private func makeStore() -> RegionStore {
+        RegionStore(defaults: defaults)
     }
 
     /// Polls `condition` (up to ~1 s) so tests survive scheduler jitter.
@@ -94,17 +38,14 @@ final class RegionStoreTests: XCTestCase {
 
     // MARK: State machine
 
-    func testExistingSyncedRegionIsImmediatelyReady() async {
-        let repo = ControllableRegionRepository()
-        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
-        let store = makeStore(repository: repo)
+    func testAddingAPostcodeSelectsItAndMarksItReady() async {
+        let store = makeStore()
 
         await store.addRegion("01219")
 
         XCTAssertEqual(store.syncState(for: "01219"), .ready)
         XCTAssertEqual(store.regions, ["01219"])
         XCTAssertEqual(store.selectedRegion, "01219")
-        XCTAssertTrue(repo.registeredPLZs.isEmpty)
     }
 
     /// Seit Migration v16 fragt die App beim Hinzufügen einer PLZ **nichts**
@@ -114,31 +55,16 @@ final class RegionStoreTests: XCTestCase {
     /// ist — und der einzige Grund zu warten wäre eine **Filiale**, die das
     /// Backend noch nie geholt hat. Die fordert der Picker selbst an.
     func testAPostcodeIsReadyImmediatelyAndAsksNothingOfTheBackend() async {
-        let repo = ControllableRegionRepository()
-        let store = makeStore(repository: repo)
+        let store = makeStore()
 
         await store.addRegion("01219")
 
         XCTAssertEqual(store.syncState(for: "01219"), .ready)
         XCTAssertTrue(store.readyRegions.contains("01219"))
-        XCTAssertTrue(repo.registeredPLZs.isEmpty, "nichts registrieren")
-    }
-
-    /// Und ein kaputtes Backend ändert daran nichts — es wird ja nicht
-    /// gefragt. Vorher landete der Nutzer hier auf einem Fehlerbildschirm.
-    func testABrokenBackendNoLongerBlocksAddingAPostcode() async {
-        let repo = ControllableRegionRepository()
-        repo.shouldThrow = true
-        let store = makeStore(repository: repo)
-
-        await store.addRegion("01219")
-
-        XCTAssertEqual(store.syncState(for: "01219"), .ready)
     }
 
     func testInvalidPLZIsRejected() async {
-        let repo = ControllableRegionRepository()
-        let store = makeStore(repository: repo)
+        let store = makeStore()
 
         await store.addRegion("abc")
 
@@ -147,8 +73,7 @@ final class RegionStoreTests: XCTestCase {
     }
 
     func testMaxTenRegions() async {
-        let repo = ControllableRegionRepository()
-        let store = makeStore(repository: repo)
+        let store = makeStore()
         for i in 0..<12 {
             await store.addRegion(String(format: "%05d", i))
         }
@@ -157,8 +82,7 @@ final class RegionStoreTests: XCTestCase {
     }
 
     func testOrderedReadyRegionsAndFavoritesAcrossRegions() async {
-        let repo = ControllableRegionRepository()
-        let store = makeStore(repository: repo)
+        let store = makeStore()
 
         await store.addRegion("01219")
         await store.addRegion("10115")
@@ -180,9 +104,7 @@ final class RegionStoreTests: XCTestCase {
     // MARK: Persistence round-trip
 
     func testWunschmaerktePersistenceRoundTrip() async {
-        let repo = ControllableRegionRepository()
-        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
-        let store = makeStore(repository: repo)
+        let store = makeStore()
 
         await store.addRegion("01219")
         let market = Market(chain: "Lidl", branchName: "Dresden Reick", marketId: "lidl-01219-1", plz: "01219")
@@ -191,7 +113,7 @@ final class RegionStoreTests: XCTestCase {
         XCTAssertTrue(store.isOnboardingComplete)
 
         // Fresh store over the same defaults simulates an app relaunch.
-        let relaunched = makeStore(repository: repo)
+        let relaunched = makeStore()
         XCTAssertEqual(relaunched.regions, ["01219"])
         XCTAssertEqual(relaunched.selectedRegion, "01219")
         XCTAssertEqual(relaunched.favoriteMarkets, [market])
@@ -202,7 +124,7 @@ final class RegionStoreTests: XCTestCase {
     // MARK: Onboarding completion
 
     func testFreshStoreIsNotOnboarded() {
-        let store = makeStore(repository: ControllableRegionRepository())
+        let store = makeStore()
         XCTAssertFalse(store.isOnboardingComplete)
         XCTAssertFalse(store.hasFavorites)
     }
@@ -211,9 +133,7 @@ final class RegionStoreTests: XCTestCase {
     /// used to flip `isOnboardingComplete` back to false, which yanked the whole
     /// app out from under a user standing in the settings.
     func testRemovingTheLastBranchKeepsTheUserInTheApp() async {
-        let repo = ControllableRegionRepository()
-        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
-        let store = makeStore(repository: repo)
+        let store = makeStore()
         await store.addRegion("01219")
         let market = Market(chain: "Lidl", branchName: "Reick", marketId: "lidl-1", plz: "01219")
         store.toggleFavorite(market)
@@ -227,9 +147,7 @@ final class RegionStoreTests: XCTestCase {
     }
 
     func testRemovingTheLastRegionKeepsTheUserInTheApp() async {
-        let repo = ControllableRegionRepository()
-        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
-        let store = makeStore(repository: repo)
+        let store = makeStore()
         await store.addRegion("01219")
         store.toggleFavorite(Market(chain: "Lidl", branchName: "Reick", marketId: "lidl-1", plz: "01219"))
         store.completeOnboarding()
@@ -248,7 +166,7 @@ final class RegionStoreTests: XCTestCase {
         defaults.set(["01219"], forKey: "region.readyPLZs")
         defaults.set(try JSONEncoder().encode([market]), forKey: "region.favoriteMarkets")
 
-        let store = makeStore(repository: ControllableRegionRepository())
+        let store = makeStore()
 
         XCTAssertTrue(store.isOnboardingComplete)
         // …and the migration is written through, so it survives the next launch
@@ -262,16 +180,14 @@ final class RegionStoreTests: XCTestCase {
         defaults.set(["01219"], forKey: "region.plzs")
         defaults.set(["01219"], forKey: "region.readyPLZs")
 
-        let store = makeStore(repository: ControllableRegionRepository())
+        let store = makeStore()
 
         XCTAssertFalse(store.isOnboardingComplete)
     }
 
     #if DEBUG
     func testDebugResetRestoresFirstLaunchState() async {
-        let repo = ControllableRegionRepository()
-        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
-        let store = makeStore(repository: repo)
+        let store = makeStore()
         await store.addRegion("01219")
         store.toggleFavorite(Market(chain: "Lidl", branchName: "Reick", marketId: "lidl-1", plz: "01219"))
         store.completeOnboarding()
@@ -287,16 +203,14 @@ final class RegionStoreTests: XCTestCase {
 
         // Deterministic: a relaunch over the same defaults sees nothing either,
         // so the reset can be repeated without drift.
-        let relaunched = makeStore(repository: repo)
+        let relaunched = makeStore()
         XCTAssertFalse(relaunched.isOnboardingComplete)
         XCTAssertTrue(relaunched.regions.isEmpty)
     }
     #endif
 
     func testRemoveRegionClearsFavoritesAndSelection() async {
-        let repo = ControllableRegionRepository()
-        repo.regionsByPLZ["01219"] = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
-        let store = makeStore(repository: repo)
+        let store = makeStore()
 
         await store.addRegion("01219")
         store.toggleFavorite(Market(chain: "Lidl", branchName: "Dresden Reick", marketId: "lidl-01219-1", plz: "01219"))
@@ -313,7 +227,7 @@ final class RegionStoreTests: XCTestCase {
     func testCorruptFavoritesDataResetsToEmpty() {
         defaults.set(Data("not json".utf8), forKey: "region.favoriteMarkets")
         defaults.set(["01219"], forKey: "region.plzs")
-        let store = makeStore(repository: ControllableRegionRepository())
+        let store = makeStore()
         XCTAssertTrue(store.favoriteMarkets.isEmpty)
     }
 
@@ -331,7 +245,7 @@ final class RegionStoreTests: XCTestCase {
         let kept = Market(chain: "EDEKA", branchName: "Reick", marketId: "edeka-01219-1", plz: "01219")
         defaults.set(try JSONEncoder().encode([neighbour, noPLZ, kept]), forKey: "region.favoriteMarkets")
 
-        let store = makeStore(repository: ControllableRegionRepository())
+        let store = makeStore()
         XCTAssertEqual(store.selectedRegion, "01219")
         XCTAssertEqual(store.favoriteMarkets, [neighbour, noPLZ, kept])
         XCTAssertEqual(store.orderedReadyRegions, ["01219"])

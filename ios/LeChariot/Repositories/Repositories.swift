@@ -57,14 +57,3 @@ protocol MatchFeedbackRepositoryProtocol {
     /// the app never reads feedback back.
     func submit(_ report: MatchFeedbackReport) async throws
 }
-
-protocol RegionRepositoryProtocol {
-    /// Region row for a PLZ, or nil if unknown.
-    func region(plz: String) async throws -> Region?
-    /// Registers a PLZ for syncing. Idempotent (409 = already registered).
-    func registerRegion(plz: String) async throws
-    /// Markets the backend has already found for a PLZ mid-sync (each chain
-    /// appears here before its offers land). Lightweight; safe to poll.
-    func foundMarkets(plz: String) async throws -> [Market]
-    /// Number of offer rows already uploaded for a PLZ (HEAD count, no body).
-}

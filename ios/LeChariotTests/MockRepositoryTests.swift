@@ -17,14 +17,4 @@ final class MockRepositoryTests: XCTestCase {
         XCTAssertTrue(empty.isEmpty)
     }
 
-    func testMockRegionRepositoryLookup() async throws {
-        let repository = MockRegionRepository()
-
-        let region = try await repository.region(plz: "01219")
-        XCTAssertEqual(region?.plz, "01219")
-        XCTAssertEqual(region?.active, true)
-
-        let missing = try await repository.region(plz: "99999")
-        XCTAssertNil(missing)
-    }
 }

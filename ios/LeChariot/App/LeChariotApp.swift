@@ -17,7 +17,7 @@ struct LeChariotApp: App {
             diskCapacity: 200 * 1024 * 1024
         )
 
-        _store = State(initialValue: RegionStore(repository: AppRepositories.regions()))
+        _store = State(initialValue: RegionStore())
         _profile = State(initialValue: ProfileStore(repository: AppRepositories.profiles()))
         _areaRequests = State(
             initialValue: AreaRequestStore(repository: AppRepositories.areaRequests())

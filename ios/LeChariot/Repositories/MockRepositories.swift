@@ -82,7 +82,6 @@ enum MockFixtures {
         Market(chain: "Lidl", branchName: "Dresden Reick", marketId: "lidl-01219-1", plz: "01219"),
     ]
 
-    static let region = Region(plz: "01219", lastSynced: "2026-07-16T05:00:00Z", active: true)
 
     /// Three real Dresden stores, two of them the ones the PLZ model could
     /// never reach: the second REWE in a postcode and the Netto in the
@@ -222,17 +221,3 @@ final class MockMatchFeedbackRepository: MatchFeedbackRepositoryProtocol, @unche
     }
 }
 
-struct MockRegionRepository: RegionRepositoryProtocol {
-    var fixtures: [Region] = [MockFixtures.region]
-
-    func region(plz: String) async throws -> Region? {
-        fixtures.first { $0.plz == plz }
-    }
-
-    func registerRegion(plz: String) async throws {}
-
-    func foundMarkets(plz: String) async throws -> [Market] {
-        MockFixtures.markets.filter { $0.plz == plz }
-    }
-
-}

@@ -21,11 +21,6 @@ enum AppRepositories {
 
     private static let client: SupabaseClient? = usesMockData ? nil : SupabaseClient.fromConfig()
 
-    static func regions() -> RegionRepositoryProtocol {
-        guard let client else { return MockRegionRepository() }
-        return LiveRegionRepository(client: client)
-    }
-
     static func markets() -> MarketRepositoryProtocol {
         guard let client else { return MockMarketRepository() }
         return LiveMarketRepository(client: client)
