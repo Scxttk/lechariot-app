@@ -108,6 +108,38 @@ Export compliance is already answered in the Info.plist
 (`ITSAppUsesNonExemptEncryption = false` — HTTPS only, standard exemption), so
 builds do not sit blocked on that question.
 
+### The review note
+
+The reviewer is usually not in Germany, and that is the whole problem. Offers
+exist only for postcodes somebody has requested, and branch data is fetched per
+area — so a reviewer who grants location access in California gets an empty
+picker and rejects the app as broken. The note has to steer them away from the
+location prompt and onto a postcode that has data.
+
+Paste this into *Anmerkungen*, adjusting the postcode if 01219 ever goes cold:
+
+```
+Le Chariot vergleicht die Wochenangebote deutscher Supermaerkte mit einer
+Einkaufsliste. Die Daten sind ausschliesslich deutsch.
+
+WICHTIG: Bitte die Standortfreigabe ABLEHNEN und die Postleitzahl von Hand
+eingeben - 01219 (Dresden). Ausserhalb Deutschlands findet die Standortsuche
+keine Filialen, und die App sieht dann leer aus.
+
+1. Onboarding: Vorname eingeben, dann PLZ 01219
+2. Die Fragen zu Haushalt und Ernaehrung koennen uebersprungen werden
+3. Im Filialpicker zwei bis drei Laeden auswaehlen (z. B. Lidl, ALDI, Netto),
+   dann "Fertig"
+4. Auf der Einkaufsliste ein Wort eintragen, z. B. "Milch", "Brot" oder "Kaese"
+5. Die App zeigt dann, welcher Markt die Liste am guenstigsten abdeckt
+
+Kein Login, kein Konto, keine Bezahlfunktion.
+```
+
+`Anmeldeinformationen` stays empty and *Anmeldung erforderlich* stays unticked —
+there is no account.
+
+
 ## What testers will notice first
 
 Not bugs, gaps. Worth saying in the tester note rather than collecting the same
