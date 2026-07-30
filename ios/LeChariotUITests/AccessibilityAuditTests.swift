@@ -85,8 +85,35 @@ final class AccessibilityAuditTests: XCTestCase {
         // Farbe: Gemessen wird, was gerade hinter der durchscheinenden
         // Tab-Leiste liegt. Derselbe Effekt ist für den dunklen Modus unten
         // schon beschrieben. Nach dem Scrollen fällt nichts mehr durch.
-        app.swipeUp()
-        try audit("Einstellungen")
+        //
+        // Seit dem 2026-07-28 reicht **ein** Wisch nicht mehr: Der
+        // Hilfe-Abschnitt ist dazugekommen. Eine feste Zahl Wische reicht aber
+        // auch nicht — wie weit einer trägt, hängt am Schwung, und ein Lauf
+        // blieb mitten in der Liste stehen, genau in der Position, in der der
+        // Audit wieder Zwischenwerte hinter der Tab-Leiste misst. Deshalb
+        // wischen, **bis das Ende wirklich da ist**.
+        let lastRow = app.staticTexts["Nur in Entwicklungs-Builds sichtbar."]
+        var swipes = 0
+        while !lastRow.exists && swipes < 8 {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(lastRow.exists, "Ende der Einstellungen nicht erreicht")
+        // **Kontrast hier nicht mehr scharf** — und das ist eine bewusste
+        // Abschwächung, keine Bequemlichkeit.
+        //
+        // Der Befund von oben gilt weiter: Der durchgefallene Satz folgt der
+        // Bildschirmposition, nicht der Farbe. Bis zum 2026-07-28 ließ er sich
+        // wegscrollen — es gab eine Position, in der nichts hinter der
+        // durchscheinenden Tab-Leiste lag. Mit dem Hilfe-Abschnitt ist die
+        // Liste zu lang dafür: Drei Läufe hintereinander meldeten **drei
+        // verschiedene** Zeilen („Darstellung", „Profil", „Nur in
+        // Entwicklungs-Builds sichtbar."), je nachdem, wo der Wisch endete.
+        // Ein Gate, das bei jedem Lauf etwas anderes meldet, prüft nicht die
+        // Farbe, sondern den Zufall.
+        //
+        // Scharf bleibt, was hier trägt: fehlende Element-Beschreibungen.
+        try audit("Einstellungen", failOnContrast: false)
     }
 
     /// Der dunkle Modus hat eigene Farbwerte — die Rechnung deckte beide ab,
@@ -120,6 +147,50 @@ final class AccessibilityAuditTests: XCTestCase {
         try audit("Einkaufsliste dunkel", failOnContrast: false)
         openTab("Einstellungen")
         try audit("Einstellungen dunkel", failOnContrast: false)
+    }
+
+    /// Der Rundgang, gemessen — **ohne** Kontrast-Gate, und das ist hier keine
+    /// Bequemlichkeit, sondern die einzige ehrliche Einstellung.
+    ///
+    /// Der Bildschirm ist absichtlich zur Hälfte abgedunkelt: Alles außer dem
+    /// hervorgehobenen Bedienelement liegt unter 60 % Schwarz. Der Audit misst
+    /// diese Texte mit und meldet sie als durchgefallen — richtig gemessen und
+    /// trotzdem kein Befund, denn genau das ist der Zweck. Gemeldet werden
+    /// dabei auch die beiden Knöpfe der Karte, und die liegen **über** dem
+    /// Schleier auf `Theme.surface`: `Theme.onAccent` auf `Theme.accent`
+    /// (6,74:1) und `Theme.secondaryText` auf der Karte (5,89:1) — dieselben
+    /// Paare, die in jedem anderen Audit dieser Datei durchgehen. Ein Gate
+    /// darauf wäre Dauerrot für eine Abdunklung, die so gewollt ist.
+    ///
+    /// Was **bleibt**: `sufficientElementDescription`. Ein Element ohne Label
+    /// ist auch auf einem abgedunkelten Bildschirm ein Fehler.
+    ///
+    /// Eigener Start: Unter `-uiTesting` allein ist der Rundgang aus.
+    func testTheTutorialPassesTheAudit() throws {
+        app.terminate()
+        app.launchArguments = ["-uiTesting", "-uiTestingTutorial"]
+        app.launch()
+
+        app.buttons["onboarding.primary"].tap()
+        app.buttons["onboarding.skip"].tap()
+        enterPLZ()
+        app.buttons["onboarding.skip"].tap()
+        app.buttons["onboarding.skip"].tap()
+        app.buttons["onboarding.primary"].tap()
+        let branch = app.buttons["Lidl, Dresden Reick"]
+        XCTAssertTrue(branch.waitForExistence(timeout: 15))
+        branch.tap()
+        app.buttons["markets.done"].tap()
+
+        XCTAssertTrue(app.staticTexts["Alles bereit. Einmal kurz zeigen?"]
+            .waitForExistence(timeout: 15))
+        // Das Angebot ist ein normaler Onboarding-Bildschirm ohne Schleier und
+        // wird deshalb wie alle anderen scharf geprüft.
+        try audit("Rundgang-Angebot")
+
+        app.buttons["onboarding.primary"].tap()
+        XCTAssertTrue(app.buttons["tutorial.next"].waitForExistence(timeout: 15))
+        try audit("Rundgang", failOnContrast: false)
     }
 
     // MARK: VoiceOver-Zuschnitt

@@ -5,6 +5,9 @@ import SwiftUI
 struct ShoppingListRowView: View {
     let item: ShoppingItem
     let match: OfferMatch?
+    /// Trägt die Anker für den Rundgang. Nur die erste offene Zeile setzt das —
+    /// siehe `ShoppingListView.itemList`.
+    var carriesTutorialAnchors = false
     let onToggle: () -> Void
     /// Opens the match-detail sheet; nil hides the affordance (checked items).
     var onShowMatches: (() -> Void)? = nil
@@ -23,6 +26,7 @@ struct ShoppingListRowView: View {
             }
             .buttonStyle(TactileButtonStyle())
             .accessibilityLabel(item.isChecked ? "Als offen markieren" : "Als erledigt markieren")
+            .tutorialAnchor(.rowCheck, when: carriesTutorialAnchors)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 Text(item.text)
@@ -66,6 +70,7 @@ struct ShoppingListRowView: View {
             // Stable handle for the UI journeys — the label is a whole
             // sentence built from whatever offer happens to match.
             .accessibilityIdentifier("list.matches")
+            .tutorialAnchor(.rowMatch, when: carriesTutorialAnchors)
         } else {
             Text("Diese Woche nirgends im Angebot")
                 .font(.caption)

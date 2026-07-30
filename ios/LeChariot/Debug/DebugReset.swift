@@ -26,13 +26,15 @@ enum DebugReset {
         profile: ProfileStore,
         list: ShoppingListStore,
         rejections: MatchRejectionStore,
-        feedback: MatchFeedbackStore
+        feedback: MatchFeedbackStore,
+        tutorial: TutorialStore
     ) {
         regions.resetAllData()
         profile.resetAllData()
         list.resetAllData()
         rejections.resetAllData()
         feedback.resetAllData()
+        tutorial.resetAllData()
 
         // Not owned by any store: the appearance override (a fresh install
         // follows the system) and the two caches that would otherwise make the
