@@ -117,27 +117,6 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(market.id, "lidl-01219-1")
     }
 
-    func testDecodeRegion() throws {
-        let json = """
-        {"plz": "01219", "last_synced": "2026-07-16T05:00:00Z", "active": true}
-        """.data(using: .utf8)!
-
-        let region = try decoder.decode(Region.self, from: json)
-        XCTAssertEqual(region.plz, "01219")
-        XCTAssertEqual(region.lastSynced, "2026-07-16T05:00:00Z")
-        XCTAssertEqual(region.active, true)
-    }
-
-    func testDecodeRegionWithNulls() throws {
-        let json = """
-        {"plz": "01219", "last_synced": null, "active": null}
-        """.data(using: .utf8)!
-
-        let region = try decoder.decode(Region.self, from: json)
-        XCTAssertNil(region.lastSynced)
-        XCTAssertNil(region.active)
-    }
-
     // MARK: Decoding resilience
 
     /// One poisoned row (null valid_from) must not sink the whole fetch:

@@ -140,11 +140,7 @@ struct RegionSetupView: View {
         Task {
             await store.addRegion(plz)
             isChecking = false
-            if case .failed(.network) = store.syncState(for: plz) {
-                errorMessage = "Die Region konnte nicht geprüft werden. Bitte prüfe deine Internetverbindung und versuche es erneut."
-            } else {
-                onPLZSubmitted(plz)
-            }
+            onPLZSubmitted(plz)
         }
     }
 }
@@ -161,12 +157,12 @@ struct AddRegionScreen: View {
 
 #Preview("Onboarding") {
     RegionSetupView(step: 3, onPLZSubmitted: { _ in })
-        .environment(RegionStore(repository: MockRegionRepository()))
+        .environment(RegionStore())
 }
 
 #Preview("Aus den Einstellungen") {
     NavigationStack {
         RegionSetupView(onPLZSubmitted: { _ in })
-            .environment(RegionStore(repository: MockRegionRepository()))
+            .environment(RegionStore())
     }
 }

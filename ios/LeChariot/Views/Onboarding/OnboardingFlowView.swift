@@ -8,12 +8,11 @@ enum OnboardingStep {
 
 /// Drives the onboarding. Shown by ContentView until `RegionStore.isOnboardingComplete`.
 ///
-/// The profile questions sit *after* the PLZ on purpose: registering a new
-/// region kicks off a backend scrape that takes minutes, and `RegionStore`
-/// polls it in its own task regardless of what is on screen. So the questions
-/// fill that time, and by the time the user reaches the branch picker the sync
-/// has usually finished — instead of staring at a spinner first and answering
-/// questions afterwards.
+/// The profile questions sit *after* the PLZ because registering a region used
+/// to kick off a backend scrape of several minutes, and the questions filled
+/// the wait. Since the postcode became a mere location there is nothing to wait
+/// for, but the order stayed: the picker is the one screen that needs a
+/// decision, and it reads better last.
 struct OnboardingFlowView: View {
     @Environment(RegionStore.self) private var store
     @Environment(ProfileStore.self) private var profile
@@ -79,8 +78,7 @@ struct OnboardingFlowView: View {
         }
     }
 
-    /// Final phase: the branches. If the backend is still scraping we show the
-    /// waiting screen here — by now it usually is not.
+    /// Final phase: the branches.
     @ViewBuilder
     private var marketsPhase: some View {
         if let plz = currentPLZ {
@@ -99,12 +97,6 @@ struct OnboardingFlowView: View {
                     } else {
                         finishOnboarding()
                     }
-                }
-            case .requested, .syncing, .failed:
-                WaitingView(plz: plz) {
-                    store.removeRegion(plz)
-                    activePLZ = nil
-                    phase = .region
                 }
             case .unknown:
                 RegionSetupView(step: 3) { plz in
@@ -163,7 +155,7 @@ struct OnboardingFlowView: View {
 
 #Preview {
     OnboardingFlowView(marketRepository: MockMarketRepository())
-        .environment(RegionStore(repository: MockRegionRepository()))
+        .environment(RegionStore())
         .environment(ProfileStore())
         .environment(TutorialStore())
 }
