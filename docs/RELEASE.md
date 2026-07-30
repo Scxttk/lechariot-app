@@ -13,17 +13,27 @@ filled-in `APIKeys.plist` — without real keys `APIConfig.isConfigured` is fals
 and the app quietly serves mock offers, which nobody would recognise as a fault
 on a real phone.
 
-The upload path has been driven as far as it goes without you. It authenticates
-(Xcode's stored session is enough — no API key needed for a local run), resolves
-the team, and then stops on exactly one thing:
+**Signing is proven; uploading is not.** The archive-and-export path produces a
+genuinely App-Store-signed `.ipa` — `Apple Distribution: Scott Koehler
+(3DZ9T8SGX5)`, chained to Apple WWDR, with a store profile and
+`get-task-allow: false`. Verified on the unpacked artifact.
+
+Uploading is a different door, and it is shut. There is **no Apple ID signed
+into Xcode** — `DVTDeveloperAccountManagerAppleIDLists` is empty — so the upload
+step fails:
 
 ```
-IDEDistributionFetchAppRecordStep failed:
-DistributionAppRecordProviderError.missingApp(bundleId: "com.skoehler.lechariot")
+IDEDistributionUploadAccountStep: "Failed to Use Accounts"
+App Store Connect access for "3DZ9T8SGX5" is required.
 ```
 
-So everything upstream of the app record is proven, and the app record is the
-single blocker. Create it once (below) and the same command goes through.
+A first attempt reported `missingApp(bundleId: "com.skoehler.lechariot")`
+instead, which reads like "only the app record is missing". It is not that:
+the same log shows `App Store Connect team IDs for account (null) are ()` — an
+empty team list from a session that does not exist. The missing record was a
+symptom of having no account, not the sole blocker.
+
+So there are two prerequisites below, not one.
 
 ## Version and build number
 
@@ -40,13 +50,16 @@ touch the build number.
 
 None of this is in the repo, because none of it can be.
 
-1. **App record — this is the one blocker.** appstoreconnect.apple.com → Apps →
-   +, platform iOS, bundle ID `com.skoehler.lechariot`, primary language German.
-   The App ID is already registered on the developer portal, and the
-   distribution certificate plus the store provisioning profile were created
-   automatically by the first `release.sh` run — nothing has to be clicked for
-   signing. Measured, not assumed: an upload attempt fails with
-   `missingApp(bundleId: "com.skoehler.lechariot")` and nothing else.
+0. **An Apple ID in Xcode.** Xcode → Settings → Accounts → **+** → Apple ID,
+   with the account that holds team `3DZ9T8SGX5`. Needs the password and the
+   two-factor code, so it is yours to do and cannot be scripted. Nothing signs
+   in today; signing works anyway because the certificate and store profile
+   already exist locally, but the upload has no session to use.
+
+1. **App record.** appstoreconnect.apple.com → Apps → +, platform iOS, bundle ID
+   `com.skoehler.lechariot`, primary language German. The App ID is already
+   registered on the developer portal, and the distribution certificate plus the
+   store provisioning profile exist — nothing has to be clicked for signing.
 
 2. **API key**, only if you want `--upload` instead of Xcode's Organizer:
    App Store Connect → Users and Access → Integrations → App Store Connect API,
