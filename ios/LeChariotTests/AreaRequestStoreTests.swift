@@ -330,4 +330,52 @@ final class AreaRequestStoreTests: XCTestCase {
         XCTAssertNil(sent.lat)
         XCTAssertNil(sent.lon)
     }
+
+    // MARK: Ein belegter Anker darf ein Gebiet nicht verschlucken
+
+    /// **Zwei Regionen, ein nächster Anker — in einem einzigen Durchlauf.**
+    ///
+    /// `requestUnfetchedAreas` geht die Kandidaten nacheinander durch, und Penny
+    /// Am Haff ist die nächste Filiale sowohl für Ueckermünde als auch für
+    /// Ahlbeck; genau die Geografie des gemeldeten Falls. Nimmt die erste Region
+    /// den Anker, muss die zweite auf ihren eigenen ausweichen — sonst fragt sie
+    /// nie, und niemandem fällt es auf. Dieselbe stille Klasse, gegen die diese
+    /// Korrektur gebaut ist.
+    func testASecondRegionSharingTheAnchorStillGetsItsOwnRequest() async {
+        let repo = MockAreaRequestRepository()
+        let store = AreaRequestStore(repository: repo, defaults: defaults)
+
+        await store.requestArea(
+            anchors: ["penny-am-haff", "netto-ueckermuende"],
+            region: "17373", lat: 53.7383, lon: 14.0511
+        )
+        await store.requestArea(
+            anchors: ["penny-am-haff", "penny-karlshagen"],
+            region: "17419", lat: 53.9440, lon: 14.1830
+        )
+
+        XCTAssertEqual(repo.requested, ["penny-am-haff", "penny-karlshagen"],
+                       "Ahlbeck ging unter, weil Ueckermünde den Anker hielt")
+        XCTAssertEqual(store.pendingAreaPLZs, ["17373", "17419"])
+    }
+
+    /// Und dasselbe mit einem **fertigen** Lauf: Ist die Zeile des Ankers
+    /// erledigt, aber für die Nachbarstadt, dann ist für dieses Gebiet nichts
+    /// geholt worden. „Schon fertig" darf erst gelten, wenn es auch derselbe
+    /// Ort ist — sonst zählt der Lauf von Ueckermünde als Ahlbecks Ergebnis.
+    func testAFinishedRowFromAnotherTownDoesNotSwallowTheRegion() async {
+        let repo = MockAreaRequestRepository()
+        repo.ready = ["penny-am-haff"]
+        repo.coordinates = ["penny-am-haff": (lat: 53.7383, lon: 14.0511)]
+        let store = AreaRequestStore(repository: repo, defaults: defaults)
+
+        await store.requestArea(
+            anchors: ["penny-am-haff", "penny-karlshagen"],
+            region: "17419", lat: 53.9440, lon: 14.1830
+        )
+
+        XCTAssertEqual(repo.requested, ["penny-karlshagen"],
+                       "der fertige Lauf der Nachbarstadt zaehlte als erledigt")
+        XCTAssertTrue(store.isFetchingArea)
+    }
 }

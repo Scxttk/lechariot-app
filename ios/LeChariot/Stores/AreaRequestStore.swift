@@ -145,17 +145,31 @@ final class AreaRequestStore {
         lon: Double? = nil
     ) async {
         for anchor in anchors {
-            guard pendingAreas[anchor] == nil, !announced.contains(anchor) else { return }
+            // Unser eigener offener Auftrag für genau dieses Gebiet — der läuft
+            // schon, mehr ist nicht zu tun.
+            if pendingAreas[anchor] == region { return }
+
+            // Der Anker ist belegt: von einer anderen Region von uns, oder von
+            // einem Lauf, den wir schon gemeldet haben. Beides heißt **nicht**,
+            // dass dieses Gebiet erledigt ist — hierher kommen wir überhaupt nur,
+            // solange es weiter ungeholt aussieht. Also weiter zum nächsten
+            // Anker statt aufzugeben: Penny Am Haff ist die nächste Filiale
+            // sowohl für Ueckermünde als auch für Ahlbeck, und ein `return` an
+            // dieser Stelle hieße, dass die zweite der beiden Regionen nie
+            // fragt — genau die stille Klasse, gegen die v21 gebaut ist.
+            if pendingAreas[anchor] != nil || announced.contains(anchor) { continue }
 
             do {
                 if let existing = try await repository.request(marketId: anchor) {
+                    // Erst der Ort, dann der Zustand. Andersherum zählte der
+                    // fertige Lauf der Nachbarstadt als unser Ergebnis.
+                    if isForAnotherArea(existing, lat: lat, lon: lon) {
+                        continue
+                    }
                     if existing.isReady {
                         // Already fetched before we ever asked — nothing to wait
                         // for and nothing to announce.
                         return
-                    }
-                    if isForAnotherArea(existing, lat: lat, lon: lon) {
-                        continue
                     }
                 } else {
                     try await repository.requestArea(marketId: anchor, lat: lat, lon: lon)
