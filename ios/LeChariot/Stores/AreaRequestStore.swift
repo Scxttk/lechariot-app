@@ -21,10 +21,26 @@ private let nationwideChains: Set<String> = ["Kaufland", "Penny"]
 @MainActor
 @Observable
 final class AreaRequestStore {
-    /// The anchor whose area run we are waiting for. In defaults, not in
-    /// memory: the run outlives the app session, and the whole point is that
+    /// The anchors whose area runs we are waiting for, each mapped to the
+    /// region the picker was searching around when it asked. In defaults, not
+    /// in memory: the run outlives the app session, and the whole point is that
     /// the user hears about it when they come back.
-    private static let pendingKey = "areaRequest.pendingAnchor"
+    ///
+    /// **Several at once, and that is the fix.** This used to be a single
+    /// anchor, which quietly made the second region unfetchable forever: with
+    /// one request open, every further one was dropped — and a user with two
+    /// regions never got past the first. The backend's cooldown sits on the
+    /// *postcode* (migration v19), so two anchors in two areas are exactly the
+    /// case it was built for, and two in the same area are deduped there.
+    ///
+    /// The postcode in the value is **local display context only** — it says
+    /// which of the user's own regions this run belongs to, so the hint can
+    /// name it. It is never sent; the backend looks the area up from the anchor
+    /// itself, for the reason `AreaRequest` spells out.
+    private static let pendingKey = "areaRequest.pendingAreas"
+    /// The single anchor of the versions before that. Read once at startup and
+    /// folded in — see `adoptLegacyPendingAnchor`.
+    private static let legacyPendingKey = "areaRequest.pendingAnchor"
     /// Anchors whose completion has already been announced — otherwise the
     /// notice would return on every single launch.
     private static let announcedKey = "areaRequest.announcedAnchors"
@@ -32,11 +48,14 @@ final class AreaRequestStore {
     private let repository: AreaRequestRepositoryProtocol
     private let defaults: UserDefaults
 
-    /// True while the area directory is being fetched. Drives the quiet hint
-    /// in the picker, nothing blocking.
+    /// True while at least one area directory is being fetched. Drives the
+    /// quiet hint in the picker, nothing blocking.
     private(set) var isFetchingArea = false
     /// Set once a pending area has finished. Drives the notice in the list.
     private(set) var areaJustCompleted = false
+    /// The postcodes of the areas that just finished, for the notice. Empty
+    /// when the run came from a version that did not record one.
+    private(set) var completedAreaPLZs: [String] = []
 
     init(
         repository: AreaRequestRepositoryProtocol,
@@ -44,12 +63,32 @@ final class AreaRequestStore {
     ) {
         self.repository = repository
         self.defaults = defaults
-        isFetchingArea = pendingAnchor != nil
+        adoptLegacyPendingAnchor()
+        isFetchingArea = !pendingAreas.isEmpty
     }
 
-    private var pendingAnchor: String? {
-        get { defaults.string(forKey: Self.pendingKey) }
+    /// Carries an in-flight request from before this store could hold more than
+    /// one across the update. Without it the user who is mid-run when the
+    /// update lands loses the notice for good — the silent failure this whole
+    /// store exists to prevent.
+    private func adoptLegacyPendingAnchor() {
+        guard let legacy = defaults.string(forKey: Self.legacyPendingKey) else { return }
+        if pendingAreas[legacy] == nil {
+            // No postcode to go with it; the notice falls back to its generic
+            // wording rather than inventing one.
+            pendingAreas[legacy] = ""
+        }
+        defaults.removeObject(forKey: Self.legacyPendingKey)
+    }
+
+    private var pendingAreas: [String: String] {
+        get { defaults.dictionary(forKey: Self.pendingKey) as? [String: String] ?? [:] }
         set { defaults.set(newValue, forKey: Self.pendingKey) }
+    }
+
+    /// The postcodes still being fetched, so the picker can name them.
+    var pendingAreaPLZs: [String] {
+        Array(Set(pendingAreas.values.filter { !$0.isEmpty })).sorted()
     }
 
     private var announced: Set<String> {
@@ -63,19 +102,27 @@ final class AreaRequestStore {
     /// An empty list is deliberately *not* that signal: it means the search
     /// found nothing at all (no coordinates, no network), and requesting an
     /// area needs an anchor anyway.
-    static func areaLooksUnfetched(_ branches: [Branch]) -> Bool {
+    ///
+    /// Ask it **per region**, never over several merged: one region that has
+    /// been fetched answers for all of them, and the others then never get a
+    /// request at all. `PickerDirectory` is where that split lives.
+    ///
+    /// `nonisolated` because it is a pure test over an array, and
+    /// `PickerDirectory` asks it while building its plan, off the main actor.
+    nonisolated static func areaLooksUnfetched(_ branches: [Branch]) -> Bool {
         !branches.isEmpty && branches.allSatisfy { nationwideChains.contains($0.chain) }
     }
 
-    /// Asks for the directory around `anchor`, unless something is already on
-    /// its way.
+    /// Asks for the directory around `anchor`, unless *this* area is already on
+    /// its way. `region` is the postcode the picker was searching around, kept
+    /// only so the hint can name it.
     ///
     /// Reads before writing, for the same reason as `BranchRequestStore`: the
     /// trigger holds a 30-minute cooldown per area, so a second insert does
     /// nothing at all — silently. Reading first turns "nothing happened" into
     /// "it is already running".
-    func requestArea(anchor: String) async {
-        guard pendingAnchor == nil else { return }
+    func requestArea(anchor: String, region: String = "") async {
+        guard pendingAreas[anchor] == nil else { return }
         guard !announced.contains(anchor) else { return }
 
         do {
@@ -88,35 +135,67 @@ final class AreaRequestStore {
             } else {
                 try await repository.requestArea(marketId: anchor)
             }
-            pendingAnchor = anchor
+            pendingAreas[anchor] = region
             isFetchingArea = true
         } catch {
             // A failed request costs the extra chains, not the app. The user
             // still sees Kaufland and Penny, and the Sunday run catches up.
-            isFetchingArea = false
+            isFetchingArea = !pendingAreas.isEmpty
         }
     }
 
-    /// Checks whether the area we were waiting for has arrived. Call on launch
-    /// and when the app comes back to the foreground.
+    /// Checks whether the areas we were waiting for have arrived. Call on
+    /// launch and when the app comes back to the foreground.
     func checkPendingArea() async {
-        guard let anchor = pendingAnchor else { return }
-        guard let row = try? await repository.request(marketId: anchor) else { return }
-        guard row.isReady else {
+        let open = pendingAreas
+        guard !open.isEmpty else { return }
+
+        var stillOpen = open
+        var finishedPLZs: [String] = []
+        var seen = announced
+
+        for (anchor, region) in open {
+            // No row yet is not "finished" — leave it open and look again next
+            // time rather than dropping the request on a hiccup.
+            guard let row = try? await repository.request(marketId: anchor) else { continue }
+            guard row.isReady else { continue }
+            stillOpen[anchor] = nil
+            seen.insert(anchor)
+            // The backend derived the area from the anchor itself, so its
+            // postcode is the better one; ours is the fallback.
+            if let plz = row.plz ?? (region.isEmpty ? nil : region) {
+                finishedPLZs.append(plz)
+            }
+        }
+
+        guard stillOpen.count != open.count else {
             isFetchingArea = true
             return
         }
-        pendingAnchor = nil
-        isFetchingArea = false
-        var seen = announced
-        seen.insert(anchor)
+
+        pendingAreas = stillOpen
         announced = seen
+        isFetchingArea = !stillOpen.isEmpty
+        completedAreaPLZs = Array(Set(finishedPLZs)).sorted()
         areaJustCompleted = true
     }
 
     /// The user has seen the notice.
     func dismissCompletionNotice() {
         areaJustCompleted = false
+        completedAreaPLZs = []
+    }
+
+    /// Wipes both keys. Without this the `announced` set survives a debug
+    /// reset, and a fresh onboarding in the same area would never ask again —
+    /// which makes the multi-region fix impossible to demonstrate on device.
+    func resetAllData() {
+        defaults.removeObject(forKey: Self.pendingKey)
+        defaults.removeObject(forKey: Self.legacyPendingKey)
+        defaults.removeObject(forKey: Self.announcedKey)
+        isFetchingArea = false
+        areaJustCompleted = false
+        completedAreaPLZs = []
     }
 
     #if DEBUG
@@ -126,8 +205,10 @@ final class AreaRequestStore {
     /// completion notice.
     /// `nonisolated`, weil hier nur in die Defaults geschrieben wird und der
     /// Aufruf aus `AppRepositories` kommt — das läuft vor dem ersten Store.
-    nonisolated static func seedPendingArea(_ anchor: String, in defaults: UserDefaults) {
-        defaults.set(anchor, forKey: pendingKey)
+    nonisolated static func seedPendingArea(
+        _ anchor: String, region: String = "", in defaults: UserDefaults
+    ) {
+        defaults.set([anchor: region], forKey: pendingKey)
     }
     #endif
 }

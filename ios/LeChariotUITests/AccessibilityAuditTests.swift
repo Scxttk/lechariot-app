@@ -50,6 +50,26 @@ final class AccessibilityAuditTests: XCTestCase {
         try audit("Ernährung")
         app.buttons["onboarding.skip"].tap()
         try audit("Einwilligung")
+
+        // Der Picker wurde bis hierher nie gemessen — und er ist der einzige
+        // Bildschirm, auf dem eine Zeile ihren Zustand trägt (gewählt/nicht
+        // gewählt) und ihre Entfernung im Hinweis statt im Namen.
+        //
+        // Erst eine Filiale antippen, dann messen — dieselbe Regel wie zwei
+        // Schritte weiter oben bei der Postleitzahl. Ungewählt meldet der Audit
+        // zwei Dinge, die beide nicht die Farbe betreffen: „Fertig" ist bis
+        // dahin **deaktiviert** und damit von der Anforderung ausgenommen, und
+        // die Fußzeile „Wähle mindestens eine Filiale, um fortzufahren." liegt
+        // auf `.bar` — genau die durchscheinende Fläche, für die weiter unten
+        // in dieser Datei nachgemessen ist, dass der Audit Zwischenwerte liest.
+        // Sie ist ohnehin `accessibilityHidden`, weil ihr Inhalt im Hinweis des
+        // Knopfes steht. Gemessen wird deshalb der Zustand, in dem der Nutzer
+        // tatsächlich vor der Liste sitzt.
+        app.buttons["onboarding.primary"].tap()
+        let branch = app.buttons["Lidl, Dresden Reick"]
+        XCTAssertTrue(branch.waitForExistence(timeout: 15), "Picker nicht geladen")
+        branch.tap()
+        try audit("Filialen wählen")
     }
 
     func testShoppingListAndSettingsPassTheAudit() throws {
@@ -269,12 +289,16 @@ final class AccessibilityAuditTests: XCTestCase {
         // meldet Kontrastfehler für Texte, die im Ruhezustand einwandfrei sind.
         // Dieselbe Falle wie im dunklen Modus, siehe oben.
         Thread.sleep(forTimeInterval: 1.2)
+        let blurred = scrollEdgeRegion()
         try app.performAccessibilityAudit { issue in
             let element = issue.element?.description ?? "kein benanntes Element"
             print("AUDIT|\(screen)|\(issue.auditType.rawValue)|\(issue.compactDescription)|\(element.prefix(120))")
 
+            let underTheSearchBar = issue.auditType == .contrast
+                && issue.element.map { blurred.intersects($0.frame) } == true
             let handledElsewhere = Self.knownSystemDrawn.contains { element.contains($0) }
                 || (issue.auditType == .contrast && issue.element == nil)
+                || underTheSearchBar
             // Nur harte Durchfaller. „nearly passed" trifft flächendeckend die
             // sekundäre Systemfarbe (gemessen 3,15:1 auf der Creme, 3,93:1 auf
             // den Karten) — ein bekannter, im Backlog stehender Umbau, kein
@@ -288,6 +312,41 @@ final class AccessibilityAuditTests: XCTestCase {
             }
             return true   // selbst berichtet
         }
+    }
+
+    /// Die Fläche, in der die durchscheinende Suchleiste den Kontrast
+    /// verfälscht — sie selbst plus der weich auslaufende Verlauf darüber, den
+    /// iOS über scrollenden Inhalt legt.
+    ///
+    /// Der Audit misst dort **Mischfarben** statt der gezeichneten. Aufgefallen
+    /// im Filialpicker: „REWE Friedrichstadt" fiel durch, gesetzt in `.primary`
+    /// — fast Schwarz auf Weiß, rund 15:1. Ein Text, der bei 15:1 durchfällt,
+    /// wird nicht gemessen, sondern durch etwas hindurch gemessen; dieselben
+    /// zwei Farben gehen drei Zeilen weiter oben anstandslos durch.
+    ///
+    /// Der Fehler ist obendrein sprunghaft — in vier Läufen desselben Tests
+    /// trat er einmal auf; in den anderen drei meldete der Audit dieselben
+    /// Stellen **ohne Element** und war damit schon durch die Zeile darüber
+    /// ausgenommen. Ein Test, der in jedem vierten Lauf rot wird, ist kein
+    /// Signal mehr.
+    ///
+    /// Die Höhe des Verlaufs ist aus dem Layout abgeleitet, nicht auf diesen
+    /// einen Bildschirm gepasst: eine Leistenhöhe plus die sichere Fläche
+    /// darunter. Gemessen am iPhone 17 Pro (Fenster 402 × 874 pt, Leiste bei
+    /// y = 803, 38 pt hoch, 33 pt sichere Fläche) liegt die Grenze damit bei
+    /// y = 732 — zwischen dem tiefsten korrekt beurteilten Element (Abschnitts-
+    /// überschrift „REWE", endet bei 705) und dem flachsten falsch beurteilten
+    /// (Adresszeile, beginnt bei 743).
+    ///
+    /// Ohne Suchleiste ist die Fläche leer, und `CGRect.null` schneidet nichts.
+    private func scrollEdgeRegion() -> CGRect {
+        let search = app.searchFields.firstMatch
+        guard search.exists else { return .null }
+        let bar = search.frame
+        let window = app.windows.firstMatch.frame
+        let gradient = bar.height + (window.maxY - bar.maxY)
+        let top = bar.minY - gradient
+        return CGRect(x: window.minX, y: top, width: window.width, height: window.maxY - top)
     }
 
     /// Vom System gezeichnet oder rein dekorativ — beides nicht über die

@@ -114,15 +114,19 @@ struct ShoppingListView: View {
                             Label("Löschen", systemImage: "trash")
                         }
                     }
+                    // Pro Zeile statt pro Abschnitt: Diese Zeilen wischen, und
+                    // ein flacher Hintergrund zeigt dabei eine eckige Kante.
+                    .groupedRowBackground(
+                        GroupedRowPosition(index: index, count: list.uncheckedItems.count)
+                    )
                 }
             }
-            .listRowBackground(Theme.surface)
 
             suggestionSection
 
             if !list.checkedItems.isEmpty {
                 Section("Erledigt") {
-                    ForEach(list.checkedItems) { item in
+                    ForEach(Array(list.checkedItems.enumerated()), id: \.element.id) { index, item in
                         ShoppingListRowView(item: item, match: nil) {
                             withAnimation { list.toggle(item) }
                         }
@@ -133,9 +137,11 @@ struct ShoppingListView: View {
                                 Label("Löschen", systemImage: "trash")
                             }
                         }
+                        .groupedRowBackground(
+                            GroupedRowPosition(index: index, count: list.checkedItems.count)
+                        )
                     }
                 }
-                .listRowBackground(Theme.surface)
             }
 
             // Reserved ad position: below everything, well clear of the plan

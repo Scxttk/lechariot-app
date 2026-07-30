@@ -390,6 +390,25 @@ struct PriceText: View {
 
 // MARK: - Card container
 
+/// Where a row sits inside its section — which corners it has to round.
+enum GroupedRowPosition {
+    case only, first, middle, last
+
+    /// Builds the position from an index, so callers do not repeat the
+    /// off-by-one that a single-row section invites.
+    init(index: Int, count: Int) {
+        switch (index, count) {
+        case (_, 1): self = .only
+        case (0, _): self = .first
+        case (count - 1, _): self = .last
+        default: self = .middle
+        }
+    }
+
+    var roundsTop: Bool { self == .first || self == .only }
+    var roundsBottom: Bool { self == .last || self == .only }
+}
+
 extension View {
     /// Standard elevated card on the grouped background: surface fill,
     /// hairline edge, and a soft two-layer shadow. The shadow is nearly
@@ -397,6 +416,34 @@ extension View {
     func themeCard() -> some View {
         padding(Theme.Spacing.lg)
             .cardSurface()
+    }
+
+    /// Row background that carries the group's rounding itself.
+    ///
+    /// `.listRowBackground(Theme.surface)` hands the list a flat colour, and a
+    /// flat colour does not know it sits at the top or bottom of a rounded
+    /// section. While the row is still, the system container hides that; the
+    /// moment it slides — a swipe action — the row travels out of the container
+    /// and shows a hard rectangular edge inside the rounded frame. Reported
+    /// 2026-07-30 as "there is a round container and if you swipe it gets a
+    /// hard line".
+    ///
+    /// Only needed on rows that can actually move. A static section is fine
+    /// with the plain colour.
+    func groupedRowBackground(_ position: GroupedRowPosition) -> some View {
+        let radius = Theme.Radius.card
+        let top = position.roundsTop ? radius : 0
+        let bottom = position.roundsBottom ? radius : 0
+        return listRowBackground(
+            UnevenRoundedRectangle(
+                topLeadingRadius: top,
+                bottomLeadingRadius: bottom,
+                bottomTrailingRadius: bottom,
+                topTrailingRadius: top,
+                style: .continuous
+            )
+            .fill(Theme.surface)
+        )
     }
 
     /// Surface + edge + shadow without the padding, for tiles that manage

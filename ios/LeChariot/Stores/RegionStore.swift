@@ -160,9 +160,21 @@ final class RegionStore {
         markReady(plz)
     }
 
+    /// Removes a postcode. **The chosen branches stay.**
+    ///
+    /// This used to also drop every favourite whose own `plz` equalled the
+    /// region, which sounds tidy and worked almost never: the picker offers
+    /// everything within 10–40 km, and a store's own postcode is hardly ever
+    /// the region's. Penny Gößnitz carries 04639, the region was 04626 — so it
+    /// survived, while a store that happened to sit in 04626 would have gone.
+    /// Half a cleanup, decided by a coincidence of postcode boundaries.
+    ///
+    /// The honest version is to not do it at all: the app cannot tell a
+    /// leftover from a branch someone picked across the border on purpose —
+    /// which is the very case regions exist for. Branches are removed one by
+    /// one in the settings, where doing so is now visible.
     func removeRegion(_ plz: String) {
         regions.removeAll { $0 == plz }
-        favoriteMarkets.removeAll { $0.plz == plz }
         readyRegions.remove(plz)
         syncStates[plz] = nil
         if selectedRegion == plz { selectedRegion = regions.first }

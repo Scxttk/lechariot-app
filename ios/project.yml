@@ -14,16 +14,28 @@ targets:
     platform: iOS
     sources:
       - path: LeChariot
+        # Die Vorlage gehört ins Repo, aber nicht in die App: sie landete sonst
+        # als APIKeys.example.plist im Bundle jedes Testers.
+        excludes:
+          - Resources/APIKeys.example.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skoehler.lechariot
         GENERATE_INFOPLIST_FILE: true
+        # Die App verschlüsselt nichts selbst, sie redet nur per HTTPS mit
+        # Supabase — damit greift die Standardausnahme. Ohne diesen Eintrag
+        # fragt App Store Connect die Exportbestimmungen bei *jedem* Build
+        # einzeln ab und der Build bleibt bis dahin für Tester gesperrt.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: false
         # Der Zielname trägt kein Leerzeichen (Modul, Schema, Ordner), der
         # Homescreen soll aber "Le Chariot" zeigen — das ist der Markenname.
         INFOPLIST_KEY_CFBundleDisplayName: "Le Chariot"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
-        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Dein Standort wird einmalig verwendet, um deine Postleitzahl zu ermitteln. Du kannst sie auch manuell eingeben."
+        # Der Text nennt beide Zwecke, seit die Entfernungen im Filial-Picker
+        # ab dem Standort gemessen werden — vorher stand hier "einmalig, um
+        # deine Postleitzahl zu ermitteln", und das stimmte dann nicht mehr.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Dein Standort wird verwendet, um deine Postleitzahl zu ermitteln und die Entfernung zu den Filialen zu berechnen. Beides geht auch ohne — die PLZ kannst du eingeben, die Entfernungen rechnen wir dann ab deren Mitte."
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         # iPad may rotate; the iPhone stays portrait — a one-handed shopping
         # list has nothing to gain from landscape.

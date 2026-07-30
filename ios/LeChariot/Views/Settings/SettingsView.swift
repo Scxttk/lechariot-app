@@ -9,11 +9,13 @@ struct SettingsView: View {
     @Environment(MatchRejectionStore.self) private var rejections
     @Environment(MatchFeedbackStore.self) private var feedback
     @Environment(TutorialStore.self) private var tutorial
+    @Environment(AreaRequestStore.self) private var areaRequests
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
 
     @State private var showResetConfirmation = false
+    @State private var regionToRemove: String?
 
     var body: some View {
         NavigationStack {
@@ -48,14 +50,24 @@ struct SettingsView: View {
             .sorted { ($0.chain, $0.branchName) < ($1.chain, $1.branchName) }
         return Section {
             ForEach(branches) { market in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(market.chain)
-                        .font(.body.weight(.medium))
-                    Text(market.isNationwide
-                        ? "Deutschlandweit"
-                        : "\(market.branchName) · PLZ \(market.plz)")
-                        .font(.caption)
-                        .foregroundStyle(Theme.secondaryText)
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(market.chain)
+                            .font(.body.weight(.medium))
+                        Text(market.isNationwide
+                            ? "Deutschlandweit"
+                            : "\(market.branchName) · PLZ \(market.plz)")
+                            .font(.caption)
+                            .foregroundStyle(Theme.secondaryText)
+                    }
+                    Spacer()
+                    // Bis hierher gab es überhaupt keinen Weg, eine Filiale
+                    // wieder loszuwerden — nur zurück in den Picker und dort
+                    // abwählen. Wer nach einem Umzug eine falsch gewordene
+                    // Filiale stehen hat, sucht sie aber hier.
+                    removeButton("\(market.chain) \(market.branchName) entfernen") {
+                        store.toggleFavorite(market)
+                    }
                 }
             }
             if let plz = store.regions.first {
@@ -69,6 +81,17 @@ struct SettingsView: View {
                 // `Section` reicht den Modifikator an jede Zeile einzeln durch,
                 // und übrig blieb der Fußtext statt der Filialen.
                 .tutorialAnchor(.settingsMarkets)
+            } else {
+                // Ohne Region verschwand dieser Link ersatzlos — und mit ihm
+                // der einzige Weg zu den Filialen. Eine Sackgasse, aus der nur
+                // der Weg über einen anderen Abschnitt herausführte.
+                NavigationLink {
+                    AddRegionScreen()
+                } label: {
+                    Label("Region hinzufügen, um Filialen zu wählen", systemImage: "plus")
+                        .foregroundStyle(Theme.accent)
+                }
+                .tutorialAnchor(.settingsMarkets)
             }
         } header: {
             Text("Deine Filialen")
@@ -77,6 +100,28 @@ struct SettingsView: View {
                  ? "Ohne gewählte Filiale werden keine Angebote angezeigt."
                  : "Nur Angebote dieser Filialen zählen für deine Liste.")
         }
+    }
+
+    /// Ein sichtbarer Papierkorb statt einer Wischgeste.
+    ///
+    /// Beides zusammen ginge auch, aber `.swipeActions` auf einer Zeile mit
+    /// flachem `.listRowBackground` zieht während der Animation eine rechteckige
+    /// Kante durch den runden Container — und eine Geste, die im Fußtext erklärt
+    /// werden muss, hat ihren Zweck ohnehin verfehlt.
+    ///
+    /// `Theme.error`, nie System-Rot: das gemessene Kontrastproblem auf der
+    /// cremefarbenen Fläche.
+    private func removeButton(_ label: String, action: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation { action() }
+        } label: {
+            Image(systemName: "trash")
+                .foregroundStyle(Theme.error)
+        }
+        .buttonStyle(.borderless)
+        // Ohne Label liest VoiceOver „Papierkorb" vor — und lässt offen,
+        // welche der gleich aussehenden Zeilen daran hängt.
+        .accessibilityLabel(label)
     }
 
     // MARK: Hilfe
@@ -107,17 +152,14 @@ struct SettingsView: View {
     private var regionSection: some View {
         Section {
             ForEach(store.regions, id: \.self) { plz in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("PLZ \(plz)")
-                        .font(.body.weight(.medium))
-                    syncStateLabel(store.syncState(for: plz))
-                }
-                .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) {
-                        withAnimation { store.removeRegion(plz) }
-                    } label: {
-                        Label("Entfernen", systemImage: "trash")
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("PLZ \(plz)")
+                            .font(.body.weight(.medium))
+                        syncStateLabel(store.syncState(for: plz))
                     }
+                    Spacer()
+                    removeButton("PLZ \(plz) entfernen") { regionToRemove = plz }
                 }
             }
             NavigationLink {
@@ -130,7 +172,29 @@ struct SettingsView: View {
         } header: {
             Text("Regionen")
         } footer: {
-            Text("Angebote sind regional. Wohnst du an einer PLZ-Grenze, füge die Nachbar-PLZ hinzu — dann kannst du auch dort Filialen wählen. Wische nach links, um eine Region zu entfernen.")
+            Text("Angebote sind regional. Wohnst du an einer PLZ-Grenze, füge die Nachbar-PLZ hinzu — dann kannst du auch dort Filialen wählen.")
+        }
+        .confirmationDialog(
+            regionToRemove.map { "PLZ \($0) entfernen?" } ?? "",
+            isPresented: Binding(
+                get: { regionToRemove != nil },
+                set: { if !$0 { regionToRemove = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Entfernen", role: .destructive) {
+                if let plz = regionToRemove { withAnimation { store.removeRegion(plz) } }
+                regionToRemove = nil
+            }
+            Button("Abbrechen", role: .cancel) { regionToRemove = nil }
+        } message: {
+            // Sagt, was *nicht* passiert. Genau daran hing die Verwirrung: Wer
+            // umzieht, erwartet, dass mit der PLZ auch die dortigen Filialen
+            // gehen — und die App kann eine vergessene nicht von einer bewusst
+            // über die Grenze gewählten unterscheiden.
+            Text(store.regions.count == 1
+                 ? "Deine gewählten Filialen bleiben. Ohne Region kannst du allerdings keine neuen suchen."
+                 : "Deine gewählten Filialen bleiben — die entfernst du einzeln unter „Deine Filialen“.")
         }
     }
 
@@ -242,7 +306,8 @@ struct SettingsView: View {
                     DebugReset.everything(
                         regions: store, profile: profile,
                         list: list, rejections: rejections,
-                        feedback: feedback, tutorial: tutorial
+                        feedback: feedback, tutorial: tutorial,
+                        areaRequests: areaRequests
                     )
                 }
                 Button("Abbrechen", role: .cancel) {}
