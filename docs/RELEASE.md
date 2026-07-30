@@ -38,10 +38,15 @@ So there are two prerequisites below, not one.
 ## Version and build number
 
 `MARKETING_VERSION` lives in `ios/project.yml` and is the number testers see.
-The build number is the commit count, set at archive time. It is the only number
-in the project that rises on its own and still holds after `xcodegen generate` —
-written into `project.yml` it would reset on every regeneration, and App Store
-Connect refuses a build number it has already seen.
+The build number is a UTC timestamp, `YYYY.MMDD.hhmm`, set at archive time —
+never written into `project.yml`, where `xcodegen generate` would reset it.
+
+It used to be the commit count, which read nicely and broke on first contact
+with a squash merge: thirteen commits collapsed into one, the count fell from 85
+to 76, and App Store Connect requires the build number to *rise* within a
+version. Any history rewrite does that. A clock cannot go backwards, so the
+timestamp is the number and the commit hash in the script's output says which
+code it was.
 
 So: raise `MARKETING_VERSION` by hand when a release means something, and never
 touch the build number.

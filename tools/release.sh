@@ -6,10 +6,18 @@
 #   tools/release.sh --upload     # zusätzlich hochladen (App-Store-Connect-Key)
 #   tools/release.sh --dirty      # auch mit ungespeicherten Änderungen bauen
 #
-# Die Build-Nummer ist die Commit-Zahl. Das ist die einzige Zahl im Projekt, die
-# von allein steigt und nach einem `xcodegen generate` noch stimmt — in
-# project.yml eingetragen wäre sie nach jedem Regenerieren wieder auf dem alten
-# Stand, und App Store Connect nimmt dieselbe Build-Nummer kein zweites Mal an.
+# Die Build-Nummer ist ein UTC-Zeitstempel, `JJJJ.MMTT.hhmm`.
+#
+# Vorher war es die Commit-Zahl, und das ging genau einmal gut. Ein
+# Squash-Merge fasst dreizehn Commits zu einem zusammen: Die Zahl fiel von 85
+# auf 76, also **rückwärts**, und App Store Connect verlangt für dieselbe
+# Version eine steigende Build-Nummer. Dasselbe passiert bei jedem Rebase, der
+# Commits zusammenfasst. Ein Zeitstempel kann das nicht — er steigt, egal was
+# mit der Historie geschieht.
+#
+# Drei Bestandteile statt einer zwölfstelligen Zahl, damit jeder Teil unter
+# 10000 bleibt; welcher Stand gebaut wurde, sagt der Commit-Hash in der
+# Ausgabe unten und der Git-Verlauf.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -54,7 +62,7 @@ done
 
 command -v xcodegen >/dev/null || fail "xcodegen fehlt: brew install xcodegen"
 
-BUILD_NUMBER="$(git rev-list --count HEAD)"
+BUILD_NUMBER="$(date -u +%Y.%m%d.%H%M)"
 VERSION="$(grep -m1 'MARKETING_VERSION:' "$IOS/project.yml" | awk '{print $2}')"
 echo "▸ Le Chariot $VERSION (Build $BUILD_NUMBER) — $(git rev-parse --short HEAD)"
 
