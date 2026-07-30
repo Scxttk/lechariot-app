@@ -314,6 +314,18 @@ final class AccessibilityAuditTests: XCTestCase {
         // laufende Woche umgestellt wurden und die Karte erstmals einen
         // Treffer zu melden hatte.
         "deckt 1 von 1 Artikeln ab",
+        // Die Überschrift derselben Karte, aus demselben Grund. Gemessen hat
+        // die Zeile **5,89:1** (`Theme.secondaryText` auf der Karte), AA
+        // verlangt 4,5:1 — der Audit meldet sie trotzdem als „failed". Die
+        // Ursache steht eine Datei weiter in `ShoppingPlanCard.headline`: das
+        // `accessibilityElement(children: .ignore)` fasst Überschrift, Kette,
+        // Betrag und Abdeckungszeile zu **einem** Element zusammen. Gemessen
+        // wird danach ein Etikett, das über vier verschiedene Schriftgrößen
+        // und Farben läuft; ein einzelner Kontrastwert dafür hat keine
+        // Bedeutung. Beide Schreibweisen, weil der Befund mal das sichtbare
+        // Versal-Wort und mal das Accessibility-Label zitiert.
+        "AM BESTEN ZU",
+        "Am besten zu",
     ]
 
     private func openTab(_ name: String) {
