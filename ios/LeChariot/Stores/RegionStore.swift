@@ -18,32 +18,14 @@ enum PLZValidator {
 
 // MARK: - Sync state
 
-/// Lifecycle of a region between "user typed a PLZ" and "offers available".
+/// Whether a postcode is usable. Since migration v16 there is nothing to wait
+/// for — a postcode is ready the moment it is typed — so the only distinction
+/// left is "known to this install" or not.
 enum RegionSyncState: Equatable {
-    /// Nothing known yet (initial, or check not started).
+    /// Not one of the user's postcodes.
     case unknown
-    /// Region row was missing; anon INSERT sent, waiting for backend to pick it up.
-    case requested
-    /// Region row exists but `last_synced` is still nil; polling for completion.
-    case syncing
-    /// Region has been synced at least once; offers/markets are available.
+    /// Saved and usable.
     case ready
-    /// Check or registration failed, or polling timed out.
-    case failed(RegionSyncFailure)
-}
-
-enum RegionSyncFailure: Equatable {
-    /// Network/server error during check or registration.
-    case network
-    /// Polling exhausted; backend will usually deliver data overnight.
-    case timedOut
-}
-
-/// Heuristic snapshot of a running backend sync: markets appear one by one,
-/// the offer count grows. No total exists, so no percentage is derived.
-struct RegionSyncProgress: Equatable {
-    var markets: [Market] = []
-    var offerCount: Int = 0
 }
 
 // MARK: - Store
@@ -59,14 +41,7 @@ struct RegionSyncProgress: Equatable {
 final class RegionStore {
     static let maxRegions = 10
 
-    private let repository: RegionRepositoryProtocol
     private let defaults: UserDefaults
-    /// Interval between polls while a region is syncing. Injectable for tests.
-    private let pollInterval: Duration
-    /// Maximum number of polls before giving up (~10 min at 30 s default).
-    private let maxPollAttempts: Int
-    /// Interval between progress polls while the WaitingView is visible.
-    private let progressPollInterval: Duration
 
     /// Saved PLZs, in the order the user added them.
     private(set) var regions: [String]
@@ -78,13 +53,9 @@ final class RegionStore {
     private(set) var readyRegions: Set<String>
     /// Live sync state per PLZ for the current app session.
     private(set) var syncStates: [String: RegionSyncState] = [:]
-    /// Live progress per PLZ while a sync runs (fed by `observeProgress`).
-    private(set) var syncProgress: [String: RegionSyncProgress] = [:]
     /// Set once the user has walked through onboarding, and never cleared by
     /// normal use. See `isOnboardingComplete`.
     private(set) var hasCompletedOnboarding: Bool
-
-    private var pollTasks: [String: Task<Void, Never>] = [:]
 
     private enum Keys {
         static let regions = "region.plzs"
@@ -96,18 +67,8 @@ final class RegionStore {
         static let all = [regions, selected, favorites, ready, onboarded]
     }
 
-    init(
-        repository: RegionRepositoryProtocol,
-        defaults: UserDefaults = AppDefaults.shared,
-        pollInterval: Duration = .seconds(30),
-        maxPollAttempts: Int = 20,
-        progressPollInterval: Duration = .seconds(10)
-    ) {
-        self.repository = repository
+    init(defaults: UserDefaults = AppDefaults.shared) {
         self.defaults = defaults
-        self.pollInterval = pollInterval
-        self.maxPollAttempts = maxPollAttempts
-        self.progressPollInterval = progressPollInterval
         self.regions = defaults.stringArray(forKey: Keys.regions) ?? []
         self.selectedRegion = defaults.string(forKey: Keys.selected)
         self.readyRegions = Set(defaults.stringArray(forKey: Keys.ready) ?? [])
@@ -175,34 +136,6 @@ final class RegionStore {
         syncStates[plz] ?? .unknown
     }
 
-    func progress(for plz: String) -> RegionSyncProgress {
-        syncProgress[plz] ?? RegionSyncProgress()
-    }
-
-    /// Polls found markets and the offer count for a PLZ while its sync runs.
-    /// Meant to be bound to the WaitingView's lifetime via `.task` — it returns
-    /// when the view disappears (cancellation) or the sync leaves the
-    /// requested/syncing states, so nothing polls behind the user's back.
-    /// Best-effort: single failed fetches keep the previous snapshot.
-    func observeProgress(plz: String) async {
-        while !Task.isCancelled {
-            switch syncState(for: plz) {
-            case .requested, .syncing, .unknown:
-                break
-            case .ready, .failed:
-                return
-            }
-            var snapshot = progress(for: plz)
-            if let markets = try? await repository.foundMarkets(plz: plz) {
-                snapshot.markets = markets
-            }
-            if !Task.isCancelled, syncProgress[plz] != snapshot {
-                syncProgress[plz] = snapshot
-            }
-            try? await Task.sleep(for: progressPollInterval)
-        }
-    }
-
     // MARK: Region flow
 
     /// Adds a postcode. **Nothing is asked of the backend any more.**
@@ -227,15 +160,7 @@ final class RegionStore {
         markReady(plz)
     }
 
-    /// Kept so the failure path in the UI still compiles; with no backend
-    /// round-trip there is nothing left that could fail.
-    func retry(_ plz: String) async {
-        markReady(plz)
-    }
-
     func removeRegion(_ plz: String) {
-        pollTasks[plz]?.cancel()
-        pollTasks[plz] = nil
         regions.removeAll { $0 == plz }
         favoriteMarkets.removeAll { $0.plz == plz }
         readyRegions.remove(plz)
@@ -255,11 +180,6 @@ final class RegionStore {
         syncStates[plz] = .ready
         readyRegions.insert(plz)
         persist()
-    }
-
-    /// Awaits an in-flight poll task; used by tests to run the machine to completion.
-    func waitForPolling(_ plz: String) async {
-        await pollTasks[plz]?.value
     }
 
     // MARK: Wunschmärkte
@@ -294,14 +214,11 @@ final class RegionStore {
     /// render is indistinguishable from a first launch. Debug builds only —
     /// see `DebugReset`.
     func resetAllData() {
-        for task in pollTasks.values { task.cancel() }
-        pollTasks.removeAll()
         regions = []
         selectedRegion = nil
         favoriteMarkets = []
         readyRegions = []
         syncStates = [:]
-        syncProgress = [:]
         hasCompletedOnboarding = false
         for key in Keys.all { defaults.removeObject(forKey: key) }
     }

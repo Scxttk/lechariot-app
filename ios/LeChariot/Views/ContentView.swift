@@ -243,7 +243,7 @@ struct ContentView: View {
 
 #Preview {
     ContentView(marketRepository: MockMarketRepository())
-        .environment(RegionStore(repository: MockRegionRepository()))
+        .environment(RegionStore())
         // Liste, Einstellungen und Onboarding lesen alle das Profil; im echten
         // Start kommt es aus `LeChariotApp`. Ohne das hier stürzt die Preview
         // beim Wechsel in die Einstellungen ab.

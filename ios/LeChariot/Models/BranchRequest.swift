@@ -3,7 +3,7 @@ import Foundation
 /// Row of the Supabase `branch_requests` table (backend migration v14) — the
 /// app's way of saying "I picked this store, please fetch its offers".
 ///
-/// Same shape as `Region`, one level more precise. Inserting a row fires a
+/// Inserting a row fires a
 /// database trigger that dispatches the backend's nightly workflow for exactly
 /// this store; the app then polls `lastSynced`. Measured end to end on
 /// 2026-07-25: insert to running workflow took **one second**, insert to 162

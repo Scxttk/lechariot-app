@@ -141,14 +141,6 @@ struct SettingsView: View {
             Text("Bereit")
                 .font(.caption)
                 .foregroundStyle(Theme.secondaryText)
-        case .requested, .syncing:
-            Text("Wird vorbereitet …")
-                .font(.caption)
-                .foregroundStyle(Theme.secondaryText)
-        case .failed:
-            Text("Vorbereitung fehlgeschlagen")
-                .font(.caption)
-                .foregroundStyle(Theme.error)
         case .unknown:
             Text("Noch nicht geprüft")
                 .font(.caption)
@@ -376,7 +368,7 @@ private struct ProfileEditScreen: View {
 
 #Preview {
     SettingsView(marketRepository: MockMarketRepository())
-        .environment(RegionStore(repository: MockRegionRepository()))
+        .environment(RegionStore())
         .environment(ProfileStore())
         .environment(ShoppingListStore())
         .environment(MatchRejectionStore())

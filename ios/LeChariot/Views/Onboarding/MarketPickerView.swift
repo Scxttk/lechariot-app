@@ -467,6 +467,6 @@ struct MarketPickerView: View {
 #Preview {
     NavigationStack {
         MarketPickerView(plz: "01219", marketRepository: MockMarketRepository(), onDone: {})
-            .environment(RegionStore(repository: MockRegionRepository()))
+            .environment(RegionStore())
     }
 }
