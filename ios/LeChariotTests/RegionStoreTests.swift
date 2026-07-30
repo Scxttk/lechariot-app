@@ -209,17 +209,36 @@ final class RegionStoreTests: XCTestCase {
     }
     #endif
 
-    func testRemoveRegionClearsFavoritesAndSelection() async {
+    func testRemoveRegionClearsTheRegionAndItsSelection() async {
         let store = makeStore()
 
         await store.addRegion("01219")
-        store.toggleFavorite(Market(chain: "Lidl", branchName: "Dresden Reick", marketId: "lidl-01219-1", plz: "01219"))
         store.removeRegion("01219")
 
         XCTAssertTrue(store.regions.isEmpty)
         XCTAssertNil(store.selectedRegion)
-        XCTAssertTrue(store.favoriteMarkets.isEmpty)
         XCTAssertEqual(store.syncState(for: "01219"), .unknown)
+    }
+
+    /// Regionen und Filialen werden getrennt gelöscht.
+    ///
+    /// Vorher fielen mit der Region alle Favoriten, deren **eigene** PLZ die
+    /// der Region war. Das arbeitete nur halb: Der Picker bietet alles im
+    /// Umkreis von 10–40 km an, und die eigene PLZ einer Filiale ist fast nie
+    /// die der Region — Penny Gößnitz trägt 04639, gewählt wurde er unter
+    /// 04626. Was blieb und was ging, entschied ein Zufall der PLZ-Grenzen.
+    func testRemoveRegionLeavesTheChosenBranchesAlone() async {
+        let store = makeStore()
+        let sameRegion = Market(chain: "Lidl", branchName: "Dresden Reick", marketId: "lidl-01219-1", plz: "01219")
+        let acrossTheBorder = Market(chain: "Penny", branchName: "Penny Gößnitz", marketId: "penny-04639-1", plz: "04639")
+
+        await store.addRegion("01219")
+        store.toggleFavorite(sameRegion)
+        store.toggleFavorite(acrossTheBorder)
+        store.removeRegion("01219")
+
+        XCTAssertTrue(store.regions.isEmpty)
+        XCTAssertEqual(store.favoriteMarkets, [sameRegion, acrossTheBorder])
     }
 
     // MARK: Corrupt/out-of-sync persisted state

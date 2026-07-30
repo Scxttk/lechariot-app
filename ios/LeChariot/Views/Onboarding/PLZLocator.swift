@@ -32,9 +32,14 @@ final class PLZLocator: NSObject, CLLocationManagerDelegate {
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
     }
 
-    /// Requests permission if needed, fetches one location and reverse-geocodes
-    /// it to a postal code.
-    func currentPLZ() async throws -> String {
+    /// Whether asking would put a system dialog on screen. The picker uses this
+    /// to decide between reading the location silently and offering a button:
+    /// an unprompted permission sheet on a screen the user opened to pick shops
+    /// is a question they did not ask for.
+    var authorizationStatus: CLAuthorizationStatus { manager.authorizationStatus }
+
+    /// Requests permission if needed and fetches one location.
+    func currentCoordinates() async throws -> (lat: Double, lon: Double) {
         let location = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<CLLocation, Error>) in
             continuation = cont
             switch manager.authorizationStatus {
@@ -46,6 +51,14 @@ final class PLZLocator: NSObject, CLLocationManagerDelegate {
                 manager.requestLocation()
             }
         }
+        return (location.coordinate.latitude, location.coordinate.longitude)
+    }
+
+    /// Requests permission if needed, fetches one location and reverse-geocodes
+    /// it to a postal code.
+    func currentPLZ() async throws -> String {
+        let point = try await currentCoordinates()
+        let location = CLLocation(latitude: point.lat, longitude: point.lon)
         let placemarks = try await CLGeocoder().reverseGeocodeLocation(location)
         guard let plz = placemarks.first?.postalCode, PLZValidator.isValid(plz) else {
             throw LocatorError.noPLZ

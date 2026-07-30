@@ -58,6 +58,7 @@
 		96B4FC80C20A85631974EED8 /* MockRepositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3EEDA6C283BDD9B46EF50FC /* MockRepositories.swift */; };
 		96EBA59190334156698E2A8C /* PriceHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E915B0D5206042278F2C300 /* PriceHistoryStore.swift */; };
 		9A3DADC48CD248E714CEBFA2 /* Branch.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA138160FCA245A56EC21E73 /* Branch.swift */; };
+		9BAB0623FF44A06D536E0CDD /* MultiRegionJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA2327E3E29216356945CA3 /* MultiRegionJourneyTests.swift */; };
 		A058CF1E18B9F2129F39B194 /* RegionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84461FC15378C7C0EBD01EAD /* RegionStoreTests.swift */; };
 		A1BB8B183011669A09B1D49C /* MatchFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3FE89A0049B517DF629F94D /* MatchFeedback.swift */; };
 		A5DFF8517D0A39F7BCC035D0 /* ShoppingPlanCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0FF5B17E073D9F1D1CD226 /* ShoppingPlanCard.swift */; };
@@ -73,6 +74,7 @@
 		B483A300B8ED0DC1AFFFA080 /* ShoppingListRanking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A075F91DB546AECC6B2FE4E /* ShoppingListRanking.swift */; };
 		B5639BF05F6F5CB60D326AF4 /* ShoppingListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A2231CEBE6ABCF4457246B /* ShoppingListView.swift */; };
 		B7A1AAF88A9F4E60B341C348 /* OfferMatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41BD4794106F1BB7FC1EC958 /* OfferMatcherTests.swift */; };
+		BA498F940E305DA55CACDAE1 /* PickerDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D96A99B7A7B3D8F094213CF8 /* PickerDirectory.swift */; };
 		BAE0FD5A9D508901A12532EB /* TourStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B69F4B5F8C8FB958DFEEDB7 /* TourStepView.swift */; };
 		BD75ABA0125E25D3653E841E /* AreaRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B5CCE99C46C9493361E2CBE /* AreaRequest.swift */; };
 		BE7057A2F8E1C00A306774F3 /* ShoppingItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7416666F21C46F8C82229876 /* ShoppingItem.swift */; };
@@ -99,6 +101,7 @@
 		F77A0EB7C724609D6C9F0E19 /* SpotlightShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93BC18BC46BCE0928582C823 /* SpotlightShape.swift */; };
 		F8F60E0863C4DB896E842B47 /* TutorialOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D228E1A7E8711A671162D9 /* TutorialOverlay.swift */; };
 		FD8C1E9EC88D6E1976A425CE /* RejectionFeedbackSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 647A543C891A626804D53C84 /* RejectionFeedbackSheet.swift */; };
+		FFBC41FB8493D0333C34C133 /* PickerDirectoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA7F5DBF51DD8C16CBD07DBE /* PickerDirectoryTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -188,15 +191,18 @@
 		AFEBF4CC0A8ED8DCE20AC8C6 /* LeChariotTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LeChariotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B875EDDDF20D595E1294EECB /* BranchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BranchTests.swift; sourceTree = "<group>"; };
 		B9BFDFCDE3927837043875B1 /* Repositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repositories.swift; sourceTree = "<group>"; };
+		BA7F5DBF51DD8C16CBD07DBE /* PickerDirectoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerDirectoryTests.swift; sourceTree = "<group>"; };
 		BD420AD34161A5E5B1521FE3 /* MockRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockRepositoryTests.swift; sourceTree = "<group>"; };
 		BD713AAF8B2B7D284B4DB2CF /* DebugReset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugReset.swift; sourceTree = "<group>"; };
 		BE3205064BB98F72C1F6EFF8 /* ProfileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileStore.swift; sourceTree = "<group>"; };
 		C549F3693733C383160479E6 /* BranchRequestStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BranchRequestStoreTests.swift; sourceTree = "<group>"; };
 		C73A32383487821E94E8F8DE /* TutorialAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialAnchor.swift; sourceTree = "<group>"; };
+		CEA2327E3E29216356945CA3 /* MultiRegionJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiRegionJourneyTests.swift; sourceTree = "<group>"; };
 		CFD79D23352D6B4C5F51D7DF /* ProfileBranchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileBranchTests.swift; sourceTree = "<group>"; };
 		D18A284202A7208FC262FFC2 /* RestartJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestartJourneyTests.swift; sourceTree = "<group>"; };
 		D2556F0A712FE98A27DDA2FC /* MatchDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchDetailView.swift; sourceTree = "<group>"; };
 		D788470C564A715809FB014B /* OfferRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferRowView.swift; sourceTree = "<group>"; };
+		D96A99B7A7B3D8F094213CF8 /* PickerDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerDirectory.swift; sourceTree = "<group>"; };
 		DACCE0BB944358A8E9E36792 /* LeChariotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeChariotApp.swift; sourceTree = "<group>"; };
 		DC35901A5880CB5D3E2B1BA3 /* Categories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Categories.swift; sourceTree = "<group>"; };
 		DD1993DF1585C4BE18A0E2B5 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
@@ -234,6 +240,7 @@
 				41BD4794106F1BB7FC1EC958 /* OfferMatcherTests.swift */,
 				123BD74C4362845AC370D5F3 /* OfferQueryTests.swift */,
 				8ACB42975F2E495FFEA2E280 /* OfferStoreTests.swift */,
+				BA7F5DBF51DD8C16CBD07DBE /* PickerDirectoryTests.swift */,
 				39A6790E54550782540DD2EA /* PriceHistoryTests.swift */,
 				CFD79D23352D6B4C5F51D7DF /* ProfileBranchTests.swift */,
 				1295E37A49DB45382482897B /* ProfileStoreTests.swift */,
@@ -289,6 +296,7 @@
 				4E57D390D832770158F323ED /* AccessibilityAuditTests.swift */,
 				93EA1D8120FEE3E7BB4EF154 /* AreaNoticeJourneyTests.swift */,
 				7A9D8435B451C3CC5B59F2F3 /* MatchFeedbackJourneyTests.swift */,
+				CEA2327E3E29216356945CA3 /* MultiRegionJourneyTests.swift */,
 				7DDF96A167E5090688897757 /* OfferDetailJourneyTests.swift */,
 				077E32320821AEDD589009C3 /* OnboardingJourneyTests.swift */,
 				D18A284202A7208FC262FFC2 /* RestartJourneyTests.swift */,
@@ -442,6 +450,7 @@
 				E3FE89A0049B517DF629F94D /* MatchFeedback.swift */,
 				E22EB15D7506D5F3EF6AB530 /* Offer.swift */,
 				4136F24FE5C87B2EF624DA5C /* OfferMatcher.swift */,
+				D96A99B7A7B3D8F094213CF8 /* PickerDirectory.swift */,
 				9DE35F9DB7EA75080DC933FE /* PriceHistoryPoint.swift */,
 				7416666F21C46F8C82229876 /* ShoppingItem.swift */,
 				DD1993DF1585C4BE18A0E2B5 /* UserProfile.swift */,
@@ -625,6 +634,7 @@
 				B7A1AAF88A9F4E60B341C348 /* OfferMatcherTests.swift in Sources */,
 				F19EFA0F2F075C8F0C2525BF /* OfferQueryTests.swift in Sources */,
 				AB354EA1CBF2336E67F83251 /* OfferStoreTests.swift in Sources */,
+				FFBC41FB8493D0333C34C133 /* PickerDirectoryTests.swift in Sources */,
 				0E4565A94351B610A3642124 /* PriceHistoryTests.swift in Sources */,
 				E782CE5D24F823A65F8586D3 /* ProfileBranchTests.swift in Sources */,
 				A6D81B2AE53BBA405A8AC53E /* ProfileStoreTests.swift in Sources */,
@@ -676,6 +686,7 @@
 				D2DF331792259B988AAD0DD8 /* OnboardingFlowView.swift in Sources */,
 				932AFD2F16AE5BEE8BB178F5 /* OnboardingStepView.swift in Sources */,
 				88778001056F59AB3200C144 /* PLZLocator.swift in Sources */,
+				BA498F940E305DA55CACDAE1 /* PickerDirectory.swift in Sources */,
 				418EF9D4115B6D9D97E97EAA /* PriceHistoryPoint.swift in Sources */,
 				96EBA59190334156698E2A8C /* PriceHistoryStore.swift in Sources */,
 				D267335CB06F72F0CAD14CFE /* ProfileStepsView.swift in Sources */,
@@ -710,6 +721,7 @@
 				86567AB672287ACCDE060221 /* AccessibilityAuditTests.swift in Sources */,
 				DF58D5D90A790FA201C31A5F /* AreaNoticeJourneyTests.swift in Sources */,
 				3D129061277F9F5EC5A41C76 /* MatchFeedbackJourneyTests.swift in Sources */,
+				9BAB0623FF44A06D536E0CDD /* MultiRegionJourneyTests.swift in Sources */,
 				D69EE657C6AF3AC882F6ECC2 /* OfferDetailJourneyTests.swift in Sources */,
 				2E6CCA6B7C7B1A256D14EF1A /* OnboardingJourneyTests.swift in Sources */,
 				051E3B71EDEEFABEDE77D425 /* RestartJourneyTests.swift in Sources */,
@@ -805,7 +817,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Le Chariot";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Dein Standort wird einmalig verwendet, um deine Postleitzahl zu ermitteln. Du kannst sie auch manuell eingeben.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Dein Standort wird verwendet, um deine Postleitzahl zu ermitteln und die Entfernung zu den Filialen zu berechnen. Beides geht auch ohne — die PLZ kannst du eingeben, die Entfernungen rechnen wir dann ab deren Mitte.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -829,7 +841,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Le Chariot";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Dein Standort wird einmalig verwendet, um deine Postleitzahl zu ermitteln. Du kannst sie auch manuell eingeben.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Dein Standort wird verwendet, um deine Postleitzahl zu ermitteln und die Entfernung zu den Filialen zu berechnen. Beides geht auch ohne — die PLZ kannst du eingeben, die Entfernungen rechnen wir dann ab deren Mitte.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;

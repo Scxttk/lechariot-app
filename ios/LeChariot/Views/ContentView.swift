@@ -142,6 +142,14 @@ struct ContentView: View {
     /// auslöst, ist längst weitergezogen — ohne diesen Hinweis erführe niemand,
     /// dass jetzt mehr zur Auswahl steht, und die kurze Liste vom Onboarding
     /// bliebe für immer die Wahrheit, die er kennt.
+    private var areaCompletedBody: String {
+        let finished = areaRequests.completedAreaPLZs
+        guard finished.count == 1, store.regions.count > 1 else {
+            return "Wir haben die übrigen Supermärkte in deiner Nähe nachgeladen. Schau nach, ob dein Markt jetzt dabei ist."
+        }
+        return "Wir haben die übrigen Supermärkte um \(finished[0]) nachgeladen. Schau nach, ob dein Markt jetzt dabei ist."
+    }
+
     private var areaCompletedNotice: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.md) {
             Image(systemName: "storefront")
@@ -151,7 +159,10 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 Text("Deine Gegend ist jetzt vollständig")
                     .font(.subheadline.bold())
-                Text("Wir haben die übrigen Supermärkte in deiner Nähe nachgeladen. Schau nach, ob dein Markt jetzt dabei ist.")
+                // Die PLZ steht hier, nicht in der Überschrift: Wer zwei
+                // Regionen führt, muss wissen, welche von beiden gewachsen ist
+                // — „in deiner Nähe" beantwortet das nicht.
+                Text(areaCompletedBody)
                     .font(.footnote)
                     .foregroundStyle(Theme.secondaryText)
 

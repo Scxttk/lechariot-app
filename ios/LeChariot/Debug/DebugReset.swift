@@ -27,7 +27,8 @@ enum DebugReset {
         list: ShoppingListStore,
         rejections: MatchRejectionStore,
         feedback: MatchFeedbackStore,
-        tutorial: TutorialStore
+        tutorial: TutorialStore,
+        areaRequests: AreaRequestStore
     ) {
         regions.resetAllData()
         profile.resetAllData()
@@ -35,6 +36,10 @@ enum DebugReset {
         rejections.resetAllData()
         feedback.resetAllData()
         tutorial.resetAllData()
+        // Ohne dies überlebt die Liste der bereits angekündigten Gebiete den
+        // Reset, und ein erneutes Onboarding fordert dasselbe Gebiet nie
+        // wieder an — der Reset wäre nicht mehr exakt.
+        areaRequests.resetAllData()
 
         // Not owned by any store: the appearance override (a fresh install
         // follows the system) and the two caches that would otherwise make the

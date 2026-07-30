@@ -103,7 +103,48 @@ enum MockFixtures {
         Branch(marketId: "4816", chain: "Netto", name: "Netto Marken-Discount Dresden-Strehlen",
                street: "Johannes-Paul-Thilman-Str. 3", plz: "01219", city: "Dresden",
                lat: 51.0155, lon: 13.7669),
+
+        // Die zweite und dritte Region aus dem Fehlerbericht vom 2026-07-30.
+        // Beide liegen ~450 km von Dresden entfernt, also weit außerhalb der
+        // 40 km, auf die der Picker höchstens aufmacht — ein Lauf mit nur
+        // 01219 sieht sie nie, und die bestehenden Journeys ändern sich nicht.
+        //
+        // Die Verteilung ist der eigentliche Punkt: Um 04626 steht ein Netto,
+        // das Gebiet gilt damit als geholt. Um 17419 steht ausschließlich
+        // Penny — bundesweit im Verzeichnis, also das Zeichen für „dieses
+        // Gebiet hat nie jemand geholt". Zusammengeworfen verdeckt das Netto
+        // genau dieses Zeichen, und das war der Fehler.
+        Branch(marketId: "penny-04639-1", chain: "Penny", name: "Penny Gößnitz",
+               street: "Altenburger Str. 13 A", plz: "04639", city: "Gößnitz",
+               lat: 50.8875, lon: 12.4333),
+        Branch(marketId: "netto-04626-1", chain: "Netto", name: "Netto Marken-Discount Schmölln",
+               street: "Crimmitschauer Str. 2", plz: "04626", city: "Schmölln",
+               lat: 50.8940, lon: 12.3600),
+        Branch(marketId: "penny-17373-1", chain: "Penny", name: "Penny Am Haff",
+               street: "Chausseestr. 41-43", plz: "17373", city: "Ueckermünde",
+               lat: 53.7383, lon: 14.0511),
+        Branch(marketId: "penny-17449-1", chain: "Penny", name: "Penny Karlshagen",
+               street: "Hauptstr. 16", plz: "17449", city: "Karlshagen",
+               lat: 54.0500, lon: 13.8167),
     ]
+
+    /// Postcode centres for mock runs. Real geocoding talks to Apple's servers,
+    /// which a test must never do.
+    ///
+    /// This used to be one hardcoded Dresden point for **every** postcode,
+    /// which made multi-region behaviour untestable: three regions all landed
+    /// on the same coordinates, so nothing that depends on them apart could
+    /// ever be reproduced. Unknown postcodes still fall back to that point, so
+    /// every existing journey keeps the list it had.
+    static let dresden = (lat: 51.0504, lon: 13.7317)
+
+    static func coordinates(forPLZ plz: String) -> (lat: Double, lon: Double) {
+        switch plz {
+        case "04626": return (50.8956, 12.3556)  // Schmölln
+        case "17419": return (53.9440, 14.1830)  // Ahlbeck auf Usedom
+        default: return dresden
+        }
+    }
 }
 
 struct MockOfferRepository: OfferRepositoryProtocol {

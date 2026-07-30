@@ -28,12 +28,22 @@ struct MarketPickerView: View {
     var onDone: () -> Void
 
     @State private var markets: [Market] = []
-    /// Distance in km per market id — only for stores that came from the
-    /// directory, so the row can say how far away it is.
-    @State private var distances: [String: Double] = [:]
-    /// Street/city per market id, same source.
-    @State private var addresses: [String: String] = [:]
-    @State private var usedDirectory = false
+    /// Address, region and fallback distance per store — only for rows that
+    /// came from the directory. Nil while the `markets` fallback is showing.
+    @State private var plan: PickerDirectory.Plan?
+    /// Where the phone actually is, once we may know it.
+    ///
+    /// Distances used to be measured from the *postcode centre a store was
+    /// found around*, which meant every row could have a different reference
+    /// point — with two regions far apart the list read "Penny Gößnitz · 7,6 km"
+    /// above "Penny Am Haff · 22 km" while the user stood in Ahlbeck. The
+    /// search still runs around the postcode centres (otherwise the second
+    /// region's stores would be out of reach and unpickable, which is the whole
+    /// point of having one); only the number on screen moves to a single honest
+    /// anchor.
+    @State private var deviceAnchor: (lat: Double, lon: Double)?
+    @State private var locator = PLZLocator()
+    @State private var locationOffered = false
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var query = ""
@@ -77,11 +87,18 @@ struct MarketPickerView: View {
         guard query.trimmingCharacters(in: .whitespaces).isEmpty,
               !expandedChains.contains(group.chain)
         else { return group.markets }
-        return Array(group.markets.prefix(Self.visiblePerChain))
+        // An already chosen store is never hidden behind the fold, however far
+        // away it is. With honest distances a branch picked at the other home
+        // sinks past position five, and a ticked box the user cannot see is the
+        // reported bug in a new costume.
+        var shown = Array(group.markets.prefix(Self.visiblePerChain))
+        let shownIds = Set(shown.map(\.marketId))
+        shown += group.markets.filter { store.isFavorite($0) && !shownIds.contains($0.marketId) }
+        return shown
     }
 
     private func nearerFirst(_ lhs: Market, _ rhs: Market) -> Bool {
-        switch (distances[lhs.marketId], distances[rhs.marketId]) {
+        switch (distance(for: lhs), distance(for: rhs)) {
         case let (l?, r?) where l != r: return l < r
         // Stores without a distance sort last, but keep a stable order among
         // themselves — otherwise the list reshuffles on every redraw.
@@ -91,10 +108,23 @@ struct MarketPickerView: View {
         }
     }
 
+    /// How far the store is, from the phone when we know where that is and from
+    /// the postcode the store was found around otherwise.
+    private func distance(for market: Market) -> Double? {
+        guard let entry = plan?.byMarketId[market.marketId] else { return nil }
+        guard let deviceAnchor else { return entry.distanceKm }
+        return entry.branch.distanceKm(from: deviceAnchor.lat, deviceAnchor.lon)
+    }
+
     /// "1,2 km" — one decimal below 10 km, none above. Nobody navigates by
     /// 100 m at that distance, and the extra digit only adds noise.
     private func distanceLabel(_ km: Double) -> String {
-        km < 10 ? String(format: "%.1f km", km) : String(format: "%.0f km", km)
+        // `locale:` is the point: without it `String(format:)` writes a period,
+        // and the comma this comment has promised since it was written never
+        // actually appeared.
+        km < 10
+            ? String(format: "%.1f km", locale: .current, km)
+            : String(format: "%.0f km", locale: .current, km)
     }
 
     private var nationwideMarkets: [Market] {
@@ -118,6 +148,27 @@ struct MarketPickerView: View {
                 Label("Wähle die Läden, in die du wirklich gehst. Nur deren Angebote zählen für deine Liste.", systemImage: "info.circle")
                     .font(.subheadline)
                     .foregroundStyle(Theme.secondaryText)
+            }
+
+            // Nur ein Angebot, kein Zwang: Ohne Standort misst die Liste ab der
+            // PLZ-Mitte und sagt das auch in jeder Zeile. Mit Standort stimmen
+            // die Entfernungen — und bei mehreren Regionen ist das der
+            // Unterschied zwischen einer sortierten Liste und einer, deren
+            // Zahlen von verschiedenen Punkten stammen.
+            if canOfferLocation && !locationOffered {
+                Section {
+                    Button {
+                        Task { await askForLocation() }
+                    } label: {
+                        Label("Entfernungen von deinem Standort", systemImage: "location")
+                            .font(.subheadline)
+                    }
+                    .accessibilityHint("Misst die Entfernungen ab deinem Standort statt ab der Mitte deiner Postleitzahl")
+                } footer: {
+                    Text(plzs.count > 1
+                         ? "Ohne Standort misst jede Zeile ab der Postleitzahl, bei der sie gefunden wurde."
+                         : "Ohne Standort misst jede Zeile ab der Mitte deiner Postleitzahl.")
+                }
             }
 
             ForEach(chainGroups, id: \.chain) { group in
@@ -244,7 +295,7 @@ struct MarketPickerView: View {
         // die nachwächst. Deshalb nur ein Hinweis über der Liste.
         .safeAreaInset(edge: .top) {
             if areaRequests.isFetchingArea {
-                Text("Wir holen gerade die übrigen Märkte in deiner Gegend — das dauert etwa drei Minuten. Du kannst schon wählen; wir sagen Bescheid, sobald mehr da ist.")
+                Text(areaFetchNotice)
                     .font(.footnote)
                     .foregroundStyle(Theme.secondaryText)
                     .multilineTextAlignment(.center)
@@ -264,8 +315,22 @@ struct MarketPickerView: View {
                     .accessibilityHidden(true)
             }
         }
-        .task { await loadMarkets() }
+        .task {
+            await useLocationIfAlreadyAllowed()
+            await loadMarkets()
+        }
         .refreshable { await loadMarkets() }
+    }
+
+    /// Names the postcode once there is more than one — "deiner Gegend" is no
+    /// answer to a user who keeps two, and the short list they are looking at
+    /// belongs to exactly one of them.
+    private var areaFetchNotice: String {
+        let waiting = areaRequests.pendingAreaPLZs
+        let where_ = waiting.count == 1 && plzs.count > 1
+            ? "um \(waiting[0])"
+            : "in deiner Gegend"
+        return "Wir holen gerade die übrigen Märkte \(where_) — das dauert etwa drei Minuten. Du kannst schon wählen; wir sagen Bescheid, sobald mehr da ist."
     }
 
     private func marketRow(_ market: Market) -> some View {
@@ -332,8 +397,17 @@ struct MarketPickerView: View {
     /// from `markets` instead of the directory — that one has no address.
     private func subtitle(for market: Market) -> String {
         if market.isNationwide { return "Deutschlandweit" }
-        let address = addresses[market.marketId] ?? ""
-        let distance = distances[market.marketId].map(distanceLabel)
+        let entry = plan?.byMarketId[market.marketId]
+        let address = entry?.address ?? ""
+        let distance = distance(for: market).map { km -> String in
+            let label = distanceLabel(km)
+            // Without the phone's position the number is measured from a
+            // postcode centre, and with several regions a different one per
+            // row. Then it has to say which — an unlabelled number that
+            // silently changes its reference point is what caused the report.
+            guard deviceAnchor == nil, plzs.count > 1, let plz = entry?.anchorPLZ else { return label }
+            return "\(label) ab \(plz)"
+        }
         let joined = [address.isEmpty ? nil : address, distance]
             .compactMap { $0 }
             .joined(separator: " · ")
@@ -344,12 +418,16 @@ struct MarketPickerView: View {
         isLoading = true
         errorMessage = nil
         do {
-            if let directory = try await loadDirectory(), !directory.isEmpty {
-                markets = directory
-                usedDirectory = true
+            if let directory = try await loadDirectory(), !directory.entries.isEmpty {
+                plan = directory
+                markets = directory.entries.map(\.market)
+                // After the list is on screen, never before: a region run takes
+                // ~3 minutes, and the picker must not wait on the round trips
+                // that start it.
+                Task { await requestUnfetchedAreas(directory.areaCandidates) }
             } else {
+                plan = nil
                 markets = try await marketRepository.markets(plzs: plzs)
-                usedDirectory = false
             }
         } catch {
             // Leaving the screen cancels this; that is not something to report.
@@ -369,31 +447,23 @@ struct MarketPickerView: View {
     /// The radius is deliberately generous: the store on the way home may sit
     /// two postcodes away, and the list is sorted by distance anyway, so a
     /// further one costs a scroll, not a wrong answer.
-    private func loadDirectory() async throws -> [Market]? {
-        var found: [String: (market: Market, distance: Double)] = [:]
-        var nearest: [String: (branch: Branch, distance: Double)] = [:]
-        var geocoded = false
+    private func loadDirectory() async throws -> PickerDirectory.Plan? {
+        var finds: [PickerDirectory.RegionFind] = []
         for plz in plzs {
             guard let point = try? await Self.locate(plz) else { continue }
-            geocoded = true
             let branches = try await Self.nearbyWideningIfSparse(
                 repository: branchRepository, lat: point.lat, lon: point.lon
             )
-            for branch in branches {
-                let distance = branch.distanceKm(from: point.lat, point.lon) ?? .greatestFiniteMagnitude
-                // The same store shows up around two neighbouring postcodes;
-                // keep the smaller distance, that is the one the user cares
-                // about.
-                if let existing = found[branch.marketId], existing.distance <= distance { continue }
-                found[branch.marketId] = (branch.asMarket, distance)
-                nearest[branch.marketId] = (branch, distance)
-                addresses[branch.marketId] = branch.addressLine
-            }
+            finds.append(
+                PickerDirectory.RegionFind(
+                    plz: plz, lat: point.lat, lon: point.lon, branches: branches
+                )
+            )
         }
-        guard geocoded else { return nil }
-        distances = found.mapValues(\.distance)
-        await requestAreaIfOnlyNationwideChainsAreNear(Array(nearest.values))
-        return found.values.map(\.market)
+        // Not one postcode could be geocoded: the caller falls back to the
+        // `markets` table rather than showing an empty list.
+        guard !finds.isEmpty else { return nil }
+        return PickerDirectory.plan(finds)
     }
 
     /// Six of the eight chains are only in the directory where somebody asked
@@ -406,15 +476,21 @@ struct MarketPickerView: View {
     /// simply not in `branches`. The request goes out silently and takes about
     /// three minutes; the picker says so, and the user is told again when it
     /// lands, because by then they will have moved on.
-    private func requestAreaIfOnlyNationwideChainsAreNear(
-        _ found: [(branch: Branch, distance: Double)]
-    ) async {
-        let branches = found.map(\.branch)
-        guard AreaRequestStore.areaLooksUnfetched(branches) else { return }
-        // The nearest store is the anchor: the backend derives the area from
-        // its postcode, so the closest one describes where the user is best.
-        guard let anchor = found.min(by: { $0.distance < $1.distance })?.branch else { return }
-        await areaRequests.requestArea(anchor: anchor.marketId)
+    ///
+    /// **One request per region.** Asked once over all regions merged, a single
+    /// well-stocked postcode answered for every other one — a second region
+    /// then never got fetched at all, and nothing anywhere failed. Reported
+    /// 2026-07-30 by a tester with 04626 and 17419; the Ahlbeck half showed two
+    /// chains and would have kept showing two forever.
+    private func requestUnfetchedAreas(_ candidates: [PickerDirectory.AreaCandidate]) async {
+        for candidate in candidates {
+            // The nearest store is the anchor: the backend derives the area
+            // from its postcode, so the closest one describes where the user is
+            // best.
+            await areaRequests.requestArea(
+                anchor: candidate.anchor.marketId, region: candidate.plz
+            )
+        }
     }
 
     /// How far around each postcode the directory is searched to begin with.
@@ -459,8 +535,35 @@ struct MarketPickerView: View {
     /// whatever the geocoder feels like answering. Mock runs therefore use a
     /// fixed point — Dresden, where the fixtures live.
     private static func locate(_ plz: String) async throws -> (lat: Double, lon: Double) {
-        guard !AppRepositories.usesMockData else { return (51.0504, 13.7317) }
+        guard !AppRepositories.usesMockData else { return MockFixtures.coordinates(forPLZ: plz) }
         return try await PLZLocator.coordinates(forPLZ: plz)
+    }
+
+    /// True when asking would cost the user a system dialog. Mock runs never
+    /// ask — a UI journey must not depend on a permission sheet, and the
+    /// fixtures are anchored on postcodes anyway.
+    private var canOfferLocation: Bool {
+        guard !AppRepositories.usesMockData, deviceAnchor == nil else { return false }
+        return locator.authorizationStatus == .notDetermined
+    }
+
+    /// Reads the position only if the user has already agreed to share it
+    /// somewhere else — the region step offers exactly that. Silence is the
+    /// point: opening a list of shops is not a request to be asked for a
+    /// permission.
+    private func useLocationIfAlreadyAllowed() async {
+        guard !AppRepositories.usesMockData, deviceAnchor == nil else { return }
+        switch locator.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            deviceAnchor = try? await locator.currentCoordinates()
+        default:
+            return
+        }
+    }
+
+    private func askForLocation() async {
+        locationOffered = true
+        deviceAnchor = try? await locator.currentCoordinates()
     }
 }
 

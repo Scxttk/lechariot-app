@@ -23,7 +23,10 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: "Le Chariot"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
-        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Dein Standort wird einmalig verwendet, um deine Postleitzahl zu ermitteln. Du kannst sie auch manuell eingeben."
+        # Der Text nennt beide Zwecke, seit die Entfernungen im Filial-Picker
+        # ab dem Standort gemessen werden — vorher stand hier "einmalig, um
+        # deine Postleitzahl zu ermitteln", und das stimmte dann nicht mehr.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Dein Standort wird verwendet, um deine Postleitzahl zu ermitteln und die Entfernung zu den Filialen zu berechnen. Beides geht auch ohne — die PLZ kannst du eingeben, die Entfernungen rechnen wir dann ab deren Mitte."
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         # iPad may rotate; the iPhone stays portrait — a one-handed shopping
         # list has nothing to gain from landscape.

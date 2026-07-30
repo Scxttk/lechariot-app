@@ -50,6 +50,16 @@ final class AccessibilityAuditTests: XCTestCase {
         try audit("Ernährung")
         app.buttons["onboarding.skip"].tap()
         try audit("Einwilligung")
+
+        // Der Picker wurde bis hierher nie gemessen — und er ist der einzige
+        // Bildschirm, auf dem eine Zeile ihren Zustand trägt (gewählt/nicht
+        // gewählt) und ihre Entfernung im Hinweis statt im Namen.
+        app.buttons["onboarding.primary"].tap()
+        XCTAssertTrue(
+            app.buttons["Lidl, Dresden Reick"].waitForExistence(timeout: 15),
+            "Picker nicht geladen"
+        )
+        try audit("Filialen wählen")
     }
 
     func testShoppingListAndSettingsPassTheAudit() throws {
