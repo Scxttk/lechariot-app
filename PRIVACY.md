@@ -9,10 +9,11 @@ verlassen dein Telefon nicht.**
 
 ## Verantwortlich
 
-    <!-- TODO: Name und Kontaktadresse eintragen, bevor die URL bei Apple steht. -->
-    Scott Koehler
-    <Anschrift>
-    <E-Mail-Adresse>
+Scott Koehler · <scott_koehler@web.de>
+
+Le Chariot ist ein privates, nicht-kommerzielles Projekt: kostenlos, ohne
+Werbung, ohne Käufe im Programm. Sollte sich das ändern, kommen an dieser Stelle
+die vollständigen Anbieterangaben dazu.
 
 ## Was auf dem Gerät bleibt
 
@@ -90,7 +91,10 @@ einer Aufsichtsbehörde zu beschweren.
 
 Weil wir bewusst nicht wissen, wer du bist, brauchen wir für Auskunft oder
 Löschung deine Installations-ID. Schreib uns an die oben genannte Adresse, dann
-sagen wir dir, wo du sie findest, und löschen die zugehörigen Zeilen.
+sagen wir dir, wo du sie findest, und löschen die zugehörigen Zeilen. Löschst du
+die App, ohne dich zu melden, bleibt eine Handvoll Zeilen ohne jeden Bezug zu
+dir zurück — wir können sie dann keinem Menschen mehr zuordnen, du aber auch
+nicht mehr benennen.
 
 Deine Einwilligung widerrufen kannst du in den Einstellungen der App. Alles, was
 lokal gespeichert ist, verschwindet mit dem Löschen der App.
