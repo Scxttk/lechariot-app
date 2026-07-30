@@ -71,7 +71,10 @@
 				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
 			</array>
 		</dict>
-		<!-- match_feedback.comment: free text, so anything can end up in it. -->
+		<!-- match_feedback.comment: free text, so anything can end up in it.
+		     Steht in derselben Zeile wie das Suchwort darüber und wird in der
+		     Pflegerunde zusammen mit ihm gelesen — also derselbe Zweck, auch
+		     wenn nur eines der beiden Felder nach „Suche" aussieht. -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
@@ -82,6 +85,7 @@
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
 			</array>
 		</dict>
 		<!-- household_size, trips_per_week, weekly_budget, diet_tags. Apple has
