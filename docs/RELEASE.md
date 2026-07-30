@@ -13,11 +13,17 @@ filled-in `APIKeys.plist` — without real keys `APIConfig.isConfigured` is fals
 and the app quietly serves mock offers, which nobody would recognise as a fault
 on a real phone.
 
-One honest caveat: the archive-and-export path has been run and the resulting
-`.ipa` inspected, but **`--upload` has never been executed** — it needs an App
-Store Connect API key that does not exist yet. Treat the first upload as
-untested, and if it argues, use Xcode's Organizer for that one and come back to
-the flag afterwards.
+The upload path has been driven as far as it goes without you. It authenticates
+(Xcode's stored session is enough — no API key needed for a local run), resolves
+the team, and then stops on exactly one thing:
+
+```
+IDEDistributionFetchAppRecordStep failed:
+DistributionAppRecordProviderError.missingApp(bundleId: "com.skoehler.lechariot")
+```
+
+So everything upstream of the app record is proven, and the app record is the
+single blocker. Create it once (below) and the same command goes through.
 
 ## Version and build number
 
@@ -34,11 +40,13 @@ touch the build number.
 
 None of this is in the repo, because none of it can be.
 
-1. **App record.** appstoreconnect.apple.com → Apps → +, platform iOS, bundle ID
-   `com.skoehler.lechariot`, primary language German. The App ID is already
-   registered on the developer portal, and the distribution certificate plus the
-   store provisioning profile were created automatically by the first
-   `release.sh` run — nothing has to be clicked for signing.
+1. **App record — this is the one blocker.** appstoreconnect.apple.com → Apps →
+   +, platform iOS, bundle ID `com.skoehler.lechariot`, primary language German.
+   The App ID is already registered on the developer portal, and the
+   distribution certificate plus the store provisioning profile were created
+   automatically by the first `release.sh` run — nothing has to be clicked for
+   signing. Measured, not assumed: an upload attempt fails with
+   `missingApp(bundleId: "com.skoehler.lechariot")` and nothing else.
 
 2. **API key**, only if you want `--upload` instead of Xcode's Organizer:
    App Store Connect → Users and Access → Integrations → App Store Connect API,
