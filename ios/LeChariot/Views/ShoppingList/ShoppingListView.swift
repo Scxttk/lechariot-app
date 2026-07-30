@@ -10,6 +10,8 @@ struct ShoppingListView: View {
     let offerStore: OfferStore
     @Environment(MatchRejectionStore.self) private var rejections
     @Environment(ProfileStore.self) private var profile
+    /// Optional, damit Previews ohne Rundgang auskommen.
+    @Environment(TutorialStore.self) private var tutorial: TutorialStore?
     @State private var detailItem: ShoppingItem?
     @State private var newItemText = ""
     @FocusState private var inputFocused: Bool
@@ -85,6 +87,7 @@ struct ShoppingListView: View {
             if !plan.isEmpty {
                 Section {
                     ShoppingPlanCard(ranks: plan)
+                        .tutorialAnchor(.planCard)
                         .listRowInsets(EdgeInsets(
                             top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
                             bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
@@ -94,10 +97,13 @@ struct ShoppingListView: View {
             }
 
             Section {
-                ForEach(list.uncheckedItems) { item in
+                ForEach(Array(list.uncheckedItems.enumerated()), id: \.element.id) { index, item in
                     ShoppingListRowView(
                         item: item,
                         match: match(for: item, plan: plan),
+                        // Nur die erste offene Zeile trägt die Anker des
+                        // Rundgangs — sonst zeigt das Loch auf sechs Stellen.
+                        carriesTutorialAnchors: index == 0,
                         onToggle: { withAnimation { list.toggle(item) } },
                         onShowMatches: { detailItem = item }
                     )
@@ -236,6 +242,10 @@ struct ShoppingListView: View {
                 .accessibilityLabel("\(staple) hinzufügen")
             }
         }
+        // Das Raster steht an zwei Stellen — im Leerzustand und als Abschnitt.
+        // Immer nur eines davon wird gebaut, also gewinnt im Preference-Merge
+        // das, das gerade auf dem Bildschirm liegt.
+        .tutorialAnchor(.suggestions)
     }
 
     // MARK: Input
@@ -272,6 +282,7 @@ struct ShoppingListView: View {
         .readableWidth()
         // Bar across the whole width, field only as wide as the list above it.
         .background(.bar)
+        .tutorialAnchor(.inputBar)
     }
 
     private func addItem() {
@@ -284,18 +295,26 @@ struct ShoppingListView: View {
 
     @ToolbarContentBuilder
     private var toolbarMenu: some ToolbarContent {
+        // Während des Rundgangs gibt es das Menü nicht.
+        //
+        // Die Navigationsleiste zeichnet UIKit; `accessibilityHidden` auf dem
+        // Inhalt erreicht sie nicht, und „Liste leeren" mitten in der Führung
+        // wäre der eine Knopf, der wirklich Schaden anrichtet. Also nicht
+        // verstecken, sondern gar nicht erst bauen.
         ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Button("Erledigte entfernen", systemImage: "checkmark.circle") {
-                    withAnimation { list.clearChecked() }
+            if tutorial?.isRunning != true {
+                Menu {
+                    Button("Erledigte entfernen", systemImage: "checkmark.circle") {
+                        withAnimation { list.clearChecked() }
+                    }
+                    .disabled(list.checkedItems.isEmpty)
+                    Button("Liste leeren", systemImage: "trash", role: .destructive) {
+                        withAnimation { list.clearAll() }
+                    }
+                    .disabled(list.items.isEmpty)
+                } label: {
+                    Label("Mehr", systemImage: "ellipsis.circle")
                 }
-                .disabled(list.checkedItems.isEmpty)
-                Button("Liste leeren", systemImage: "trash", role: .destructive) {
-                    withAnimation { list.clearAll() }
-                }
-                .disabled(list.items.isEmpty)
-            } label: {
-                Label("Mehr", systemImage: "ellipsis.circle")
             }
         }
     }

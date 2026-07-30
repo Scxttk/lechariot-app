@@ -22,23 +22,39 @@ struct ContentView: View {
     /// exists for. Deliberately not persisted: reopening the app mid-week must
     /// not drop the user wherever they happened to leave off.
     @State private var selectedTab: Tab = .liste
+    /// Der Rundgang. Lebt hier, weil ihn beide Hälften brauchen: Das Onboarding
+    /// bietet ihn an, die Tabs zeigen ihn.
+    @State private var tutorial = TutorialStore()
 
     private enum Tab {
         case liste, angebote, einstellungen
     }
 
     var body: some View {
-        if store.isOnboardingComplete {
-            mainTabs
-        } else {
-            OnboardingFlowView(marketRepository: marketRepository)
+        Group {
+            if store.isOnboardingComplete {
+                mainTabs
+            } else {
+                OnboardingFlowView(marketRepository: marketRepository)
+            }
         }
+        .environment(tutorial)
     }
 
     private var mainTabs: some View {
         TabView(selection: $selectedTab) {
             allRegionScoped { markets in
                 ShoppingListView(favoriteMarkets: markets, offerStore: offerStore)
+            }
+            // Nullhoher Marker auf der Unterkante der sicheren Fläche dieses
+            // Tabs — also genau auf der Oberkante der Tab-Leiste. Die Leiste
+            // selbst zeichnet UIKit und trägt keinen Anker; das hier ist der
+            // einzige Griff, den SwiftUI darauf hergibt.
+            .overlay(alignment: .bottom) {
+                Color.clear
+                    .frame(height: 0)
+                    .allowsHitTesting(false)
+                    .tutorialAnchor(.tabBarTop)
             }
             .tabItem {
                 Label("Liste", systemImage: "checklist")
@@ -60,6 +76,14 @@ struct ContentView: View {
         .environment(shoppingList)
         .environment(rejections)
         .environment(feedback)
+        // Die Tab-Leiste ist die eine Stelle, an der man aus dem Rundgang
+        // herausspaziert: Sie zeichnet UIKit **über** dem Overlay, die
+        // Sperrflächen darunter erreichen sie nicht. Am Simulator nachgestellt —
+        // ein Tipp auf „Angebote" wechselte mitten in der Führung den Tab.
+        // `disabled` greift dort, wo eine Ansicht darüber nicht hinkommt; die
+        // Tab-Wechsel des Rundgangs selbst laufen über `selectedTab` und sind
+        // davon unberührt.
+        .disabled(tutorial.isRunning)
         .tint(Theme.accent)
         // Über den Tabs, nicht in einem davon: Der Lauf ist minuten- bis
         // tagelang her, der Nutzer kann überall stehen.
@@ -67,6 +91,50 @@ struct ContentView: View {
             if areaRequests.areaJustCompleted {
                 areaCompletedNotice
             }
+        }
+        .overlayPreferenceValue(TutorialAnchorKey.self) { anchors in
+            if tutorial.isRunning {
+                GeometryReader { proxy in
+                    TutorialOverlay(
+                        anchors: anchors,
+                        proxy: proxy,
+                        tutorial: tutorial,
+                        list: shoppingList
+                    )
+                }
+                .ignoresSafeArea()
+                .transition(.opacity)
+            }
+        }
+        // Der Rundgang spielt auf einem bestimmten Tab; der letzte Rahmen zeigt
+        // die Einstellungen. Ohne das zeigte das Loch auf ein Bedienelement,
+        // das gerade auf einem anderen Bildschirm liegt.
+        .onChange(of: tutorial.index) { _, _ in
+            selectedTab = tab(for: tutorial.step.tab)
+        }
+        .onChange(of: tutorial.isRunning) { _, running in
+            if running {
+                selectedTab = tab(for: tutorial.step.tab)
+            } else {
+                // Jeder Ausgang läuft hier durch — „Fertig“ wie „Tour beenden“.
+                // Deshalb steht das Aufräumen hier und nicht an einem Knopf.
+                tutorial.removeDemoItems(from: shoppingList)
+                selectedTab = .liste
+            }
+        }
+        .task {
+            // Ein Rundgang, den der App-Tod unterbrochen hat, hat seine
+            // Beispiel-Artikel nie abgeräumt. Das wird hier nachgeholt.
+            if !tutorial.isRunning {
+                tutorial.removeDemoItems(from: shoppingList)
+            }
+        }
+    }
+
+    private func tab(for tutorialTab: TutorialTab) -> Tab {
+        switch tutorialTab {
+        case .liste: return .liste
+        case .einstellungen: return .einstellungen
         }
     }
 

@@ -8,6 +8,7 @@ struct SettingsView: View {
     @Environment(ShoppingListStore.self) private var list
     @Environment(MatchRejectionStore.self) private var rejections
     @Environment(MatchFeedbackStore.self) private var feedback
+    @Environment(TutorialStore.self) private var tutorial
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
@@ -19,6 +20,10 @@ struct SettingsView: View {
             List {
                 Group {
                     marketSection
+                    // Direkt unter den Filialen, nicht ganz unten: Der letzte
+                    // Rahmen des Rundgangs zeigt auf beide Abschnitte, und
+                    // dafür müssen sie ohne Scrollen zusammen sichtbar sein.
+                    helpSection
                     regionSection
                     profileSection
                     feedbackSection
@@ -60,6 +65,10 @@ struct SettingsView: View {
                     Label("Filialen bearbeiten", systemImage: "storefront")
                         .foregroundStyle(Theme.accent)
                 }
+                // Der Anker sitzt auf der Zeile, nicht auf dem Abschnitt: Ein
+                // `Section` reicht den Modifikator an jede Zeile einzeln durch,
+                // und übrig blieb der Fußtext statt der Filialen.
+                .tutorialAnchor(.settingsMarkets)
             }
         } header: {
             Text("Deine Filialen")
@@ -67,6 +76,25 @@ struct SettingsView: View {
             Text(branches.isEmpty
                  ? "Ohne gewählte Filiale werden keine Angebote angezeigt."
                  : "Nur Angebote dieser Filialen zählen für deine Liste.")
+        }
+    }
+
+    // MARK: Hilfe
+
+    private var helpSection: some View {
+        Section {
+            Button {
+                tutorial.start()
+            } label: {
+                Label("Rundgang erneut ansehen", systemImage: "sparkles")
+                    .foregroundStyle(Theme.accent)
+            }
+            .accessibilityIdentifier("settings.tutorial")
+            .tutorialAnchor(.settingsHelp)
+        } header: {
+            Text("Hilfe")
+        } footer: {
+            Text("Zeigt die kurze Einführung auf der Einkaufsliste noch einmal. Für den Rundgang legt Le Chariot ein paar Beispiel-Artikel auf die Liste und räumt sie danach wieder ab.")
         }
     }
 
@@ -222,7 +250,7 @@ struct SettingsView: View {
                     DebugReset.everything(
                         regions: store, profile: profile,
                         list: list, rejections: rejections,
-                        feedback: feedback
+                        feedback: feedback, tutorial: tutorial
                     )
                 }
                 Button("Abbrechen", role: .cancel) {}
@@ -353,4 +381,5 @@ private struct ProfileEditScreen: View {
         .environment(ShoppingListStore())
         .environment(MatchRejectionStore())
         .environment(MatchFeedbackStore())
+        .environment(TutorialStore())
 }

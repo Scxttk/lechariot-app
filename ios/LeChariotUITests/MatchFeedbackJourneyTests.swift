@@ -55,6 +55,13 @@ final class MatchFeedbackJourneyTests: XCTestCase {
     func testWithTheQuestionOffRejectingAsksNothing() {
         openTab("Einstellungen")
         let toggle = app.switches["Nach Ablehnungen fragen"].firstMatch
+        // "Rückfragen" sits below the fold since the Hilfe section moved in
+        // above it, and a List does not build rows nobody has scrolled to.
+        var swipes = 0
+        while !toggle.exists && swipes < 5 {
+            app.swipeUp()
+            swipes += 1
+        }
         XCTAssertTrue(toggle.waitForExistence(timeout: 15), "the switch must be in the settings")
         XCTAssertEqual(toggle.value as? String, "1", "asking is on by default")
         // Hit the control itself: the element's frame spans the whole row, and

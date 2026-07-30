@@ -17,6 +17,7 @@ enum OnboardingStep {
 struct OnboardingFlowView: View {
     @Environment(RegionStore.self) private var store
     @Environment(ProfileStore.self) private var profile
+    @Environment(TutorialStore.self) private var tutorial
     let marketRepository: MarketRepositoryProtocol
     /// Follows a request for a store the backend has never fetched. Created
     /// here so it outlives a single picker appearance.
@@ -29,7 +30,7 @@ struct OnboardingFlowView: View {
     @State private var activePLZ: String?
 
     private enum Phase {
-        case welcome, name, region, household, diet, consent, markets
+        case welcome, name, region, household, diet, consent, markets, tour
     }
 
     var body: some View {
@@ -64,6 +65,17 @@ struct OnboardingFlowView: View {
             }
         case .markets:
             marketsPhase
+        case .tour:
+            TourStepView {
+                // Erst starten, dann abschließen: Beides passiert in derselben
+                // Aktualisierung, die Tabs erscheinen also schon mit dem
+                // Rundgang darüber.
+                tutorial.start()
+                finishOnboarding()
+            } onSkip: {
+                tutorial.decline()
+                finishOnboarding()
+            }
         }
     }
 
@@ -80,16 +92,13 @@ struct OnboardingFlowView: View {
                     branchRequests: branchRequests
                 ) {
                     store.selectRegion(plz)
-                    // The only place that records onboarding as done. "Fertig"
-                    // is disabled until a branch is picked, so reaching here
-                    // always means a usable setup.
-                    store.completeOnboarding()
-                    // Second sync, now that the branches are known. The consent
-                    // step runs BEFORE the picker, so the first upload can only
-                    // ever carry an empty branch list — without this the column
-                    // added in migration v15 would stay empty for everyone.
-                    let branchIds = store.favoriteMarkets.map(\.marketId)
-                    Task { await profile.sync(plz: plz, branchIds: branchIds) }
+                    // Der Rundgang wird angeboten, bevor abgeschlossen wird —
+                    // sonst stünde das Angebot schon über der fertigen App.
+                    if offersTour {
+                        phase = .tour
+                    } else {
+                        finishOnboarding()
+                    }
                 }
             case .requested, .syncing, .failed:
                 WaitingView(plz: plz) {
@@ -115,6 +124,33 @@ struct OnboardingFlowView: View {
         activePLZ ?? store.orderedReadyRegions.first
     }
 
+    /// The only place that records onboarding as done. The picker's "Fertig" is
+    /// disabled until a branch is picked, so reaching here always means a usable
+    /// setup — the tour screen in between only adds a question, never a state.
+    private func finishOnboarding() {
+        store.completeOnboarding()
+        guard let plz = currentPLZ else { return }
+        // Second sync, now that the branches are known. The consent step runs
+        // BEFORE the picker, so the first upload can only ever carry an empty
+        // branch list — without this the column added in migration v15 would
+        // stay empty for everyone.
+        let branchIds = store.favoriteMarkets.map(\.marketId)
+        Task { await profile.sync(plz: plz, branchIds: branchIds) }
+    }
+
+    /// Der Rundgang wird angeboten — außer in UI-Läufen, die ihn nicht meinen.
+    ///
+    /// Er hängt einen Bildschirm ans Onboarding und sperrt danach die Liste
+    /// hinter Sperrflächen; jede bestehende Journey würde daran hängenbleiben,
+    /// ohne dass an ihr etwas kaputt wäre. Wer ihn prüfen will, startet mit
+    /// `-uiTestingTutorial`.
+    private var offersTour: Bool {
+        #if DEBUG
+        if UITestSupport.isActive { return UITestSupport.showsTutorial }
+        #endif
+        return true
+    }
+
     /// Picks up where the user left off. Two cases matter: they answered the
     /// questions before but never finished picking branches, and they later
     /// removed their last branch in Settings — both resume at the picker
@@ -129,4 +165,5 @@ struct OnboardingFlowView: View {
     OnboardingFlowView(marketRepository: MockMarketRepository())
         .environment(RegionStore(repository: MockRegionRepository()))
         .environment(ProfileStore())
+        .environment(TutorialStore())
 }

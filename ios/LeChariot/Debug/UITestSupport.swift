@@ -37,6 +37,21 @@ enum UITestSupport {
 
     static let seededAreaAnchor = "lidl-01219-1"
 
+    /// Launched with `-uiTestingTutorial`: offer and show the tour.
+    ///
+    /// Unter `-uiTesting` bleibt er sonst aus. Er hängt einen Bildschirm ans
+    /// Onboarding und sperrt danach die Liste hinter Sperrflächen — jede
+    /// bestehende Journey bliebe daran hängen, ohne dass an ihr etwas kaputt
+    /// wäre. Deshalb: wer den Rundgang prüfen will, schaltet ihn ein.
+    ///
+    /// Das schützt vor dem Rundgang, nicht vor jeder Folge. Zwei Journeys
+    /// mussten trotzdem nachgezogen werden, weil der neue Hilfe-Abschnitt die
+    /// Einstellungen nach unten schiebt und beide an einer festen
+    /// Scrollposition suchten — das ist eine echte Änderung der Oberfläche,
+    /// kein Testartefakt.
+    static let showsTutorial =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingTutorial")
+
     /// The defaults suite for this launch, emptied unless the launch asked to
     /// keep it. `nil` outside test runs.
     ///
