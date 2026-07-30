@@ -13,6 +13,12 @@ filled-in `APIKeys.plist` — without real keys `APIConfig.isConfigured` is fals
 and the app quietly serves mock offers, which nobody would recognise as a fault
 on a real phone.
 
+One honest caveat: the archive-and-export path has been run and the resulting
+`.ipa` inspected, but **`--upload` has never been executed** — it needs an App
+Store Connect API key that does not exist yet. Treat the first upload as
+untested, and if it argues, use Xcode's Organizer for that one and come back to
+the flag afterwards.
+
 ## Version and build number
 
 `MARKETING_VERSION` lives in `ios/project.yml` and is the number testers see.
