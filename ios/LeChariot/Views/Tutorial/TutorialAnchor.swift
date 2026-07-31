@@ -20,9 +20,14 @@ enum TutorialTarget: String, CaseIterable, Hashable {
 
 /// One layout pass' worth of anchors: the tagged views that were on screen.
 ///
-/// A dictionary rather than a list, because the same target can be published
-/// twice in one pass — the suggestion chips exist both in the empty state and
-/// as a list section, and only one of them is ever laid out. Last writer wins.
+/// A dictionary rather than a list, because the pass collects tagged views from
+/// separate subtrees and each target has to stay findable by name.
+///
+/// Bis L-2 (2026-07-31) trug ein Ziel diese Zusammenführung wirklich: Die
+/// Vorschlagskacheln lagen im Leerzustand **und** als Listenabschnitt, immer nur
+/// eine der beiden Fassungen wurde gebaut, und der letzte Schreiber gewann. Die
+/// Kacheln stehen jetzt an einer Stelle; „last writer wins" ist damit ein
+/// Rückfall und kein Weg mehr, den etwas geht.
 struct TutorialAnchorKey: PreferenceKey {
     static let defaultValue: [TutorialTarget: Anchor<CGRect>] = [:]
 

@@ -17,6 +17,9 @@ struct ShoppingListView: View {
     @State private var detailItem: ShoppingItem?
     @State private var newItemText = ""
     @FocusState private var inputFocused: Bool
+    /// Was der Nutzer in dieser Sitzung zuletzt mit der Vorschlagsfläche getan
+    /// hat — siehe `SuggestionSurface`. Bewusst `@State` und nicht persistiert.
+    @State private var suggestionChoice: Bool?
 
     private var chains: [String] {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
@@ -66,7 +69,7 @@ struct ShoppingListView: View {
             .themedScreen()
             .navigationTitle("Einkaufsliste")
             .toolbar { toolbarMenu }
-            .safeAreaInset(edge: .bottom) { inputBar }
+            .safeAreaInset(edge: .bottom) { bottomBar }
         }
         .task(id: branchIds) {
             await offerStore.load(branchIds: branchIds, chains: chains)
@@ -124,8 +127,6 @@ struct ShoppingListView: View {
                 }
             }
 
-            suggestionSection
-
             if !list.checkedItems.isEmpty {
                 Section("Erledigt") {
                     ForEach(Array(list.checkedItems.enumerated()), id: \.element.id) { index, item in
@@ -162,6 +163,12 @@ struct ShoppingListView: View {
 
     // MARK: Empty state
 
+    /// Nur noch die Ansprache — die Vorschläge stehen seit L-2 unten.
+    ///
+    /// Bis zum 2026-07-31 lagen die Kacheln **zweimal** in dieser Datei: hier
+    /// und als Listenabschnitt. Sie stehen jetzt an genau einer Stelle, in der
+    /// Fläche über der Eingabezeile, und sind damit auf dem leeren wie auf dem
+    /// vollen Bildschirm derselbe Ort.
     private var emptyState: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xl) {
@@ -182,14 +189,6 @@ struct ShoppingListView: View {
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.center)
                 }
-
-                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                    Text("Häufig gekauft")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.secondaryText)
-                    suggestionChips(suggestions)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(Theme.Spacing.xl)
         }
@@ -219,27 +218,60 @@ struct ShoppingListView: View {
         )
     }
 
-    /// The chips stay reachable once the list has its first item.
+    /// Ob die Fläche gerade offen steht. Die Regel steht in
+    /// `SuggestionSurface`, hier stehen nur die drei Eingaben.
+    private var surfaceIsExpanded: Bool {
+        SuggestionSurface.isExpanded(
+            choice: suggestionChoice,
+            listIsEmpty: list.items.isEmpty,
+            tourIsRunning: tutorial?.isRunning == true
+        )
+    }
+
+    /// **Die Vorschläge kleben an der Eingabezeile, nicht an der Liste.**
     ///
-    /// They used to live only behind the empty state, so the whole strip
-    /// disappeared with the very first tap — and adding a second staple meant
-    /// typing it. Since 2026-07-26 new suggestions move up as the staples are
-    /// used, drawn from the offers of the chosen branches; before that the
-    /// strip shrank with every tap and was gone after eight.
+    /// Der Streifen war ein Abschnitt mitten in der Liste, zwischen den
+    /// Artikeln und „Erledigt", und rutschte mit jeder weiteren Zeile weiter
+    /// aus dem Daumenbereich. Die erste Testerin von außen hat das als „nicht
+    /// einhändig erreichbar" gemeldet — nicht das Feld war gemeint, sondern
+    /// alles, was zum Hinzufügen dazugehört. Jetzt liegt beides im selben
+    /// Block unten: ein Daumen, ein Weg.
+    ///
+    /// **Nicht mitgewandert** ist das Menü oben rechts. „Liste leeren" ist der
+    /// eine Knopf, der wirklich Schaden anrichtet, und er gehört dorthin, wo
+    /// ein Daumen ihn nicht aus Versehen trifft.
+    private var bottomBar: some View {
+        VStack(spacing: 0) {
+            suggestionSurface
+            inputBar
+        }
+        // Eine Fläche für beides. Vorher trug die Eingabezeile den Hintergrund
+        // allein; zwei übereinandergelegte `.bar`-Flächen ergäben eine Kante
+        // quer über den Block.
+        .background(.bar)
+    }
+
     @ViewBuilder
-    private var suggestionSection: some View {
+    private var suggestionSurface: some View {
         let remaining = suggestions
-        if !remaining.isEmpty {
-            Section("Häufig gekauft") {
+        if !remaining.isEmpty && surfaceIsExpanded {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Text("Häufig gekauft")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.secondaryText)
                 suggestionChips(remaining)
-                    .listRowInsets(EdgeInsets(
-                        top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
-                        bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
-                    ))
             }
-            // The chips carry their own surface; a second one behind them
-            // would draw a card around a card.
-            .listRowBackground(Color.clear)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Theme.Spacing.lg)
+            .padding(.top, Theme.Spacing.sm)
+            .readableWidth()
+            // Aufziehen von unten, verschwinden ohne Bewegung: Beim Zuklappen
+            // rutscht die Liste ohnehin nach unten nach, und zwei Bewegungen
+            // gegeneinander sehen aus wie ein Ruckler.
+            .transition(.asymmetric(
+                insertion: .move(edge: .bottom).combined(with: .opacity),
+                removal: .opacity
+            ))
         }
     }
 
@@ -253,6 +285,13 @@ struct ShoppingListView: View {
         ) {
             ForEach(staples, id: \.self) { staple in
                 Button {
+                    // Eine Kachel antippen heißt „ich benutze die Fläche" —
+                    // sie bleibt danach offen. Ohne das schlüge sie beim ersten
+                    // Artikel unter dem Daumen zu, und der zweite Vorschlag
+                    // wäre wieder einen Knopfdruck weit weg. Genau der Fehler
+                    // ist schon einmal dagewesen (2026-07-26, damals mit dem
+                    // Leerzustand als Ursache).
+                    suggestionChoice = true
                     // `add` is @discardableResult Bool; swallow it explicitly so
                     // withAnimation's generic result type stays unambiguous.
                     withAnimation { _ = list.add(staple) }
@@ -274,9 +313,9 @@ struct ShoppingListView: View {
                 .accessibilityLabel("\(staple) hinzufügen")
             }
         }
-        // Das Raster steht an zwei Stellen — im Leerzustand und als Abschnitt.
-        // Immer nur eines davon wird gebaut, also gewinnt im Preference-Merge
-        // das, das gerade auf dem Bildschirm liegt.
+        // Seit L-2 steht das Raster an **einer** Stelle. Vorher lag es im
+        // Leerzustand und als Listenabschnitt, und welches der beiden der
+        // Rundgang ausleuchtete, entschied der Preference-Merge.
         .tutorialAnchor(.suggestions)
     }
 
@@ -294,8 +333,36 @@ struct ShoppingListView: View {
         list.items.isEmpty ? "Was brauchst du?" : "Nächster Artikel …"
     }
 
+    /// Der Knopf, der die Vorschlagsfläche auf- und zuklappt.
+    ///
+    /// Links im Feld, weil er zu dem gehört, was darüber liegt. Er fehlt, wenn
+    /// es nichts vorzuschlagen gibt — ein Knopf, der eine leere Fläche öffnet,
+    /// ist ein kaputter Knopf.
+    @ViewBuilder
+    private var surfaceToggle: some View {
+        if !suggestions.isEmpty {
+            let open = surfaceIsExpanded
+            Button {
+                withAnimation(.snappy) { suggestionChoice = !open }
+            } label: {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 17, weight: .semibold))
+                    .rotationEffect(.degrees(open ? 180 : 0))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(TactileButtonStyle())
+            .accessibilityIdentifier("list.suggestions.toggle")
+            // Der Zustand steckt im Namen und nicht in einem `value`: Ein
+            // gedrehtes Winkelzeichen sagt einem Screenreader nichts.
+            .accessibilityLabel(open ? "Vorschläge ausblenden" : "Vorschläge einblenden")
+        }
+    }
+
     private var inputBar: some View {
         HStack(spacing: Theme.Spacing.sm) {
+            surfaceToggle
+
             TextField(inputPlaceholder, text: $newItemText)
                 // Vier Test-Helfer griffen das Feld über seinen Platzhalter —
                 // deutscher Fließtext als Griff, und der ändert sich ab jetzt
@@ -329,9 +396,8 @@ struct ShoppingListView: View {
         }
         .padding(.horizontal, Theme.Spacing.lg)
         .padding(.vertical, Theme.Spacing.sm)
-        .readableWidth()
         // Bar across the whole width, field only as wide as the list above it.
-        .background(.bar)
+        .readableWidth()
         .tutorialAnchor(.inputBar)
     }
 
@@ -339,6 +405,9 @@ struct ShoppingListView: View {
         guard list.add(newItemText) else { return }
         newItemText = ""
         inputFocused = true
+        // Wer tippt, weiß was er braucht — die Fläche gibt der Liste ihren
+        // Platz zurück. Die Gegenrichtung steht bei den Kacheln.
+        withAnimation(.snappy) { suggestionChoice = false }
     }
 
     // MARK: Toolbar
@@ -378,4 +447,5 @@ struct ShoppingListView: View {
     .environment(ShoppingListStore())
     .environment(MatchRejectionStore())
     .environment(ProfileStore())
+    .environment(PurchaseHistoryStore())
 }
