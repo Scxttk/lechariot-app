@@ -57,6 +57,36 @@ final class OfferQueryTests: XCTestCase {
         XCTAssertEqual(hits.map(\.product), ["A"])
     }
 
+    /// **Suche innerhalb einer Kette.** Das ist die Zusage der Chip-Leiste
+    /// über der Angebotsliste: Der Chip schränkt nicht nur die Abschnitte
+    /// ein, sondern auch, was die Suche darin findet. Wäre die Suche
+    /// unabhängig vom Markt, führte der Chip in die Irre — er sähe aktiv aus
+    /// und stünde über Treffern aus anderen Märkten.
+    func testSearchIsRestrictedToTheChosenMarket() {
+        let offers = [
+            offer(product: "Bio Vollmilch", market: "Lidl"),
+            offer(product: "Frische Vollmilch", market: "Aldi"),
+        ]
+        XCTAssertEqual(
+            OfferQuery.apply(offers, search: "vollmilch", market: "Lidl").map(\.product),
+            ["Bio Vollmilch"]
+        )
+        // Und die Gegenprobe: ohne Chip findet dieselbe Suche beide.
+        XCTAssertEqual(OfferQuery.apply(offers, search: "vollmilch").count, 2)
+    }
+
+    /// Eine Kette, in der es das Gesuchte nicht gibt, liefert leer — und
+    /// **nicht** ersatzweise die Treffer der anderen. Der Bildschirm erklärt
+    /// diesen Fall eigens (`noSearchHitInOneMarket`); täte die Abfrage hier
+    /// heimlich etwas anderes, erklärte er etwas, das nie einträte.
+    func testASearchWithNoHitInThatMarketStaysEmpty() {
+        let offers = [
+            offer(product: "Bio Vollmilch", market: "Lidl"),
+            offer(product: "Spanische Orangen", market: "Aldi"),
+        ]
+        XCTAssertTrue(OfferQuery.apply(offers, search: "vollmilch", market: "Aldi").isEmpty)
+    }
+
     // MARK: Sort
 
     func testDealsSortPutsHighestDiscountFirstAndNilLast() {

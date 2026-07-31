@@ -61,6 +61,7 @@
 		96EBA59190334156698E2A8C /* PriceHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E915B0D5206042278F2C300 /* PriceHistoryStore.swift */; };
 		9A3DADC48CD248E714CEBFA2 /* Branch.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA138160FCA245A56EC21E73 /* Branch.swift */; };
 		9BAB0623FF44A06D536E0CDD /* MultiRegionJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA2327E3E29216356945CA3 /* MultiRegionJourneyTests.swift */; };
+		9E44FA5D03C8440EBA47C047 /* OfferFilterJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A131D7DCE51C328D0986C625 /* OfferFilterJourneyTests.swift */; };
 		A058CF1E18B9F2129F39B194 /* RegionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84461FC15378C7C0EBD01EAD /* RegionStoreTests.swift */; };
 		A1BB8B183011669A09B1D49C /* MatchFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3FE89A0049B517DF629F94D /* MatchFeedback.swift */; };
 		A369882CBF0330DC4FF27C30 /* AppReset.swift in Sources */ = {isa = PBXBuildFile; fileRef = F32728F1183582BB532E5DBA /* AppReset.swift */; };
@@ -187,6 +188,7 @@
 		9AFFABD363EDD868A5309B94 /* AppearanceWindowBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceWindowBridge.swift; sourceTree = "<group>"; };
 		9C6EC5A514D0BC9D94968D52 /* MarketTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketTests.swift; sourceTree = "<group>"; };
 		9DE35F9DB7EA75080DC933FE /* PriceHistoryPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceHistoryPoint.swift; sourceTree = "<group>"; };
+		A131D7DCE51C328D0986C625 /* OfferFilterJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferFilterJourneyTests.swift; sourceTree = "<group>"; };
 		A5414C5611E9D4E8F9AFDA07 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A6E3888444B33870F2CCF97B /* MatchDictionary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchDictionary.swift; sourceTree = "<group>"; };
 		A9040B2D8216078FED3D842D /* Market.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Market.swift; sourceTree = "<group>"; };
@@ -305,6 +307,7 @@
 				7A9D8435B451C3CC5B59F2F3 /* MatchFeedbackJourneyTests.swift */,
 				CEA2327E3E29216356945CA3 /* MultiRegionJourneyTests.swift */,
 				7DDF96A167E5090688897757 /* OfferDetailJourneyTests.swift */,
+				A131D7DCE51C328D0986C625 /* OfferFilterJourneyTests.swift */,
 				077E32320821AEDD589009C3 /* OnboardingJourneyTests.swift */,
 				D18A284202A7208FC262FFC2 /* RestartJourneyTests.swift */,
 				965633E574547736025B1070 /* TutorialJourneyTests.swift */,
@@ -735,6 +738,7 @@
 				3D129061277F9F5EC5A41C76 /* MatchFeedbackJourneyTests.swift in Sources */,
 				9BAB0623FF44A06D536E0CDD /* MultiRegionJourneyTests.swift in Sources */,
 				D69EE657C6AF3AC882F6ECC2 /* OfferDetailJourneyTests.swift in Sources */,
+				9E44FA5D03C8440EBA47C047 /* OfferFilterJourneyTests.swift in Sources */,
 				2E6CCA6B7C7B1A256D14EF1A /* OnboardingJourneyTests.swift in Sources */,
 				051E3B71EDEEFABEDE77D425 /* RestartJourneyTests.swift in Sources */,
 				5721DB0A53DE1E8AF91A0C46 /* TutorialJourneyTests.swift in Sources */,

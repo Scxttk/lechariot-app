@@ -247,7 +247,7 @@ final class OfferStore {
     /// Asked for by **branch**, not by postcode. A postcode fetched every store
     /// in it — in 01067 that is three REWE flyers at once (146 + 162 + 243
     /// rows), of which the user walks into one. `chains` only still exists for
-    /// the section labels and the market filter menu.
+    /// the section labels.
     func load(branchIds: [String], chains: [String]) async {
         self.branchIds = branchIds
         self.chains = chains

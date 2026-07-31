@@ -29,8 +29,9 @@ struct OffersView: View {
 
     /// The chosen branches themselves. Since the backend keys offers by branch
     /// (migration v13), this is the filter that actually matches what the user
-    /// picked — the chain list above only still exists for the section labels
-    /// and the market filter menu.
+    /// picked — the chain list above only still exists for the section labels.
+    /// The market chips above the list are computed from the loaded offers
+    /// instead, so no chip can lead to an empty result — see `chipChains`.
     private var branchIds: [String] {
         favoriteMarkets.map(\.marketId).sorted()
     }
@@ -91,8 +92,81 @@ struct OffersView: View {
                 .foregroundStyle(Theme.onAccent)
             }
         case .loaded:
-            offerList
+            VStack(spacing: 0) {
+                marketChips
+                offerList
+            }
         }
+    }
+
+    // MARK: Markt-Leiste
+
+    /// Die Ketten, für die die Leiste einen Chip zeigt.
+    ///
+    /// Gerechnet aus den **geladenen Angeboten**, nicht aus den gewählten
+    /// Filialen. Ein Chip für eine Kette, die diese Woche nichts hat, wäre
+    /// ein Tipp in die Sackgasse „Nichts für diesen Filter"; dass eine
+    /// gewählte Filiale leer ist, erklärt der Abschnitt „Ohne Angebote" am
+    /// Ende der Liste, und zwar mit dem Grund.
+    ///
+    /// Die aktive Kette bleibt drin, auch wenn sie gerade aus den Angeboten
+    /// fällt (eine Aktualisierung kann das). Sonst verschwände mit dem Chip
+    /// der einzige sichtbare Hinweis darauf, warum die Liste leer ist — und
+    /// das ist genau die Fehlerklasse, gegen die diese Runde antritt.
+    private var chipChains: [String] {
+        var ketten = Set(store.offers.map(\.market))
+        if let marketFilter { ketten.insert(marketFilter) }
+        return ketten.sorted()
+    }
+
+    /// Ein Tipp statt einer Scroll-Lotterie.
+    ///
+    /// Den Marktfilter gab es schon, aber als vierten Picker in einem Menü
+    /// der Werkzeugleiste — wer zu Lidl wollte, scrollte trotzdem. Die Leiste
+    /// steht deshalb **über** der Liste und scrollt nicht mit ihr weg.
+    ///
+    /// Bei genau einer Kette filtert sie nichts und wäre reine Höhe; dann
+    /// bleibt sie weg. Dieselbe Regel wie bei der Konsum-Zeile im Picker: Was
+    /// fast niemandem hilft, darf nicht jeder bezahlen.
+    @ViewBuilder
+    private var marketChips: some View {
+        let ketten = chipChains
+        if ketten.count > 1 {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Spacing.sm) {
+                    marketChip("Alle", chain: nil)
+                    ForEach(ketten, id: \.self) { marketChip($0, chain: $0) }
+                }
+                .padding(.horizontal, Theme.Spacing.lg)
+                .padding(.vertical, Theme.Spacing.sm)
+            }
+            .background(Theme.background)
+            .accessibilityIdentifier("offers.marketChips")
+        }
+    }
+
+    /// Mindestens 44 pt hoch, nicht die hübscheren 36: `performAccessibilityAudit`
+    /// misst Trefferflächen mit, und der Angebote-Bildschirm steht in
+    /// `AccessibilityAuditTests` unter Gate.
+    private func marketChip(_ title: String, chain: String?) -> some View {
+        let aktiv = marketFilter == chain
+        return Button {
+            // Ein zweiter Tipp auf den aktiven Chip hebt ihn auf. „Alle" liegt
+            // am anderen Ende der Leiste, und dorthin zurückzuscrollen wäre
+            // wieder genau die Lotterie, gegen die die Leiste gebaut ist.
+            marketFilter = aktiv ? nil : chain
+        } label: {
+            Text(title)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(aktiv ? Theme.onAccent : Color.primary)
+                .padding(.horizontal, Theme.Spacing.lg)
+                .frame(minHeight: 44)
+                .background(aktiv ? Theme.accent : Theme.surface, in: Capsule())
+                .overlay(Capsule().strokeBorder(aktiv ? Color.clear : Theme.stroke))
+        }
+        .buttonStyle(TactileButtonStyle())
+        .accessibilityLabel(chain == nil ? "Alle Märkte" : title)
+        .accessibilityAddTraits(aktiv ? [.isSelected] : [])
     }
 
     /// Region is ready, but there are no offers to show.
@@ -217,6 +291,26 @@ struct OffersView: View {
         sort = .standard
     }
 
+    /// Gesucht **innerhalb** einer Kette und nichts gefunden.
+    ///
+    /// `ContentUnavailableView.search` sagt an dieser Stelle nur „Keine
+    /// Ergebnisse für ‚Butter'" — und verschweigt, dass die Suche gerade auf
+    /// einen Markt eingeschränkt ist. Bei den anderen liegt vielleicht Butter.
+    /// Dieselbe Halbwahrheit wie der Leertext, der EDEKA Böse ein „schau
+    /// später noch einmal vorbei" mitgab: ein Satz, der eine Lage behauptet,
+    /// die er nicht geprüft hat. Der Ausweg steht daneben und kostet einen Tipp.
+    private func noSearchHitInOneMarket(_ chain: String) -> some View {
+        ContentUnavailableView {
+            Label("Nichts bei \(chain)", systemImage: "magnifyingglass")
+        } description: {
+            Text("„\(search.trimmingCharacters(in: .whitespaces))" + "“ steht diese Woche nicht in den Angeboten von \(chain). Die anderen Märkte sind gerade ausgeblendet.")
+        } actions: {
+            Button("In allen Märkten suchen") { marketFilter = nil }
+                .buttonStyle(.borderedProminent)
+                .foregroundStyle(Theme.onAccent)
+        }
+    }
+
     private var offerList: some View {
         List {
             if store.isStale {
@@ -227,11 +321,16 @@ struct OffersView: View {
                 category: categoryFilter, market: marketFilter, sort: sort
             )
             if visible.isEmpty {
-                // Two different dead ends that used to look identical: an empty
-                // search still rendered the search-empty view, which reads as
-                // "Keine Ergebnisse für ‚‘" when only a filter was to blame.
+                // Drei Sackgassen, die einmal identisch aussahen. Eine leere
+                // Suche zeigte die Suchleere („Keine Ergebnisse für ‚'"),
+                // obwohl nur ein Filter im Weg stand — und eine Suche
+                // innerhalb einer Kette verschwieg, dass sie eingeschränkt ist.
                 if !search.trimmingCharacters(in: .whitespaces).isEmpty {
-                    ContentUnavailableView.search(text: search)
+                    if let marketFilter {
+                        noSearchHitInOneMarket(marketFilter)
+                    } else {
+                        ContentUnavailableView.search(text: search)
+                    }
                 } else {
                     noFilterMatchState
                 }
@@ -333,10 +432,10 @@ struct OffersView: View {
                     Text("Alle Kategorien").tag(String?.none)
                     ForEach(Categories.all, id: \.self) { Text($0).tag(String?.some($0)) }
                 }
-                Picker("Markt", selection: $marketFilter) {
-                    Text("Alle Märkte").tag(String?.none)
-                    ForEach(chains, id: \.self) { Text($0).tag(String?.some($0)) }
-                }
+                // Kein „Markt"-Picker mehr: Das steht seit dem 2026-07-31 als
+                // Chip-Leiste über der Liste, sichtbar statt vier Ebenen tief.
+                // Zwei Bedienelemente für denselben Zustand sind die Sorte
+                // Ballast, die dieselbe Runde im Filial-Picker abgeräumt hat.
             } label: {
                 Label("Filter", systemImage: hasActiveFilter
                     ? "line.3.horizontal.decrease.circle.fill"
