@@ -64,8 +64,8 @@ final class AreaRequestStoreTests: XCTestCase {
         let repo = MockAreaRequestRepository()
         let store = AreaRequestStore(repository: repo, defaults: defaults)
 
-        await store.requestArea(anchors: ["531032"])
-        await store.requestArea(anchors: ["531032"])
+        await store.requestArea(anchor: "531032", lat: 50.887, lon: 12.433)
+        await store.requestArea(anchor: "531032", lat: 50.887, lon: 12.433)
 
         XCTAssertEqual(repo.requested, ["531032"], "zweimal angefordert")
         XCTAssertTrue(store.isFetchingArea)
@@ -77,9 +77,10 @@ final class AreaRequestStoreTests: XCTestCase {
     func testAnExistingPendingRowIsAdoptedInsteadOfInsertedAgain() async {
         let repo = MockAreaRequestRepository()
         repo.pending = ["531032"]
+        repo.coordinates = ["531032": (lat: 50.887, lon: 12.433)]
         let store = AreaRequestStore(repository: repo, defaults: defaults)
 
-        await store.requestArea(anchors: ["531032"])
+        await store.requestArea(anchor: "531032", lat: 50.887, lon: 12.433)
 
         XCTAssertTrue(repo.requested.isEmpty, "Insert trotz laufender Anforderung")
         XCTAssertTrue(store.isFetchingArea)
@@ -91,9 +92,10 @@ final class AreaRequestStoreTests: XCTestCase {
     func testAnAlreadyFinishedAreaNeitherWaitsNorAnnounces() async {
         let repo = MockAreaRequestRepository()
         repo.ready = ["531032"]
+        repo.coordinates = ["531032": (lat: 50.887, lon: 12.433)]
         let store = AreaRequestStore(repository: repo, defaults: defaults)
 
-        await store.requestArea(anchors: ["531032"])
+        await store.requestArea(anchor: "531032", lat: 50.887, lon: 12.433)
         await store.checkPendingArea()
 
         XCTAssertTrue(repo.requested.isEmpty)
@@ -108,7 +110,7 @@ final class AreaRequestStoreTests: XCTestCase {
     func testTheNoticeSurvivesAColdStart() async {
         let repo = MockAreaRequestRepository()
         let firstLaunch = AreaRequestStore(repository: repo, defaults: defaults)
-        await firstLaunch.requestArea(anchors: ["531032"])
+        await firstLaunch.requestArea(anchor: "531032", lat: 50.887, lon: 12.433)
         XCTAssertFalse(firstLaunch.areaJustCompleted, "noch läuft er ja")
 
         // Der Lauf wird fertig, während die App nicht läuft.
@@ -127,7 +129,7 @@ final class AreaRequestStoreTests: XCTestCase {
     func testTheNoticeIsShownOnceNotOnEveryLaunch() async {
         let repo = MockAreaRequestRepository()
         let store = AreaRequestStore(repository: repo, defaults: defaults)
-        await store.requestArea(anchors: ["531032"])
+        await store.requestArea(anchor: "531032", lat: 50.887, lon: 12.433)
         repo.ready = ["531032"]
         await store.checkPendingArea()
         XCTAssertTrue(store.areaJustCompleted)
@@ -147,7 +149,7 @@ final class AreaRequestStoreTests: XCTestCase {
     func testAPendingAreaStaysPendingAcrossLaunches() async {
         let repo = MockAreaRequestRepository()
         let store = AreaRequestStore(repository: repo, defaults: defaults)
-        await store.requestArea(anchors: ["531032"])
+        await store.requestArea(anchor: "531032", lat: 50.887, lon: 12.433)
 
         for _ in 0..<3 {
             let launch = AreaRequestStore(repository: repo, defaults: defaults)
@@ -175,8 +177,8 @@ final class AreaRequestStoreTests: XCTestCase {
         let repo = MockAreaRequestRepository()
         let store = AreaRequestStore(repository: repo, defaults: defaults)
 
-        await store.requestArea(anchors: ["penny-04639-1"], region: "04626")
-        await store.requestArea(anchors: ["penny-17373-1"], region: "17419")
+        await store.requestArea(anchor: "penny-04639-1", region: "04626", lat: 50.887, lon: 12.433)
+        await store.requestArea(anchor: "penny-17373-1", region: "17419", lat: 53.9440, lon: 14.1830)
 
         XCTAssertEqual(repo.requested, ["penny-04639-1", "penny-17373-1"])
         XCTAssertEqual(store.pendingAreaPLZs, ["04626", "17419"])
@@ -187,8 +189,8 @@ final class AreaRequestStoreTests: XCTestCase {
     func testAreasFinishIndependently() async {
         let repo = MockAreaRequestRepository()
         let store = AreaRequestStore(repository: repo, defaults: defaults)
-        await store.requestArea(anchors: ["penny-04639-1"], region: "04626")
-        await store.requestArea(anchors: ["penny-17373-1"], region: "17419")
+        await store.requestArea(anchor: "penny-04639-1", region: "04626", lat: 50.887, lon: 12.433)
+        await store.requestArea(anchor: "penny-17373-1", region: "17419", lat: 53.9440, lon: 14.1830)
 
         repo.ready = ["penny-17373-1"]
         await store.checkPendingArea()
@@ -212,8 +214,8 @@ final class AreaRequestStoreTests: XCTestCase {
         let repo = MockAreaRequestRepository()
         let store = AreaRequestStore(repository: repo, defaults: defaults)
 
-        await store.requestArea(anchors: ["penny-17373-1"], region: "17419")
-        await store.requestArea(anchors: ["penny-17373-1"], region: "17419")
+        await store.requestArea(anchor: "penny-17373-1", region: "17419", lat: 53.9440, lon: 14.1830)
+        await store.requestArea(anchor: "penny-17373-1", region: "17419", lat: 53.9440, lon: 14.1830)
 
         XCTAssertEqual(repo.requested, ["penny-17373-1"])
     }
@@ -242,7 +244,7 @@ final class AreaRequestStoreTests: XCTestCase {
     func testResetClearsPendingAndAnnouncedAreas() async {
         let repo = MockAreaRequestRepository()
         let store = AreaRequestStore(repository: repo, defaults: defaults)
-        await store.requestArea(anchors: ["531032"], region: "04639")
+        await store.requestArea(anchor: "531032", region: "04639", lat: 50.887, lon: 12.433)
         repo.ready = ["531032"]
         await store.checkPendingArea()
 
@@ -253,7 +255,7 @@ final class AreaRequestStoreTests: XCTestCase {
 
         let afterReset = AreaRequestStore(repository: repo, defaults: defaults)
         repo.ready = []
-        await afterReset.requestArea(anchors: ["531032"], region: "04639")
+        await afterReset.requestArea(anchor: "531032", region: "04639", lat: 50.887, lon: 12.433)
         XCTAssertTrue(afterReset.isFetchingArea, "nach dem Reset wurde nicht neu angefordert")
     }
 
@@ -268,7 +270,7 @@ final class AreaRequestStoreTests: XCTestCase {
         let store = AreaRequestStore(repository: repo, defaults: defaults)
 
         await store.requestArea(
-            anchors: ["penny-17373-1"], region: "17419", lat: 53.9440, lon: 14.1830
+            anchor: "penny-17373-1", region: "17419", lat: 53.9440, lon: 14.1830
         )
 
         let sent = try! XCTUnwrap(repo.requestedCoordinates["penny-17373-1"])
@@ -276,106 +278,90 @@ final class AreaRequestStoreTests: XCTestCase {
         XCTAssertEqual(try! XCTUnwrap(sent.lon), 14.1830, accuracy: 0.0001)
     }
 
-    /// Penny Am Haff ist die nächste Filiale sowohl für Ueckermünde als auch
-    /// für Ahlbeck, und `market_id` ist der Primärschlüssel von
-    /// `area_requests`. Trägt die vorhandene Zeile die Koordinaten der anderen
-    /// Stadt, wäre ihre Übernahme das Warten auf einen fremden Lauf — also
-    /// weiter zum nächsten Anker.
-    func testAPendingRowFromAnotherTownIsNotAdopted() async {
+    // MARK: Das Gebiet ist der Schlüssel (Migration v22)
+
+    /// **Der Kernfall, und ab v22 ohne Ausweichmanöver.** Penny Am Haff ist die
+    /// nächste Filiale sowohl für Ueckermünde als auch für Ahlbeck. Bis v21 war
+    /// `market_id` der Primärschlüssel von `area_requests`, die zweite Region
+    /// bekam also 409 und musste auf einen anderen Anker ausweichen — und wenn
+    /// alle Anker belegt waren, fragte sie **still** nie.
+    ///
+    /// Seit v22 ist der Schlüssel die Rasterzelle. Beide Regionen dürfen
+    /// denselben Anker benutzen, und beide kommen durch.
+    func testTwoRegionsMayShareTheSameAnchor() async {
         let repo = MockAreaRequestRepository()
-        repo.pending = ["penny-17373-1"]
-        // Die offene Zeile gehört Ueckermünde, 24,5 km entfernt.
-        repo.coordinates = ["penny-17373-1": (lat: 53.7383, lon: 14.0511)]
         let store = AreaRequestStore(repository: repo, defaults: defaults)
 
         await store.requestArea(
-            anchors: ["penny-17373-1", "penny-17449-1"],
-            region: "17419", lat: 53.9440, lon: 14.1830
+            anchor: "penny-am-haff", region: "17373", lat: 53.7383, lon: 14.0511
+        )
+        await store.requestArea(
+            anchor: "penny-am-haff", region: "17419", lat: 53.9440, lon: 14.1830
         )
 
-        XCTAssertEqual(repo.requested, ["penny-17449-1"],
-                       "die fremde Zeile darf nicht übernommen werden")
-        XCTAssertTrue(store.isFetchingArea)
+        XCTAssertEqual(repo.requested, ["penny-am-haff", "penny-am-haff"],
+                       "die zweite Region ging unter")
+        XCTAssertEqual(store.pendingAreaPLZs, ["17373", "17419"])
     }
 
-    /// Liegt die offene Zeile in derselben Rasterzelle, ist es dasselbe Gebiet
-    /// und ein zweiter Lauf wäre Verschwendung — dann wird übernommen.
-    func testAPendingRowFromTheSameAreaIsStillAdopted() async {
+    /// Dasselbe Gebiet zweimal bleibt eine Anforderung — das ist die Aufgabe
+    /// des Cooldowns, und der Unique-Index über die Zelle hält sie.
+    func testTheSameAreaIsRequestedOnlyOnce() async {
         let repo = MockAreaRequestRepository()
-        repo.pending = ["penny-17373-1"]
-        // 2 km weiter, also klar innerhalb einer Zelle.
-        repo.coordinates = ["penny-17373-1": (lat: 53.9530, lon: 14.2000)]
+        let store = AreaRequestStore(repository: repo, defaults: defaults)
+
+        await store.requestArea(anchor: "a", region: "17419", lat: 53.9440, lon: 14.1830)
+        // Ein paar hundert Meter weiter — 53,946/14,185 rundet auf dieselbe
+        // Zelle 53,9/14,2. (53,953 täte es NICHT: das rundet auf 54,0.)
+        await store.requestArea(anchor: "b", region: "17419", lat: 53.9460, lon: 14.1850)
+
+        XCTAssertEqual(repo.requested, ["a"], "die zweite Anfrage war dasselbe Gebiet")
+    }
+
+    /// Eine offene Zeile **dieses** Gebiets wird übernommen, statt sie neu
+    /// anzufordern — sonst liefe derselbe Lauf zweimal.
+    func testAnOpenRowForThisAreaIsAdopted() async {
+        let repo = MockAreaRequestRepository()
+        repo.pending = ["penny-am-haff"]
+        repo.coordinates = ["penny-am-haff": (lat: 53.9440, lon: 14.1830)]
+        repo.areaKeys = ["cell:53.9,14.2": "penny-am-haff"]
         let store = AreaRequestStore(repository: repo, defaults: defaults)
 
         await store.requestArea(
-            anchors: ["penny-17373-1", "penny-17449-1"],
-            region: "17419", lat: 53.9440, lon: 14.1830
+            anchor: "penny-am-haff", region: "17419", lat: 53.9440, lon: 14.1830
         )
 
         XCTAssertTrue(repo.requested.isEmpty, "die offene Zeile deckt dieses Gebiet ab")
         XCTAssertTrue(store.isFetchingArea)
     }
 
-    /// Ohne Koordinaten gilt der Weg von v19: derselbe Anker heißt dasselbe
-    /// Gebiet. Das muss weiter funktionieren — es ist der Rückfall, wenn der
-    /// Trigger die Lage verwirft.
-    func testARequestWithoutCoordinatesStillWorks() async {
-        let repo = MockAreaRequestRepository()
-        let store = AreaRequestStore(repository: repo, defaults: defaults)
-
-        await store.requestArea(anchors: ["531032"], region: "04639")
-
-        XCTAssertEqual(repo.requested, ["531032"])
-        let sent = try! XCTUnwrap(repo.requestedCoordinates["531032"])
-        XCTAssertNil(sent.lat)
-        XCTAssertNil(sent.lon)
-    }
-
-    // MARK: Ein belegter Anker darf ein Gebiet nicht verschlucken
-
-    /// **Zwei Regionen, ein nächster Anker — in einem einzigen Durchlauf.**
-    ///
-    /// `requestUnfetchedAreas` geht die Kandidaten nacheinander durch, und Penny
-    /// Am Haff ist die nächste Filiale sowohl für Ueckermünde als auch für
-    /// Ahlbeck; genau die Geografie des gemeldeten Falls. Nimmt die erste Region
-    /// den Anker, muss die zweite auf ihren eigenen ausweichen — sonst fragt sie
-    /// nie, und niemandem fällt es auf. Dieselbe stille Klasse, gegen die diese
-    /// Korrektur gebaut ist.
-    func testASecondRegionSharingTheAnchorStillGetsItsOwnRequest() async {
-        let repo = MockAreaRequestRepository()
-        let store = AreaRequestStore(repository: repo, defaults: defaults)
-
-        await store.requestArea(
-            anchors: ["penny-am-haff", "netto-ueckermuende"],
-            region: "17373", lat: 53.7383, lon: 14.0511
-        )
-        await store.requestArea(
-            anchors: ["penny-am-haff", "penny-karlshagen"],
-            region: "17419", lat: 53.9440, lon: 14.1830
-        )
-
-        XCTAssertEqual(repo.requested, ["penny-am-haff", "penny-karlshagen"],
-                       "Ahlbeck ging unter, weil Ueckermünde den Anker hielt")
-        XCTAssertEqual(store.pendingAreaPLZs, ["17373", "17419"])
-    }
-
-    /// Und dasselbe mit einem **fertigen** Lauf: Ist die Zeile des Ankers
-    /// erledigt, aber für die Nachbarstadt, dann ist für dieses Gebiet nichts
-    /// geholt worden. „Schon fertig" darf erst gelten, wenn es auch derselbe
-    /// Ort ist — sonst zählt der Lauf von Ueckermünde als Ahlbecks Ergebnis.
-    func testAFinishedRowFromAnotherTownDoesNotSwallowTheRegion() async {
+    /// Eine **fertige** Zeile der Nachbarstadt darf dieses Gebiet nicht
+    /// verschlucken. Über die Zelle gefragt findet die App sie gar nicht erst —
+    /// das ist der ganze Gewinn gegenüber der Suche über den Anker.
+    func testAFinishedRowFromAnotherTownDoesNotSwallowThisArea() async {
         let repo = MockAreaRequestRepository()
         repo.ready = ["penny-am-haff"]
-        repo.coordinates = ["penny-am-haff": (lat: 53.7383, lon: 14.0511)]
+        repo.coordinates = ["penny-am-haff": (lat: 53.7383, lon: 14.0511)] // Ueckermünde
+        repo.areaKeys = ["cell:53.7,14.1": "penny-am-haff"]
         let store = AreaRequestStore(repository: repo, defaults: defaults)
 
         await store.requestArea(
-            anchors: ["penny-am-haff", "penny-karlshagen"],
-            region: "17419", lat: 53.9440, lon: 14.1830
+            anchor: "penny-am-haff", region: "17419", lat: 53.9440, lon: 14.1830
         )
 
-        XCTAssertEqual(repo.requested, ["penny-karlshagen"],
-                       "der fertige Lauf der Nachbarstadt zaehlte als erledigt")
+        XCTAssertEqual(repo.requested, ["penny-am-haff"],
+                       "der fertige Lauf der Nachbarstadt zählte als unser Ergebnis")
         XCTAssertTrue(store.isFetchingArea)
+    }
+
+    /// Der Schlüssel muss zeichengleich zu `area_key` in Migration v22 und zu
+    /// `branches::area_cell` im Backend sein. Laufen die drei auseinander,
+    /// wartet die App auf einen Lauf, den es unter diesem Namen nicht gibt.
+    func testTheAreaKeyMatchesTheBackendSpelling() {
+        XCTAssertEqual(AreaRequestStore.areaKey(lat: 53.9440, lon: 14.1830), "cell:53.9,14.2")
+        XCTAssertEqual(AreaRequestStore.areaKey(lat: 53.7383, lon: 14.0511), "cell:53.7,14.1")
+        XCTAssertEqual(AreaRequestStore.areaKey(lat: 51.0225, lon: 13.7625), "cell:51.0,13.8")
+        // -0.0 darf nicht als "-0.0" herauskommen.
+        XCTAssertEqual(AreaRequestStore.areaKey(lat: 0.04, lon: -0.04), "cell:0.0,0.0")
     }
 }

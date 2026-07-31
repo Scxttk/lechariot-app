@@ -488,7 +488,7 @@ struct MarketPickerView: View {
             // Der Anker kann in der Nachbarstadt stehen, und in Ahlbeck stand er
             // 24,5 km weit weg in Ueckermünde.
             await areaRequests.requestArea(
-                anchors: candidate.anchors.map(\.marketId),
+                anchor: candidate.anchor.marketId,
                 region: candidate.plz,
                 lat: candidate.lat,
                 lon: candidate.lon

@@ -41,6 +41,11 @@ protocol AreaRequestRepositoryProtocol {
     /// Request row for an area, keyed on the anchor store, or nil if nobody
     /// has asked for it yet.
     func request(marketId: String) async throws -> AreaRequest?
+    /// Die Anforderung **dieses Gebiets**, unabhängig davon, an welcher
+    /// Ankerfiliale sie hängt. Seit Migration v22 ist der Gebietsschlüssel die
+    /// Identität einer Anforderung; über die Filiale zu fragen liefert bei
+    /// zwei Orten mit demselben nächsten Anker eine beliebige der beiden.
+    func request(areaKey: String) async throws -> AreaRequest?
     /// Asks the backend to fetch the whole directory around this store.
     /// Idempotent, same as `requestBranch`.
     ///

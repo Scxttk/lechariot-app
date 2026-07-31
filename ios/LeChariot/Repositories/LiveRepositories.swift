@@ -154,9 +154,17 @@ struct LiveBranchRequestRepository: BranchRequestRepositoryProtocol {
 struct LiveAreaRequestRepository: AreaRequestRepositoryProtocol {
     let client: SupabaseClient
 
+    private static let columns = "market_id,plz,lat,lon,area_key,last_synced,active"
+
     func request(marketId: String) async throws -> AreaRequest? {
         guard let marketId = SupabaseClient.filterValue(marketId) else { return nil }
-        let query = "select=market_id,plz,lat,lon,last_synced,active&market_id=eq.\(marketId)"
+        let query = "select=\(Self.columns)&market_id=eq.\(marketId)"
+        return try await client.get([AreaRequest].self, path: "area_requests", query: query).first
+    }
+
+    func request(areaKey: String) async throws -> AreaRequest? {
+        guard let areaKey = SupabaseClient.filterValue(areaKey) else { return nil }
+        let query = "select=\(Self.columns)&area_key=eq.\(areaKey)"
         return try await client.get([AreaRequest].self, path: "area_requests", query: query).first
     }
 

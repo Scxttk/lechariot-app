@@ -113,87 +113,63 @@ final class AreaRequestStore {
         !branches.isEmpty && branches.allSatisfy { nationwideChains.contains($0.chain) }
     }
 
-    /// Zwei Anforderungen gelten als dasselbe Gebiet, wenn ihre Mittelpunkte
-    /// näher als eine Rasterzelle beieinander liegen.
+    /// Der Gebietsschlüssel einer Regionsmitte — **dieselbe Regel wie
+    /// `area_key` in Migration v22 und `branches::area_cell` im Backend.**
+    /// Drei Stellen, eine Zeichenkette; laufen sie auseinander, wartet die App
+    /// auf einen Lauf, den es unter diesem Namen nicht gibt.
     ///
-    /// 13,5 km ist die Diagonale der 0,1°-Zelle, auf die der Cooldown der
-    /// Migration v21 schlüsselt — dieselbe Zahl, damit App und Server nicht
-    /// verschiedener Meinung darüber sind, was ein Gebiet ist.
-    static let sameAreaKm = 13.5
+    /// 0,1° sind höchstens 13,5 km Diagonale — zwei Anforderungen in derselben
+    /// Zelle liegen im 25-km-Kreis des ersten Laufs, der zweite Nutzer bekommt
+    /// also kein Ergebnis weniger.
+    /// `nonisolated`, weil es eine reine Rechnung ist — `PickerDirectory` und
+    /// die Repositories fragen sie außerhalb des Main-Actors.
+    nonisolated static func areaKey(lat: Double, lon: Double) -> String {
+        let round1 = { (v: Double) in (v * 10).rounded() / 10 + 0.0 }
+        return String(format: "cell:%.1f,%.1f", round1(lat), round1(lon))
+    }
 
-    /// Asks for the directory around one of `anchors`, unless *this* area is
-    /// already on its way. `region` is the postcode the picker was searching
-    /// around, kept only so the hint can name it; `lat`/`lon` are the region
-    /// centre and the only thing the server derives the area from (v21).
+    /// Asks for the directory around `anchor`, unless *this area* is already on
+    /// its way. `region` is the postcode the picker was searching around, kept
+    /// only so the hint can name it; `lat`/`lon` are the region centre — the
+    /// only thing the server derives the area from, and since v22 also the
+    /// identity of the request.
     ///
     /// Reads before writing, for the same reason as `BranchRequestStore`: the
     /// trigger holds a 30-minute cooldown per area, so a second insert does
     /// nothing at all — silently. Reading first turns "nothing happened" into
     /// "it is already running".
     ///
-    /// **Mehrere Anker, und das ist kein Luxus.** `market_id` ist der
-    /// Primärschlüssel von `area_requests`, und zwei Orte können denselben
-    /// nächsten Anker haben — Penny Am Haff ist die nächste Filiale sowohl für
-    /// Ueckermünde als auch für Ahlbeck, genau die Geografie des gemeldeten
-    /// Falls. Trägt die vorhandene Zeile Koordinaten aus einer anderen Gegend,
-    /// wäre ihre Übernahme das Warten auf einen Lauf für eine fremde Stadt.
-    /// Dann lieber den nächsten Anker.
-    func requestArea(
-        anchors: [String],
-        region: String = "",
-        lat: Double? = nil,
-        lon: Double? = nil
-    ) async {
-        for anchor in anchors {
-            // Unser eigener offener Auftrag für genau dieses Gebiet — der läuft
-            // schon, mehr ist nicht zu tun.
-            if pendingAreas[anchor] == region { return }
+    /// **Ein Anker genügt wieder.** Bis v21 war `market_id` der
+    /// Primärschlüssel von `area_requests`, eine Filiale trug also höchstens
+    /// eine Anforderung — und zwei Orte können denselben nächsten Anker haben
+    /// (Penny Am Haff für Ueckermünde wie für Ahlbeck). Die App wich deshalb
+    /// auf den zweitnächsten Anker aus. Seit v22 ist der Schlüssel das Gebiet,
+    /// nicht die Filiale; der Ausweichweg ist damit unerreichbar geworden und
+    /// hier entfernt, statt als nie durchlaufener Pfad liegen zu bleiben.
+    func requestArea(anchor: String, region: String = "", lat: Double, lon: Double) async {
+        let key = Self.areaKey(lat: lat, lon: lon)
+        // Unser eigener offener Auftrag für dieses Gebiet, oder einer, den wir
+        // schon gemeldet haben.
+        if pendingAreas[key] != nil || announced.contains(key) { return }
 
-            // Der Anker ist belegt: von einer anderen Region von uns, oder von
-            // einem Lauf, den wir schon gemeldet haben. Beides heißt **nicht**,
-            // dass dieses Gebiet erledigt ist — hierher kommen wir überhaupt nur,
-            // solange es weiter ungeholt aussieht. Also weiter zum nächsten
-            // Anker statt aufzugeben: Penny Am Haff ist die nächste Filiale
-            // sowohl für Ueckermünde als auch für Ahlbeck, und ein `return` an
-            // dieser Stelle hieße, dass die zweite der beiden Regionen nie
-            // fragt — genau die stille Klasse, gegen die v21 gebaut ist.
-            if pendingAreas[anchor] != nil || announced.contains(anchor) { continue }
-
-            do {
-                if let existing = try await repository.request(marketId: anchor) {
-                    // Erst der Ort, dann der Zustand. Andersherum zählte der
-                    // fertige Lauf der Nachbarstadt als unser Ergebnis.
-                    if isForAnotherArea(existing, lat: lat, lon: lon) {
-                        continue
-                    }
-                    if existing.isReady {
-                        // Already fetched before we ever asked — nothing to wait
-                        // for and nothing to announce.
-                        return
-                    }
-                } else {
-                    try await repository.requestArea(marketId: anchor, lat: lat, lon: lon)
+        do {
+            if let existing = try await repository.request(areaKey: key) {
+                if existing.isReady {
+                    // Schon geholt, bevor wir gefragt haben — nichts zu warten
+                    // und nichts zu melden.
+                    return
                 }
-                pendingAreas[anchor] = region
-                isFetchingArea = true
-                return
-            } catch {
-                // A failed request costs the extra chains, not the app. The user
-                // still sees Kaufland and Penny, and the Sunday run catches up.
-                isFetchingArea = !pendingAreas.isEmpty
-                return
+                // Offen und für dieses Gebiet: übernehmen statt neu anfordern.
+            } else {
+                try await repository.requestArea(marketId: anchor, lat: lat, lon: lon)
             }
+            pendingAreas[key] = region
+            isFetchingArea = true
+        } catch {
+            // A failed request costs the extra chains, not the app. The user
+            // still sees Kaufland and Penny, and the Sunday run catches up.
+            isFetchingArea = !pendingAreas.isEmpty
         }
-    }
-
-    /// Gehört eine vorhandene Zeile erkennbar zu einem anderen Ort?
-    ///
-    /// Nur wenn beide Seiten Koordinaten haben. Ohne sie ist die alte Annahme
-    /// die einzige, die es gibt — „derselbe Anker heißt dasselbe Gebiet" —, und
-    /// sie ist meistens richtig.
-    private func isForAnotherArea(_ row: AreaRequest, lat: Double?, lon: Double?) -> Bool {
-        guard let lat, let lon, let rowLat = row.lat, let rowLon = row.lon else { return false }
-        return Geo.distanceKm(from: (lat, lon), to: (rowLat, rowLon)) > Self.sameAreaKm
     }
 
     /// Checks whether the areas we were waiting for have arrived. Call on
@@ -209,7 +185,17 @@ final class AreaRequestStore {
         for (anchor, region) in open {
             // No row yet is not "finished" — leave it open and look again next
             // time rather than dropping the request on a hiccup.
-            guard let row = try? await repository.request(marketId: anchor) else { continue }
+            // Neue Einträge tragen den Gebietsschlüssel, Einträge aus der Zeit
+            // vor v22 die Ankerfiliale. Der Altweg bleibt genau eine Version
+            // stehen, damit ein Tester, der beim Update mitten im Lauf steckt,
+            // seine Meldung nicht verliert — er darf danach weg.
+            let row: AreaRequest?
+            if anchor.hasPrefix("cell:") || anchor.hasPrefix("plz:") {
+                row = try? await repository.request(areaKey: anchor)
+            } else {
+                row = try? await repository.request(marketId: anchor)
+            }
+            guard let row else { continue }
             guard row.isReady else { continue }
             stillOpen[anchor] = nil
             seen.insert(anchor)

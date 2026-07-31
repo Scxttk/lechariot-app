@@ -91,7 +91,7 @@ final class PickerDirectoryTests: XCTestCase {
         let candidate = try! XCTUnwrap(plan.areaCandidates.first)
         XCTAssertEqual(candidate.plz, "17419")
         // Am Haff (~23 km) liegt näher an Ahlbeck als Karlshagen (~26 km).
-        XCTAssertEqual(candidate.anchor?.marketId, pennyAmHaff.marketId)
+        XCTAssertEqual(candidate.anchor.marketId, pennyAmHaff.marketId)
     }
 
     /// **Der Kern der v21-Korrektur.** Die Anforderung trägt die Mitte der
@@ -113,21 +113,20 @@ final class PickerDirectoryTests: XCTestCase {
         XCTAssertNotEqual(candidate.lat, pennyAmHaff.lat, "das wäre wieder der Anker")
     }
 
-    /// Und er trägt einen Ausweichanker. `market_id` ist der Primärschlüssel
-    /// von `area_requests`, und Am Haff ist die nächste Filiale sowohl für
-    /// Ueckermünde als auch für Ahlbeck — wer zweiter kommt, braucht einen
-    /// zweiten Anker, sonst wartet er auf den Lauf einer fremden Stadt.
-    func testTheCandidateOffersMoreThanOneAnchor() {
+    /// Ein Anker genügt wieder, seit das Gebiet der Schlüssel ist.
+    ///
+    /// Bis v21 gab der Kandidat bis zu drei Anker mit, weil `market_id` der
+    /// Primärschlüssel von `area_requests` war und Am Haff die nächste Filiale
+    /// sowohl für Ueckermünde als auch für Ahlbeck ist. Seit Migration v22
+    /// schlüsselt der Server auf die Rasterzelle — der Ausweichanker wäre ein
+    /// Pfad, den nichts mehr erreicht.
+    func testTheCandidateCarriesTheNearestAnchor() {
         let plan = PickerDirectory.plan([
             find("17419", ahlbeck, [pennyAmHaff, pennyKarlshagen]),
         ])
 
         let candidate = try! XCTUnwrap(plan.areaCandidates.first)
-        XCTAssertEqual(
-            candidate.anchors.map(\.marketId),
-            [pennyAmHaff.marketId, pennyKarlshagen.marketId],
-            "nächster zuerst"
-        )
+        XCTAssertEqual(candidate.anchor.marketId, pennyAmHaff.marketId, "nächster Anker")
     }
 
     /// Steht in einer Region eine der sechs gebietsweisen Ketten, ist dort
