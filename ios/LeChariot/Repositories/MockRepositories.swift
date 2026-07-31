@@ -229,14 +229,33 @@ final class MockAreaRequestRepository: AreaRequestRepositoryProtocol, @unchecked
             return AreaRequest(
                 marketId: marketId, plz: "04639",
                 lastSynced: "2026-07-26T08:36:50Z", active: true,
+                areaKey: point.map { AreaRequestStore.areaKey(lat: $0.lat, lon: $0.lon) },
                 lat: point?.lat, lon: point?.lon
             )
         }
         if pending.contains(marketId) || requested.contains(marketId) {
             return AreaRequest(
                 marketId: marketId, plz: "04639", lastSynced: nil, active: true,
+                areaKey: point.map { AreaRequestStore.areaKey(lat: $0.lat, lon: $0.lon) },
                 lat: point?.lat, lon: point?.lon
             )
+        }
+        return nil
+    }
+
+    /// Zuordnung Gebietsschlüssel -> Filiale. Wird beim Anfordern automatisch
+    /// gefüllt; Tests können sie für schon vorhandene Zeilen vorbelegen.
+    var areaKeys: [String: String] = [:]
+
+    func request(areaKey: String) async throws -> AreaRequest? {
+        if let marketId = areaKeys[areaKey] {
+            return try await request(marketId: marketId)
+        }
+        // Sonst die Zeile, deren Koordinaten in dieser Zelle liegen — so muss
+        // ein Test nur `coordinates` setzen und nicht zusätzlich den Schlüssel.
+        for (marketId, point) in coordinates
+        where AreaRequestStore.areaKey(lat: point.lat, lon: point.lon) == areaKey {
+            return try await request(marketId: marketId)
         }
         return nil
     }
@@ -244,6 +263,9 @@ final class MockAreaRequestRepository: AreaRequestRepositoryProtocol, @unchecked
     func requestArea(marketId: String, lat: Double?, lon: Double?) async throws {
         requested.append(marketId)
         requestedCoordinates[marketId] = (lat, lon)
+        if let lat, let lon {
+            areaKeys[AreaRequestStore.areaKey(lat: lat, lon: lon)] = marketId
+        }
     }
 }
 

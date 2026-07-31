@@ -70,24 +70,14 @@ enum PickerDirectory {
         /// wurde, und sie steht immer zur Verfügung.
         let lat: Double
         let lon: Double
-        /// Nächster zuerst, höchstens drei.
+        /// Die nächstgelegene Filiale — der Existenzbeweis für diesen Ort.
         ///
-        /// Mehrere, weil `market_id` der Primärschlüssel von `area_requests`
-        /// ist und zwei Orte denselben nächsten Anker haben können — im
-        /// gemeldeten Fall ist genau das so: Penny Am Haff ist die nächste
-        /// Filiale sowohl für Ueckermünde als auch für Ahlbeck. Wer zweiter
-        /// kommt, übernähme sonst die fremde Zeile und wartete auf einen Lauf
-        /// für die andere Stadt.
-        let anchors: [Branch]
-
-        /// Der nächstgelegene Anker; nur für Anzeige und Tests.
-        var anchor: Branch? { anchors.first }
+        /// Wieder genau eine: Bis Migration v22 war `market_id` der
+        /// Primärschlüssel von `area_requests`, weshalb die App bis zu drei
+        /// Ausweich-Anker mitgab. Seit v22 ist der Schlüssel die Rasterzelle,
+        /// und ein Anker kann Zeilen für mehrere Orte tragen.
+        let anchor: Branch
     }
-
-    /// So viele Ausweich-Anker trägt eine Anforderung mit sich. Drei, weil in
-    /// einem nie geholten Gebiet ohnehin nur Kaufland und Penny im Verzeichnis
-    /// stehen — mehr Auswahl gibt es dort schlicht nicht.
-    static let maxAnchors = 3
 
     struct Plan {
         let entries: [Entry]
@@ -146,13 +136,13 @@ enum PickerDirectory {
                 // market_id, sonst hinge die Anker-Reihenfolge an der Laune der
                 // Verzeichnisantwort — und damit auch, welche Zeile in
                 // `area_requests` entsteht.
-                let anchors = nearestHere
-                    .sorted { ($0.distance, $0.branch.marketId) < ($1.distance, $1.branch.marketId) }
-                    .prefix(maxAnchors)
-                    .map(\.branch)
-                candidates.append(
-                    AreaCandidate(plz: find.plz, lat: find.lat, lon: find.lon, anchors: Array(anchors))
-                )
+                let nearest = nearestHere
+                    .min { ($0.distance, $0.branch.marketId) < ($1.distance, $1.branch.marketId) }
+                if let nearest {
+                    candidates.append(
+                        AreaCandidate(plz: find.plz, lat: find.lat, lon: find.lon, anchor: nearest.branch)
+                    )
+                }
             }
         }
 

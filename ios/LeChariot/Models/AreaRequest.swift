@@ -29,6 +29,10 @@ struct AreaRequest: Codable, Equatable, Identifiable {
     let plz: String?
     let lastSynced: String?
     let active: Bool?
+    /// Der Gebietsschlüssel, unter dem der Server diese Anforderung führt —
+    /// seit Migration v22 ihre Identität. `cell:53.9,14.2` für eine
+    /// Rasterzelle, sonst `plz:17419`. Abgeleitet, nie von der App gesetzt.
+    let areaKey: String?
     /// Die Regionsmitte, wie der Server sie behalten hat — `nil`, wenn der
     /// Trigger sie verworfen hat (zu weit vom Anker, außerhalb Deutschlands
     /// oder nur eine Hälfte). Dann gilt der Weg von v19.
@@ -45,6 +49,7 @@ struct AreaRequest: Codable, Equatable, Identifiable {
         case plz
         case lat
         case lon
+        case areaKey = "area_key"
         case marketId = "market_id"
         case lastSynced = "last_synced"
     }
