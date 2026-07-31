@@ -323,26 +323,45 @@ struct OfferHeroImage: View {
 /// every chain shipped JPEGs. REWE mirrors PNG→WebP (alpha preserved, on
 /// purpose) and Netto delivers WebP cut-outs — through both, a 🥛 shone
 /// straight through the product.
-private struct OfferImageContent: View {
+struct OfferImageContent: View {
     let imageUrl: String?
     let emoji: String?
     let emojiSize: CGFloat
     let contentMode: ContentMode
 
+    /// Was auf der Kachel liegt — **entweder** das Foto **oder** das Emoji,
+    /// nie beides.
+    ///
+    /// Steht als eigene Entscheidung da und nicht nur als `switch` im `body`,
+    /// weil genau sie schon einmal falsch war: Das Emoji lag als dauerhafte
+    /// ZStack-Ebene darunter, und durch REWEs alphaerhaltende WebP und Netto
+    /// freigestellte Produkte schien es hindurch. Ein Test kann die Kachel
+    /// nicht ansehen, diese Entscheidung schon.
+    enum Layer: Equatable {
+        case photo
+        case fallback
+    }
+
+    static func layer(for phase: AsyncImagePhase) -> Layer {
+        if case .success = phase { return .photo }
+        // Laden und Fehlschlag zeigen beide das Emoji.
+        return .fallback
+    }
+
     var body: some View {
         if let url = imageUrl.flatMap(URL.init(string:)) {
-            // Fade the loaded image in over the emoji instead of popping.
             AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: contentMode)
-                        .transition(.opacity)
-                case .empty, .failure:
-                    // Loading and failure both keep the emoji.
-                    fallback
-                @unknown default:
+                switch Self.layer(for: phase) {
+                case .photo:
+                    if case .success(let image) = phase {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: contentMode)
+                            // Das Foto blendet auf — auf die Kachelfläche,
+                            // nicht auf das Emoji. Siehe `fallback`.
+                            .transition(.opacity)
+                    }
+                case .fallback:
                     fallback
                 }
             }
@@ -351,10 +370,21 @@ private struct OfferImageContent: View {
         }
     }
 
+    /// **Beim Verschwinden wird nicht überblendet.**
+    ///
+    /// Vorher trugen Foto und Emoji beide `.transition(.opacity)`: Das Emoji
+    /// blendete aus, während das Foto einblendete, und für diese 0,2 s lagen
+    /// beide halbdurchsichtig übereinander. Bei einem freigestellten Produkt
+    /// mit Alpha — REWE spiegelt PNG→WebP alphaerhaltend, Netto liefert
+    /// Freisteller — schien das Emoji genau dann wieder durch. Dieselbe
+    /// Erscheinung wie die dauerhafte ZStack-Ebene von früher, nur kurz.
+    ///
+    /// Der Rückfall selbst blendet weiter ein: Kommt er *nach* einem
+    /// Fehlschlag, soll er nicht aufpoppen.
     private var fallback: some View {
         Text(emoji ?? "🛒")
             .font(.system(size: emojiSize))
-            .transition(.opacity)
+            .transition(.asymmetric(insertion: .opacity, removal: .identity))
     }
 }
 
