@@ -23,13 +23,22 @@ struct OnboardingFlowView: View {
     /// PLZ currently going through the flow; nil while none was submitted yet.
     @State private var activePLZ: String?
 
-    private enum Phase {
+    private enum Phase: Equatable {
         case welcome, name, region, household, diet, consent, markets, tour
     }
 
     var body: some View {
         NavigationStack {
-            content
+            // Der ZStack ist der gemeinsame Behälter, den die Regel braucht:
+            // Er bleibt stehen, während die Schritte in ihm einander ablösen,
+            // und trägt deshalb die Kurve. Ein `Group` täte es nicht — es
+            // reicht Modifikatoren an seine Kinder durch, und die Kurve säße
+            // dann an der Ansicht, die gerade verschwindet.
+            ZStack {
+                content
+                    .stateTransition(.screen)
+            }
+            .stateAnimation(.screen, value: phase)
         }
         .onAppear(perform: resume)
     }

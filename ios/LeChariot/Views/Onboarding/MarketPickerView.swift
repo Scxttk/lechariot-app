@@ -185,7 +185,9 @@ struct MarketPickerView: View {
                     if shown.count < group.markets.count {
                         let hidden = group.markets.count - shown.count
                         Button {
-                            withAnimation { _ = expandedChains.insert(group.chain) }
+                            withAnimation(Theme.Motion.element.animation) {
+                                _ = expandedChains.insert(group.chain)
+                            }
                         } label: {
                             Label(
                                 "\(hidden) weitere \(group.chain)-Filialen",
@@ -291,6 +293,15 @@ struct MarketPickerView: View {
                     .background(.bar)
             }
         }
+        // **Der Hinweis und das, was unter ihm hervorkommt, gehören zu
+        // demselben Wechsel.** Gemeldet am 31.07.: Der graue Streifen blendet
+        // langsam aus (die Vorgabe-Kurve des blanken `withAnimation` in
+        // `marketRow`), während der grüne Aufklapper darunter schlagartig
+        // erscheint — ohne Übergang, weil er keinen trug. Beide hängen an
+        // derselben Berührung und laufen jetzt in derselben Transaktion mit
+        // derselben Kurve: Der Streifen geht sofort (siehe
+        // `Theme.Motion.transition`), und die Liste wächst gefedert in den
+        // frei werdenden Platz. Eine Bewegung statt zweier verschiedener.
         .safeAreaInset(edge: .bottom) {
             if !hasAnyFavorites && !isLoading {
                 Text("Wähle mindestens eine Filiale, um fortzufahren.")
@@ -300,6 +311,7 @@ struct MarketPickerView: View {
                     .padding(.vertical, Theme.Spacing.sm)
                     .background(.bar)
                     .accessibilityHidden(true)
+                    .stateTransition(.element)
             }
         }
         .task {
@@ -323,7 +335,10 @@ struct MarketPickerView: View {
     private func marketRow(_ market: Market) -> some View {
         let isFav = store.isFavorite(market)
         return Button {
-            withAnimation { store.toggleFavorite(market) }
+            // Eine Transaktion für alles, was an dieser Berührung hängt: die
+            // Zeile selbst, der Hinweis an der Unterkante und die Zeilen, die
+            // dabei ihren Platz ändern.
+            withAnimation(Theme.Motion.element.animation) { store.toggleFavorite(market) }
             // Picking a store the backend has never fetched is the whole
             // reason `branch_requests` exists: the region sync only ever
             // scraped ONE branch per chain, so choosing the second REWE of a
