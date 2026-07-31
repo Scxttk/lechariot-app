@@ -231,10 +231,17 @@ struct ShoppingListView: View {
                          : "Was brauchst du, \(profile.greetingName)?")
                         .font(.title2.bold())
                         .multilineTextAlignment(.center)
-                    Text("Schreib auf, was du einkaufen willst. Le Chariot sagt dir, welche deiner Filialen die Liste am günstigsten abdeckt.")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.secondaryText)
-                        .multilineTextAlignment(.center)
+                    // **Nicht zusätzlich zur Filialen-Karte.** Beide Absätze
+                    // sagen dasselbe („welche deiner Filialen die Liste am
+                    // günstigsten abdeckt"), und zusammen schoben sie den Knopf
+                    // der Karte unter die Vorschlagsfläche — am Simulator
+                    // gemessen, der erste Bildschirm nach dem Onboarding.
+                    if hasMarkets {
+                        Text("Schreib auf, was du einkaufen willst. Le Chariot sagt dir, welche deiner Filialen die Liste am günstigsten abdeckt.")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.secondaryText)
+                            .multilineTextAlignment(.center)
+                    }
                 }
 
                 // Wer den Rundgang am Ende des Onboardings ablehnt, sieht die

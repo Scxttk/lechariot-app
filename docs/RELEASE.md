@@ -100,9 +100,9 @@ Store Connect account. That works for you and nobody else.
 
 External testers get a public link, which is the point — and that needs Beta App
 Review once per version, with a review note explaining what the app does and how
-to reach something worth seeing. A reviewer who lands on the branch picker with
-nothing selected sees an empty app, so say in the note which postcode to enter
-(Dresden, `01219`) and that offers appear once branches are picked.
+to reach something worth seeing. A reviewer who never picks a branch sees a
+shopping list with no prices, so say in the note which postcode to enter
+(Dresden, `01219`) and where the branches are chosen.
 
 Export compliance is already answered in the Info.plist
 (`ITSAppUsesNonExemptEncryption = false` — HTTPS only, standard exemption), so
@@ -126,18 +126,34 @@ WICHTIG: Bitte die Standortfreigabe ABLEHNEN und die Postleitzahl von Hand
 eingeben - 01219 (Dresden). Ausserhalb Deutschlands findet die Standortsuche
 keine Filialen, und die App sieht dann leer aus.
 
-1. Onboarding: Vorname eingeben, dann PLZ 01219
+1. Onboarding: Vorname eingeben, dann PLZ 01219 tippen
 2. Die Fragen zu Haushalt und Ernaehrung koennen uebersprungen werden
-3. Im Filialpicker zwei bis drei Laeden auswaehlen (z. B. Lidl, ALDI, Netto),
-   dann "Fertig"
-4. Auf der Einkaufsliste ein Wort eintragen, z. B. "Milch", "Brot" oder "Kaese"
-5. Die App zeigt dann, welcher Markt die Liste am guenstigsten abdeckt
+3. Zum Schluss bietet die App einen kurzen Rundgang an - "Los geht's" fuehrt
+   durch die Einkaufsliste, "Spaeter" geht direkt dorthin
+4. Auf der Einkaufsliste steht "Noch keine Filiale gewaehlt". Dort auf
+   "Filialen waehlen" tippen und zwei bis drei Laeden auswaehlen
+   (z. B. Lidl, ALDI, Netto), dann "Fertig"
+5. Ein Wort in die Zeile unten eintragen, z. B. "Milch", "Brot" oder "Kaese"
+6. Oben steht dann, welcher Markt die Liste am guenstigsten abdeckt
 
 Kein Login, kein Konto, keine Bezahlfunktion.
 ```
 
 `Anmeldeinformationen` stays empty and *Anmeldung erforderlich* stays unticked —
 there is no account.
+
+**The note is walked by a test.** `ReviewNoteJourneyTests` follows the numbered
+steps above on a fresh install and fails if any of them stops leading anywhere.
+That test exists because this note was wrong once and nobody noticed: until
+2026-07-31 the branch picker was step 3 of the onboarding wizard, and the day
+the wizard started ending in the shopping list instead, step 3 described a screen
+that no longer appeared there. A review note that does not match the app is a
+rejection risk, and prose does not fail a build on its own.
+
+Two things the test cannot check, so they are yours to keep true: the postcode
+still having offers, and the location prompt — that is a system dialog, and a
+test run without location services never sees it. The note tells the reviewer to
+decline it, which is the path the test does walk (postcode typed by hand).
 
 
 ## What testers will notice first
@@ -148,6 +164,9 @@ report eight times:
 - Only some chains show a crossed-out original price, so the average-discount
   figure reads unevenly across chains. REWE, Lidl and EDEKA are decided and
   unbuilt.
-- The guided tour and the multi-branch picker have never been used on a real
-  device by anyone.
+- The multi-branch picker has never been used on a real device by anyone. Since
+  2026-07-31 it is no longer part of the onboarding: the wizard ends in the
+  shopping list, and the list asks for branches — so a tester who skips that
+  step has a working shopping list with no price comparison, which looks like a
+  gap and is one.
 - Contrast in Settings is not covered by the accessibility gate.

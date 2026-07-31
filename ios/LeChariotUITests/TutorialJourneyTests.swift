@@ -176,6 +176,40 @@ final class TutorialJourneyTests: XCTestCase {
         }
     }
 
+    /// **Der Befund, mit dem diese Runde angefangen hat.**
+    ///
+    /// Über einer Liste ohne Filialen hatten die Rahmen „plan" und „match"
+    /// kein Ziel: Die Plan-Karte wurde gar nicht gebaut, und die Treffer-Zeile
+    /// war ein grauer Satz ohne Anker. Beide überspringen sich dann über die
+    /// Schonfrist von 1,2 s — rund sechs Sekunden Abdunklung über Bedienelemente,
+    /// die nicht auf dem Bildschirm sind, zwischendurch zwei Karten übereinander.
+    ///
+    /// Gewartet wird hier **länger als die Schonfrist**, bevor gelesen wird:
+    /// Ein Rahmen mit Ziel bleibt beliebig lange stehen, ein Rahmen ohne wäre
+    /// nach 1,2 s weitergesprungen. Genau dieser Unterschied ist die Prüfung.
+    func testTheFramesAboutOffersHaveATargetEvenWithoutBranches() {
+        startTour()
+        XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
+
+        next.tap()                                   // → chips
+        Thread.sleep(forTimeInterval: 0.5)
+        next.tap()                                   // → plan
+        Thread.sleep(forTimeInterval: 2.5)           // über die Schonfrist hinaus
+        XCTAssertTrue(
+            app.staticTexts["tutorial.card"].label.contains("Ein Einkauf, ein Markt"),
+            "Der Plan-Rahmen hat kein Ziel und hat sich übersprungen: "
+            + app.staticTexts["tutorial.card"].label
+        )
+
+        next.tap()                                   // → match
+        Thread.sleep(forTimeInterval: 2.5)
+        XCTAssertTrue(
+            app.staticTexts["tutorial.card"].label.contains("Das günstigste Angebot"),
+            "Der Treffer-Rahmen hat kein Ziel und hat sich übersprungen: "
+            + app.staticTexts["tutorial.card"].label
+        )
+    }
+
     // MARK: Die Frage am Ende
 
     /// **Der Ablauf, für den der ganze Umbau da ist** (Scotts Entscheidung vom
