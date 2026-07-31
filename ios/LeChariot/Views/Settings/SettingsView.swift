@@ -52,9 +52,15 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(market.chain)
                             .font(.body.weight(.medium))
+                        // Dieselbe Dopplung wie im Picker, nur eine Zeile
+                        // tiefer: Die Überschrift der Zeile ist der
+                        // Kettenname, und „Penny Am Haff" darunter schreibt
+                        // ihn noch einmal. Am 2026-07-31 mit dem Picker
+                        // zusammen gekürzt — den halben Fehler zu beheben
+                        // liest sich später wie Absicht.
                         Text(market.isNationwide
                             ? "Deutschlandweit"
-                            : "\(market.branchName) · PLZ \(market.plz)")
+                            : "\(MarketFilter.branchLabel(name: market.branchName, chain: market.chain)) · PLZ \(market.plz)")
                             .font(.caption)
                             .foregroundStyle(Theme.secondaryText)
                     }
@@ -63,7 +69,15 @@ struct SettingsView: View {
                     // wieder loszuwerden — nur zurück in den Picker und dort
                     // abwählen. Wer nach einem Umzug eine falsch gewordene
                     // Filiale stehen hat, sucht sie aber hier.
-                    removeButton("\(market.chain) \(market.branchName) entfernen") {
+                    // „Penny Am Haff entfernen", nicht „Penny Penny Am Haff
+                    // entfernen": Die Kette gehört ins Label — es ist der
+                    // einzige Ort, an dem VoiceOver sie hier hört —, aber
+                    // eben nur einmal.
+                    removeButton(
+                        "\(market.chain) "
+                        + "\(MarketFilter.branchLabel(name: market.branchName, chain: market.chain))"
+                        + " entfernen"
+                    ) {
                         store.toggleFavorite(market)
                     }
                 }
