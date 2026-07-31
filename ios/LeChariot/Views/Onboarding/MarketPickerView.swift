@@ -385,9 +385,29 @@ struct MarketPickerView: View {
     /// Der Zeilentitel: der Kettenname nur bei den bundesweiten Katalogen, sonst
     /// der um die Kette gekürzte Filialname (siehe `MarketFilter.branchLabel`).
     private func rowTitle(for market: Market) -> String {
-        market.isNationwide
-            ? market.chain
-            : MarketFilter.branchLabel(name: market.branchName, chain: market.chain)
+        if market.isNationwide { return market.chain }
+        return rowTitles[market.marketId]
+            ?? MarketFilter.branchLabel(name: market.branchName, chain: market.chain)
+    }
+
+    /// Die Titel aller Zeilen auf einmal — siehe `MarketFilter.titles`.
+    ///
+    /// Auf einmal und nicht je Zeile, weil ein Titel erst im Vergleich mit den
+    /// **anderen** gezeigten Zeilen gut oder schlecht ist: „Dresden" ist als
+    /// einzelne Zeile schon nichtssagend, „Striesen-Süd" erst als zweite.
+    /// Straße und Stadt kommen aus dem Verzeichnis; Zeilen aus `markets`
+    /// tragen sie nicht und behalten den gekürzten Namen.
+    private var rowTitles: [String: String] {
+        MarketFilter.titles(for: markets.map { market in
+            let branch = plan?.byMarketId[market.marketId]?.branch
+            return MarketFilter.Row(
+                id: market.marketId,
+                name: market.branchName,
+                chain: market.chain,
+                street: branch?.street,
+                city: branch?.city
+            )
+        })
     }
 
     /// What the user needs to tell two stores of the same chain apart: the
