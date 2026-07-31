@@ -67,6 +67,7 @@ struct OfferDetailView: View {
                 header
                 facts
                 PriceHistorySection(store: history)
+                provenance
             }
             .padding(Theme.Spacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -165,6 +166,20 @@ struct OfferDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+
+    /// Woher der Preis kommt und wann er geholt wurde — siehe
+    /// `OfferProvenance`.
+    ///
+    /// Unter dem Preisverlauf und bewusst klein: Es ist keine Angabe, die
+    /// jemand beim Einkaufen braucht, sondern die, die man sucht, wenn man dem
+    /// Preis nicht glaubt.
+    private var provenance: some View {
+        Text(offer.provenanceLine())
+            .font(.caption)
+            .foregroundStyle(Theme.secondaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("offer.provenance")
     }
 
     private var validityLong: String {

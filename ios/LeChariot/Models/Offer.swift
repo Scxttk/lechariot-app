@@ -38,6 +38,20 @@ struct Offer: Codable, Equatable, Hashable, Identifiable {
     /// `[]` = untagged). Optional so rows pushed before migration_v10 decode.
     var matchKey: [String]? = nil
 
+    /// When the scrape run wrote this row, as the raw `created_at` string.
+    ///
+    /// **A `String`, not a `Date`, and that is not laziness.** The decoder for
+    /// this table parses dates with `DateFormatter.supabaseDay`
+    /// (`"yyyy-MM-dd"`), because `valid_from` and `valid_until` are plain days.
+    /// `created_at` is a full ISO-8601 timestamp. Declaring this as `Date?`
+    /// makes `decodeIfPresent` hand the timestamp to that formatter, get nil
+    /// back and **throw** — an optional only absorbs a missing key, never an
+    /// unparseable value. Every offer row would fail to decode and the Angebote
+    /// tab would be empty. Measured, not feared: see `OfferProvenanceTests`.
+    ///
+    /// Parsing therefore happens in `fetchedAt`, where a bad value is nil.
+    var createdAt: String? = nil
+
     /// `marketId` is part of the identity: without it the same product at two
     /// branches of one chain in one region collapses to a single row id, and
     /// SwiftUI lists show one of them or neither.
@@ -61,5 +75,6 @@ struct Offer: Codable, Equatable, Hashable, Identifiable {
         case baseUnit = "base_unit"
         case imageUrl = "image_url"
         case matchKey = "match_key"
+        case createdAt = "created_at"
     }
 }
