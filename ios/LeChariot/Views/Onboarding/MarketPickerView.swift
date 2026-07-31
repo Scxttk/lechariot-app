@@ -2,9 +2,8 @@ import SwiftUI
 
 /// Branch picker ("Wunschmärkte"): one cross-chain, searchable list of the
 /// stores near the user, grouped by chain and sorted by distance within each
-/// chain. Search matches chain, branch name and PLZ. Chains without backend
-/// data (see `MarketFilter.chainsWithoutData`) are listed but not selectable.
-/// At least one selected branch is required to continue.
+/// chain. Search matches chain, branch name and PLZ. At least one selected
+/// branch is required to continue.
 ///
 /// The list comes from the **directory** (`public.branches`, backend migration
 /// v12), not from `markets`. That is the whole point of Phase 12: `markets`
@@ -82,9 +81,16 @@ struct MarketPickerView: View {
     /// a city chain brings dozens: measured on 2026-07-26, the 10 km around
     /// Dresden-Strehlen hold **44 Netto branches**. Listing all of them turns
     /// the first screen of the app into a scroll through 142 rows. The nearest
-    /// five answer the question for almost everyone; the rest are one tap away
+    /// few answer the question for almost everyone; the rest are one tap away
     /// and, if the store is even further out, the search field finds it by name.
-    static let visiblePerChain = 5
+    ///
+    /// **Von fünf auf drei gesenkt am 2026-07-30.** Fünf war die erste Deckelung
+    /// gegen die 44 Netto-Filialen und schon eine Verbesserung; am Gerät ist die
+    /// Liste trotzdem zu lang geblieben („insgesamt zu viele Zeilen"). Bei acht
+    /// Ketten sind fünf Zeilen je Kette bis zu 40, drei sind 24 — und wer seinen
+    /// Laden nicht unter den drei nächsten findet, findet ihn auch nicht unter
+    /// den fünf nächsten, sondern über die Suche.
+    static let visiblePerChain = 3
 
     /// Chains the user unfolded to see every branch.
     @State private var expandedChains: Set<String> = []
@@ -137,13 +143,6 @@ struct MarketPickerView: View {
 
     private var nationwideMarkets: [Market] {
         filtered.filter(\.isNationwide).sorted { $0.chain < $1.chain }
-    }
-
-    private var missingChains: [String] {
-        MarketFilter.chainsWithoutData.filter { chain in
-            query.trimmingCharacters(in: .whitespaces).isEmpty
-                || chain.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
-        }
     }
 
     private var hasAnyFavorites: Bool {
@@ -209,29 +208,9 @@ struct MarketPickerView: View {
                 }
             }
 
-            if !missingChains.isEmpty {
-                Section {
-                    ForEach(missingChains, id: \.self) { chain in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(chain)
-                                    .font(.body.weight(.medium))
-                                    .foregroundStyle(Theme.secondaryText)
-                                Text("Keine Daten verfügbar")
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.secondaryText)
-                            }
-                            Spacer()
-                            Image(systemName: "circle.slash")
-                                .foregroundStyle(Theme.secondaryText)
-                        }
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("\(chain), keine Daten verfügbar, nicht wählbar")
-                    }
-                } footer: {
-                    Text("Diese Kette veröffentlicht ihre Angebote nicht in einer Form, die Le Chariot auslesen kann.")
-                }
-            }
+            // Hier stand bis zum 2026-07-30 die Konsum-Zeile („keine Daten
+            // verfügbar", nicht wählbar). Scotts Entscheidung, sie ganz zu
+            // entfernen — die Begründung steht in „Le Chariot Entscheidungen".
 
             // The error gets its own section regardless of what is already on
             // screen: a failed *reload* used to be invisible whenever markets
@@ -358,7 +337,7 @@ struct MarketPickerView: View {
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(market.isNationwide ? market.chain : market.branchName)
+                    Text(rowTitle(for: market))
                         .font(.body.weight(.medium))
                         .foregroundStyle(.primary)
                     Text(subtitle(for: market))
@@ -385,8 +364,11 @@ struct MarketPickerView: View {
         // was silently dropped — the row announced "Dresden Reick, PLZ 01219"
         // with no chain name and no selected/not-selected state. A Button takes
         // an overriding label directly.
+        // Die Kette bleibt im Label, auch wenn sie in der Zeile nicht mehr
+        // steht: VoiceOver liest die Abschnittsüberschrift nicht mit vor, und
+        // „Friedrichstadt" allein sagt nicht, um wessen Filiale es geht.
         .accessibilityLabel(
-            "\(market.chain), \(market.isNationwide ? "deutschlandweit" : market.branchName)"
+            "\(market.chain), \(market.isNationwide ? "deutschlandweit" : rowTitle(for: market))"
         )
         // Adresse und Entfernung stehen im Hinweis, nicht im Label: Das Label
         // ist der Name, auf den auch die UI-Journeys zeigen, und ein Label,
@@ -398,6 +380,14 @@ struct MarketPickerView: View {
         )
         .accessibilityValue(isFav ? "ausgewählt" : "nicht ausgewählt")
         .accessibilityAddTraits(isFav ? [.isSelected] : [])
+    }
+
+    /// Der Zeilentitel: der Kettenname nur bei den bundesweiten Katalogen, sonst
+    /// der um die Kette gekürzte Filialname (siehe `MarketFilter.branchLabel`).
+    private func rowTitle(for market: Market) -> String {
+        market.isNationwide
+            ? market.chain
+            : MarketFilter.branchLabel(name: market.branchName, chain: market.chain)
     }
 
     /// What the user needs to tell two stores of the same chain apart: the

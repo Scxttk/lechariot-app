@@ -29,12 +29,41 @@ final class MultiRegionJourneyTests: XCTestCase {
         openBranchPicker()
 
         XCTAssertTrue(
-            app.buttons["Penny, Penny Am Haff"].waitForExistence(timeout: 15),
+            // „Am Haff", nicht „Penny Am Haff": Die Abschnittsüberschrift nennt
+            // die Kette schon, seit dem 2026-07-31 tut es die Zeile nicht mehr.
+            app.buttons["Penny, Am Haff"].waitForExistence(timeout: 15),
             "Die Filialen der zweiten Region fehlen im Picker"
         )
         XCTAssertTrue(
             app.buttons["Lidl, Dresden Reick"].exists,
             "Die Filialen der ersten Region sind verschwunden"
+        )
+    }
+
+    /// **Sichtbar gekürzt, vorgelesen vollständig.**
+    ///
+    /// Die Zeile zeigt „Am Haff" — die Kette steht schon in der Überschrift.
+    /// Das VoiceOver-Label trägt sie trotzdem weiter, denn beim Wandern von
+    /// Zeile zu Zeile wird die Abschnittsüberschrift **nicht** mitgelesen; ohne
+    /// die Kette bliebe „Am Haff" ohne Angabe, um wessen Filiale es geht.
+    ///
+    /// Steht hier als Test und nicht nur als Kommentar, weil genau diese
+    /// Unterscheidung bei einem späteren Umbau als Dopplung gelesen und
+    /// „aufgeräumt" wird.
+    func testTheRowIsShortenedButVoiceOverStillNamesTheChain() {
+        completeOnboarding()
+        addRegion("17419")
+        openBranchPicker()
+
+        let row = app.buttons["Penny, Am Haff"]
+        XCTAssertTrue(row.waitForExistence(timeout: 15))
+        XCTAssertTrue(
+            app.staticTexts["Am Haff"].exists,
+            "Sichtbar soll nur der Ort stehen"
+        )
+        XCTAssertFalse(
+            app.staticTexts["Penny Am Haff"].exists,
+            "Der Kettenname darf in der Zeile nicht noch einmal auftauchen"
         )
     }
 
