@@ -24,10 +24,24 @@ struct OfferMatch: Equatable, Identifiable {
 /// fuzzy-matches "Kekse", and same-length words exact so "Butter" never
 /// hits "Bitter").
 ///
-/// Stage 2 (category): query tokens are compared against the offer's
-/// `match_key` tags with the same token rule. The tags come from the backend
+/// Stage 2 (category): a query token that the title does not carry may still
+/// be satisfied by the offer's `match_key` tags — either by tag equality, or
+/// through `MatchDictionary`, which maps the *word the user typed* to the
+/// terms it means ("Fleischersatz" → `tofu`). The tags come from the backend
 /// dictionary, which already blocks false composites (Tomatenmark carries no
 /// "tomaten" tag), so tag equality is safe without extra filtering.
+///
+/// **Und über beide Stufen bleibt UND.** Ein Angebot passt nur, wenn *jedes*
+/// Suchwort erfüllt ist — egal ob über Titel oder Tag. Vorher war Stufe 2 ein
+/// ODER, und genau daran hing der gemeldete Fall: „vegan Schnitzel" hätte mit
+/// Synonym-Abbildung und ODER **Schweineschnitzel** geliefert, weil
+/// „schnitzel" auf `schwein` zeigt. Für die Melderin ist das schlechter als
+/// die leere Liste, die sie bekommen hat. Entschieden am 2026-07-31.
+///
+/// Der Preis dieser Wahl: Ein zweites Suchwort, das weder im Titel steht noch
+/// im Wörterbuch, macht die Anfrage leer, statt sie auf das erste Wort zu
+/// verkürzen. Das ist gewollt — eine Liste, die die halbe Anfrage ignoriert,
+/// sieht aus wie ein Treffer und ist keiner.
 enum OfferMatcher {
     /// Lowercase, drop ®*™, hyphens and any non-letter → space. Umlauts stay.
     static func normalize(_ text: String) -> String {
@@ -77,18 +91,40 @@ enum OfferMatcher {
         let queryTokens = tokens(query)
         guard !queryTokens.isEmpty else { return [] }
 
+        // Einmal vorab statt je Angebot: die Begriffe, die jedes Suchwort
+        // meinen kann, und die der ganzen Anfrage als Wendung
+        // („crème fraîche" → `sahne`, einzeln wäre „creme" nichts).
+        let termsPerToken = queryTokens.map { MatchDictionary.terms(forToken: $0) }
+        let phraseTerms = MatchDictionary.terms(forPhrase: normalize(query))
+
         var direct: [Offer] = []
         var category: [Offer] = []
         for offer in offers {
             let productTokens = tokens(offer.product)
-            let isDirect = queryTokens.allSatisfy { q in
-                productTokens.contains { tokensMatch(q, $0) }
+            var viaTitleOnly = true
+            var allSatisfied = true
+
+            for (index, q) in queryTokens.enumerated() {
+                if productTokens.contains(where: { tokensMatch(q, $0) }) { continue }
+                // Ab hier trägt der Titel dieses Wort nicht mehr — dann ist es
+                // kein Direkttreffer mehr, auch wenn die Tags einspringen.
+                viaTitleOnly = false
+                let terms = termsPerToken[index]
+                let satisfiedByTag = offer.matchKeys.contains { tag in
+                    tokensMatch(q, tag) || terms.contains(tag)
+                }
+                if !satisfiedByTag {
+                    allSatisfied = false
+                    break
+                }
             }
-            if isDirect {
-                direct.append(offer)
-            } else if queryTokens.contains(where: { q in
-                offer.matchKeys.contains { tokensMatch(q, $0) }
-            }) {
+
+            if allSatisfied {
+                if viaTitleOnly { direct.append(offer) } else { category.append(offer) }
+            } else if !phraseTerms.isEmpty,
+                      offer.matchKeys.contains(where: { phraseTerms.contains($0) }) {
+                // Die Anfrage ist als Ganzes ein Synonym, auch wenn ihre
+                // einzelnen Wörter es nicht sind.
                 category.append(offer)
             }
         }

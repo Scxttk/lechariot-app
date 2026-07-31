@@ -1,0 +1,53 @@
+# Das Wörterbuch liegt jetzt zweimal: gepflegt im Backend (`/pflegerunde`),
+# mitgeliefert in der App, weil die Suche es zur Laufzeit braucht und offline
+# funktionieren muss.
+#
+# Zwei Kopien laufen auseinander, und zwar still — die Suche würde einfach
+# etwas weniger finden, ohne dass irgendwo etwas fehlschlägt. Genau die
+# Fehlerklasse, die dieses Projekt schon dreimal getroffen hat. Deshalb ein
+# Lauf, der laut wird.
+#
+# Der Auslöser ist absichtlich auch ein Zeitplan: Geändert wird das Wörterbuch
+# **drüben** im Backend, und davon bekommt dieses Repo sonst nie etwas mit.
+name: Wörterbuch-Abgleich
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'ios/LeChariot/Resources/matching-woerterbuch.json'
+      - '.github/workflows/woerterbuch-sync.yml'
+  schedule:
+    # Täglich 05:20 UTC, nach der Nightly des Backends.
+    - cron: '20 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  abgleich:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wörterbuch aus dem Backend holen
+        run: |
+          curl -sSf -o /tmp/backend.json \
+            https://raw.githubusercontent.com/Scxttk/lechariot-backend/master/docs/matching-woerterbuch.json
+
+      - name: Vergleichen
+        run: |
+          MINE=ios/LeChariot/Resources/matching-woerterbuch.json
+          if diff -q /tmp/backend.json "$MINE" >/dev/null; then
+            echo "Wörterbuch ist synchron."
+            exit 0
+          fi
+          echo "::error::Das mitgelieferte Wörterbuch weicht vom Backend ab."
+          echo "Die Suche der App findet damit andere Begriffe als der Import taggt."
+          echo ""
+          echo "Unterschied (Backend = links, App = rechts):"
+          diff /tmp/backend.json "$MINE" | head -40 || true
+          echo ""
+          echo "Beheben:"
+          echo "  curl -sSf -o $MINE \\"
+          echo "    https://raw.githubusercontent.com/Scxttk/lechariot-backend/master/docs/matching-woerterbuch.json"
+          exit 1
