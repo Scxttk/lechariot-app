@@ -57,6 +57,20 @@ final class PLZLocator: NSObject, CLLocationManagerDelegate {
     /// Requests permission if needed, fetches one location and reverse-geocodes
     /// it to a postal code.
     func currentPLZ() async throws -> String {
+        // Unter `-uiTestingLocatedPLZ 01067` antwortet der Locator sofort mit
+        // dieser PLZ — ohne CoreLocation-Dialog und ohne Geocoder.
+        //
+        // Gebaut für **einen** Test, und der prüft nicht die Ortung, sondern
+        // was danach passiert: dass die erkannte PLZ **stehen bleibt**, statt
+        // dass der Schritt weiterspringt. Das war der Fehler; die Ortung selbst
+        // funktionierte. Ohne diesen Kniff hinge der Test an einer
+        // Berechtigung, die XCUITest nur über einen Interruption-Monitor
+        // erteilt, und an einer Netzabfrage — beides Gründe, aus denen ein
+        // Test rot wird, ohne dass etwas kaputt ist.
+        if let stub = UserDefaults.standard.string(forKey: "uiTestingLocatedPLZ"),
+           PLZValidator.isValid(stub) {
+            return stub
+        }
         let point = try await currentCoordinates()
         let location = CLLocation(latitude: point.lat, longitude: point.lon)
         let placemarks = try await CLGeocoder().reverseGeocodeLocation(location)

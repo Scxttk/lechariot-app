@@ -14,6 +14,10 @@ struct RegionSetupView: View {
 
     @State private var locator = PLZLocator()
     @State private var manualPLZ = ""
+    /// Die zuletzt **erkannte** PLZ — nur damit die Zeile darunter sagen kann,
+    /// woher die Zahl im Feld stammt. Wer sie überschreibt, bekommt die Zeile
+    /// nicht mehr zu sehen: Dann ist es wieder seine eigene Eingabe.
+    @State private var locatedPLZ: String?
     @State private var isLocating = false
     @State private var isChecking = false
     @State private var errorMessage: String?
@@ -89,6 +93,20 @@ struct RegionSetupView: View {
             .tint(Theme.accent)
             .disabled(isBusy)
 
+            // Sagt, dass die Zahl im Feld **abgeleitet** ist, und stellt sie
+            // damit zur Korrektur. Verschwindet, sobald jemand etwas anderes
+            // tippt — dann ist es keine Ableitung mehr.
+            if let locatedPLZ, locatedPLZ == manualPLZ {
+                Label(
+                    "Aus deinem Standort: \(locatedPLZ). Stimmt das nicht, überschreib es.",
+                    systemImage: "location.circle"
+                )
+                .font(.footnote)
+                .foregroundStyle(Theme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("region.locatedHint")
+            }
+
             // The number pad has no return key and "Weiter" is simply grey until
             // the PLZ is complete, so a half-typed code left the user with two
             // dead controls and no idea why.
@@ -109,6 +127,20 @@ struct RegionSetupView: View {
 
     // MARK: Actions
 
+    /// **Die erkannte PLZ wird gezeigt, nicht verwendet.**
+    ///
+    /// Bis zum 2026-07-31 füllte diese Funktion das Feld und schaltete im
+    /// selben Atemzug weiter — die Postleitzahl stand null Bilder lang auf dem
+    /// Schirm. Gemeldet von Scott am Gerät („springt sofort weiter"), und es
+    /// ist mehr als Kosmetik:
+    ///
+    /// Genau hier hätte sein Bruder am 30.07. gesehen, dass für Ahlbeck
+    /// **17373** erkannt wurde statt 17419 — die PLZ des 24,5 km entfernten
+    /// Ueckermünde. Stattdessen lief alles grün durch: eine gestempelte
+    /// Anforderung, dreizehn Filialen, drei fehlende Ketten und niemand, der
+    /// sagen konnte warum. **Eine Ableitung, die der Nutzer nie zu sehen
+    /// bekommt, kann er auch nicht korrigieren** — und das Feld, das sie zeigt,
+    /// ist die billigste denkbare Absicherung gegen die ganze Klasse.
     private func useLocation() {
         errorMessage = nil
         isLocating = true
@@ -116,8 +148,9 @@ struct RegionSetupView: View {
             do {
                 let plz = try await locator.currentPLZ()
                 manualPLZ = plz
+                locatedPLZ = plz
                 isLocating = false
-                submit(plz)
+                // Kein `submit`. „Weiter" drückt der Mensch.
             } catch {
                 isLocating = false
                 errorMessage = (error as? LocalizedError)?.errorDescription
