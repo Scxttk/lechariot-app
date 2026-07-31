@@ -91,7 +91,14 @@ final class TutorialJourneyTests: XCTestCase {
 
         // Eine Vorschlagskachel außerhalb des Lochs.
         app.buttons["Butter hinzufügen"].firstMatch.tap()
-        XCTAssertFalse(app.staticTexts["Butter"].exists,
+        // **`buttons`, nicht `staticTexts`** — und das ist keine Kosmetik.
+        // Seit L-5a ist der Artikelname ein Knopf (er öffnet die Angaben), und
+        // ein Knopf führt seinen Text nicht mehr als eigenes `staticText`. Die
+        // Zeile stand hier als `staticTexts` und wurde beim Umbau **still
+        // wahr**: Sie prüft eine Abwesenheit, und Abwesenheiten bekommt man
+        // geschenkt, sobald das Element anders heißt. Aufgefallen ist es nur,
+        // weil dieselbe Änderung sechs andere Zusicherungen umgeworfen hat.
+        XCTAssertFalse(app.buttons["Butter"].exists,
                        "ein Tipp außerhalb des Lochs darf nichts auf die Liste legen")
 
         // Die Tab-Leiste — der eine Fluchtweg, den keine Ansicht darüber
@@ -158,8 +165,9 @@ final class TutorialJourneyTests: XCTestCase {
 
         XCTAssertFalse(tourCard.exists, "der Rundgang muss zu Ende sein, bevor gezählt wird")
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+        // Ebenfalls `buttons` — siehe oben, sonst prüft die Schleife nichts.
         for demo in ["Milch", "Butter", "Kaffee"] {
-            XCTAssertFalse(app.staticTexts[demo].exists,
+            XCTAssertFalse(app.buttons[demo].exists,
                            "\(demo) war nur geliehen und muss wieder von der Liste sein\n"
                            + app.debugDescription)
         }

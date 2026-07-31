@@ -48,7 +48,7 @@ final class ShoppingListInputJourneyTests: XCTestCase {
         // Software-Tastatur zeigt, hängt an „Connect Hardware Keyboard" und
         // nicht an der App. Ein Test darauf misst die Einstellung des Rechners.
         XCTAssertTrue(
-            app.staticTexts["Butter"].waitForExistence(timeout: 10),
+            app.buttons["Butter"].waitForExistence(timeout: 10),
             "Der Artikel ist nicht auf der Liste gelandet"
         )
         // Ein leeres Feld meldet als `value` seinen Platzhalter; stünde

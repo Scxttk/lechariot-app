@@ -15,6 +15,9 @@ struct ShoppingListView: View {
     /// Optional, damit Previews ohne Rundgang auskommen.
     @Environment(TutorialStore.self) private var tutorial: TutorialStore?
     @State private var detailItem: ShoppingItem?
+    /// Der Artikel, dessen Angaben gerade bearbeitet werden — nicht zu
+    /// verwechseln mit `detailItem`, das die **Angebote** zum Artikel zeigt.
+    @State private var editingItem: ShoppingItem?
     @State private var newItemText = ""
     @FocusState private var inputFocused: Bool
     /// Was der Nutzer in dieser Sitzung zuletzt mit der Vorschlagsfläche getan
@@ -41,11 +44,11 @@ struct ShoppingListView: View {
     /// offer elsewhere; the market name on the row says where.
     private func match(for item: ShoppingItem, plan: [MarketListRank]) -> OfferMatch? {
         if let winner = plan.first,
-           let covered = winner.matchedItems.first(where: { $0.item == item.text }) {
+           let covered = winner.matchedItems.first(where: { $0.item == item.query }) {
             return covered.match
         }
-        return ShoppingListMatcher.cheapestMatch(for: item.text, in: offerStore.offers) {
-            rejections.isRejected(itemText: item.text, offer: $0)
+        return ShoppingListMatcher.cheapestMatch(for: item.query, in: offerStore.offers) {
+            rejections.isRejected(itemText: item.query, offer: $0)
         }
     }
 
@@ -82,6 +85,11 @@ struct ShoppingListView: View {
             )
                 .environment(rejections)
         }
+        .sheet(item: $editingItem) { item in
+            ItemDetailSheet(item: item) { detail in
+                list.setDetail(detail, for: item)
+            }
+        }
     }
 
     // MARK: List
@@ -110,7 +118,8 @@ struct ShoppingListView: View {
                         // Rundgangs — sonst zeigt das Loch auf sechs Stellen.
                         carriesTutorialAnchors: index == 0,
                         onToggle: { check(item) },
-                        onShowMatches: { detailItem = item }
+                        onShowMatches: { detailItem = item },
+                        onEditDetail: { editingItem = item }
                     )
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
@@ -130,9 +139,16 @@ struct ShoppingListView: View {
             if !list.checkedItems.isEmpty {
                 Section("Erledigt") {
                     ForEach(Array(list.checkedItems.enumerated()), id: \.element.id) { index, item in
-                        ShoppingListRowView(item: item, match: nil) {
-                            check(item)
-                        }
+                        ShoppingListRowView(
+                            item: item,
+                            match: nil,
+                            onToggle: { check(item) },
+                            // Auch am erledigten Artikel: Die Angabe gilt beim
+                            // nächsten Mal genauso, und wer im Laden merkt,
+                            // dass es die große Packung sein muss, notiert es
+                            // dort — nicht zu Hause davor.
+                            onEditDetail: { editingItem = item }
+                        )
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
                                 list.remove(item)
@@ -158,7 +174,7 @@ struct ShoppingListView: View {
     private func check(_ item: ShoppingItem) {
         let wasChecked = item.isChecked
         withAnimation { list.toggle(item) }
-        if !wasChecked { history.record(item.text) }
+        if !wasChecked { history.record(item.query) }
     }
 
     // MARK: Empty state

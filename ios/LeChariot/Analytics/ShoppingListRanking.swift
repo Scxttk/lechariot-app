@@ -49,14 +49,16 @@ enum ShoppingListRanking {
                 var missing: [String] = []
                 var total: Double?
                 for item in items {
+                    // `query`, nicht `text`: Die Angabe am Artikel (L-5a) ist eine
+                    // Notiz und darf die Abdeckungszahl nicht bewegen.
                     guard let match = ShoppingListMatcher.cheapestMatch(
-                        for: item.text, in: chainOffers,
-                        isRejected: { isRejected(item.text, $0) }
+                        for: item.query, in: chainOffers,
+                        isRejected: { isRejected(item.query, $0) }
                     ) else {
-                        missing.append(item.text)
+                        missing.append(item.query)
                         continue
                     }
-                    matched.append(RankedItemMatch(item: item.text, match: match))
+                    matched.append(RankedItemMatch(item: item.query, match: match))
                     if let price = match.offer.price {
                         total = (total ?? 0) + price
                     }
