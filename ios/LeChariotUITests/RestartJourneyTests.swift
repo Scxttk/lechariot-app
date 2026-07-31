@@ -39,9 +39,11 @@ final class RestartJourneyTests: XCTestCase {
     /// Dasselbe im dunklen Erscheinungsbild: die Wahl selbst muss den Neustart
     /// ebenfalls überleben, sonst steht der Nutzer nach jedem Start wieder hell da.
     func testTheAppearanceChoiceSurvivesAKill() {
-        app.launchArguments = ["-uiTesting"]
+        // Hinter dem Assistenten: Was hier geprüft wird, ist die Darstellung,
+        // nicht der Weg dorthin.
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded"]
         app.launch()
-        completeOnboarding(name: "Scott")
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 20))
 
         openTab("Einstellungen")
         let dark = app.segmentedControls.buttons["Dunkel"].firstMatch
@@ -58,7 +60,7 @@ final class RestartJourneyTests: XCTestCase {
 
         app.terminate()
 
-        app.launchArguments = ["-uiTesting", "-uiTestingKeepState"]
+        app.launchArguments = ["-uiTesting", "-uiTestingKeepState", "-uiTestingOnboarded"]
         app.launch()
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 20))
 
@@ -97,10 +99,6 @@ final class RestartJourneyTests: XCTestCase {
         app.buttons["onboarding.primary"].tap()
         app.buttons["onboarding.skip"].tap()
         app.buttons["onboarding.skip"].tap()
-        app.buttons["onboarding.primary"].tap()
-        let branch = app.buttons["Lidl, Dresden Reick"]
-        XCTAssertTrue(branch.waitForExistence(timeout: 20))
-        branch.tap()
-        app.buttons["markets.done"].tap()
+        app.buttons["onboarding.primary"].tap()   // Einwilligung
     }
 }

@@ -24,13 +24,26 @@ final class AccessibilityAuditTests: XCTestCase {
         super.setUp()
         continueAfterFailure = true   // alle Befunde eines Laufs sehen, nicht nur den ersten
         app = XCUIApplication()
+    }
+
+    /// Jeder Test sagt selbst, wo er anfangen will. Vorher startete `setUp` für
+    /// alle im Assistenten, und fünf von sechs Tests klickten sich anschließend
+    /// durch ihn hindurch — für einen Zustand, den nur einer von ihnen misst.
+    private func launch(behindOnboarding: Bool, arguments: [String] = []) {
         app.launchArguments = ["-uiTesting"]
+            + (behindOnboarding ? ["-uiTestingOnboarded"] : [])
+            + arguments
         app.launch()
+        if behindOnboarding {
+            XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 20),
+                          "Der Start hinter dem Assistenten landet nicht in der Liste")
+        }
     }
 
     // MARK: Audits
 
     func testOnboardingPassesTheAudit() throws {
+        launch(behindOnboarding: false)
         XCTAssertTrue(app.buttons["onboarding.primary"].waitForExistence(timeout: 15))
         try audit("Willkommen")
 
@@ -51,21 +64,29 @@ final class AccessibilityAuditTests: XCTestCase {
         app.buttons["onboarding.skip"].tap()
         try audit("Einwilligung")
 
-        // Der Picker wurde bis hierher nie gemessen — und er ist der einzige
+        // Der Assistent endet seit dem 2026-07-31 in der Liste — **ohne
+        // Filiale**, und damit in einem Zustand, den es vorher nicht gab. Er
+        // wird hier mitgemessen: Er ist der erste Bildschirm, den ein Tester zu
+        // sehen bekommt, und er trägt einen Knopf und zwei Absätze, die es
+        // vorher nirgends gab.
+        app.buttons["onboarding.primary"].tap()
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+        try audit("Einkaufsliste ohne Filiale")
+
+        // Der Picker, jetzt von dort aus geöffnet. Er ist der einzige
         // Bildschirm, auf dem eine Zeile ihren Zustand trägt (gewählt/nicht
         // gewählt) und ihre Entfernung im Hinweis statt im Namen.
         //
-        // Erst eine Filiale antippen, dann messen — dieselbe Regel wie zwei
-        // Schritte weiter oben bei der Postleitzahl. Ungewählt meldet der Audit
-        // zwei Dinge, die beide nicht die Farbe betreffen: „Fertig" ist bis
-        // dahin **deaktiviert** und damit von der Anforderung ausgenommen, und
-        // die Fußzeile „Wähle mindestens eine Filiale, um fortzufahren." liegt
-        // auf `.bar` — genau die durchscheinende Fläche, für die weiter unten
-        // in dieser Datei nachgemessen ist, dass der Audit Zwischenwerte liest.
+        // Erst eine Filiale antippen, dann messen — dieselbe Regel wie weiter
+        // oben bei der Postleitzahl. Ungewählt meldet der Audit zwei Dinge, die
+        // beide nicht die Farbe betreffen: „Fertig" ist bis dahin
+        // **deaktiviert** und damit von der Anforderung ausgenommen, und die
+        // Fußzeile „Wähle mindestens eine Filiale, um fortzufahren." liegt auf
+        // `.bar` — genau die durchscheinende Fläche, für die weiter unten in
+        // dieser Datei nachgemessen ist, dass der Audit Zwischenwerte liest.
         // Sie ist ohnehin `accessibilityHidden`, weil ihr Inhalt im Hinweis des
-        // Knopfes steht. Gemessen wird deshalb der Zustand, in dem der Nutzer
-        // tatsächlich vor der Liste sitzt.
-        app.buttons["onboarding.primary"].tap()
+        // Knopfes steht.
+        app.buttons["list.chooseMarkets"].tap()
         let branch = app.buttons["Lidl, Dresden Reick"]
         XCTAssertTrue(branch.waitForExistence(timeout: 15), "Picker nicht geladen")
         branch.tap()
@@ -73,7 +94,7 @@ final class AccessibilityAuditTests: XCTestCase {
     }
 
     func testShoppingListAndSettingsPassTheAudit() throws {
-        completeOnboarding()
+        launch(behindOnboarding: true)
         addItem("Vollmilch")
         try audit("Einkaufsliste")
 
@@ -164,7 +185,7 @@ final class AccessibilityAuditTests: XCTestCase {
     /// Überblendung des Erscheinungsbild-Wechsels noch nachwirkt. Ein Gate auf
     /// Werte, die den gerenderten Pixeln widersprechen, wäre Aberglaube.
     func testTheShoppingListPassesTheAuditInDarkMode() throws {
-        completeOnboarding()
+        launch(behindOnboarding: true)
         openTab("Einstellungen")
         // „Darstellung" liegt unter dem Falz — ohne Scrollen findet XCUITest
         // die Segmente nicht, und die Segmente sind Kinder des Controls,
@@ -202,20 +223,14 @@ final class AccessibilityAuditTests: XCTestCase {
     ///
     /// Eigener Start: Unter `-uiTesting` allein ist der Rundgang aus.
     func testTheTutorialPassesTheAudit() throws {
-        app.terminate()
-        app.launchArguments = ["-uiTesting", "-uiTestingTutorial"]
-        app.launch()
+        launch(behindOnboarding: false, arguments: ["-uiTestingTutorial"])
 
         app.buttons["onboarding.primary"].tap()
         app.buttons["onboarding.skip"].tap()
         enterPLZ()
         app.buttons["onboarding.skip"].tap()
         app.buttons["onboarding.skip"].tap()
-        app.buttons["onboarding.primary"].tap()
-        let branch = app.buttons["Lidl, Dresden Reick"]
-        XCTAssertTrue(branch.waitForExistence(timeout: 15))
-        branch.tap()
-        app.buttons["markets.done"].tap()
+        app.buttons["onboarding.primary"].tap()   // Einwilligung
 
         XCTAssertTrue(app.staticTexts["Alles bereit. Einmal kurz zeigen?"]
             .waitForExistence(timeout: 15))
@@ -235,7 +250,7 @@ final class AccessibilityAuditTests: XCTestCase {
     /// einmal kaputt (`.accessibilityElement(children: .ignore)` auf einem
     /// Button verschluckt das folgende Label), deshalb steht es hier fest.
     func testTheSuggestionTileIsOneElementWithAWholeSentence() {
-        completeOnboarding()
+        launch(behindOnboarding: true)
         addItem("Vollmilch")
 
         let tile = app.buttons["list.matches"].firstMatch
@@ -251,7 +266,7 @@ final class AccessibilityAuditTests: XCTestCase {
     /// verschluckt das Label, das danach kommt. Ohne diesen Test würde die
     /// Zeile stumm oder als Schnipselsalat gelesen, ohne dass es auffällt.
     func testTheOfferRowIsOneButtonWithAWholeSentence() {
-        completeOnboarding()
+        launch(behindOnboarding: true)
         openTab("Angebote")
 
         let row = app.buttons["offers.row"].firstMatch
@@ -266,7 +281,7 @@ final class AccessibilityAuditTests: XCTestCase {
     /// Die Einkaufsplan-Karte wird als Ganzes gelesen — ihre Kopfzeile ist ein
     /// Element mit einer Zusammenfassung, nicht vier einzelne Textschnipsel.
     func testThePlanCardIsReadAsAWhole() {
-        completeOnboarding()
+        launch(behindOnboarding: true)
         addItem("Vollmilch")
 
         let summary = app.descendants(matching: .any)
@@ -424,17 +439,4 @@ final class AccessibilityAuditTests: XCTestCase {
         app.buttons["onboarding.primary"].tap()
     }
 
-    private func completeOnboarding() {
-        app.buttons["onboarding.primary"].tap()
-        app.buttons["onboarding.skip"].tap()
-        enterPLZ()
-        app.buttons["onboarding.skip"].tap()
-        app.buttons["onboarding.skip"].tap()
-        app.buttons["onboarding.primary"].tap()
-        let branch = app.buttons["Lidl, Dresden Reick"]
-        XCTAssertTrue(branch.waitForExistence(timeout: 15))
-        branch.tap()
-        app.buttons["markets.done"].tap()
-        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
-    }
 }

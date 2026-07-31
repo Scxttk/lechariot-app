@@ -26,11 +26,14 @@ final class KeyboardBackgroundJourneyTests: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting"]
-        app.launch()
     }
 
     func testTheThemeBackgroundReachesUnderTheKeyboard() throws {
+        // Der eine Bildschirm hier, der wirklich im Assistenten liegt — er
+        // startet also durch ihn hindurch.
+        app.launchArguments = ["-uiTesting"]
+        app.launch()
+
         // Willkommen → Namenseingabe; das Feld fokussiert sich selbst.
         let primary = app.buttons["onboarding.primary"]
         XCTAssertTrue(primary.waitForExistence(timeout: 15))
@@ -46,7 +49,8 @@ final class KeyboardBackgroundJourneyTests: XCTestCase {
     /// Dasselbe an der Eingabezeile der Einkaufsliste — dem Bildschirm, den
     /// `themedScreen()` färbt, und dem meistbenutzten Textfeld der App.
     func testTheThemeBackgroundReachesUnderTheKeyboardOnTheShoppingList() throws {
-        completeOnboarding()
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded"]
+        app.launch()
 
         let input = app.textFields["list.input"]
         XCTAssertTrue(input.waitForExistence(timeout: 15), "Keine Eingabezeile")
@@ -140,25 +144,4 @@ final class KeyboardBackgroundJourneyTests: XCTestCase {
         return Pixel(rgb: (Double(data[0]), Double(data[1]), Double(data[2])))
     }
 
-    // MARK: Helfer
-
-    /// Derselbe Weg wie in `ShoppingListInputJourneyTests` — durch das
-    /// Onboarding bis zur Liste.
-    private func completeOnboarding() {
-        app.buttons["onboarding.primary"].tap()   // Willkommen
-        app.buttons["onboarding.skip"].tap()      // Name
-        let plz = app.textFields["Postleitzahl"]
-        XCTAssertTrue(plz.waitForExistence(timeout: 15))
-        plz.tap()
-        plz.typeText("01219")
-        app.buttons["onboarding.primary"].tap()
-        app.buttons["onboarding.skip"].tap()      // Haushalt
-        app.buttons["onboarding.skip"].tap()      // Ernährung
-        app.buttons["onboarding.primary"].tap()   // Einwilligung
-        let branch = app.buttons["Lidl, Dresden Reick"]
-        XCTAssertTrue(branch.waitForExistence(timeout: 15))
-        branch.tap()
-        app.buttons["markets.done"].tap()
-        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
-    }
 }

@@ -41,14 +41,14 @@ final class TutorialStoreTests: XCTestCase {
         let store = makeStore()
         XCTAssertFalse(store.isRunning)
 
-        store.start()
+        store.start(origin: .settings, hasMarkets: true)
         XCTAssertTrue(store.isRunning)
         XCTAssertEqual(store.index, 0)
     }
 
     func testEveryStepIsReachedBeforeTheTourEnds() {
         let store = makeStore()
-        store.start()
+        store.start(origin: .settings, hasMarkets: true)
 
         for expected in 0..<store.stepCount {
             XCTAssertEqual(store.index, expected)
@@ -61,7 +61,7 @@ final class TutorialStoreTests: XCTestCase {
 
     func testFinishingIsRemembered() {
         let store = makeStore()
-        store.start()
+        store.start(origin: .settings, hasMarkets: true)
         while store.isRunning { store.next() }
 
         XCTAssertTrue(store.hasSeenTutorial)
@@ -72,7 +72,7 @@ final class TutorialStoreTests: XCTestCase {
     /// beim nächsten Start wieder gefragt werden.
     func testAbortingCountsAsSeen() {
         let store = makeStore()
-        store.start()
+        store.start(origin: .settings, hasMarkets: true)
         store.next()
         store.skip()
 
@@ -115,7 +115,7 @@ final class TutorialStoreTests: XCTestCase {
     func testNoStepAdvancesOnItsOwn() {
         let store = makeStore()
         let list = makeList()
-        store.start()
+        store.start(origin: .settings, hasMarkets: true)
         let before = store.index
 
         _ = list.add("Butter")
@@ -130,7 +130,7 @@ final class TutorialStoreTests: XCTestCase {
     /// Der Test hält die Bedingung fest, an der es hängt.
     func testTheLastStepIsTheOnlyOneWhereFinishingAndAbortingAreTheSame() {
         let store = makeStore()
-        store.start()
+        store.start(origin: .settings, hasMarkets: true)
 
         for _ in 0..<(store.steps.count - 1) {
             XCTAssertFalse(store.isLastStep, "Schritt \(store.index) ist nicht der letzte")
@@ -138,6 +138,102 @@ final class TutorialStoreTests: XCTestCase {
         }
 
         XCTAssertTrue(store.isLastStep)
+    }
+
+    // MARK: Die Frage nach den Filialen
+
+    /// Der eigentliche Punkt des Umbaus vom 2026-07-31: Das Onboarding endet in
+    /// der Liste, der Rundgang zeigt sie, und **am Ende** wird gefragt.
+    func testATourFromOnboardingWithoutMarketsAsksForThemAtTheEnd() {
+        let store = makeStore()
+        store.start(origin: .onboarding, hasMarkets: false)
+        while store.isRunning { store.next() }
+
+        XCTAssertTrue(store.asksForMarkets)
+        store.dismissMarketQuestion()
+        XCTAssertFalse(store.asksForMarkets, "beantwortet ist beantwortet")
+    }
+
+    /// Auch der Abbruch führt zur Frage: Wer „Tour beenden" tippt, hat trotzdem
+    /// keine Filiale, und ihn still in einer Liste stehenzulassen, die nichts
+    /// vergleichen kann, wäre die Sackgasse von vorher.
+    func testAbortingATourFromOnboardingAsksToo() {
+        let store = makeStore()
+        store.start(origin: .onboarding, hasMarkets: false)
+        store.next()
+        store.skip()
+
+        XCTAssertTrue(store.asksForMarkets)
+    }
+
+    /// **Die Bedingung, die bestehende Installationen schützt.** Wer den
+    /// Rundgang aus den Einstellungen noch einmal ansieht, wird nie gefragt —
+    /// egal ob er gerade Filialen hat oder nicht.
+    func testATourFromTheSettingsNeverAsks() {
+        for hasMarkets in [true, false] {
+            let store = makeStore()
+            store.start(origin: .settings, hasMarkets: hasMarkets)
+            while store.isRunning { store.next() }
+
+            XCTAssertFalse(store.asksForMarkets,
+                           "aus den Einstellungen, hasMarkets: \(hasMarkets)")
+        }
+    }
+
+    /// Und der andere Rand: aus dem Onboarding, aber mit Filialen — der Fall
+    /// einer Installation, die ihre Filialen vor dem Umbau gewählt hat und den
+    /// Assistenten neu durchläuft.
+    func testATourFromOnboardingWithMarketsDoesNotAsk() {
+        let store = makeStore()
+        store.start(origin: .onboarding, hasMarkets: true)
+        while store.isRunning { store.next() }
+
+        XCTAssertFalse(store.asksForMarkets)
+    }
+
+    /// Ein zweiter Rundgang darf nicht die Antwort des ersten erben.
+    func testStartingAgainClearsAPendingQuestion() {
+        let store = makeStore()
+        store.start(origin: .onboarding, hasMarkets: false)
+        store.skip()
+        XCTAssertTrue(store.asksForMarkets)
+
+        store.start(origin: .settings, hasMarkets: false)
+        XCTAssertFalse(store.asksForMarkets)
+    }
+
+    // MARK: Die zwei Texte, die von den Filialen abhängen
+
+    /// Über einer Liste ohne Filiale steht an der Plan-Karte und an der
+    /// Treffer-Zeile ein Leerzustand. Die Rahmen darüber müssen dieselbe
+    /// Zeitform sprechen — „Tipp es an" über einer Zeile, in der nichts
+    /// anzutippen ist, ist die erste Lüge, die ein Tester zu sehen bekäme.
+    func testTheDataDependentFramesSpeakDifferentlyWithoutMarkets() {
+        let withMarkets = TutorialStep.tour(hasMarkets: true)
+        let without = TutorialStep.tour(hasMarkets: false)
+
+        XCTAssertEqual(withMarkets.map(\.id), without.map(\.id),
+                       "die Rahmen selbst sind dieselben, nur zwei Texte ändern sich")
+
+        let changed = zip(withMarkets, without)
+            .filter { $0.text != $1.text }
+            .map(\.0.id)
+        XCTAssertEqual(changed, ["plan", "match"])
+
+        let match = without.first { $0.id == "match" }!
+        XCTAssertFalse(match.text.contains("Tipp es an"),
+                       "ohne Filiale gibt es dort nichts anzutippen")
+    }
+
+    /// Der Store friert die Fassung beim Start ein — die Filialauswahl liegt
+    /// während des Rundgangs hinter den Sperrflächen, ein Text, der mitten im
+    /// Lesen die Zeitform wechselt, wäre schlimmer als ein veralteter.
+    func testTheStoreKeepsTheVariantItStartedWith() {
+        let store = makeStore()
+        store.start(origin: .onboarding, hasMarkets: false)
+
+        XCTAssertEqual(store.steps.map(\.text),
+                       TutorialStep.tour(hasMarkets: false).map(\.text))
     }
 
     // MARK: Beispiel-Artikel
@@ -175,7 +271,7 @@ final class TutorialStoreTests: XCTestCase {
         let list = makeList()
         do {
             let store = makeStore()
-            store.start()
+            store.start(origin: .settings, hasMarkets: true)
             store.seedDemoItems(into: list)
         }
 
@@ -192,7 +288,10 @@ final class TutorialStoreTests: XCTestCase {
     func testResetPutsEverythingBack() {
         let store = makeStore()
         let list = makeList()
-        store.start()
+        // Aus dem Onboarding und ohne Filialen: der einzige Weg, bei dem am
+        // Ende eine Frage offensteht — sonst prüfte die Zusicherung unten nur
+        // einen Wert, der ohnehin nie gesetzt war.
+        store.start(origin: .onboarding, hasMarkets: false)
         store.seedDemoItems(into: list)
         store.finish()
 
@@ -200,6 +299,7 @@ final class TutorialStoreTests: XCTestCase {
 
         XCTAssertFalse(store.hasSeenTutorial)
         XCTAssertTrue(store.seededItems.isEmpty)
+        XCTAssertFalse(store.asksForMarkets, "auch eine offene Frage gehört weggeräumt")
         let fresh = makeStore()
         XCTAssertFalse(fresh.hasSeenTutorial, "kein Schlüssel darf auf der Platte zurückbleiben")
         XCTAssertTrue(fresh.seededItems.isEmpty)

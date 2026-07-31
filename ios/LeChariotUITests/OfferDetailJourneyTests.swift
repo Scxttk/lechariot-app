@@ -16,9 +16,9 @@ final class OfferDetailJourneyTests: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting"]
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded"]
         app.launch()
-        completeOnboarding()
+        waitForList()
     }
 
     func testTappingAnOfferOpensItsDetailsAndClosesAgain() {
@@ -63,21 +63,14 @@ final class OfferDetailJourneyTests: XCTestCase {
         tab.tap()
     }
 
-    private func completeOnboarding() {
-        app.buttons["onboarding.primary"].tap()   // welcome
-        app.buttons["onboarding.skip"].tap()      // name
-        let plz = app.textFields["Postleitzahl"]
-        XCTAssertTrue(plz.waitForExistence(timeout: 15))
-        plz.tap()
-        plz.typeText("01219")
-        app.buttons["onboarding.primary"].tap()
-        app.buttons["onboarding.skip"].tap()      // household
-        app.buttons["onboarding.skip"].tap()      // diet
-        app.buttons["onboarding.primary"].tap()   // consent
-        let branch = app.buttons["Lidl, Dresden Reick"]
-        XCTAssertTrue(branch.waitForExistence(timeout: 15))
-        branch.tap()
-        app.buttons["markets.done"].tap()
-        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+    /// Startet hinter dem Assistenten (`-uiTestingOnboarded`) und wartet, bis
+    /// die Liste steht.
+    ///
+    /// Vorher lief hier der ganze Onboarding-Assistent — sieben Bildschirme für
+    /// einen Zustand, den diese Journey nur durchquert. Gemessen am 2026-07-31:
+    /// Der Assistent ist 72 % der 20-Minuten-Suite.
+    private func waitForList() {
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
+                      "Der Start hinter dem Assistenten landet nicht in der Liste")
     }
 }

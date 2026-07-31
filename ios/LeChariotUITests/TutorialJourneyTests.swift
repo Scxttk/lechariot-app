@@ -35,7 +35,7 @@ final class TutorialJourneyTests: XCTestCase {
         completeOnboarding()
 
         XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15),
-                      "nach den Filialen muss der Rundgang angeboten werden")
+                      "nach der Einwilligung muss der Rundgang angeboten werden")
         XCTAssertFalse(app.navigationBars["Einkaufsliste"].exists,
                        "das Angebot kommt vor der App, nicht über ihr")
     }
@@ -119,6 +119,7 @@ final class TutorialJourneyTests: XCTestCase {
         tapThrough()
 
         XCTAssertFalse(tourCard.exists, "der Rundgang muss von allein zum Ende kommen")
+        answerMarketQuestion("Nein")
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
                       "danach steht der Nutzer wieder in der Liste")
     }
@@ -129,6 +130,7 @@ final class TutorialJourneyTests: XCTestCase {
         startTour()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
         app.buttons["tutorial.skip"].tap()
+        answerMarketQuestion("Nein")
 
         let field = app.textFields["list.input"]
         XCTAssertTrue(field.waitForExistence(timeout: 15))
@@ -164,6 +166,7 @@ final class TutorialJourneyTests: XCTestCase {
         tapThrough()
 
         XCTAssertFalse(tourCard.exists, "der Rundgang muss zu Ende sein, bevor gezählt wird")
+        answerMarketQuestion("Nein")
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
         // Ebenfalls `buttons` — siehe oben, sonst prüft die Schleife nichts.
         for demo in ["Milch", "Butter", "Kaffee"] {
@@ -173,7 +176,74 @@ final class TutorialJourneyTests: XCTestCase {
         }
     }
 
+    // MARK: Die Frage am Ende
+
+    /// **Der Ablauf, für den der ganze Umbau da ist** (Scotts Entscheidung vom
+    /// 2026-07-31): Der Assistent endet in der Liste, der Rundgang zeigt sie,
+    /// und erst am Ende steht die Filialauswahl — als Frage, nicht als Pflicht.
+    func testTheQuestionAtTheEndLeadsToTheBranchPicker() {
+        startTour()
+        XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
+        XCTAssertTrue(
+            app.staticTexts["Noch keine Filiale gewählt"].exists,
+            "Der Rundgang läuft über einer Liste ohne Filialen — und die sagt das auch"
+        )
+
+        tapThrough()
+        answerMarketQuestion("Ja")
+
+        let branch = app.buttons[fixtureBranch]
+        XCTAssertTrue(branch.waitForExistence(timeout: 15),
+                      "„Ja“ muss in der Filialauswahl landen")
+        branch.tap()
+        app.buttons["markets.done"].tap()
+
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
+                      "und danach zurück in der Liste, von der man losgegangen ist")
+        XCTAssertFalse(app.staticTexts["Noch keine Filiale gewählt"].exists,
+                       "mit einer Filiale hat der Leerzustand nichts mehr zu melden")
+    }
+
+    /// „Nein" ist eine vollwertige Antwort: zurück in die Liste, ohne Umweg und
+    /// ohne dass die Frage wiederkommt.
+    func testAnsweringNoGoesBackToTheListAndStaysAnswered() {
+        startTour()
+        XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
+        tapThrough()
+        answerMarketQuestion("Nein")
+
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.alerts["Märkte jetzt auswählen?"].exists,
+                       "eine beantwortete Frage darf nicht wiederkommen")
+        // Und der Weg bleibt offen — im Leerzustand der Liste, wo er hingehört.
+        XCTAssertTrue(app.buttons["list.chooseMarkets"].exists,
+                      "„Nein“ darf keine Sackgasse sein")
+    }
+
     // MARK: Aus den Einstellungen
+
+    /// **Die Bedingung, die bestehende Installationen schützt.** Wer den
+    /// Rundgang aus den Einstellungen noch einmal ansieht, wird am Ende nicht
+    /// nach Filialen gefragt — für ihn ändert sich durch den Umbau nichts.
+    func testATourFromTheSettingsNeverAsksForMarkets() {
+        launch(withTour: true)
+        completeOnboarding()
+        XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15))
+        app.buttons["onboarding.skip"].tap()
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+
+        openTab("Einstellungen")
+        let restart = app.buttons["settings.tutorial"]
+        XCTAssertTrue(restart.waitForExistence(timeout: 15))
+        restart.tap()
+        XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
+
+        tapThrough()
+
+        XCTAssertFalse(app.alerts["Märkte jetzt auswählen?"].waitForExistence(timeout: 5),
+                       "aus den Einstellungen wird nicht gefragt")
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+    }
 
     func testTheTourCanBeStartedAgainFromTheSettings() {
         launch(withTour: true)
@@ -252,7 +322,12 @@ final class TutorialJourneyTests: XCTestCase {
         skip.tap()
     }
 
-    /// Bis einschließlich der Filialwahl — was danach kommt, ist der Prüfpunkt.
+    /// Bis einschließlich der Einwilligung — was danach kommt, ist der
+    /// Prüfpunkt.
+    ///
+    /// **Die Filialauswahl steht seit dem 2026-07-31 nicht mehr dazwischen.**
+    /// Der Assistent endet mit dem Angebot des Rundgangs und danach in der
+    /// Liste; die Filialen kommen aus der Frage am Ende des Rundgangs.
     private func completeOnboarding() {
         tapPrimary()               // Willkommen
         tapSkip()                  // „Ohne Namen weiter"
@@ -264,10 +339,17 @@ final class TutorialJourneyTests: XCTestCase {
         tapSkip()                  // Haushalt
         tapSkip()                  // Ernährung
         tapPrimary()               // Einwilligung
-        let branch = app.buttons[fixtureBranch]
-        XCTAssertTrue(branch.waitForExistence(timeout: 15), "fixture branch missing")
-        branch.tap()
-        app.buttons["markets.done"].tap()
+    }
+
+    /// Die Frage am Ende des Rundgangs. Sie steht auf jedem Weg aus einem
+    /// Rundgang heraus, der aus dem Onboarding kam — „Fertig" wie
+    /// „Tour beenden" —, und muss beantwortet werden, bevor die Liste wieder
+    /// anfassbar ist.
+    private func answerMarketQuestion(_ answer: String) {
+        let question = app.alerts["Märkte jetzt auswählen?"]
+        XCTAssertTrue(question.waitForExistence(timeout: 10),
+                      "Nach dem Rundgang aus dem Onboarding muss nach Filialen gefragt werden")
+        question.buttons[answer].tap()
     }
 
     /// Die Tab-Leiste ist auf aktuellem iOS ein schwebendes Steuerelement —

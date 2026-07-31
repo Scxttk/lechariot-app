@@ -20,15 +20,26 @@ final class OfferFilterJourneyTests: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting"]
+    }
+
+    /// Startet hinter dem Assistenten, mit einer oder beiden Fixture-Filialen.
+    ///
+    /// Vorher klickte sich jeder Test dafür durch das ganze Onboarding und
+    /// tippte im Picker eine oder zwei Zeilen an. Die Wahl ist geblieben, sie
+    /// steht nur nicht mehr im Weg — siehe `-uiTestingOnboardedAllBranches`.
+    private func launch(withBothBranches beide: Bool) {
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded"]
+            + (beide ? ["-uiTestingOnboardedAllBranches"] : [])
         app.launch()
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
+                      "Der Start hinter dem Assistenten landet nicht in der Liste")
     }
 
     /// **Ein Tipp statt Scrollen.** Der Chip schränkt die Liste auf seine
     /// Kette ein, ein zweiter Tipp hebt das wieder auf — ohne den Weg zurück
     /// ans andere Ende der Leiste zu „Alle".
     func testAChainChipNarrowsTheListAndTappingItAgainWidensIt() {
-        completeOnboarding(pickingBothBranches: true)
+        launch(withBothBranches: true)
         openTab("Angebote")
 
         XCTAssertTrue(
@@ -66,7 +77,7 @@ final class OfferFilterJourneyTests: XCTestCase {
     /// nirgends welche. Der Bildschirm nennt die Kette und bietet den Ausweg
     /// mit einem Tipp an.
     func testASearchInsideOneMarketSaysThatItIsRestricted() {
-        completeOnboarding(pickingBothBranches: true)
+        launch(withBothBranches: true)
         openTab("Angebote")
 
         let aldiChip = app.buttons["Aldi"]
@@ -97,7 +108,7 @@ final class OfferFilterJourneyTests: XCTestCase {
     /// Höhe über jeder Sitzung. Steht als Test da, weil ein „ist doch
     /// konsistenter"-Umbau sie sonst genau dort wieder einblendet.
     func testWithOnlyOneChainThereIsNoChipBar() {
-        completeOnboarding(pickingBothBranches: false)
+        launch(withBothBranches: false)
         openTab("Angebote")
 
         XCTAssertTrue(app.staticTexts[lidlOffer].waitForExistence(timeout: 15))
@@ -121,27 +132,4 @@ final class OfferFilterJourneyTests: XCTestCase {
         tab.tap()
     }
 
-    private func completeOnboarding(pickingBothBranches beide: Bool) {
-        app.buttons["onboarding.primary"].tap()   // Willkommen
-        app.buttons["onboarding.skip"].tap()      // Name
-        let plz = app.textFields["Postleitzahl"]
-        XCTAssertTrue(plz.waitForExistence(timeout: 15))
-        plz.tap()
-        plz.typeText("01219")
-        app.buttons["onboarding.primary"].tap()
-        app.buttons["onboarding.skip"].tap()      // Haushalt
-        app.buttons["onboarding.skip"].tap()      // Ernährung
-        app.buttons["onboarding.primary"].tap()   // Einwilligung
-
-        let lidl = app.buttons["Lidl, Dresden Reick"]
-        XCTAssertTrue(lidl.waitForExistence(timeout: 15))
-        lidl.tap()
-        if beide {
-            let aldi = app.buttons["Aldi, Dresden Prohlis"]
-            XCTAssertTrue(aldi.waitForExistence(timeout: 10), "Aldi-Filiale fehlt im Picker")
-            aldi.tap()
-        }
-        app.buttons["markets.done"].tap()
-        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
-    }
 }

@@ -8,6 +8,9 @@ struct ShoppingListView: View {
     @Environment(ShoppingListStore.self) private var list
     /// Shared with the offers tab — see `ContentView.offerStore`.
     let offerStore: OfferStore
+    /// Öffnet die Filialauswahl. Liegt in `ContentView`, weil der Picker über
+    /// den Tabs erscheint und nicht in der Liste.
+    var onChooseMarkets: () -> Void = {}
     @Environment(MatchRejectionStore.self) private var rejections
     @Environment(ProfileStore.self) private var profile
     /// Zählt beim Abhaken mit — siehe `PurchaseHistoryStore`.
@@ -27,6 +30,17 @@ struct ShoppingListView: View {
     private var chains: [String] {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
     }
+
+    /// **Die Liste ist ohne Filiale benutzbar — seit dem 2026-07-31 ist das der
+    /// Normalfall beim ersten Start.**
+    ///
+    /// Vorher lag vor diesem Bildschirm eine `ContentUnavailableView`
+    /// („Keine Filiale gewählt"), und das Onboarding endete deshalb in der
+    /// Filialauswahl. Jetzt endet es hier, und die zwei Stellen, an denen sonst
+    /// Angebote stünden, tragen den Leerzustand: die Plan-Karte und die
+    /// Treffer-Zeile. Beide behalten dabei ihren Anker — ohne den überspringt
+    /// sich der Rundgang durch die Rahmen, die den Zweck der App erklären.
+    private var hasMarkets: Bool { !favoriteMarkets.isEmpty }
 
     /// The chosen branches — the filter that matches what the user picked
     /// since the backend keys offers by branch (migration v13).
@@ -107,6 +121,22 @@ struct ShoppingListView: View {
                         ))
                 }
                 .listRowBackground(Color.clear)
+            } else if !hasMarkets {
+                // Der Platz der Plan-Karte bleibt besetzt, statt leer zu
+                // bleiben: Was hier fehlt, ist die Antwort, für die es die App
+                // gibt — und dass sie fehlt, ist das Argument, Filialen zu
+                // wählen. Der Anker sitzt hier und **nur** hier; die Fassung im
+                // Leerzustand trägt ihn bewusst nicht (zwei Anker desselben
+                // Ziels entscheidet der Preference-Merge, siehe L-2).
+                Section {
+                    NoMarketsCard(action: onChooseMarkets)
+                        .tutorialAnchor(.planCard)
+                        .listRowInsets(EdgeInsets(
+                            top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
+                            bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
+                        ))
+                }
+                .listRowBackground(Color.clear)
             }
 
             Section {
@@ -114,6 +144,7 @@ struct ShoppingListView: View {
                     ShoppingListRowView(
                         item: item,
                         match: match(for: item, plan: plan),
+                        hasMarkets: hasMarkets,
                         // Nur die erste offene Zeile trägt die Anker des
                         // Rundgangs — sonst zeigt das Loch auf sechs Stellen.
                         carriesTutorialAnchors: index == 0,
@@ -204,6 +235,15 @@ struct ShoppingListView: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.center)
+                }
+
+                // Wer den Rundgang am Ende des Onboardings ablehnt, sieht die
+                // Frage nach den Filialen nie — und stünde ohne das hier vor
+                // einem Bildschirm, der nichts davon erwähnt. **Ohne Anker:**
+                // Der Rundgang legt für den Plan-Rahmen Beispiel-Artikel hin,
+                // spielt also nie über diesem Zustand.
+                if !hasMarkets {
+                    NoMarketsCard(action: onChooseMarkets)
                 }
             }
             .padding(Theme.Spacing.xl)
@@ -455,9 +495,56 @@ struct ShoppingListView: View {
     }
 }
 
+/// Der Leerzustand an der Stelle der Plan-Karte: **ehrlich statt versteckt.**
+///
+/// Die Karte wegzulassen wäre die bequeme Antwort gewesen — dann steht auf dem
+/// ersten Bildschirm der App nichts, was erklärt, warum man Filialen wählen
+/// sollte, und der Rundgang überspringt den Rahmen, der den Zweck der App
+/// erklärt. Also steht hier, was fehlt, und daneben der Weg dahin.
+struct NoMarketsCard: View {
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Text("Noch keine Filiale gewählt")
+                .font(.headline)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Le Chariot vergleicht nur die Läden, in die du wirklich gehst. Sobald du Filialen gewählt hast, steht hier, welche davon deine Liste am günstigsten abdeckt — und was der Einkauf dort kostet.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(action: action) {
+                Text("Filialen wählen")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.onAccent)
+                    .padding(.horizontal, Theme.Spacing.lg)
+                    .frame(minHeight: 44)
+                    .background(Theme.accent, in: Capsule())
+            }
+            .buttonStyle(TactileButtonStyle())
+            .accessibilityIdentifier("list.chooseMarkets")
+            .padding(.top, Theme.Spacing.xs)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .multilineTextAlignment(.leading)
+        .themeCard()
+    }
+}
+
 #Preview {
     ShoppingListView(
         favoriteMarkets: MockFixtures.markets,
+        offerStore: OfferStore(repository: MockOfferRepository(), cache: nil)
+    )
+    .environment(ShoppingListStore())
+    .environment(MatchRejectionStore())
+    .environment(ProfileStore())
+    .environment(PurchaseHistoryStore())
+}
+
+#Preview("Ohne Filialen") {
+    ShoppingListView(
+        favoriteMarkets: [],
         offerStore: OfferStore(repository: MockOfferRepository(), cache: nil)
     )
     .environment(ShoppingListStore())
