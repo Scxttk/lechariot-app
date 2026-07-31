@@ -19,12 +19,12 @@ final class ShoppingListInputJourneyTests: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting"]
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded"]
         app.launch()
     }
 
     func testThePlaceholderAsksFirstAndThenSaysCarryOn() {
-        completeOnboarding()
+        waitForList()
 
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15), "Keine Eingabezeile")
@@ -59,21 +59,14 @@ final class ShoppingListInputJourneyTests: XCTestCase {
 
     // MARK: Helfer
 
-    private func completeOnboarding() {
-        app.buttons["onboarding.primary"].tap()   // Willkommen
-        app.buttons["onboarding.skip"].tap()      // Name
-        let plz = app.textFields["Postleitzahl"]
-        XCTAssertTrue(plz.waitForExistence(timeout: 15))
-        plz.tap()
-        plz.typeText("01219")
-        app.buttons["onboarding.primary"].tap()
-        app.buttons["onboarding.skip"].tap()      // Haushalt
-        app.buttons["onboarding.skip"].tap()      // Ernährung
-        app.buttons["onboarding.primary"].tap()   // Einwilligung
-        let branch = app.buttons["Lidl, Dresden Reick"]
-        XCTAssertTrue(branch.waitForExistence(timeout: 15))
-        branch.tap()
-        app.buttons["markets.done"].tap()
-        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+    /// Startet hinter dem Assistenten (`-uiTestingOnboarded`) und wartet, bis
+    /// die Liste steht.
+    ///
+    /// Vorher lief hier der ganze Onboarding-Assistent — sieben Bildschirme für
+    /// einen Zustand, den diese Journey nur durchquert. Gemessen am 2026-07-31:
+    /// Der Assistent ist 72 % der 20-Minuten-Suite.
+    private func waitForList() {
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
+                      "Der Start hinter dem Assistenten landet nicht in der Liste")
     }
 }

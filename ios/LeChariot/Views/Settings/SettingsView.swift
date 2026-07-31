@@ -145,7 +145,10 @@ struct SettingsView: View {
     private var helpSection: some View {
         Section {
             Button {
-                tutorial.start()
+                // Aus den Einstellungen: **keine** Frage nach den Filialen am
+                // Ende. Wer hier startet, hat seine Wahl längst getroffen oder
+                // sitzt eine Zeile über dem Weg dorthin.
+                tutorial.start(origin: .settings, hasMarkets: store.hasFavorites)
             } label: {
                 Label("Rundgang erneut ansehen", systemImage: "sparkles")
                     .foregroundStyle(Theme.accent)

@@ -19,8 +19,16 @@ struct LeChariotApp: App {
             diskCapacity: 200 * 1024 * 1024
         )
 
-        _store = State(initialValue: RegionStore())
-        _profile = State(initialValue: ProfileStore(repository: AppRepositories.profiles()))
+        let regionStore = RegionStore()
+        let profileStore = ProfileStore(repository: AppRepositories.profiles())
+        #if DEBUG
+        // `-uiTestingOnboarded`: hinter dem Assistenten anfangen. Hier und
+        // nicht in einer Ansicht, weil der Zustand stehen muss, bevor der erste
+        // `body` entscheidet, ob er das Onboarding zeigt.
+        UITestSupport.seedOnboardedState(regions: regionStore, profile: profileStore)
+        #endif
+        _store = State(initialValue: regionStore)
+        _profile = State(initialValue: profileStore)
         _areaRequests = State(
             initialValue: AreaRequestStore(repository: AppRepositories.areaRequests())
         )

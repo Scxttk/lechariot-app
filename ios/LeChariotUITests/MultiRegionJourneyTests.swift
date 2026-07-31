@@ -17,14 +17,14 @@ final class MultiRegionJourneyTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting"]
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded"]
         app.launch()
     }
 
     /// Die zweite Region bringt ihre eigenen Filialen mit — und die erste
     /// verschwindet dabei nicht.
     func testASecondRegionAddsItsOwnBranchesToThePicker() {
-        completeOnboarding()
+        waitForList()
         addRegion("17419")
         openBranchPicker()
 
@@ -51,7 +51,7 @@ final class MultiRegionJourneyTests: XCTestCase {
     /// Unterscheidung bei einem späteren Umbau als Dopplung gelesen und
     /// „aufgeräumt" wird.
     func testTheRowIsShortenedButVoiceOverStillNamesTheChain() {
-        completeOnboarding()
+        waitForList()
         addRegion("17419")
         openBranchPicker()
 
@@ -71,7 +71,7 @@ final class MultiRegionJourneyTests: XCTestCase {
     /// Wischgeste, die im Fußtext erklärt werden muss. Genau daran ist der
     /// Tester gescheitert.
     func testARegionIsRemovedThroughAVisibleButtonAndTheBranchesStay() {
-        completeOnboarding()
+        waitForList()
         addRegion("17419")
 
         let remove = app.buttons["PLZ 17419 entfernen"]
@@ -98,7 +98,7 @@ final class MultiRegionJourneyTests: XCTestCase {
     /// loszuwerden — nur zurück in den Picker und dort abwählen. Wer nach einem
     /// Umzug eine falsch gewordene Filiale stehen hat, sucht sie aber hier.
     func testABranchIsRemovedInTheSettings() {
-        completeOnboarding()
+        waitForList()
         app.tabBars.buttons["Einstellungen"].tap()
 
         let remove = app.buttons["Lidl Dresden Reick entfernen"]
@@ -109,24 +109,6 @@ final class MultiRegionJourneyTests: XCTestCase {
     }
 
     // MARK: Helfer
-
-    private func completeOnboarding() {
-        app.buttons["onboarding.primary"].tap()   // welcome
-        app.buttons["onboarding.skip"].tap()      // name
-        let plz = app.textFields["Postleitzahl"]
-        XCTAssertTrue(plz.waitForExistence(timeout: 15))
-        plz.tap()
-        plz.typeText("01219")
-        app.buttons["onboarding.primary"].tap()
-        app.buttons["onboarding.skip"].tap()      // household
-        app.buttons["onboarding.skip"].tap()      // diet
-        app.buttons["onboarding.primary"].tap()   // consent
-        let branch = app.buttons["Lidl, Dresden Reick"]
-        XCTAssertTrue(branch.waitForExistence(timeout: 15))
-        branch.tap()
-        app.buttons["markets.done"].tap()
-        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
-    }
 
     private func addRegion(_ plz: String) {
         app.tabBars.buttons["Einstellungen"].tap()
@@ -151,5 +133,16 @@ final class MultiRegionJourneyTests: XCTestCase {
         XCTAssertTrue(edit.waitForExistence(timeout: 15))
         edit.tap()
         XCTAssertTrue(app.navigationBars["Filialen wählen"].waitForExistence(timeout: 15))
+    }
+
+    /// Startet hinter dem Assistenten (`-uiTestingOnboarded`) und wartet, bis
+    /// die Liste steht.
+    ///
+    /// Vorher lief hier der ganze Onboarding-Assistent — sieben Bildschirme für
+    /// einen Zustand, den diese Journey nur durchquert. Gemessen am 2026-07-31:
+    /// Der Assistent ist 72 % der 20-Minuten-Suite.
+    private func waitForList() {
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
+                      "Der Start hinter dem Assistenten landet nicht in der Liste")
     }
 }

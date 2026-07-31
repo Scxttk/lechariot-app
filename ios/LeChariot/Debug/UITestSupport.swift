@@ -52,6 +52,60 @@ enum UITestSupport {
     static let showsTutorial =
         ProcessInfo.processInfo.arguments.contains("-uiTestingTutorial")
 
+    /// Launched with `-uiTestingOnboarded`: start **behind** the onboarding,
+    /// with PLZ 01219 ready and the fixture Lidl chosen.
+    ///
+    /// **Gemessen, nicht geschätzt:** Ein voller UI-Lauf kostet rund 20
+    /// Minuten, und 72 % davon ist der Assistent — `ShoppingListInputJourneyTests`
+    /// tippt *ein* Wort und braucht 18 s, weil davor sieben Bildschirme liegen.
+    /// 48 Journeys × 18 s ≈ 864 s, für einen Zustand, den drei Journeys
+    /// tatsächlich prüfen und 45 nur durchqueren.
+    ///
+    /// Die Journeys, die den Assistenten *meinen* — `OnboardingJourneyTests`,
+    /// `LocatedPLZJourneyTests`, `TutorialJourneyTests`, `RestartJourneyTests` —
+    /// laufen weiter durch ihn hindurch. Ohne diese Trennung würde das Argument
+    /// genau die Strecke wegkürzen, die es zu prüfen gilt.
+    static let seedsOnboardedState =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingOnboarded")
+
+    /// Zusätzlich `-uiTestingOnboardedAllBranches`: **beide** Filialen des
+    /// Fixture-Verzeichnisses statt nur der einen.
+    ///
+    /// Die Chip-Leiste der Angebote erscheint erst ab zwei Ketten — eine
+    /// Journey, die sie prüft, braucht also einen anderen Startzustand als
+    /// eine, die ihre Abwesenheit prüft. Zwei Saatgut-Fassungen sind billiger
+    /// als eine Journey, die sich ihre zweite Filiale erst zusammenklickt.
+    private static let seedsAllBranches =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingOnboardedAllBranches")
+
+    /// Die Filialen, die das Saatgut wählt — dieselben, die die Onboarding-
+    /// Journeys im Picker antippen, damit beide Wege denselben Zustand
+    /// erreichen. Lidl zuerst: Wer nur eine bekommt, bekommt die, auf die die
+    /// alten Helfer getippt haben.
+    static let seededBranches = [
+        Market(chain: "Lidl", branchName: "Dresden Reick",
+               marketId: "lidl-01219-1", plz: "01219"),
+        Market(chain: "Aldi", branchName: "Dresden Prohlis",
+               marketId: "aldi-01219-1", plz: "01219"),
+    ]
+
+    static let seededPLZ = "01219"
+
+    /// Legt den Zustand hin, den ein durchlaufenes Onboarding hinterlassen
+    /// hätte. Läuft in `LeChariotApp.init`, also bevor irgendeine Ansicht ihn
+    /// liest.
+    @MainActor
+    static func seedOnboardedState(regions: RegionStore, profile: ProfileStore) {
+        guard seedsOnboardedState else { return }
+        regions.seedOnboarded(
+            region: seededPLZ,
+            favorites: seedsAllBranches ? seededBranches : [seededBranches[0]]
+        )
+        // Ohne das hielte `OnboardingFlowView.resume` den Assistenten für
+        // unterbrochen — sichtbar wird es erst, wenn jemand zurücksetzt.
+        profile.markQuestionsCompleted()
+    }
+
     /// The defaults suite for this launch, emptied unless the launch asked to
     /// keep it. `nil` outside test runs.
     ///

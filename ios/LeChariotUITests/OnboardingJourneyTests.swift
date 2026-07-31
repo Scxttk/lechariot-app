@@ -37,6 +37,50 @@ final class OnboardingJourneyTests: XCTestCase {
                       "onboarding must end in the shopping list, not anywhere else")
     }
 
+    /// **Der Ablauf, den Scott am 2026-07-31 entschieden hat.**
+    ///
+    /// Der Assistent endete bis dahin in der Filialauswahl — einer langen,
+    /// gesuchten Liste, bevor man gesehen hat, wofür man sie braucht. Jetzt
+    /// endet er in der Einkaufsliste, und die ist **ohne Filiale benutzbar**:
+    /// Eingabezeile, Vorschläge und Artikel funktionieren, und an der Stelle
+    /// des Preisvergleichs steht, was fehlt.
+    ///
+    /// Das ist die eine Journey, die den ganzen Umbau festhält. Ohne sie könnte
+    /// jemand das Filialen-Tor vor der Liste wieder einziehen, und alles
+    /// Übrige — die Ankertexte des Rundgangs, die Frage am Ende — bliebe
+    /// grün, während der erste Bildschirm wieder eine Sackgasse wäre.
+    func testTheListWorksWithoutABranchAndSaysWhatIsMissing() {
+        completeOnboarding(name: "Scott")
+
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.staticTexts["Keine Filiale gewählt"].exists,
+                       "die Liste steht nicht mehr hinter einem Filialen-Tor")
+        XCTAssertTrue(app.staticTexts["Noch keine Filiale gewählt"].exists,
+                      "…aber sie sagt, was fehlt")
+
+        let field = app.textFields["list.input"]
+        XCTAssertTrue(field.exists, "ohne Eingabezeile ist es keine Einkaufsliste")
+        field.tap()
+        field.typeText("Vollmilch\n")
+        XCTAssertTrue(app.buttons["Vollmilch"].waitForExistence(timeout: 10),
+                      "Artikel müssen auch ohne Filiale auf die Liste gehen")
+        XCTAssertTrue(
+            app.staticTexts["Sobald du Filialen gewählt hast, steht hier das günstigste Angebot."].exists,
+            "und an der Stelle des Treffers steht der Grund, keine Leere"
+        )
+    }
+
+    /// Und der Weg aus dem Leerzustand heraus führt wirklich irgendwohin.
+    func testTheEmptyStateLeadsIntoTheBranchPickerAndBack() {
+        completeOnboarding(name: "Scott")
+        pickFixtureBranchFromTheList()
+
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
+                      "nach dem Wählen steht man wieder in der Liste")
+        XCTAssertFalse(app.staticTexts["Noch keine Filiale gewählt"].exists,
+                       "und der Hinweis hat sich erledigt")
+    }
+
     /// Every profile question is optional — a user who answers nothing still has
     /// to arrive in the app.
     func testOnboardingCanBeCompletedWithoutAnsweringAnything() {
@@ -46,20 +90,21 @@ final class OnboardingJourneyTests: XCTestCase {
         tapSkip()                  // household: "Überspringen"
         tapSkip()                  // diet: "Trifft nichts zu"
         tapPrimary()               // consent: "Fertig"
-        pickFixtureBranchAndFinish()
 
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
     }
 
-    /// The branch picker is the one place onboarding must not let you past
-    /// empty-handed: without a branch there is nothing to compare.
+    /// Der Picker lässt niemanden mit leeren Händen abschließen: ohne Filiale
+    /// gibt es nichts zu vergleichen. Er ist seit dem 2026-07-31 keine Station
+    /// des Assistenten mehr, aber diese Regel gilt in ihm unverändert — wer ihn
+    /// **öffnet**, soll ihn nicht versehentlich leer wieder zumachen. Der
+    /// Ausweg für den, der es sich anders überlegt, heißt „Abbrechen".
     func testDoneStaysDisabledUntilABranchIsPicked() {
-        tapPrimary()
-        tapSkip()
-        enterPLZAndContinue()
-        tapSkip()
-        tapSkip()
-        tapPrimary()
+        completeOnboarding(name: "Scott")
+
+        let choose = app.buttons["list.chooseMarkets"]
+        XCTAssertTrue(choose.waitForExistence(timeout: 15))
+        choose.tap()
 
         let done = app.buttons["markets.done"]
         XCTAssertTrue(done.waitForExistence(timeout: 15))
@@ -71,6 +116,9 @@ final class OnboardingJourneyTests: XCTestCase {
 
         app.buttons[fixtureBranch].tap()
         XCTAssertTrue(done.isEnabled)
+
+        XCTAssertTrue(app.buttons["Abbrechen"].exists,
+                      "wer den Picker öffnet, muss auch wieder heraus")
     }
 
     // MARK: Regressions
@@ -80,6 +128,7 @@ final class OnboardingJourneyTests: XCTestCase {
     /// into onboarding. It must now be an ordinary empty state.
     func testRemovingTheLastBranchKeepsTheUserInTheApp() {
         completeOnboarding(name: "Scott")
+        pickFixtureBranchFromTheList()
 
         openTab("Einstellungen")
         app.buttons["Filialen bearbeiten"].tap()
@@ -91,9 +140,14 @@ final class OnboardingJourneyTests: XCTestCase {
                        "must not restart onboarding")
 
         openTab("Liste")
-        XCTAssertTrue(app.staticTexts["Keine Filiale gewählt"].waitForExistence(timeout: 10),
-                      "the tab has nothing to show and has to say so")
-        XCTAssertTrue(app.buttons["Zu den Einstellungen"].exists,
+        // Seit dem 2026-07-31 ist das **kein** Leerbildschirm mehr, sondern die
+        // Liste mit ihrem Hinweis: Wer seine letzte Filiale entfernt, verliert
+        // den Preisvergleich — nicht seine Einkaufsliste.
+        XCTAssertTrue(app.staticTexts["Noch keine Filiale gewählt"].waitForExistence(timeout: 10),
+                      "the tab has to say what is missing")
+        XCTAssertTrue(app.textFields["list.input"].exists,
+                      "…without taking the shopping list away")
+        XCTAssertTrue(app.buttons["list.chooseMarkets"].exists,
                       "…and offer the way out")
     }
 
@@ -190,7 +244,14 @@ final class OnboardingJourneyTests: XCTestCase {
         tapPrimary()
     }
 
-    private func pickFixtureBranchAndFinish() {
+    /// Öffnet die Filialauswahl aus dem Leerzustand der Liste und wählt die
+    /// Fixture-Filiale. **Der Weg dorthin ist seit dem 2026-07-31 dieser** —
+    /// im Assistenten kommt sie nicht mehr vor.
+    private func pickFixtureBranchFromTheList() {
+        let choose = app.buttons["list.chooseMarkets"]
+        XCTAssertTrue(choose.waitForExistence(timeout: 15),
+                      "Ohne Filiale muss die Liste den Weg dorthin anbieten")
+        choose.tap()
         let branch = app.buttons[fixtureBranch]
         XCTAssertTrue(branch.waitForExistence(timeout: 15), "fixture branch missing")
         branch.tap()
@@ -219,6 +280,5 @@ final class OnboardingJourneyTests: XCTestCase {
         tapPrimary()                       // household
         tapPrimary()                       // diet
         tapPrimary()                       // consent
-        pickFixtureBranchAndFinish()
     }
 }

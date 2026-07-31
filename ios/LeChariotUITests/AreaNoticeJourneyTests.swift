@@ -17,12 +17,12 @@ final class AreaNoticeJourneyTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-uiTestingAreaJustFetched"]
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded", "-uiTestingAreaJustFetched"]
         app.launch()
     }
 
     func testTheNoticeAppearsAfterRestartAndLeadsToTheBranchPicker() {
-        completeOnboarding()
+        waitForList()
 
         let notice = app.staticTexts["Deine Gegend ist jetzt vollständig"]
         XCTAssertTrue(
@@ -41,7 +41,7 @@ final class AreaNoticeJourneyTests: XCTestCase {
     /// Weggetippt ist weggetippt. Ein Hinweis, der nach dem Ausblenden wieder
     /// dasteht, wird nicht gelesen, sondern weggewischt.
     func testTheNoticeStaysGoneAfterItIsDismissed() {
-        completeOnboarding()
+        waitForList()
 
         let notice = app.staticTexts["Deine Gegend ist jetzt vollständig"]
         XCTAssertTrue(notice.waitForExistence(timeout: 15))
@@ -56,21 +56,14 @@ final class AreaNoticeJourneyTests: XCTestCase {
         XCTAssertFalse(notice.exists, "Hinweis kommt beim Tabwechsel zurück")
     }
 
-    private func completeOnboarding() {
-        app.buttons["onboarding.primary"].tap()   // welcome
-        app.buttons["onboarding.skip"].tap()      // name
-        let plz = app.textFields["Postleitzahl"]
-        XCTAssertTrue(plz.waitForExistence(timeout: 15))
-        plz.tap()
-        plz.typeText("01219")
-        app.buttons["onboarding.primary"].tap()
-        app.buttons["onboarding.skip"].tap()      // household
-        app.buttons["onboarding.skip"].tap()      // diet
-        app.buttons["onboarding.primary"].tap()   // consent
-        let branch = app.buttons["Lidl, Dresden Reick"]
-        XCTAssertTrue(branch.waitForExistence(timeout: 15))
-        branch.tap()
-        app.buttons["markets.done"].tap()
-        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+    /// Startet hinter dem Assistenten (`-uiTestingOnboarded`) und wartet, bis
+    /// die Liste steht.
+    ///
+    /// Vorher lief hier der ganze Onboarding-Assistent — sieben Bildschirme für
+    /// einen Zustand, den diese Journey nur durchquert. Gemessen am 2026-07-31:
+    /// Der Assistent ist 72 % der 20-Minuten-Suite.
+    private func waitForList() {
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
+                      "Der Start hinter dem Assistenten landet nicht in der Liste")
     }
 }

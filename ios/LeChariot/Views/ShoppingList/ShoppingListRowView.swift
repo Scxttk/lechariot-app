@@ -5,6 +5,11 @@ import SwiftUI
 struct ShoppingListRowView: View {
     let item: ShoppingItem
     let match: OfferMatch?
+    /// Ob überhaupt Filialen gewählt sind. Trennt die zwei Gründe für eine
+    /// leere Treffer-Zeile: „diese Woche nichts gefunden" ist eine Aussage über
+    /// die Angebote, „noch keine Filiale" eine über die Einrichtung — und nur
+    /// die zweite kann der Nutzer beheben.
+    var hasMarkets = true
     /// Trägt die Anker für den Rundgang. Nur die erste offene Zeile setzt das —
     /// siehe `ShoppingListView.itemList`.
     var carriesTutorialAnchors = false
@@ -106,6 +111,18 @@ struct ShoppingListRowView: View {
             // sentence built from whatever offer happens to match.
             .accessibilityIdentifier("list.matches")
             .tutorialAnchor(.rowMatch, when: carriesTutorialAnchors)
+        } else if !hasMarkets {
+            // Trägt den Anker, obwohl hier nichts anzutippen ist: Ohne ihn
+            // überspringt sich der Rahmen, der erklärt, **was** an dieser
+            // Stelle einmal stehen wird — und genau das ist der Grund, Filialen
+            // zu wählen. Der Rahmentext spricht dann dieselbe Zeitform, siehe
+            // `TutorialStep.tour(hasMarkets:)`.
+            Text("Sobald du Filialen gewählt hast, steht hier das günstigste Angebot.")
+                .font(.caption)
+                .foregroundStyle(Theme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .tutorialAnchor(.rowMatch, when: carriesTutorialAnchors)
         } else {
             Text("Diese Woche nirgends im Angebot")
                 .font(.caption)

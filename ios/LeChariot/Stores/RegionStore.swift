@@ -221,6 +221,24 @@ final class RegionStore {
         }
     }
 
+    #if DEBUG
+    /// Setzt den Zustand, den ein durchlaufenes Onboarding hinterlassen hätte —
+    /// nur für `-uiTestingOnboarded`, siehe `UITestSupport`.
+    ///
+    /// Steht **in** der Klasse, nicht daneben: Die Schlüssel sind privat, und
+    /// ein Saatgut, das sie von außen nachbaut, ist genau die Sorte Kopie, die
+    /// still falsch wird, sobald jemand einen Schlüssel umbenennt.
+    func seedOnboarded(region: String, favorites: [Market]) {
+        regions = [region]
+        selectedRegion = region
+        readyRegions = [region]
+        syncStates[region] = .ready
+        favoriteMarkets = favorites
+        hasCompletedOnboarding = true
+        persist()
+    }
+    #endif
+
     /// Wipes every trace of this store, in memory and on disk, so the next
     /// render is indistinguishable from a first launch. Seit 2026-07-30 auch
     /// im Release-Build erreichbar — siehe `AppReset`.

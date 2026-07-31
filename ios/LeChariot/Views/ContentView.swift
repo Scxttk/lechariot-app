@@ -25,6 +25,9 @@ struct ContentView: View {
     /// Der Rundgang. Lebt hier, weil ihn beide Hälften brauchen: Das Onboarding
     /// bietet ihn an, die Tabs zeigen ihn.
     @State private var tutorial = TutorialStore()
+    /// Die Filialauswahl über der Liste. Erreichbar aus dem Leerzustand der
+    /// Liste und aus der Frage am Ende des Rundgangs.
+    @State private var showsMarketPicker = false
 
     private enum Tab {
         case liste, angebote, einstellungen
@@ -40,7 +43,8 @@ struct ContentView: View {
                 mainTabs
                     .stateTransition(.screen)
             } else {
-                OnboardingFlowView(marketRepository: marketRepository)
+                // Ohne Repository: Der Assistent fragt keine Filialen mehr ab.
+                OnboardingFlowView()
                     .stateTransition(.screen)
             }
         }
@@ -50,8 +54,18 @@ struct ContentView: View {
 
     private var mainTabs: some View {
         TabView(selection: $selectedTab) {
-            allRegionScoped { markets in
-                ShoppingListView(favoriteMarkets: markets, offerStore: offerStore)
+            // **Ohne Filialen-Tor.** Bis zum 2026-07-31 lag hier dieselbe
+            // `ContentUnavailableView` wie über den Angeboten, und das
+            // Onboarding musste deshalb in der Filialauswahl enden. Die Liste
+            // funktioniert ohne Filialen (`OfferStore.load(branchIds: [])`
+            // liefert sauber leer); was fehlt, sagt sie an den zwei Stellen, an
+            // denen sonst Angebote stehen.
+            allRegionScoped(requiresFavorites: false) { markets in
+                ShoppingListView(
+                    favoriteMarkets: markets,
+                    offerStore: offerStore,
+                    onChooseMarkets: { showsMarketPicker = true }
+                )
             }
             // Nullhoher Marker auf der Unterkante der sicheren Fläche dieses
             // Tabs — also genau auf der Oberkante der Tab-Leiste. Die Leiste
@@ -134,6 +148,54 @@ struct ContentView: View {
             // Beispiel-Artikel nie abgeräumt. Das wird hier nachgeholt.
             if !tutorial.isRunning {
                 tutorial.removeDemoItems(from: shoppingList)
+            }
+        }
+        .alert("Märkte jetzt auswählen?", isPresented: marketQuestion) {
+            Button("Ja") {
+                tutorial.dismissMarketQuestion()
+                showsMarketPicker = true
+            }
+            Button("Nein", role: .cancel) { tutorial.dismissMarketQuestion() }
+        } message: {
+            Text("Le Chariot vergleicht die Wochenangebote der Läden, in die du wirklich gehst. Ohne Filiale bleibt deine Liste eine Liste — wählen kannst du sie jederzeit auch später in den Einstellungen.")
+        }
+        .sheet(isPresented: $showsMarketPicker) { marketPicker }
+    }
+
+    /// **Nur der Rundgang aus dem Onboarding fragt.**
+    ///
+    /// Wer ihn aus den Einstellungen noch einmal ansieht, hat seine Filialen
+    /// längst — für bestehende Installationen ändert sich hier nichts. Die
+    /// Bedingung steht im Store (`TutorialStore.asksForMarkets`), damit die
+    /// Ansicht sie nicht ein zweites Mal formuliert.
+    private var marketQuestion: Binding<Bool> {
+        Binding(
+            get: { tutorial.asksForMarkets },
+            set: { if !$0 { tutorial.dismissMarketQuestion() } }
+        )
+    }
+
+    /// Die Filialauswahl über der Liste, nicht in den Einstellungen: Wer sie
+    /// hier öffnet, ist auf halbem Weg zu seiner Liste und soll dorthin
+    /// zurückkommen, wo er losgegangen ist.
+    @ViewBuilder
+    private var marketPicker: some View {
+        if let plz = store.orderedReadyRegions.first ?? store.regions.first {
+            NavigationStack {
+                MarketPickerView(
+                    plz: plz,
+                    marketRepository: marketRepository,
+                    onDone: { showsMarketPicker = false }
+                )
+                // „Fertig" ist gesperrt, solange nichts gewählt ist — ohne
+                // Abbruch wäre der Bildschirm für jemanden, der es sich anders
+                // überlegt, eine Sackgasse. Im Onboarding war das richtig, hier
+                // ist es keine Pflichtstation mehr.
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Abbrechen") { showsMarketPicker = false }
+                    }
+                }
             }
         }
     }
@@ -220,8 +282,14 @@ struct ContentView: View {
     /// settings). Neither is an error, and neither is a dead end any more: both
     /// states name the missing piece and hand over a button to the screen that
     /// restores it.
+    ///
+    /// `requiresFavorites` trennt die beiden Tabs: Die **Angebote** sind ohne
+    /// Filiale wirklich nichts — eine Liste, die es nicht gibt. Die **Liste**
+    /// ist ohne Filiale eine Einkaufsliste ohne Preisvergleich, also der halbe
+    /// Zweck der App und ein sinnvoller erster Bildschirm.
     @ViewBuilder
     private func allRegionScoped(
+        requiresFavorites: Bool = true,
         @ViewBuilder content: ([Market]) -> some View
     ) -> some View {
         let regions = store.orderedReadyRegions
@@ -231,7 +299,7 @@ struct ContentView: View {
                 symbol: "mappin.slash",
                 message: "Füge in den Einstellungen eine Postleitzahl hinzu — dann lädt Le Chariot die Angebote deiner Gegend."
             )
-        } else if !store.hasFavorites {
+        } else if requiresFavorites, !store.hasFavorites {
             setupNeeded(
                 title: "Keine Filiale gewählt",
                 symbol: "storefront",

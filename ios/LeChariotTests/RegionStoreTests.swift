@@ -123,6 +123,29 @@ final class RegionStoreTests: XCTestCase {
 
     // MARK: Onboarding completion
 
+    /// **Das Saatgut für `-uiTestingOnboarded` muss den Zustand treffen, den
+    /// ein echter Durchlauf hinterlässt** — sonst prüfen 11 Journeys einen
+    /// Zustand, den es in der App nicht gibt. Deshalb steht hier nicht nur
+    /// „onboarded", sondern jede einzelne Eigenschaft, die eine Ansicht liest,
+    /// **und** dass sie den Neustart überlebt.
+    func testTheUITestSeedMatchesAFinishedOnboarding() {
+        let store = makeStore()
+        let branch = Market(chain: "Lidl", branchName: "Dresden Reick",
+                            marketId: "lidl-01219-1", plz: "01219")
+        store.seedOnboarded(region: "01219", favorites: [branch])
+
+        XCTAssertTrue(store.isOnboardingComplete)
+        XCTAssertTrue(store.hasFavorites)
+        XCTAssertEqual(store.orderedReadyRegions, ["01219"])
+        XCTAssertEqual(store.syncState(for: "01219"), .ready)
+        XCTAssertEqual(store.favoriteMarkets, [branch])
+
+        let relaunched = makeStore()
+        XCTAssertTrue(relaunched.isOnboardingComplete)
+        XCTAssertEqual(relaunched.orderedReadyRegions, ["01219"])
+        XCTAssertEqual(relaunched.favoriteMarkets, [branch])
+    }
+
     func testFreshStoreIsNotOnboarded() {
         let store = makeStore()
         XCTAssertFalse(store.isOnboardingComplete)
