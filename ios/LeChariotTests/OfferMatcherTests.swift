@@ -121,6 +121,85 @@ final class OfferMatcherTests: XCTestCase {
         XCTAssertEqual(matches.map(\.kind), [.direct, .category, .category])
     }
 
+    // MARK: Wörterbuch in der Suche (gemeldet 21.07., entschieden 31.07.)
+
+    /// Das Regal aus dem gemeldeten Fall: Fleisch-Schnitzel und vegane
+    /// Alternativen, so getaggt, wie das Backend sie tatsächlich taggt
+    /// (nachgesehen in Supabase am 2026-07-31).
+    private var schnitzelRegal: [Offer] {
+        [
+            offer("Schweineschnitzel XXL", matchKey: ["schwein"]),
+            offer("MÜHLENHOF Frische Puten-Schnitzel", matchKey: ["pute"]),
+            offer("RÜGENWALDER Vegane Mühlen BBQ-Steaks", matchKey: ["rind", "tofu"]),
+            offer("Like vegane Fleischalternative", matchKey: ["tofu"]),
+        ]
+    }
+
+    /// Ohne geladenes Wörterbuch wären die Leer-Erwartungen unten wertlos —
+    /// sie träfen dann aus dem falschen Grund zu.
+    func testTheDictionaryIsActuallyBundled() {
+        XCTAssertGreaterThan(
+            MatchDictionary.wordCount, 400,
+            "Wörterbuch nicht im Bundle — die übrigen Tests prüfen sonst nichts"
+        )
+        XCTAssertEqual(MatchDictionary.terms(forToken: "vegan"), ["tofu"])
+        XCTAssertEqual(MatchDictionary.terms(forToken: "fleischersatz"), ["tofu"])
+    }
+
+    /// **Der gemeldete Fall, und er muss leer bleiben.** „vegan Schnitzel"
+    /// meint ein Produkt, das beides ist — kein Schweineschnitzel. Mit einem
+    /// ODER in Stufe 2 hätte die Synonym-Abbildung genau das geliefert, weil
+    /// „schnitzel" auf `schwein` und `pute` zeigt.
+    func testVeganSchnitzelStaysEmpty() {
+        let matches = OfferMatcher.matches(for: "vegan Schnitzel", in: schnitzelRegal)
+        XCTAssertTrue(
+            matches.isEmpty,
+            "geliefert wurde: \(matches.map(\.offer.product))"
+        )
+    }
+
+    /// Und die Gegenprobe, ohne die der Test oben auch von einer kaputten
+    /// Suche erfüllt würde: Ein Synonym allein findet die getaggten Zeilen,
+    /// obwohl das Wort in keinem Titel steht.
+    func testASynonymAloneFindsTaggedOffers() {
+        let matches = OfferMatcher.matches(for: "Fleischersatz", in: schnitzelRegal)
+        XCTAssertEqual(
+            Set(matches.map(\.offer.product)),
+            ["RÜGENWALDER Vegane Mühlen BBQ-Steaks", "Like vegane Fleischalternative"]
+        )
+        XCTAssertTrue(matches.allSatisfy { $0.kind == .category })
+    }
+
+    /// Zwei Wörter, zwei Wege: „Pizza" steht im Titel, „vegan" nur im Tag —
+    /// erfüllt ist damit beides, und das Angebot passt. Das ist der Fall, für
+    /// den die Abbildung überhaupt gebaut ist.
+    func testBothWordsMaySatisfyThroughDifferentRoutes() {
+        let offers = [
+            offer("Pizza Margherita", matchKey: ["pizza"]),
+            offer("Pizza Gemüse", matchKey: ["pizza", "tofu"]),
+        ]
+        let matches = OfferMatcher.matches(for: "vegane Pizza", in: offers)
+        XCTAssertEqual(matches.map(\.offer.product), ["Pizza Gemüse"])
+    }
+
+    /// Die Sperrlisten des Wörterbuchs gelten auch für Suchwörter: „Milchreis"
+    /// ist bei `milch` gesperrt und darf nicht das ganze Milchregal öffnen.
+    func testBlockedWordsDoNotOpenTheirCategory() {
+        let offers = [
+            offer("MILBONA Frische Weidemilch", matchKey: ["milch"]),
+            offer("Fettarme H-Milch", matchKey: ["milch"]),
+        ]
+        XCTAssertTrue(OfferMatcher.matches(for: "Milchreis", in: offers).isEmpty)
+    }
+
+    /// Mehrwortige Synonyme wirken als Wendung — einzeln ist „creme" nichts.
+    func testAMultiwordSynonymMatchesAsAPhrase() {
+        let offers = [offer("MILBONA Crème Fraîche XXL", matchKey: ["sahne"])]
+        XCTAssertEqual(
+            OfferMatcher.matches(for: "creme fraiche", in: offers).count, 1
+        )
+    }
+
     // MARK: Levenshtein
 
     func testLevenshteinBasics() {
