@@ -16,32 +16,55 @@ Writes additionally send `Content-Type: application/json` and `Prefer: return=mi
 
 ### `offers`
 
+All 21 columns, read from the live table on 2026-07-31. The app selects with
+`*`, so every one of them arrives whether or not the decoder names it.
+
 | Column | Type | Notes |
 | --- | --- | --- |
+| `id` | int8 | Primary key |
 | `market` | text | Chain name, e.g. `"Lidl"` |
+| `market_id` | text | The chain's own branch id — the offer key since backend v13. An offer belongs to a branch, not to a postcode. |
 | `product` | text | Product name |
 | `price` | double? | Offer price in EUR |
+| `loyaltyPrice` | double? | Price with the chain's loyalty card, where one exists |
 | `regular_price` | double? | Regular (non-offer) price |
 | `unit` | text? | e.g. `"je 12 x 1 l"` |
 | `category` | text | One of the 15 fixed German categories (below) |
 | `emoji` | text? | Display emoji |
 | `valid_from` | date | `"yyyy-MM-dd"` string |
 | `valid_until` | date | `"yyyy-MM-dd"` string |
+| `created_at` | timestamptz | **Full ISO-8601 with time and zone**, unlike the two above — see the warning below |
 | `base_price` | double? | Price per base unit |
 | `base_unit` | text? | e.g. `"1 kg"` |
-| `region` | text | PLZ, e.g. `"01219"` |
+| `ean` | text? | Article number where the source gives one |
+| `brand` | text? | Brand where the source gives one |
+| `source` | text | Which pipeline wrote the row (`lechariot-rust`, `smartshop-rust`) |
 | `image_url` | text? | Public Supabase-Storage URL of the product image. Content-addressed and stable — safe to cache aggressively. `null` = app shows the emoji instead. |
+| `match_key` | text[] | Term tags from the backend's matching dictionary; `["nonfood"]` = non-food, empty = untagged |
+| `nationwide` | bool | Does this offer hold countrywide (ALDI) rather than at one branch? Replaced `region` in backend migration v16. |
+
+> **Two date shapes in one table.** `valid_from` and `valid_until` are plain
+> days (`2026-07-27`); `created_at` is a full timestamp
+> (`2026-07-31T07:58:44.976965+00:00`). A decoder set to `yyyy-MM-dd` cannot
+> read it. Typing `created_at` as a `Date` therefore made **every** offer row
+> fail to decode — and only in production, because no fixture carried the
+> column. Any timestamp column added here inherits that trap.
+
+> **`region` is gone.** Backend migration v16 removed it; an offer has belonged
+> to a branch since v13. A query still filtering on it fails outright with
+> `column offers.region does not exist` — verified against production on
+> 2026-07-31. Filter on `market_id` instead.
 
 Typical query:
 
 ```
-GET /rest/v1/offers?select=*&order=valid_from.desc&region=in.(01219)&market=in.(Lidl,Aldi)&limit=1000&offset=0
+GET /rest/v1/offers?select=*&order=valid_from.desc&market_id=in.(LIDL_1988)&market=in.(Lidl,Aldi)&limit=1000&offset=0
 ```
 
 Paginated 1000 rows per page via `limit`/`offset`.
 
-`region=in.(...)` carries all of the user's ready regions in one request
-(e.g. `region=in.(01219,01067)` for PLZ-border users), not just the selected one.
+`market_id=in.(...)` carries all of the user's chosen branches in one request,
+not just the selected one.
 
 The `market=in.(...)` filter is optional: the app sends it with the user's favorite
 chains ("Wunschmärkte") and omits it to fetch all chains. Chain names are
