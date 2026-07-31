@@ -44,6 +44,9 @@ final class AreaRequestStore {
     /// Anchors whose completion has already been announced — otherwise the
     /// notice would return on every single launch.
     private static let announcedKey = "areaRequest.announcedAnchors"
+    /// Gebietsschlüssel -> Ankerfiliale, für den Fall, dass der Server die
+    /// Anforderung unter einem anderen Schlüssel führt als wir erwarten.
+    private static let anchorsKey = "areaRequest.anchorsByArea"
 
     private let repository: AreaRequestRepositoryProtocol
     private let defaults: UserDefaults
@@ -89,6 +92,13 @@ final class AreaRequestStore {
     /// The postcodes still being fetched, so the picker can name them.
     var pendingAreaPLZs: [String] {
         Array(Set(pendingAreas.values.filter { !$0.isEmpty })).sorted()
+    }
+
+    /// Zu welchem Anker gehört ein offenes Gebiet? Gebraucht wird das nur für
+    /// den Rückfall unten in `checkPendingArea`.
+    private var anchorsByArea: [String: String] {
+        get { defaults.dictionary(forKey: Self.anchorsKey) as? [String: String] ?? [:] }
+        set { defaults.set(newValue, forKey: Self.anchorsKey) }
     }
 
     private var announced: Set<String> {
@@ -164,6 +174,7 @@ final class AreaRequestStore {
                 try await repository.requestArea(marketId: anchor, lat: lat, lon: lon)
             }
             pendingAreas[key] = region
+            anchorsByArea[key] = anchor
             isFetchingArea = true
         } catch {
             // A failed request costs the extra chains, not the app. The user
@@ -189,9 +200,19 @@ final class AreaRequestStore {
             // vor v22 die Ankerfiliale. Der Altweg bleibt genau eine Version
             // stehen, damit ein Tester, der beim Update mitten im Lauf steckt,
             // seine Meldung nicht verliert — er darf danach weg.
-            let row: AreaRequest?
+            var row: AreaRequest?
             if anchor.hasPrefix("cell:") || anchor.hasPrefix("plz:") {
                 row = try? await repository.request(areaKey: anchor)
+                // **Der Server führt sie unter einem anderen Schlüssel.** Wir
+                // rechnen aus unserer Regionsmitte `cell:…`; verwirft der
+                // BEFORE-Trigger die Koordinaten als unplausibel oder als zu
+                // weit vom Anker, trägt die Zeile stattdessen `plz:…`. Ohne
+                // diesen Rückfall suchten wir für immer einen Schlüssel, den es
+                // nicht gibt — die Anforderung bliebe ewig „läuft noch", und
+                // niemandem fiele es auf.
+                if row == nil, let market = anchorsByArea[anchor] {
+                    row = try? await repository.request(marketId: market)
+                }
             } else {
                 row = try? await repository.request(marketId: anchor)
             }
@@ -212,6 +233,7 @@ final class AreaRequestStore {
         }
 
         pendingAreas = stillOpen
+        anchorsByArea = anchorsByArea.filter { stillOpen[$0.key] != nil }
         announced = seen
         isFetchingArea = !stillOpen.isEmpty
         completedAreaPLZs = Array(Set(finishedPLZs)).sorted()
@@ -231,6 +253,7 @@ final class AreaRequestStore {
         defaults.removeObject(forKey: Self.pendingKey)
         defaults.removeObject(forKey: Self.legacyPendingKey)
         defaults.removeObject(forKey: Self.announcedKey)
+        defaults.removeObject(forKey: Self.anchorsKey)
         isFetchingArea = false
         areaJustCompleted = false
         completedAreaPLZs = []
