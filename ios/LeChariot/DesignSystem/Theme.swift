@@ -253,6 +253,10 @@ struct DiscountBadge: View {
 struct OfferThumbnail: View {
     let imageUrl: String?
     let emoji: String?
+    /// Kategorie und Produktname speisen den Rückfall — siehe
+    /// `OfferImageContent.fallback(category:emoji:title:)`.
+    var category: String? = nil
+    var title: String? = nil
     var size: CGFloat = 48
 
     var body: some View {
@@ -260,7 +264,9 @@ struct OfferThumbnail: View {
             imageUrl: imageUrl,
             emoji: emoji,
             emojiSize: size * 0.5,
-            contentMode: .fill
+            contentMode: .fill,
+            category: category,
+            title: title
         )
         .frame(width: size, height: size)
         // Screen background as the tile: stays in the brand palette instead of
@@ -287,6 +293,8 @@ struct OfferThumbnail: View {
 struct OfferHeroImage: View {
     let imageUrl: String?
     let emoji: String?
+    var category: String? = nil
+    var title: String? = nil
     var height: CGFloat = 200
 
     var body: some View {
@@ -294,7 +302,9 @@ struct OfferHeroImage: View {
             imageUrl: imageUrl,
             emoji: emoji,
             emojiSize: height * 0.4,
-            contentMode: .fit
+            contentMode: .fit,
+            category: category,
+            title: title
         )
         .padding(Theme.Spacing.md)
         .frame(maxWidth: .infinity)
@@ -328,8 +338,42 @@ struct OfferImageContent: View {
     let emoji: String?
     let emojiSize: CGFloat
     let contentMode: ContentMode
+    /// Beide mit Vorgabe `nil`: Die Vorschauen und ältere Aufrufstellen
+    /// bringen sie nicht mit, und ohne sie greift schlicht die nächste Stufe
+    /// des Rückfalls.
+    var category: String? = nil
+    var title: String? = nil
 
-    /// Was auf der Kachel liegt — **entweder** das Foto **oder** das Emoji,
+    /// Womit die Kachel gefüllt wird, wenn kein Foto da ist.
+    ///
+    /// Vier Stufen, und jede tiefere ist ein Eingeständnis: das Zeichen der
+    /// Kategorie, sonst das Emoji des Imports, sonst der Anfangsbuchstabe des
+    /// Produkts, sonst der Einkaufswagen. **Der Buchstabe ist bewusst
+    /// gestaltet und keine Notlösung** — ein Rückfall, den man ansieht, ist
+    /// besser als einer, für den man sich entschuldigt.
+    enum Fallback: Equatable {
+        case symbol(String)
+        case emoji(String)
+        case initial(String)
+        case cart
+    }
+
+    static func fallback(category: String?, emoji: String?, title: String?) -> Fallback {
+        if let category, let name = Categories.symbol(for: category) {
+            return .symbol(name)
+        }
+        // Das Emoji des Imports ist ab jetzt die **zweite** Reserve, nicht die
+        // erste: Es trägt ein Produkt genauer als eine Warengruppe, aber eine
+        // Liste voll davon liest sich als Spielerei (Lidl, 2026-07-30).
+        if let emoji, !emoji.isEmpty { return .emoji(emoji) }
+        if let first = title?.trimmingCharacters(in: .whitespaces).first,
+           first.isLetter || first.isNumber {
+            return .initial(String(first).uppercased())
+        }
+        return .cart
+    }
+
+    /// Was auf der Kachel liegt — **entweder** das Foto **oder** der Rückfall,
     /// nie beides.
     ///
     /// Steht als eigene Entscheidung da und nicht nur als `switch` im `body`,
@@ -381,10 +425,27 @@ struct OfferImageContent: View {
     ///
     /// Der Rückfall selbst blendet weiter ein: Kommt er *nach* einem
     /// Fehlschlag, soll er nicht aufpoppen.
+    @ViewBuilder
     private var fallback: some View {
-        Text(emoji ?? "🛒")
-            .font(.system(size: emojiSize))
-            .transition(.asymmetric(insertion: .opacity, removal: .identity))
+        Group {
+            switch Self.fallback(category: category, emoji: emoji, title: title) {
+            case .symbol(let name):
+                Image(systemName: name)
+                    .font(.system(size: emojiSize * 0.82, weight: .regular))
+                    .foregroundStyle(Theme.accent)
+            case .emoji(let text):
+                Text(text).font(.system(size: emojiSize))
+            case .initial(let letter):
+                // Derselbe Platz wie ein Zeichen, damit die Zeile nicht
+                // springt, je nachdem was gerade greift.
+                Text(letter)
+                    .font(.system(size: emojiSize * 0.82, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.accent)
+            case .cart:
+                Text("🛒").font(.system(size: emojiSize))
+            }
+        }
+        .transition(.asymmetric(insertion: .opacity, removal: .identity))
     }
 }
 

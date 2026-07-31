@@ -19,14 +19,20 @@ struct OfferRowView: View {
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                     HStack(spacing: Theme.Spacing.md) {
-                        OfferThumbnail(imageUrl: offer.imageUrl, emoji: offer.emoji)
+                        OfferThumbnail(
+                            imageUrl: offer.imageUrl, emoji: offer.emoji,
+                            category: offer.category, title: offer.product
+                        )
                         productInfo
                     }
                     priceInfo(alignment: .leading)
                 }
             } else {
                 HStack(alignment: .top, spacing: Theme.Spacing.md) {
-                    OfferThumbnail(imageUrl: offer.imageUrl, emoji: offer.emoji)
+                    OfferThumbnail(
+                            imageUrl: offer.imageUrl, emoji: offer.emoji,
+                            category: offer.category, title: offer.product
+                        )
                     productInfo
                     Spacer()
                     priceInfo(alignment: .trailing)

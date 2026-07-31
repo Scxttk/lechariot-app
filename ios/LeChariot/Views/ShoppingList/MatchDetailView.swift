@@ -100,7 +100,10 @@ struct MatchDetailView: View {
             // Packungsgröße, Gültigkeit und Preisverlauf.
             NavigationLink(value: offer) {
                 HStack(spacing: Theme.Spacing.sm) {
-                    OfferThumbnail(imageUrl: offer.imageUrl, emoji: offer.emoji, size: 40)
+                    OfferThumbnail(
+                        imageUrl: offer.imageUrl, emoji: offer.emoji,
+                        category: offer.category, title: offer.product, size: 40
+                    )
                     VStack(alignment: .leading, spacing: 2) {
                         Text(offer.product)
                             .font(.subheadline)
