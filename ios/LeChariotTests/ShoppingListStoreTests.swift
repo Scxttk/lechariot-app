@@ -228,13 +228,35 @@ final class SuggestionStripTests: XCTestCase {
         let items = ShoppingSuggestions.staples.map { ShoppingItem(text: $0) }
         let offers = [
             offer("Wenig reduziert", tags: ["mehl"], price: 1.80, was: 2.00),   // 10 %
-            offer("Stark reduziert", tags: ["sekt"], price: 3.00, was: 9.00),   // 67 %
+            offer("Stark reduziert", tags: ["joghurt"], price: 3.00, was: 9.00), // 67 %
             offer("Ohne Streichpreis", tags: ["reis"], price: 1.00, was: nil),  //  0 %
         ]
 
         let strip = ShoppingSuggestions.strip(for: items, offers: offers)
 
-        XCTAssertEqual(strip, ["Sekt", "Mehl", "Reis"])
+        XCTAssertEqual(strip, ["Joghurt", "Mehl", "Reis"])
+    }
+
+    /// **Der Rabatt entscheidet die Reihenfolge, aber nicht die Aufnahme.**
+    ///
+    /// Bis zum 2026-07-31 stand in dem Test darüber `sekt` als das am
+    /// stärksten reduzierte Angebot, und der Streifen zeigte es an erster
+    /// Stelle. Seit Scotts Entscheidung wird Alkohol nicht mehr ungefragt
+    /// vorgeschlagen — der Fall ist deshalb aus dem Test oben heraus- und
+    /// hierher gewandert, statt still verschwunden zu sein.
+    ///
+    /// Das Angebot bleibt in den Angeboten und in der Suche. Zurückgehalten
+    /// wird nur der **Vorschlag**.
+    func testTheDeepestDiscountDoesNotBuyAlcoholAWayIntoTheStrip() {
+        let items = ShoppingSuggestions.staples.map { ShoppingItem(text: $0) }
+        let offers = [
+            offer("Stark reduziert", tags: ["sekt"], price: 3.00, was: 9.00),   // 67 %
+            offer("Wenig reduziert", tags: ["mehl"], price: 1.80, was: 2.00),   // 10 %
+        ]
+
+        let strip = ShoppingSuggestions.strip(for: items, offers: offers)
+
+        XCTAssertEqual(strip, ["Mehl"], "geliefert: \(strip)")
     }
 
     /// Non-Food ist kein Einkaufslisten-Eintrag. Ein Akkuschrauber im Prospekt

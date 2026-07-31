@@ -12,6 +12,7 @@ struct SettingsView: View {
     @Environment(TutorialStore.self) private var tutorial
     @Environment(AreaRequestStore.self) private var areaRequests
     @Environment(BranchRequestStore.self) private var branchRequests
+    @Environment(PurchaseHistoryStore.self) private var history
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
@@ -19,6 +20,7 @@ struct SettingsView: View {
     @State private var showResetConfirmation = false
     @State private var regionToRemove: String?
     @State private var installIdCopied = false
+    @State private var showForgetConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -151,6 +153,35 @@ struct SettingsView: View {
             .accessibilityIdentifier("settings.tutorial")
             .tutorialAnchor(.settingsHelp)
 
+            // **Nur die Vorschläge, nicht die App.**
+            //
+            // Eine Kaufhistorie sagt etwas über Ernährung, Alkohol, Kinder,
+            // Gesundheit — Dinge, die eine Einkaufsliste nicht sagt. Wer sie
+            // loswerden will, soll dafür nicht Filialen, Profil und Onboarding
+            // mit aufgeben müssen. Scotts Entscheidung vom 2026-07-31; sie ist
+            // der Grund, warum es diesen Knopf **neben** dem Zurücksetzen gibt
+            // und nicht nur das Zurücksetzen.
+            //
+            // Ohne Warnfarbe und ohne `role: .destructive`: Was hier
+            // verschwindet, ist ein Komfort, kein Besitz.
+            Button {
+                showForgetConfirmation = true
+            } label: {
+                Label("Vorschläge vergessen", systemImage: "wand.and.sparkles")
+                    .foregroundStyle(Theme.accent)
+            }
+            .accessibilityIdentifier("settings.forgetSuggestions")
+            .confirmationDialog(
+                "Vorschläge vergessen?",
+                isPresented: $showForgetConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Vergessen", role: .destructive) { history.forget() }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                Text("Le Chariot vergisst, was du bisher abgehakt hast. „Häufig gekauft“ zeigt danach wieder die Standardvorschläge. Deine Liste, deine Filialen und deine Angaben bleiben.")
+            }
+
             // Der Notausgang, und ab 2026-07-30 in **jedem** Build. Vorher gab
             // es ihn nur unter `#if DEBUG`; wer in TestFlight feststeckte,
             // konnte die App nur löschen und neu installieren. Genau die
@@ -180,7 +211,8 @@ struct SettingsView: View {
                         feedback: feedback,
                         tutorial: tutorial,
                         areaRequests: areaRequests,
-                        branchRequests: branchRequests
+                        branchRequests: branchRequests,
+                        history: history
                     )
                 }
                 Button("Abbrechen", role: .cancel) {}

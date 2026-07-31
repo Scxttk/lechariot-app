@@ -6,6 +6,7 @@ struct LeChariotApp: App {
     @State private var profile: ProfileStore
     @State private var areaRequests: AreaRequestStore
     @State private var branchRequests: BranchRequestStore
+    @State private var history = PurchaseHistoryStore()
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     private let marketRepository: MarketRepositoryProtocol
@@ -36,6 +37,7 @@ struct LeChariotApp: App {
                 .environment(profile)
                 .environment(areaRequests)
                 .environment(branchRequests)
+                .environment(history)
                 // Beim Start und bei jeder Rückkehr prüfen, ob ein
                 // angefordertes Gebiet inzwischen fertig ist. Der Lauf dauert
                 // ~3 Minuten und überlebt die App — ohne diese Frage erführe
