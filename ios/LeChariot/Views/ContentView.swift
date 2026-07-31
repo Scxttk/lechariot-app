@@ -31,13 +31,20 @@ struct ContentView: View {
     }
 
     var body: some View {
-        Group {
+        // Dieselbe Regel wie zwischen den Onboarding-Schritten: Der letzte
+        // Wechsel des Assistenten ist der hier — vom Assistenten in die App —,
+        // und er sprang genauso. Behälter trägt die Kurve, die beiden
+        // Hälften tragen den Übergang.
+        ZStack {
             if store.isOnboardingComplete {
                 mainTabs
+                    .stateTransition(.screen)
             } else {
                 OnboardingFlowView(marketRepository: marketRepository)
+                    .stateTransition(.screen)
             }
         }
+        .stateAnimation(.screen, value: store.isOnboardingComplete)
         .environment(tutorial)
     }
 

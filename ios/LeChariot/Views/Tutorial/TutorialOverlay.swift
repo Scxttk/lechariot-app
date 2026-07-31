@@ -141,14 +141,24 @@ struct TutorialOverlay: View {
     // MARK: Abdunklung
 
     private var scrim: some View {
-        SpotlightShape(hole: visualHole, cornerRadius: Theme.Radius.card)
-            .fill(
-                Color.black.opacity(reduceTransparency ? 0.78 : 0.6),
-                style: FillStyle(eoFill: true)
-            )
-            // Rein sichtbar. Geblockt wird mit eigenen Rechtecken, siehe unten.
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+        ZStack {
+            SpotlightShape(hole: visualHole, cornerRadius: Theme.Radius.card)
+                .fill(
+                    Color.black.opacity(reduceTransparency ? 0.78 : 0.6),
+                    style: FillStyle(eoFill: true)
+                )
+            // Die Kante des Lochs als Linie — sonst ist die Hervorhebung nur
+            // ein Helligkeitssprung, und auf kleinen Zielen sieht man ihn
+            // nicht. Siehe `SpotlightRing` und `Theme.onScrim`. Die Linie
+            // liegt **auf** der Kante, nimmt dem Loch also innen anderthalb
+            // Punkte weg; das Ziel ist um `Spacing.sm` größer aufgezogen, dort
+            // ist Luft.
+            SpotlightRing(hole: visualHole, cornerRadius: Theme.Radius.card)
+                .stroke(Theme.onScrim, lineWidth: 3)
+        }
+        // Rein sichtbar. Geblockt wird mit eigenen Rechtecken, siehe unten.
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     /// Vier Rechtecke rings um das Loch — sie nehmen jede Berührung, und das

@@ -154,6 +154,126 @@ enum Theme {
             ? UIColor(red: 0.56, green: 0.80, blue: 0.60, alpha: 1)
             : UIColor(red: 0.20, green: 0.42, blue: 0.24, alpha: 1)
     })
+
+    /// Linien **auf** der Abdunklung des Rundgangs.
+    ///
+    /// In beiden Erscheinungsbildern dieselbe Farbe, weil die Abdunklung in
+    /// beiden dieselbe ist: 60 % Schwarz über allem. Der Akzent taugt hier
+    /// nicht — im hellen Modus ist er das dunkle `#3F6444`, und über der
+    /// abgedunkelten Creme-Fläche erreicht er **1,01:1**: Die beiden Farben
+    /// sind dort praktisch gleich hell, die Linie wäre unsichtbar gewesen.
+    /// Genau das war die Meldung vom 31.07.: „oft nicht erkenntlich, was
+    /// gemeint ist". Dieses helle Grün misst **5,5:1** über der hellen und
+    /// **16,1:1** über der dunklen Abdunklung — und bleibt trotzdem Marke.
+    static let onScrim = Color(red: 0.86, green: 0.93, blue: 0.87) // #DBEDDE
+}
+
+// MARK: - Motion
+
+extension Theme {
+    /// **Wie ein Zustand den anderen ablöst — die eine Regel der App.**
+    ///
+    /// Bis zum 31.07. gab es keine. Vierzehn Stellen bewegten etwas, mit sechs
+    /// verschiedenen Kurven (`.snappy`, `.snappy(0.3)`, `.snappy(0.28)`,
+    /// `.easeOut(0.25)`, `.easeOut(0.2)`, `.easeOut(0.15)`) plus dem blanken
+    /// `withAnimation`, das die Vorgabe nimmt — und dort, wo ein **ganzer
+    /// Bildschirm** den anderen ablöst, mit gar keiner. Vom Gerät kamen daraus
+    /// drei getrennte Meldungen, die derselbe Fehler sind:
+    ///
+    /// - Die Onboarding-Seiten springen (`phase` wechselte ohne Transaktion).
+    /// - Vom Onboarding ins Filialwählen gibt es keinen Übergang (dieselbe
+    ///   `phase`, plus der Wechsel `OnboardingFlowView` → Tabs).
+    /// - Im Filialwählen blendet der graue Hinweis langsam aus, während der
+    ///   grüne Aufklapper darunter schlagartig erscheint — zwei Ansichten
+    ///   desselben Wechsels mit zwei verschiedenen Übergängen. Dieselbe Form
+    ///   wie der Foto-über-Emoji-Fehler vom 24.07.
+    ///
+    /// **Die Regel besteht aus zwei Hälften, die zusammengehören:** der
+    /// *Übergang* sitzt an der Ansicht, die kommt oder geht
+    /// (`stateTransition`), die *Kurve* am gemeinsamen Behälter der Ansichten,
+    /// die einander ablösen (`stateAnimation`) — oder an der einen
+    /// Transaktion, die den Zustand umsetzt (`Motion.element.animation`).
+    /// Wer nur die eine Hälfte setzt, bekommt den gemeldeten Fehler zurück:
+    /// eine Seite bewegt sich, die andere springt.
+    enum Motion: CaseIterable {
+        /// Ein ganzer Bildschirm löst einen anderen ab.
+        case screen
+        /// Ein Element erscheint oder verschwindet an seinem Platz.
+        case element
+
+        /// Sekunden. Ein Bildschirm darf etwas länger brauchen als eine Zeile;
+        /// beide bleiben unter der Dauer, ab der ein Übergang sich wie Warten
+        /// anfühlt.
+        var duration: Double {
+            switch self {
+            case .screen: 0.3
+            case .element: 0.22
+            }
+        }
+
+        /// Dieselbe Familie für beide — `.snappy`, wie sie der Rundgang seit
+        /// [#21](https://github.com/Scxttk/lechariot-app/pull/21) schon nutzt.
+        /// Zwei Kurven für zwei Größenordnungen wären zwei Regeln.
+        var animation: Animation { .snappy(duration: duration) }
+
+        /// Nichts fliegt, wenn der Nutzer Bewegung abgestellt hat. `nil` heißt
+        /// bei SwiftUI „sofort", nicht „Vorgabe" — der Wechsel findet also
+        /// statt, nur ohne Weg dorthin.
+        func animation(reduceMotion: Bool) -> Animation? {
+            reduceMotion ? nil : animation
+        }
+
+        /// **Beide Seiten desselben Wechsels tragen denselben Übergang — und
+        /// beim Verschwinden wird nicht überblendet.**
+        ///
+        /// Die zweite Hälfte ist keine Geschmacksfrage, sondern dieselbe
+        /// Entscheidung wie beim Foto über dem Emoji (#23, 24.07.): Zwei
+        /// Ansichten, die denselben Platz einnehmen, dürfen dort nicht 0,3 s
+        /// lang halbdurchsichtig übereinanderliegen. Dort schien das Emoji
+        /// durch den Freisteller; hier ist es schlimmer, weil eine ganze
+        /// Ansicht mehr als Farbe mitbringt: **Der abgelöste Bildschirm bleibt
+        /// so lange bedienbar und im Barrierefreiheits-Baum.**
+        ///
+        /// Am eigenen Prüfstand aufgeflogen: Mit `.opacity` auf beiden Seiten
+        /// fand `AccessibilityAuditTests` zwei Knöpfe `onboarding.skip` —
+        /// den des gehenden Schritts und den des kommenden —, tippte den
+        /// gehenden, und der Assistent blieb stehen. Was ein Testlauf in
+        /// 26 Sekunden trifft, trifft auch ein Daumen, der zweimal schnell
+        /// hintereinander tippt.
+        ///
+        /// Also: Der neue Bildschirm blendet **ein**, der alte ist sofort weg.
+        /// Der Wechsel bleibt weich, ohne dass es je zwei von allem gibt.
+        var transition: AnyTransition {
+            .asymmetric(insertion: .opacity, removal: .identity)
+        }
+    }
+}
+
+extension View {
+    /// Der Übergang **dieser** Ansicht, wenn sie kommt oder geht. Gehört an
+    /// die Ansicht selbst, nicht an die Stelle, die den Zustand umsetzt.
+    func stateTransition(_ motion: Theme.Motion) -> some View {
+        transition(motion.transition)
+    }
+
+    /// Die Kurve, mit der der Wechsel von `value` läuft. Gehört auf den
+    /// gemeinsamen Behälter der Ansichten, die einander ablösen — von dort
+    /// erreicht sie beide Seiten des Wechsels, auch die, die verschwindet.
+    func stateAnimation<V: Equatable>(_ motion: Theme.Motion, value: V) -> some View {
+        modifier(StateAnimationModifier(motion: motion, value: value))
+    }
+}
+
+/// Trägt `accessibilityReduceMotion` an die Regel heran — als
+/// `@Environment` braucht das eine Ansicht, eine freie Funktion sieht es nicht.
+private struct StateAnimationModifier<V: Equatable>: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let motion: Theme.Motion
+    let value: V
+
+    func body(content: Content) -> some View {
+        content.animation(motion.animation(reduceMotion: reduceMotion), value: value)
+    }
 }
 
 // MARK: - Appearance override
