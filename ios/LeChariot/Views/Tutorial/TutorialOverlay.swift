@@ -39,6 +39,17 @@ struct TutorialOverlay: View {
     /// Task setzt erst asynchron zurück, die Anker melden sich früher.
     @State private var graceExpiredFor: Int?
 
+    /// Das Loch, wie es gerade **gezeichnet** wird — und der Schritt, zu dem
+    /// es gehört.
+    ///
+    /// Getrennt vom aufgelösten Anker, weil die Anker einen Layout-Durchgang
+    /// nach dem Schrittwechsel kommen. Vorher stand hier `resolvedHole ?? .zero`,
+    /// und in diesem einen Durchgang schrumpfte das Loch sichtbar in die linke
+    /// obere Ecke. Was wann bewegt wird, entscheidet `SpotlightTransition` —
+    /// dort steht auch, warum.
+    @State private var shownHole: CGRect = .zero
+    @State private var shownIndex: Int = -1
+
     /// Anker kommen einen Layout-Durchgang nach dem Schrittwechsel — beim
     /// letzten Rahmen sogar erst nach einem Tab-Wechsel. Erst danach darf
     /// „kein Ziel“ heißen: Rahmen überspringen.
@@ -63,8 +74,18 @@ struct TutorialOverlay: View {
         // nimmt die Karte samt Knöpfen aus dem Baum, nachgewiesen an der
         // Element-Hierarchie eines Testlaufs.
         .accessibilityAddTraits(.isModal)
-        .onAppear(perform: enterStep)
-        .onChange(of: tutorial.index) { _, _ in enterStep() }
+        .onAppear {
+            enterStep()
+            moveHoleIfNeeded()
+        }
+        .onChange(of: tutorial.index) { _, _ in
+            enterStep()
+            // Beim Schrittwechsel steht der neue Anker meist noch nicht da.
+            // Dann tut das hier nichts, und das Loch bleibt liegen, bis der
+            // Anker unten eintrifft — statt in die Ecke zu fliegen.
+            moveHoleIfNeeded()
+        }
+        .onChange(of: resolvedHole) { _, _ in moveHoleIfNeeded() }
         .task(id: tutorial.index) {
             let index = tutorial.index
             try? await Task.sleep(for: Self.anchorGrace)
@@ -92,6 +113,23 @@ struct TutorialOverlay: View {
     private func skipIfNothingToShow() {
         guard graceExpiredFor == tutorial.index, resolvedHole == nil else { return }
         tutorial.next()
+    }
+
+    /// Zieht das gezeichnete Loch nach, wenn `SpotlightTransition` etwas zu
+    /// tun sieht. Geflogen wird nur der Schrittwechsel; ein Ziel, das sich an
+    /// Ort und Stelle verschiebt (Tastatur, Umbau darunter), wird sofort
+    /// übernommen.
+    private func moveHoleIfNeeded() {
+        guard let move = SpotlightTransition.move(
+            shown: shownHole, shownIndex: shownIndex,
+            resolved: resolvedHole, index: tutorial.index
+        ) else { return }
+        shownIndex = tutorial.index
+        guard move.animated, !reduceMotion else {
+            shownHole = move.rect
+            return
+        }
+        withAnimation(.snappy(duration: 0.3)) { shownHole = move.rect }
     }
 
     /// Welche Anker gerade gemeldet werden — reicht als Änderungssignal, die
@@ -153,7 +191,9 @@ struct TutorialOverlay: View {
             .accessibilityHidden(true)
     }
 
-    private var visualHole: CGRect { resolvedHole ?? .zero }
+    /// Was gezeichnet wird — nicht was gerade aufgelöst ist. Der Unterschied
+    /// ist der gemeldete Ruckler: siehe `SpotlightTransition`.
+    private var visualHole: CGRect { shownHole }
 
     /// Leeres Rechteck heißt: kein Durchlass, der ganze Bildschirm ist tot.
     private var interactiveHole: CGRect {
