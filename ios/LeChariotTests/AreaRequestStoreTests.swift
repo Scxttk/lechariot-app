@@ -364,4 +364,35 @@ final class AreaRequestStoreTests: XCTestCase {
         // -0.0 darf nicht als "-0.0" herauskommen.
         XCTAssertEqual(AreaRequestStore.areaKey(lat: 0.04, lon: -0.04), "cell:0.0,0.0")
     }
+
+    /// **Der Server darf die Anforderung unter einem anderen Schlüssel führen.**
+    ///
+    /// Die App rechnet aus ihrer Regionsmitte `cell:…`. Verwirft der
+    /// BEFORE-Trigger die Koordinaten — unplausibel oder mehr als 60 km vom
+    /// Anker —, trägt die Zeile stattdessen `plz:…`. In der Produktionstabelle
+    /// stehen am 2026-07-31 beide Formen nebeneinander.
+    ///
+    /// Ohne Rückfall suchte die App für immer einen Schlüssel, den es nicht
+    /// gibt: „läuft noch", bis das Gerät neu installiert wird, und nichts
+    /// schlägt dabei fehl.
+    func testAPendingAreaIsStillFoundWhenTheServerKeyedItByPostcode() async {
+        let repo = MockAreaRequestRepository()
+        let store = AreaRequestStore(repository: repo, defaults: defaults)
+
+        await store.requestArea(
+            anchor: "penny-am-haff", region: "17419", lat: 53.9440, lon: 14.1830
+        )
+        XCTAssertTrue(store.isFetchingArea)
+
+        // Der Server hat die Koordinaten verworfen: Die Zeile liegt unter
+        // plz:17373, nicht unter cell:53.9,14.2 — unsere Zelle findet sie nicht.
+        repo.areaKeys = [:]
+        repo.coordinates = [:]
+        repo.ready = ["penny-am-haff"]
+
+        await store.checkPendingArea()
+
+        XCTAssertTrue(store.areaJustCompleted, "die fertige Anforderung wurde nie gefunden")
+        XCTAssertFalse(store.isFetchingArea)
+    }
 }
