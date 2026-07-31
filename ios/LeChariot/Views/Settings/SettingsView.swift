@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Einstellungen tab: manage regions (PLZs) and branches, reusing the
 /// onboarding components; plus the profile, appearance and app info.
@@ -17,6 +18,7 @@ struct SettingsView: View {
 
     @State private var showResetConfirmation = false
     @State private var regionToRemove: String?
+    @State private var installIdCopied = false
 
     var body: some View {
         NavigationStack {
@@ -183,7 +185,13 @@ struct SettingsView: View {
                 }
                 Button("Abbrechen", role: .cancel) {}
             } message: {
-                Text("Deine Filialen, deine Einkaufsliste und deine Angaben aus dem Onboarding werden gelöscht. Danach startet Le Chariot wie nach einer Neuinstallation.")
+                // Der zweite Satz kam am 2026-07-31 dazu, zusammen mit der
+                // sichtbaren Installations-ID: Das Zurücksetzen vergibt eine
+                // neue, und damit sind die schon hochgeladenen Zeilen von
+                // niemandem mehr zu benennen — auch nicht von dem, der sie
+                // löschen lassen will. Das ist eine Folge, die man vorher
+                // wissen muss, nicht hinterher.
+                Text("Deine Filialen, deine Einkaufsliste und deine Angaben aus dem Onboarding werden gelöscht. Danach startet Le Chariot wie nach einer Neuinstallation. Du bekommst dabei eine neue Installations-ID — willst du früher hochgeladene Angaben löschen lassen, kopier die alte vorher unter „App“.")
             }
         } header: {
             Text("Hilfe")
@@ -321,8 +329,9 @@ struct SettingsView: View {
     // MARK: App
 
     private var appSection: some View {
-        Section("App") {
+        Section {
             LabeledContent("Version", value: Self.appVersion)
+            installIdRow
             // Endmarke für den Kontrast-Audit, der ans Ende der Liste scrollen
             // muss, bevor er misst. Ein Bezeichner und kein Text: Die Marke war
             // zweimal deutsche Prosa und ist zweimal gebrochen, als die Prosa
@@ -333,7 +342,53 @@ struct SettingsView: View {
             // Reserved ad position — see `AdSlot`. Lowest-value slot, kept as the
             // natural home for a house ad (e.g. a werbefreie Variante).
             AdSlotView(slot: .settingsFooter)
+        } header: {
+            Text("App")
+        } footer: {
+            Text("Die Installations-ID ist das Einzige, womit sich die hochgeladenen Zeilen benennen lassen — sie hängt an keinem Namen und an keinem Gerät. Für eine Auskunft oder Löschung schick sie mit. Zurücksetzen vergibt eine neue; die alten Zeilen kann danach niemand mehr zuordnen, du auch nicht.")
         }
+    }
+
+    /// **Die ID, die die Datenschutzerklärung verspricht.**
+    ///
+    /// Dort steht seit jeher: „Weil wir bewusst nicht wissen, wer du bist,
+    /// brauchen wir für Auskunft oder Löschung deine Installations-ID … dann
+    /// sagen wir dir, wo du sie findest." Bis zum 2026-07-31 gab es diesen Ort
+    /// nicht — die ID stand in keinem Bildschirm der App. **Ein Recht, das man
+    /// nur mit einer Angabe wahrnehmen kann, die man nirgends ablesen kann,
+    /// ist keins.**
+    ///
+    /// Antippen kopiert. Ein Feld zum Markieren wäre der ehrlichere Weg, aber
+    /// 36 Zeichen in einer Listenzeile von Hand zu markieren ist genau die
+    /// Sorte Aufgabe, an der jemand aufgibt, der ohnehin schon verärgert genug
+    /// ist, um eine Löschung zu verlangen.
+    private var installIdRow: some View {
+        let id = profile.profile.installId.uuidString
+        return Button {
+            UIPasteboard.general.string = id
+            withAnimation { installIdCopied = true }
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text("Installations-ID")
+                        .foregroundStyle(Color.primary)
+                    Text(id)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(Theme.secondaryText)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: installIdCopied ? "checkmark" : "doc.on.doc")
+                    .foregroundStyle(Theme.accent)
+            }
+        }
+        .accessibilityIdentifier("settings.installId")
+        // Der Zustand steht **im Namen** und nicht nur im Zeichen: Ein
+        // Häkchen, das nur zu sehen ist, bestätigt niemandem etwas, der
+        // VoiceOver benutzt — und die ID ist gerade für den da, der sie
+        // weitergeben muss.
+        .accessibilityLabel(installIdCopied ? "Installations-ID kopiert" : "Installations-ID kopieren")
+        .accessibilityValue(id)
+        .accessibilityHint("Kopiert die ID in die Zwischenablage")
     }
 
     private static var appVersion: String {

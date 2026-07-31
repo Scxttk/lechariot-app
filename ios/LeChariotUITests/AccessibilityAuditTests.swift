@@ -124,8 +124,12 @@ final class AccessibilityAuditTests: XCTestCase {
         // `LabeledContent` je nach iOS-Version nicht als `staticText`
         // durchschlägt — genau daran ist der erste Versuch gescheitert.
         let lastRow = app.descendants(matching: .any)["settings.end"]
+        // Großzügig statt knapp: Die Kappe ist an dieser Sektion schon einmal
+        // gerissen, und sie wächst weiter (2026-07-31 kam die Installations-ID
+        // dazu). Zu viele Wische kosten nichts, zu wenige kosten einen roten
+        // Lauf ohne echten Befund.
         var swipes = 0
-        while !lastRow.exists && swipes < 8 {
+        while !lastRow.exists && swipes < 14 {
             app.swipeUp()
             swipes += 1
         }

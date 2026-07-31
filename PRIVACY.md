@@ -90,8 +90,13 @@ Verarbeitung, Datenübertragbarkeit und Widerspruch, sowie das Recht, dich bei
 einer Aufsichtsbehörde zu beschweren.
 
 Weil wir bewusst nicht wissen, wer du bist, brauchen wir für Auskunft oder
-Löschung deine Installations-ID. Schreib uns an die oben genannte Adresse, dann
-sagen wir dir, wo du sie findest, und löschen die zugehörigen Zeilen. Löschst du
+Löschung deine Installations-ID. Du findest sie in der App unter
+**Einstellungen → App**; ein Tipp auf die Zeile kopiert sie. Schick sie an die
+oben genannte Adresse, dann löschen wir die zugehörigen Zeilen.
+
+Achtung: „App zurücksetzen" vergibt eine **neue** Installations-ID. Wenn du
+früher hochgeladene Angaben löschen lassen willst, kopier die alte vorher —
+danach kann sie niemand mehr zuordnen, wir nicht und du auch nicht. Löschst du
 die App, ohne dich zu melden, bleibt eine Handvoll Zeilen ohne jeden Bezug zu
 dir zurück — wir können sie dann keinem Menschen mehr zuordnen, du aber auch
 nicht mehr benennen.
