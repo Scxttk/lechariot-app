@@ -65,7 +65,7 @@ final class SuggestionSurfaceJourneyTests: XCTestCase {
 
         feld.tap()
         feld.typeText("Vollmilch\n")
-        XCTAssertTrue(app.staticTexts["Vollmilch"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["Vollmilch"].waitForExistence(timeout: 10),
                       "Der Artikel ist nicht auf der Liste gelandet")
 
         let knopf = app.buttons["list.suggestions.toggle"]

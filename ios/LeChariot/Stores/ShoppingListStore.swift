@@ -216,6 +216,18 @@ final class ShoppingListStore {
         persist()
     }
 
+    /// Sets the item's detail — the note under the name, never the query.
+    ///
+    /// An empty selection is stored as `nil` rather than `[]`: the two mean the
+    /// same thing to everyone reading the item, and one representation cannot
+    /// drift from the other. `detailLine` treats both alike anyway, which is
+    /// the belt to this brace.
+    func setDetail(_ detail: [String], for item: ShoppingItem) {
+        guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
+        items[idx].detail = detail.isEmpty ? nil : detail
+        persist()
+    }
+
     func clearChecked() {
         items.removeAll { $0.isChecked }
         persist()

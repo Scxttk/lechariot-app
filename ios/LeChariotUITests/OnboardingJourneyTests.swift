@@ -140,7 +140,7 @@ final class OnboardingJourneyTests: XCTestCase {
         field.tap()
         field.typeText("Milch\n")
 
-        XCTAssertTrue(app.staticTexts["Milch"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Milch"].waitForExistence(timeout: 5))
     }
 
     /// The quick-add chips used to sit behind the empty state alone, so the
@@ -153,13 +153,13 @@ final class OnboardingJourneyTests: XCTestCase {
         XCTAssertTrue(milch.waitForExistence(timeout: 15))
         milch.tap()
 
-        XCTAssertTrue(app.staticTexts["Milch"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Milch"].waitForExistence(timeout: 5))
         let brot = app.buttons["Brot hinzufügen"]
         XCTAssertTrue(brot.waitForExistence(timeout: 5),
                       "the remaining suggestions must survive the first tap")
         brot.tap()
 
-        XCTAssertTrue(app.staticTexts["Brot"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Brot"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Milch hinzufügen"].exists,
                        "a staple already on the list must stop being suggested")
     }

@@ -20,15 +20,15 @@ struct MatchDetailView: View {
     @State private var askingAbout: OfferMatch?
 
     private var allMatches: [OfferMatch] {
-        ShoppingListMatcher.matches(for: item.text, in: offers)
+        ShoppingListMatcher.matches(for: item.query, in: offers)
     }
 
     private var active: [OfferMatch] {
-        allMatches.filter { !rejections.isRejected(itemText: item.text, offer: $0.offer) }
+        allMatches.filter { !rejections.isRejected(itemText: item.query, offer: $0.offer) }
     }
 
     private var rejected: [OfferMatch] {
-        allMatches.filter { rejections.isRejected(itemText: item.text, offer: $0.offer) }
+        allMatches.filter { rejections.isRejected(itemText: item.query, offer: $0.offer) }
     }
 
     var body: some View {
@@ -72,7 +72,7 @@ struct MatchDetailView: View {
                 }
             }
             .sheet(item: $askingAbout) { match in
-                RejectionFeedbackSheet(itemText: item.text, match: match)
+                RejectionFeedbackSheet(itemText: item.query, match: match)
                     .environment(feedback)
             }
             // Geschoben, nicht als zweites Sheet: Das hier IST schon ein
@@ -128,9 +128,9 @@ struct MatchDetailView: View {
             Button {
                 withAnimation {
                     if isRejected {
-                        rejections.unreject(itemText: item.text, offer: offer)
+                        rejections.unreject(itemText: item.query, offer: offer)
                     } else {
-                        rejections.reject(itemText: item.text, offer: offer)
+                        rejections.reject(itemText: item.query, offer: offer)
                         // The rejection is already done and persisted; the
                         // question is an optional afterthought on top of it.
                         if feedback.isAskingEnabled { askingAbout = match }

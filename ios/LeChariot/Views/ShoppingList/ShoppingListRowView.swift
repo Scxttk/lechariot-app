@@ -11,6 +11,8 @@ struct ShoppingListRowView: View {
     let onToggle: () -> Void
     /// Opens the match-detail sheet; nil hides the affordance (checked items).
     var onShowMatches: (() -> Void)? = nil
+    /// Opens the detail chips; nil leaves the name a plain label.
+    var onEditDetail: (() -> Void)? = nil
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -29,10 +31,7 @@ struct ShoppingListRowView: View {
             .tutorialAnchor(.rowCheck, when: carriesTutorialAnchors)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Text(item.text)
-                    .font(.body.weight(.medium))
-                    .strikethrough(item.isChecked)
-                    .foregroundStyle(item.isChecked ? .secondary : .primary)
+                name
 
                 if !item.isChecked {
                     suggestion
@@ -41,6 +40,42 @@ struct ShoppingListRowView: View {
             .padding(.vertical, Theme.Spacing.sm)
 
             Spacer(minLength: 0)
+        }
+    }
+
+    /// The item name, with its detail underneath.
+    ///
+    /// Tapping the name opens the chips — the same gesture as Bring!, and the
+    /// only affordance for it. A second one (swipe, a button in the row) would
+    /// crowd a row that already has a check circle, an offer tile and a
+    /// destructive swipe.
+    @ViewBuilder
+    private var name: some View {
+        let text = VStack(alignment: .leading, spacing: 2) {
+            Text(item.text)
+                .font(.body.weight(.medium))
+                .strikethrough(item.isChecked)
+                .foregroundStyle(item.isChecked ? .secondary : .primary)
+
+            // Deliberately not struck through with the item: what the note says
+            // stays true after the thing is in the trolley, and a struck-out
+            // "1 l · Bio" is harder to read for no gain.
+            if let line = item.detailLine {
+                Text(line)
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondaryText)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        if let onEditDetail {
+            Button(action: onEditDetail) { text }
+                .buttonStyle(TactileButtonStyle())
+                .accessibilityLabel(item.detailLine.map { "\(item.text), \($0)" } ?? item.text)
+                .accessibilityHint("Öffnet die Angaben zum Artikel")
+                .accessibilityIdentifier("list.item.detail")
+        } else {
+            text
         }
     }
 
