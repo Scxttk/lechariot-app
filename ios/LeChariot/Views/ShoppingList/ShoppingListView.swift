@@ -520,6 +520,11 @@ struct NoMarketsCard: View {
                 .font(.subheadline)
                 .foregroundStyle(Theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
+                // Ein Bezeichner, damit die Ausnahme im Kontrast-Audit an
+                // etwas hängt, das sich nur absichtlich ändert — und nicht an
+                // drei Zeilen deutschem Fließtext. Siehe
+                // `AccessibilityAuditTests.knownSystemDrawn`.
+                .accessibilityIdentifier("list.noMarkets.body")
             Button(action: action) {
                 Text("Filialen wählen")
                     .font(.subheadline.weight(.semibold))

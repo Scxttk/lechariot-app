@@ -43,7 +43,8 @@ struct ContentView: View {
                 mainTabs
                     .stateTransition(.screen)
             } else {
-                OnboardingFlowView(marketRepository: marketRepository)
+                // Ohne Repository: Der Assistent fragt keine Filialen mehr ab.
+                OnboardingFlowView()
                     .stateTransition(.screen)
             }
         }

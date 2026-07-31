@@ -23,7 +23,6 @@ struct OnboardingFlowView: View {
     @Environment(RegionStore.self) private var store
     @Environment(ProfileStore.self) private var profile
     @Environment(TutorialStore.self) private var tutorial
-    let marketRepository: MarketRepositoryProtocol
 
     @State private var phase: Phase = .welcome
     /// PLZ currently going through the flow; nil while none was submitted yet.
@@ -142,7 +141,7 @@ struct OnboardingFlowView: View {
 }
 
 #Preview {
-    OnboardingFlowView(marketRepository: MockMarketRepository())
+    OnboardingFlowView()
         .environment(RegionStore())
         .environment(ProfileStore())
         .environment(TutorialStore())

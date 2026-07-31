@@ -415,6 +415,34 @@ final class AccessibilityAuditTests: XCTestCase {
         // Versal-Wort und mal das Accessibility-Label zitiert.
         "AM BESTEN ZU",
         "Am besten zu",
+        // **Und hier ist endlich die Ursache — es ist der Schatten.**
+        //
+        // Die Filialen-Karte des Leerzustands meldet zwei Kontrastfehler. Am
+        // 2026-07-31 am gerenderten Screenshot nachgemessen, Pixel für Pixel
+        // aus dem PNG: Der Knopf ist Weiß auf `#3E6243` = **6,92:1**, der
+        // Fließtext `#6B5C47` auf `#F7F5E0` = **5,88:1**. AA verlangt 4,5:1.
+        // Der Audit widerspricht also dem, was auf dem Bildschirm steht.
+        //
+        // Diesmal wurde nicht bei der Feststellung haltgemacht: Wird an dieser
+        // einen Karte `.themeCard()` durch dieselbe Fläche **ohne die zwei
+        // `.shadow`-Modifikatoren** ersetzt, verschwinden **beide** Befunde und
+        // der Audit läuft durch — alles andere unverändert. Ein `.shadow` legt
+        // seinen Teilbaum in eine eigene Ebene, und was der Audit danach misst,
+        // ist nicht mehr die gezeichnete Farbe.
+        //
+        // Das erklärt rückwirkend die zwei Ausnahmen darüber: Die Plan-Karte
+        // trägt denselben `.themeCard()`. Die Vermutung „das
+        // `accessibilityElement(children: .ignore)` ist schuld" war naheliegend
+        // und deckt nur einen der Fälle — der Knopf hier fasst gar nichts
+        // zusammen und fällt trotzdem durch.
+        //
+        // Der Schatten bleibt: Diese Karte steht an der Stelle der Plan-Karte
+        // und löst sie ab, sie müssen gleich aussehen. Wer den Audit an dieser
+        // Stelle wirklich scharf haben will, braucht den Weg über gerenderte
+        // Screenshots — dieselbe Antwort wie für den Kontrast der
+        // Einstellungen.
+        "list.chooseMarkets",
+        "list.noMarkets.body",
     ]
 
     private func openTab(_ name: String) {
