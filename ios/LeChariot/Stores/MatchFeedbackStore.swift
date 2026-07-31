@@ -59,13 +59,11 @@ final class MatchFeedbackStore {
         }
     }
 
-    #if DEBUG
-    /// See `DebugReset`. The key is removed *after* the reset assignment —
+    /// See `AppReset`. The key is removed *after* the reset assignment —
     /// the other way round `didSet` would write it straight back.
     func resetAllData() {
         isAskingEnabled = true
         lastUploadFailed = false
         defaults.removeObject(forKey: Self.key)
     }
-    #endif
 }

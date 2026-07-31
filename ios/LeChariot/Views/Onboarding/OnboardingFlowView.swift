@@ -18,11 +18,6 @@ struct OnboardingFlowView: View {
     @Environment(ProfileStore.self) private var profile
     @Environment(TutorialStore.self) private var tutorial
     let marketRepository: MarketRepositoryProtocol
-    /// Follows a request for a store the backend has never fetched. Created
-    /// here so it outlives a single picker appearance.
-    @State private var branchRequests = BranchRequestStore(
-        repository: AppRepositories.branchRequests()
-    )
 
     @State private var phase: Phase = .welcome
     /// PLZ currently going through the flow; nil while none was submitted yet.
@@ -86,8 +81,7 @@ struct OnboardingFlowView: View {
             case .ready:
                 MarketPickerView(
                     plz: plz,
-                    marketRepository: marketRepository,
-                    branchRequests: branchRequests
+                    marketRepository: marketRepository
                 ) {
                     store.selectRegion(plz)
                     // Der Rundgang wird angeboten, bevor abgeschlossen wird —

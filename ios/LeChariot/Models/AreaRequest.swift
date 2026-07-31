@@ -14,13 +14,26 @@ import Foundation
 /// from 94108, a postcode that does not exist, became an active region and
 /// collected 1,890 offers from its neighbours for a week. The backend looks up
 /// the postcode itself — the app never sends one.
+///
+/// Seit Migration v21 kommen **Koordinaten** dazu, und damit verschiebt sich,
+/// woher die PLZ stammt: nicht mehr aus der Ankerfiliale, sondern aus einem
+/// Reverse-Geocoding der mitgeschickten Regionsmitte. Der Anker bleibt der
+/// Prüfstein — die Lage wird per Haversine gegen ihn gemessen (≤ 60 km) —, und
+/// seine PLZ bleibt der Rückfall. Ohne das holte ein Tester in Ahlbeck das
+/// Verzeichnis von Ueckermünde, 24,5 km entfernt, und niemandem fiel es auf.
 struct AreaRequest: Codable, Equatable, Identifiable {
     /// The store the request was anchored on.
     let marketId: String
-    /// Filled in by the backend from `branches`, never by the app.
+    /// Filled in by the backend, never by the app: erst aus der Ankerfiliale,
+    /// dann vom Lauf mit der echten PLZ überschrieben.
     let plz: String?
     let lastSynced: String?
     let active: Bool?
+    /// Die Regionsmitte, wie der Server sie behalten hat — `nil`, wenn der
+    /// Trigger sie verworfen hat (zu weit vom Anker, außerhalb Deutschlands
+    /// oder nur eine Hälfte). Dann gilt der Weg von v19.
+    let lat: Double?
+    let lon: Double?
 
     var id: String { marketId }
 
@@ -30,6 +43,8 @@ struct AreaRequest: Codable, Equatable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case active
         case plz
+        case lat
+        case lon
         case marketId = "market_id"
         case lastSynced = "last_synced"
     }

@@ -112,7 +112,18 @@ final class AccessibilityAuditTests: XCTestCase {
         // blieb mitten in der Liste stehen, genau in der Position, in der der
         // Audit wieder Zwischenwerte hinter der Tab-Leiste misst. Deshalb
         // wischen, **bis das Ende wirklich da ist**.
-        let lastRow = app.staticTexts["Nur in Entwicklungs-Builds sichtbar."]
+        //
+        // Die Endmarke war bis zum 2026-07-30 der Fußtext des Debug-Abschnitts.
+        // Den gibt es nicht mehr: Das Zurücksetzen ist in die Hilfe gewandert
+        // und ab jetzt in jedem Build da.
+        //
+        // Jetzt ein **Bezeichner** auf der letzten Zeile statt eines Satzes.
+        // Die Marke war zweimal deutscher Fließtext und ist zweimal gebrochen,
+        // sobald sich der Text änderte; ein Bezeichner ändert sich nur, wenn
+        // ihn jemand absichtlich ändert. `descendants(matching: .any)`, weil
+        // `LabeledContent` je nach iOS-Version nicht als `staticText`
+        // durchschlägt — genau daran ist der erste Versuch gescheitert.
+        let lastRow = app.descendants(matching: .any)["settings.end"]
         var swipes = 0
         while !lastRow.exists && swipes < 8 {
             app.swipeUp()

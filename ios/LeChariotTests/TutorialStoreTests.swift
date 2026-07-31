@@ -105,9 +105,39 @@ final class TutorialStoreTests: XCTestCase {
         let store = makeStore()
         let interactive = store.steps.filter(\.allowsInteraction)
         XCTAssertEqual(interactive.map(\.id), ["input", "chips"])
-        for step in interactive {
-            XCTAssertEqual(step.advance, .itemAdded)
+    }
+
+    /// **Kein** Rahmen läuft von allein weiter. Die beiden Mitmach-Rahmen taten
+    /// das bis zum 2026-07-30 (`advance: .itemAdded`) und sprangen weiter,
+    /// sobald ein Artikel auf der Liste landete — also mitten im Lesen, gemeldet
+    /// vom ersten Tester außerhalb des Hauses. Mitmachen und Weiterblättern sind
+    /// seitdem zwei Dinge; hier steht, dass sie es bleiben.
+    func testNoStepAdvancesOnItsOwn() {
+        let store = makeStore()
+        let list = makeList()
+        store.start()
+        let before = store.index
+
+        _ = list.add("Butter")
+        _ = list.add("Milch")
+
+        XCTAssertEqual(store.index, before, "Artikel auf der Liste blättern nicht weiter")
+        XCTAssertTrue(store.isRunning)
+    }
+
+    /// Auf dem letzten Rahmen heißt der Primärknopf „Fertig" und tut dasselbe
+    /// wie „Tour beenden" — deshalb blendet das Overlay den Abbruch dort aus.
+    /// Der Test hält die Bedingung fest, an der es hängt.
+    func testTheLastStepIsTheOnlyOneWhereFinishingAndAbortingAreTheSame() {
+        let store = makeStore()
+        store.start()
+
+        for _ in 0..<(store.steps.count - 1) {
+            XCTAssertFalse(store.isLastStep, "Schritt \(store.index) ist nicht der letzte")
+            store.next()
         }
+
+        XCTAssertTrue(store.isLastStep)
     }
 
     // MARK: Beispiel-Artikel

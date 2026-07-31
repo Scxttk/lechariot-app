@@ -216,21 +216,34 @@ final class MockAreaRequestRepository: AreaRequestRepositoryProtocol, @unchecked
     var pending: Set<String> = []
     private(set) var requested: [String] = []
 
+    /// Koordinaten, die eine schon vorhandene Zeile trägt — damit Tests die
+    /// Übernahmeregel („nicht die Zeile einer anderen Stadt kapern") prüfen
+    /// können.
+    var coordinates: [String: (lat: Double, lon: Double)] = [:]
+    /// Was die App tatsächlich mitgeschickt hat.
+    private(set) var requestedCoordinates: [String: (lat: Double?, lon: Double?)] = [:]
+
     func request(marketId: String) async throws -> AreaRequest? {
+        let point = coordinates[marketId]
         if ready.contains(marketId) {
             return AreaRequest(
                 marketId: marketId, plz: "04639",
-                lastSynced: "2026-07-26T08:36:50Z", active: true
+                lastSynced: "2026-07-26T08:36:50Z", active: true,
+                lat: point?.lat, lon: point?.lon
             )
         }
         if pending.contains(marketId) || requested.contains(marketId) {
-            return AreaRequest(marketId: marketId, plz: "04639", lastSynced: nil, active: true)
+            return AreaRequest(
+                marketId: marketId, plz: "04639", lastSynced: nil, active: true,
+                lat: point?.lat, lon: point?.lon
+            )
         }
         return nil
     }
 
-    func requestArea(marketId: String) async throws {
+    func requestArea(marketId: String, lat: Double?, lon: Double?) async throws {
         requested.append(marketId)
+        requestedCoordinates[marketId] = (lat, lon)
     }
 }
 

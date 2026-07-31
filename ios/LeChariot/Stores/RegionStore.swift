@@ -221,10 +221,9 @@ final class RegionStore {
         }
     }
 
-    #if DEBUG
     /// Wipes every trace of this store, in memory and on disk, so the next
-    /// render is indistinguishable from a first launch. Debug builds only —
-    /// see `DebugReset`.
+    /// render is indistinguishable from a first launch. Seit 2026-07-30 auch
+    /// im Release-Build erreichbar — siehe `AppReset`.
     func resetAllData() {
         regions = []
         selectedRegion = nil
@@ -234,5 +233,4 @@ final class RegionStore {
         hasCompletedOnboarding = false
         for key in Keys.all { defaults.removeObject(forKey: key) }
     }
-    #endif
 }

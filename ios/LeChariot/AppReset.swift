@@ -1,13 +1,18 @@
 import Foundation
 
-#if DEBUG
-
-/// Puts the app back into its first-launch state — debug builds only.
+/// Puts the app back into its first-launch state.
 ///
 /// Testing onboarding used to mean deleting the app from the simulator, which
 /// is slow, easy to get wrong (a stale sandbox plist survives a `defaults
 /// write`) and impossible on a device you also use normally. This does the same
 /// job from inside the running app.
+///
+/// **Ab 2026-07-30 auch im Release-Build**, und das ist der Grund, warum dieser
+/// Typ nicht mehr `DebugReset` heißt und nicht mehr unter `Debug/` liegt: Die
+/// App liegt seit dem 30.07. bei Testern ohne Xcode — Scotts Großeltern haben
+/// sie geschenkt bekommen. Wer feststeckte, hatte bis hierher genau einen
+/// Ausweg, nämlich löschen und neu installieren. Das ist keiner, den man am
+/// Telefon erklären kann.
 ///
 /// The contract is *exactness*: after `everything()` no store holds state in
 /// memory, no UserDefaults key of ours exists on disk, the offer cache is empty
@@ -19,7 +24,7 @@ import Foundation
 /// Every store owns its own wipe (`resetAllData()`); this type only knows the
 /// list of stores, so adding one is a one-line change here rather than a hunt
 /// through the app for forgotten keys.
-enum DebugReset {
+enum AppReset {
     @MainActor
     static func everything(
         regions: RegionStore,
@@ -28,7 +33,8 @@ enum DebugReset {
         rejections: MatchRejectionStore,
         feedback: MatchFeedbackStore,
         tutorial: TutorialStore,
-        areaRequests: AreaRequestStore
+        areaRequests: AreaRequestStore,
+        branchRequests: BranchRequestStore
     ) {
         regions.resetAllData()
         profile.resetAllData()
@@ -40,6 +46,10 @@ enum DebugReset {
         // Reset, und ein erneutes Onboarding fordert dasselbe Gebiet nie
         // wieder an — der Reset wäre nicht mehr exakt.
         areaRequests.resetAllData()
+        // Dasselbe eine Ebene tiefer: Bliebe der Zustand der Filial-
+        // Anforderungen stehen, hielte die App Filialen für „schon geholt",
+        // die nach dem Reset gar nicht mehr gewählt sind.
+        branchRequests.resetAllData()
 
         // Not owned by any store: the appearance override (a fresh install
         // follows the system) and the two caches that would otherwise make the
@@ -49,5 +59,3 @@ enum DebugReset {
         URLCache.shared.removeAllCachedResponses()
     }
 }
-
-#endif

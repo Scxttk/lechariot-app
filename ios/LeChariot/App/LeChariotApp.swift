@@ -5,6 +5,7 @@ struct LeChariotApp: App {
     @State private var store: RegionStore
     @State private var profile: ProfileStore
     @State private var areaRequests: AreaRequestStore
+    @State private var branchRequests: BranchRequestStore
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     private let marketRepository: MarketRepositoryProtocol
@@ -22,6 +23,9 @@ struct LeChariotApp: App {
         _areaRequests = State(
             initialValue: AreaRequestStore(repository: AppRepositories.areaRequests())
         )
+        _branchRequests = State(
+            initialValue: BranchRequestStore(repository: AppRepositories.branchRequests())
+        )
         marketRepository = AppRepositories.markets()
     }
 
@@ -31,11 +35,20 @@ struct LeChariotApp: App {
                 .environment(store)
                 .environment(profile)
                 .environment(areaRequests)
+                .environment(branchRequests)
                 // Beim Start und bei jeder Rückkehr prüfen, ob ein
                 // angefordertes Gebiet inzwischen fertig ist. Der Lauf dauert
                 // ~3 Minuten und überlebt die App — ohne diese Frage erführe
                 // niemand, dass jetzt mehr zur Auswahl steht.
                 .task { await areaRequests.checkPendingArea() }
+                // Und dieselbe Frage eine Ebene tiefer, je gewählter Filiale.
+                // Das holt auch die nach, die über die Einstellungen gewählt
+                // wurden und deshalb nie eine Anforderung ausgelöst haben.
+                .task {
+                    await branchRequests.checkPendingBranches(
+                        for: store.favoriteMarkets.map(\.marketId)
+                    )
+                }
                 // App-wide accent, so onboarding matches the tabs instead of
                 // falling back to system blue.
                 .tint(Theme.accent)
