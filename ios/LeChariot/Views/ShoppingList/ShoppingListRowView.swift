@@ -85,7 +85,10 @@ struct ShoppingListRowView: View {
         if typeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 HStack(spacing: Theme.Spacing.sm) {
-                    OfferThumbnail(imageUrl: offer.imageUrl, emoji: offer.emoji, size: 32)
+                    OfferThumbnail(
+                        imageUrl: offer.imageUrl, emoji: offer.emoji,
+                        category: offer.category, title: offer.product, size: 32
+                    )
                     offerText(offer, lineLimit: nil)
                     Spacer(minLength: 0)
                 }
@@ -100,7 +103,10 @@ struct ShoppingListRowView: View {
             }
         } else {
             HStack(spacing: Theme.Spacing.sm) {
-                OfferThumbnail(imageUrl: offer.imageUrl, emoji: offer.emoji, size: 32)
+                OfferThumbnail(
+                        imageUrl: offer.imageUrl, emoji: offer.emoji,
+                        category: offer.category, title: offer.product, size: 32
+                    )
                 // Two lines: real product names ("Landliebe Butter Original")
                 // truncated to "Landliebe B…" at one line, which is not enough
                 // to tell whether the match is right.

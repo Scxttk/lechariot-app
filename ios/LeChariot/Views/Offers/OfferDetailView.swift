@@ -59,7 +59,11 @@ struct OfferDetailView: View {
     private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                OfferHeroImage(imageUrl: offer.imageUrl, emoji: offer.emoji, height: heroHeight)
+                OfferHeroImage(
+                    imageUrl: offer.imageUrl, emoji: offer.emoji,
+                    category: offer.category, title: offer.product,
+                    height: heroHeight
+                )
                 header
                 facts
                 PriceHistorySection(store: history)
