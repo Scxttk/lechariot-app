@@ -46,6 +46,66 @@ final class ProfileStoreTests: XCTestCase {
         XCTAssertEqual(first, second)
     }
 
+    /// **Zurücksetzen vergibt eine neue ID — und darauf steht seit dem
+    /// 2026-07-31 ein Satz im Bestätigungsdialog und einer in der
+    /// Datenschutzerklärung.**
+    ///
+    /// Absicht ist es (wiederholte Testläufe sollen sich nicht als derselbe
+    /// Nutzer ausgeben), aber es hat eine Folge, die den Nutzer betrifft: Wer
+    /// zurücksetzt, kann seine schon hochgeladenen Zeilen danach nicht mehr
+    /// benennen. Steht hier als Test, damit der Satz im Dialog nicht eines
+    /// Tages etwas behauptet, das der Code nicht mehr tut.
+    func testResettingMintsANewInstallId() {
+        let store = ProfileStore(defaults: defaults)
+        let vorher = store.profile.installId
+        store.resetAllData()
+        XCTAssertNotEqual(store.profile.installId, vorher)
+        // Und die neue überlebt ihrerseits einen Neustart — sonst wäre nach
+        // jedem Zurücksetzen jeder Start ein neuer Nutzer.
+        XCTAssertEqual(ProfileStore(defaults: defaults).profile.installId, store.profile.installId)
+    }
+
+    /// **Was die Einstellungen zeigen, muss an den hochgeladenen Zeilen
+    /// hängen — an allen.**
+    ///
+    /// Eine kopierbare Zeichenkette, die zu keiner Zeile passt, ist schlimmer
+    /// als gar keine: Jemand zitiert sie in einer Löschanfrage, es wird nichts
+    /// gefunden, und beide Seiten halten das für ein Versehen der anderen.
+    ///
+    /// Geprüft wird über die **kodierte Nutzlast** und nicht über das Feld:
+    /// Die Gefahr ist nicht, dass jemand einen zweiten Zufallswert erzeugt,
+    /// sondern dass die beiden Zeilenarten ihn eines Tages unter verschiedenen
+    /// Spalten ablegen. Dann findet eine Löschung die Hälfte.
+    func testTheIdTheSettingsShowIsTheOneOnEveryUploadedRow() throws {
+        let store = ProfileStore(defaults: defaults)
+        // Genau dieses Feld liest die Zeile unter Einstellungen → App.
+        let angezeigt = store.profile.installId
+
+        let profil = try JSONEncoder().encode(
+            SyncedProfile(profile: store.profile, plz: "01219")
+        )
+        let rueckmeldung = try JSONEncoder().encode(
+            MatchFeedbackReport(
+                installId: store.profile.installId,
+                query: "Butter",
+                offer: MockFixtures.offers[0],
+                kind: .direct,
+                reason: .wrongProduct,
+                comment: ""
+            )
+        )
+
+        for (name, daten) in [("user_profiles", profil), ("match_feedback", rueckmeldung)] {
+            let json = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: daten) as? [String: Any]
+            )
+            XCTAssertEqual(
+                json["install_id"] as? String, angezeigt.uuidString,
+                "\(name) trägt eine andere ID als die, die der Nutzer ablesen kann"
+            )
+        }
+    }
+
     func testHouseholdSizeIsClamped() {
         let store = ProfileStore(defaults: defaults)
         store.setHousehold(size: 0)
