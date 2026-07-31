@@ -34,7 +34,8 @@ enum AppReset {
         feedback: MatchFeedbackStore,
         tutorial: TutorialStore,
         areaRequests: AreaRequestStore,
-        branchRequests: BranchRequestStore
+        branchRequests: BranchRequestStore,
+        history: PurchaseHistoryStore
     ) {
         regions.resetAllData()
         profile.resetAllData()
@@ -50,6 +51,11 @@ enum AppReset {
         // Anforderungen stehen, hielte die App Filialen für „schon geholt",
         // die nach dem Reset gar nicht mehr gewählt sind.
         branchRequests.resetAllData()
+        // Die Kaufhistorie. Sie hat als einziger Speicher **auch** einen
+        // eigenen Knopf („Vorschläge vergessen"), weil man sie loswerden
+        // können soll, ohne alles aufzugeben — hier wird sie trotzdem
+        // mitgelöscht, sonst wäre der Reset nicht exakt.
+        history.resetAllData()
 
         // Not owned by any store: the appearance override (a fresh install
         // follows the system) and the two caches that would otherwise make the

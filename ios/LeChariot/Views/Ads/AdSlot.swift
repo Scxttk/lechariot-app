@@ -10,7 +10,6 @@ import SwiftUI
 /// `docs/ADS.md`.
 enum AdSlot {
     case offerListInline
-    case shoppingListFooter
     case settingsFooter
 }
 

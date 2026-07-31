@@ -19,10 +19,17 @@ read as a recommendation".
    The best of the three: the user is browsing, not deciding, the scroll
    context tolerates an interruption, and a full-width card is obviously not a
    row.
-2. **`.shoppingListFooter`** — under the list, after "Erledigt". Out of the
-   decision path and seen almost every session. Modest, safe.
-3. **`.settingsFooter`** — bottom of the settings. Nearly invisible. Only
+2. **`.settingsFooter`** — bottom of the settings. Nearly invisible. Only
    really useful as a house slot, e.g. promoting a paid tier.
+
+`.shoppingListFooter` **was** here — under the list, after "Erledigt" — and was
+removed on 2026-07-31 with the personal suggestion strip. The reasoning that
+justified it ("out of the decision path, modest, safe") was written when the
+strip above it showed eight fixed staples. It now shows what this household
+actually buys, and an ad under *that* is not the same object: it sits below a
+strip that knows the answer, on a screen whose whole claim is that nobody paid
+for what it recommends. The slot is gone rather than merely unused, because an
+unused slot is an invitation.
 
 ## Where an ad must never go
 

@@ -59,6 +59,35 @@ enum ShoppingSuggestions {
     /// Tags that are never a shopping list entry.
     private static let notGroceries: Set<String> = ["nonfood"]
 
+    /// **Alkohol wird nicht vorgeschlagen.**
+    ///
+    /// Scotts Entscheidung vom 2026-07-31, und der Grund ist kein moralischer:
+    /// Das Telefon wird herumgereicht, und die App liegt auf den Geräten
+    /// seiner Großeltern. Ein Streifen, der aus der Kaufhistorie „Bier"
+    /// hochspült, erzählt jedem, der gerade draufschaut, etwas über den
+    /// Haushalt — auch dann, wenn niemand danach gefragt hat.
+    ///
+    /// Gilt für **beide** Quellen, den persönlichen Teil wie den
+    /// Angebots-Teil: Ein Wochenangebot auf Wodka ist an dieser Stelle
+    /// genauso wenig eine Anregung. Wer Alkohol sucht, findet ihn weiterhin
+    /// über die Suche und in den Angeboten — zurückgehalten wird nur der
+    /// **ungefragte Vorschlag**.
+    private static let notSuggested: Set<String> = ["bier", "wein", "spirituosen"]
+
+    /// Ob dieses Wort ungefragt vorgeschlagen werden darf.
+    ///
+    /// Geprüft wird über das Wörterbuch und nicht über eine eigene Wortliste:
+    /// „Pils", „Prosecco" und „Wodka" sind dort schon Synonyme von `bier`,
+    /// `wein` und `spirituosen`. Eine zweite Liste danebenzustellen hieße,
+    /// sie ab dem ersten Pflegelauf auseinanderlaufen zu lassen.
+    static func maySuggest(_ word: String) -> Bool {
+        let token = OfferMatcher.normalize(word)
+            .split(separator: " ")
+            .joined(separator: " ")
+        if notSuggested.contains(token) { return false }
+        return MatchDictionary.terms(forToken: token).isDisjoint(with: notSuggested)
+    }
+
     /// The strip: staples first, then topped up from **this week's offers** so
     /// it keeps its length instead of running dry.
     ///
@@ -72,18 +101,41 @@ enum ShoppingSuggestions {
     /// "K-Classic Bio Vollmilch 1l" is a flyer headline nobody writes on a
     /// list. Ordered by the best discount carrying that tag — so a suggestion
     /// has a reason, which is the whole difference to a longer fixed list.
+    /// Höchstens so viele persönliche Kacheln. Vier, damit der Streifen nicht
+    /// zur Historie wird: Was diese Woche im Angebot ist, soll weiter zu sehen
+    /// sein.
+    static let personalLength = 4
+
     static func strip(
         for items: [ShoppingItem],
         offers: [Offer],
+        history: [String] = [],
+        includeStaples: Bool = true,
         limit: Int = stripLength
     ) -> [String] {
         var taken = Set(items.map { $0.text.lowercased() })
         var result: [String] = []
 
-        for staple in staples where !taken.contains(staple.lowercased()) {
-            result.append(staple)
-            taken.insert(staple.lowercased())
-            if result.count == limit { return result }
+        // Stufe 1: was dieser Haushalt tatsächlich kauft.
+        for word in history where !taken.contains(word.lowercased()) {
+            guard maySuggest(word) else { continue }
+            result.append(word.prefix(1).uppercased() + word.dropFirst())
+            taken.insert(word.lowercased())
+            if result.count == personalLength || result.count == limit { break }
+        }
+
+        // Stufe 3, aber vor Stufe 2 eingefügt: Die acht festen Wörter sind der
+        // **Kaltstart** und verschwinden, sobald genug eigene Käufe da sind
+        // (`includeStaples`). Solange sie da sind, stehen sie vor den
+        // Angeboten — ein leerer Bildschirm braucht „Milch, Brot, Butter",
+        // nicht den tiefsten Rabatt der Woche.
+        if includeStaples {
+            for staple in staples where !taken.contains(staple.lowercased()) {
+                guard maySuggest(staple) else { continue }
+                result.append(staple)
+                taken.insert(staple.lowercased())
+                if result.count == limit { return result }
+            }
         }
 
         // Best discount per tag; a tag without a discount still counts, just
@@ -103,7 +155,7 @@ enum ShoppingSuggestions {
 
         for tag in ranked {
             let word = tag.prefix(1).uppercased() + tag.dropFirst()
-            guard !taken.contains(word.lowercased()) else { continue }
+            guard !taken.contains(word.lowercased()), maySuggest(tag) else { continue }
             result.append(word)
             taken.insert(word.lowercased())
             if result.count == limit { break }

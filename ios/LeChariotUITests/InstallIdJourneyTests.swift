@@ -81,6 +81,34 @@ final class InstallIdJourneyTests: XCTestCase {
         if abbrechen.waitForExistence(timeout: 3) { abbrechen.tap() }
     }
 
+    /// **„Vorschläge vergessen" steht neben dem Zurücksetzen, nicht darin.**
+    ///
+    /// Eine Kaufhistorie sagt etwas über Ernährung, Alkohol, Kinder,
+    /// Gesundheit. Wer sie loswerden will, soll dafür nicht Filialen, Profil
+    /// und Onboarding mit aufgeben müssen — und der Dialog muss sagen, dass
+    /// die auch wirklich bleiben.
+    func testForgettingSuggestionsIsItsOwnButtonAndSaysWhatSurvives() {
+        openSettings()
+        let vergessen = app.descendants(matching: .any)["settings.forgetSuggestions"]
+        var swipes = 0
+        while !vergessen.exists && swipes < 14 {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(vergessen.exists, "Kein eigener Knopf für die Vorschläge")
+        vergessen.tap()
+
+        let hinweis = app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS[c] %@", "Filialen und deine Angaben bleiben")
+        ).firstMatch
+        XCTAssertTrue(
+            hinweis.waitForExistence(timeout: 5),
+            "Der Dialog sagt nicht, was das Vergessen *nicht* anfasst"
+        )
+        let abbrechen = app.descendants(matching: .button)["Abbrechen"].firstMatch
+        if abbrechen.waitForExistence(timeout: 3) { abbrechen.tap() }
+    }
+
     // MARK: Helfer
 
     private func istUUID(_ text: String) -> Bool {

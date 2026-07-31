@@ -10,6 +10,8 @@ struct ShoppingListView: View {
     let offerStore: OfferStore
     @Environment(MatchRejectionStore.self) private var rejections
     @Environment(ProfileStore.self) private var profile
+    /// Zählt beim Abhaken mit — siehe `PurchaseHistoryStore`.
+    @Environment(PurchaseHistoryStore.self) private var history
     /// Optional, damit Previews ohne Rundgang auskommen.
     @Environment(TutorialStore.self) private var tutorial: TutorialStore?
     @State private var detailItem: ShoppingItem?
@@ -104,7 +106,7 @@ struct ShoppingListView: View {
                         // Nur die erste offene Zeile trägt die Anker des
                         // Rundgangs — sonst zeigt das Loch auf sechs Stellen.
                         carriesTutorialAnchors: index == 0,
-                        onToggle: { withAnimation { list.toggle(item) } },
+                        onToggle: { check(item) },
                         onShowMatches: { detailItem = item }
                     )
                     .swipeActions(edge: .trailing) {
@@ -128,7 +130,7 @@ struct ShoppingListView: View {
                 Section("Erledigt") {
                     ForEach(Array(list.checkedItems.enumerated()), id: \.element.id) { index, item in
                         ShoppingListRowView(item: item, match: nil) {
-                            withAnimation { list.toggle(item) }
+                            check(item)
                         }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
@@ -144,10 +146,18 @@ struct ShoppingListView: View {
                 }
             }
 
-            // Reserved ad position: below everything, well clear of the plan
-            // card and the suggestion tiles. Renders nothing today — see `AdSlot`.
-            AdSlotView(slot: .shoppingListFooter)
         }
+    }
+
+    /// Abhaken heißt „gekauft" — und nur das wird gezählt.
+    ///
+    /// Ein Artikel, den man versehentlich wieder aufmacht, darf den Streifen
+    /// nicht mitlernen; deshalb hängt das Zählen am Übergang **nach**
+    /// abgehakt und nicht am Umschalten.
+    private func check(_ item: ShoppingItem) {
+        let wasChecked = item.isChecked
+        withAnimation { list.toggle(item) }
+        if !wasChecked { history.record(item.text) }
     }
 
     // MARK: Empty state
@@ -187,10 +197,26 @@ struct ShoppingListView: View {
 
     // MARK: Suggestions
 
-    /// What the strip shows: staples first, then topped up from this week's
-    /// offers so it keeps its length instead of running dry.
+    /// Was der Streifen zeigt, in drei Stufen: zuerst was dieser Haushalt
+    /// tatsächlich kauft, dann — nur beim Kaltstart — die acht festen Wörter,
+    /// zuletzt aufgefüllt aus den Angeboten dieser Woche.
+    ///
+    /// Der persönliche Teil verliert eine gute Eigenschaft des alten
+    /// Streifens: Jede Kachel hatte einen Grund **dieser Woche** (bester
+    /// Rabatt). Persönliche Kacheln haben den nicht. Bewusst in Kauf genommen —
+    /// zwei Überschriften zur Erklärung der Gruppen wären die schlechtere
+    /// Antwort, weil sie einen Vorschlag erklären, den niemand erklärt haben
+    /// wollte.
     private var suggestions: [String] {
-        ShoppingSuggestions.strip(for: list.items, offers: offerStore.offers)
+        ShoppingSuggestions.strip(
+            for: list.items,
+            offers: offerStore.offers,
+            history: history.top(
+                ShoppingSuggestions.personalLength,
+                excluding: Set(list.items.map { PurchaseHistoryStore.normalized($0.text) })
+            ),
+            includeStaples: history.needsStaples
+        )
     }
 
     /// The chips stay reachable once the list has its first item.
