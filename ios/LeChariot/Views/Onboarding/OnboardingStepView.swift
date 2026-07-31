@@ -43,7 +43,12 @@ struct OnboardingStepView<Content: View>: View {
 
             footer
         }
-        .background(Theme.background)
+        // `.ignoresSafeArea()` deckt auch die Tastatur ab — `.background`
+        // allein weicht ihr aus. Was dann hinter der (durchscheinenden)
+        // Tastatur liegt, ist das schwarze Fenster: Am Gerät standen an der
+        // Namenseingabe schwarze Flächen in den unteren Displayecken
+        // (31.07., Build 2026.0731.1147).
+        .background { Theme.background.ignoresSafeArea() }
     }
 
     private var progressDots: some View {

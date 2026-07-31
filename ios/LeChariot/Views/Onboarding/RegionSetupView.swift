@@ -52,7 +52,11 @@ struct RegionSetupView: View {
                 .padding(Theme.Spacing.xl)
                 .readableWidth()
             }
-            .background(Theme.background)
+            // Dasselbe wie in `OnboardingStepView` und `themedScreen()`: Das
+            // Zahlenfeld darüber holt die Tastatur, und ohne
+            // `.ignoresSafeArea()` endet der Hintergrund an ihrer Kante statt
+            // unter ihr weiterzulaufen.
+            .background { Theme.background.ignoresSafeArea() }
             .navigationTitle("Region hinzufügen")
             .navigationBarTitleDisplayMode(.inline)
         }

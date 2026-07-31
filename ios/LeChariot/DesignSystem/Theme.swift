@@ -197,10 +197,25 @@ extension View {
     /// Replaces the default grouped background of a List/ScrollView screen
     /// with the brand background (cream / dark olive), and keeps the content
     /// itself to a readable column — see `readableWidth()`.
+    ///
+    /// **Der Hintergrund ignoriert die sicheren Bereiche, der Inhalt nicht.**
+    ///
+    /// Ein blankes `.background(Theme.background)` endet an jeder sicheren
+    /// Kante — auch an der, die die eingeblendete Tastatur aufspannt. Die
+    /// Tastatur ist aber durchscheinend, und dort, wo sie als freistehende
+    /// Fläche Luft lässt (untere Displayecken), scheint dann nicht der
+    /// Creme-Hintergrund durch, sondern das schwarze Fenster. Am Gerät
+    /// gemeldet am 31.07. an der Namenseingabe (Build 2026.0731.1147); dieselbe
+    /// Ursache lag hier, wo neun Bildschirme sie teilen — darunter Angebote
+    /// (`.searchable`), die Einkaufsliste und die Rückmeldung mit Freitext.
+    ///
+    /// Nur die Farbe wandert nach außen: `.background` legt sie hinter den
+    /// Inhalt, ohne dessen Maße anzufassen. Der Inhalt bleibt in seinen
+    /// sicheren Bereichen, also auch über der Tab-Leiste.
     func themedScreen() -> some View {
         scrollContentBackground(.hidden)
             .readableWidth()
-            .background(Theme.background)
+            .background { Theme.background.ignoresSafeArea() }
     }
 }
 
