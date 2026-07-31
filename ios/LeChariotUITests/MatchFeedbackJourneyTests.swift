@@ -82,7 +82,7 @@ final class MatchFeedbackJourneyTests: XCTestCase {
     // MARK: Helpers
 
     private func openMatchesFor(_ item: String) {
-        let input = app.textFields["Artikel hinzufügen …"]
+        let input = app.textFields["list.input"]
         XCTAssertTrue(input.waitForExistence(timeout: 15))
         input.tap()
         input.typeText(item + "\n")

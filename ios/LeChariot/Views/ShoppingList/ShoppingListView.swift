@@ -256,9 +256,27 @@ struct ShoppingListView: View {
 
     // MARK: Input
 
+    /// Der Platzhalter sagt, in welchem Zustand die Liste ist.
+    ///
+    /// Vorher stand dort immer „Artikel hinzufügen …" — eine Beschriftung des
+    /// Feldes, keine Ansprache. Vor der leeren Liste ist die Frage die
+    /// eigentliche Aufforderung; danach ist der einzige noch nützliche Hinweis,
+    /// **dass es weitergeht**: `addItem()` behält den Fokus, die Tastatur
+    /// bleibt stehen, und der Platzhalter sagt jetzt dasselbe. Von Bring!
+    /// übernommen („Ich brauche …" / „Nächster Artikel …").
+    private var inputPlaceholder: String {
+        list.items.isEmpty ? "Was brauchst du?" : "Nächster Artikel …"
+    }
+
     private var inputBar: some View {
         HStack(spacing: Theme.Spacing.sm) {
-            TextField("Artikel hinzufügen …", text: $newItemText)
+            TextField(inputPlaceholder, text: $newItemText)
+                // Vier Test-Helfer griffen das Feld über seinen Platzhalter —
+                // deutscher Fließtext als Griff, und der ändert sich ab jetzt
+                // sogar zur Laufzeit. Ein Bezeichner ändert sich nur, wenn ihn
+                // jemand absichtlich ändert. (Dieselbe Falle hat die Endmarke
+                // des Einstellungs-Audits zweimal gerissen.)
+                .accessibilityIdentifier("list.input")
                 .focused($inputFocused)
                 .submitLabel(.done)
                 .onSubmit(addItem)

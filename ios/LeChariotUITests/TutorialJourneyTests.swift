@@ -123,7 +123,7 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
         app.buttons["tutorial.skip"].tap()
 
-        let field = app.textFields["Artikel hinzufügen …"]
+        let field = app.textFields["list.input"]
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         XCTAssertTrue(field.isHittable, "über der Liste darf keine Sperrschicht zurückbleiben")
     }
