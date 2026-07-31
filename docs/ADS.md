@@ -32,6 +32,15 @@ read as a recommendation".
 - **Onboarding.** The old waiting screen made this tempting — it's gone now,
   but the reason stands: it's the first impression, and the user hasn't yet
   seen one thing the app does for them.
+- **The suggestion grid that typing opens** (L-4 in `Le Chariot
+  Liste-Konzept`, not built yet — this line is here *before* it, on purpose).
+  That grid is the moment of choosing. Bring! sells exactly this position:
+  screenshot 3 of that note shows "Dr. Oetker Vitalis Müsli" sitting between
+  Buttermilch and Hafermilch, correctly badged, and **it still looks like every
+  other search result**. Which is the second half of the rule below:
+  **labelling is necessary, not sufficient.** A paid tile in a list of
+  dictionary terms cannot be made honest by a badge, because the harm is the
+  ranking, not the disclosure.
 
 ## Before a slot ships
 

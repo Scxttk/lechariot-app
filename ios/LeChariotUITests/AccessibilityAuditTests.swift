@@ -410,7 +410,7 @@ final class AccessibilityAuditTests: XCTestCase {
     }
 
     private func addItem(_ text: String) {
-        let input = app.textFields["Artikel hinzufügen …"]
+        let input = app.textFields["list.input"]
         XCTAssertTrue(input.waitForExistence(timeout: 15))
         input.tap()
         input.typeText(text + "\n")

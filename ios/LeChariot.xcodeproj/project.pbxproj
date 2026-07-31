@@ -24,6 +24,7 @@
 		22E1700D0C412F27A60762EA /* AdSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761894A1F7C05226FDACA2FA /* AdSlot.swift */; };
 		2AB61ED05906633F3FDBC9B8 /* ConsentStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6EF1D05EA99835E5E2E073C /* ConsentStepView.swift */; };
 		2BD32204C1D8F38E13C7A148 /* OfferAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4476F864C2C670C5B5A60F08 /* OfferAnalytics.swift */; };
+		2D0BD158D68A1C89C715C2D1 /* ShoppingListInputJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BBC2A3B643BBE2A473B57F2 /* ShoppingListInputJourneyTests.swift */; };
 		2E6CCA6B7C7B1A256D14EF1A /* OnboardingJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077E32320821AEDD589009C3 /* OnboardingJourneyTests.swift */; };
 		351713A908D90B4FEA54411A /* MatchRejectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D8064CB703BCA72D155151 /* MatchRejectionStore.swift */; };
 		36891B9C13CF47C4B5739E29 /* MatchFeedbackStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D4E5F6D14D5EBF07250BD27 /* MatchFeedbackStore.swift */; };
@@ -173,6 +174,7 @@
 		60DB14F5441FBE92C6B9BABB /* OnboardingFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowView.swift; sourceTree = "<group>"; };
 		6448F0AE82476CEEC4230DB4 /* RegionSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionSetupView.swift; sourceTree = "<group>"; };
 		647A543C891A626804D53C84 /* RejectionFeedbackSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RejectionFeedbackSheet.swift; sourceTree = "<group>"; };
+		6BBC2A3B643BBE2A473B57F2 /* ShoppingListInputJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingListInputJourneyTests.swift; sourceTree = "<group>"; };
 		71A0B05C0B6121575AF85748 /* ShoppingListRankingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingListRankingTests.swift; sourceTree = "<group>"; };
 		7276DD33D8306EAB265E0BC1 /* ProfileStepsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileStepsView.swift; sourceTree = "<group>"; };
 		733186E11485448A9BAEDE5A /* MarketFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketFilterTests.swift; sourceTree = "<group>"; };
@@ -325,6 +327,7 @@
 				A131D7DCE51C328D0986C625 /* OfferFilterJourneyTests.swift */,
 				077E32320821AEDD589009C3 /* OnboardingJourneyTests.swift */,
 				D18A284202A7208FC262FFC2 /* RestartJourneyTests.swift */,
+				6BBC2A3B643BBE2A473B57F2 /* ShoppingListInputJourneyTests.swift */,
 				965633E574547736025B1070 /* TutorialJourneyTests.swift */,
 			);
 			path = LeChariotUITests;
@@ -761,6 +764,7 @@
 				9E44FA5D03C8440EBA47C047 /* OfferFilterJourneyTests.swift in Sources */,
 				2E6CCA6B7C7B1A256D14EF1A /* OnboardingJourneyTests.swift in Sources */,
 				051E3B71EDEEFABEDE77D425 /* RestartJourneyTests.swift in Sources */,
+				2D0BD158D68A1C89C715C2D1 /* ShoppingListInputJourneyTests.swift in Sources */,
 				5721DB0A53DE1E8AF91A0C46 /* TutorialJourneyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

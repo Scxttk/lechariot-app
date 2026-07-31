@@ -135,7 +135,7 @@ final class OnboardingJourneyTests: XCTestCase {
     func testAddingAnItemPutsItOnTheList() {
         completeOnboarding(name: "Scott")
 
-        let field = app.textFields["Artikel hinzufügen …"]
+        let field = app.textFields["list.input"]
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         field.tap()
         field.typeText("Milch\n")
