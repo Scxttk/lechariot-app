@@ -78,6 +78,33 @@ enum MockFixtures {
             baseUnit: "1 l",
             nationwide: false
         ),
+        // **Das erste Fixture-Angebot, das nur über sein Tag zu finden ist.**
+        // Ohne eines davon kommt jede Trefferliste im Mock-Lauf ausschließlich
+        // über Stufe 1 zustande — die zweite Stufe, das Wörterbuch, war auf
+        // keinem Bildschirm je zu sehen. Genau die Zeile, deren Herkunft die
+        // Trefferliste seit dem 01.08. benennt („über Milch"), ließ sich also
+        // nicht ansehen, nur ausrechnen.
+        //
+        // Der Titel trägt das Wort **nicht** — das ist der ganze Zweck. Und
+        // der Preis ist der höchste der drei Milchzeilen, damit sie weder das
+        // vorgeschlagene Angebot wird noch die Abdeckung einer zweiten Kette
+        // verschiebt: Sie liegt bei derselben Filiale wie die billigste.
+        Offer(
+            marketId: "lidl-01219-1",
+            market: "Lidl",
+            product: "Bärenmarke Die Frische",
+            price: 1.79,
+            regularPrice: nil,
+            unit: "je 1 l",
+            category: "Molkerei & Eier",
+            emoji: "🥛",
+            validFrom: weekStart,
+            validUntil: weekEnd,
+            basePrice: 1.79,
+            baseUnit: "1 l",
+            nationwide: false,
+            matchKey: ["milch"]
+        ),
     ]
 
     /// Three recorded weeks for the first offer fixture — enough for the

@@ -15,6 +15,18 @@ struct ShoppingListRowView: View {
     /// Trägt die Anker für den Rundgang. Nur die erste offene Zeile setzt das —
     /// siehe `ShoppingListView.itemList`.
     var carriesTutorialAnchors = false
+    /// Der Satz zu Suchwörtern, die das Wörterbuch nicht kennt — siehe
+    /// `QueryUnderstanding.unknownNote`.
+    ///
+    /// **Nur diese Zeile kann ihn zeigen, und deshalb steht er hier.** Ohne
+    /// Treffer gibt es kein Trefferblatt zu öffnen, in dem der Kopf ihn
+    /// tragen könnte; „Diese Woche nirgends im Angebot" war bisher die
+    /// einzige Auskunft — und sie sagt über ein Wort, das die App gar nicht
+    /// kennt, genau das Falsche. Genau daran hing „vegan Schnitzel"
+    /// vom 21.07. bis zum 31.07.
+    ///
+    /// Gerechnet wird er in `ShoppingListView`, weil nur die den Vorrat hat.
+    var unknownWordNote: String? = nil
     let onToggle: () -> Void
     /// Opens the match-detail sheet; nil hides the affordance (checked items).
     var onShowMatches: (() -> Void)? = nil
@@ -182,9 +194,41 @@ struct ShoppingListRowView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .tutorialAnchor(.rowMatch, when: carriesTutorialAnchors)
         } else {
-            Text("Diese Woche nirgends im Angebot")
-                .font(.caption)
-                .foregroundStyle(Theme.secondaryText)
+            emptyNotice
+        }
+    }
+
+    /// Die Zeile ohne Treffer — **und ab jetzt der Weg ins Trefferblatt.**
+    ///
+    /// Sie war ein nackter `Text`, und damit war ausgerechnet der Bildschirm
+    /// unerreichbar, auf dem die Frage brennt: Ohne Kachel gibt es nichts
+    /// anzutippen, also kam man an den Kopf mit „verstanden als …" nie heran.
+    /// Dieselbe Sackgasse wie beim schlafenden Pin — und dieselbe Lösung: Der
+    /// Hinweis ist selbst der Knopf.
+    @ViewBuilder
+    private var emptyNotice: some View {
+        let lines = ["Diese Woche nirgends im Angebot"] + (unknownWordNote.map { [$0] } ?? [])
+        // Abstand statt der üblichen 2 pt: Ohne ihn lasen sich die zwei Sätze
+        // als einer, der mitten drin die Richtung wechselt — am Simulator
+        // gesehen, nicht überlegt.
+        let text = VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            ForEach(lines, id: \.self) { line in
+                Text(line)
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        if let onShowMatches {
+            Button(action: onShowMatches) { text }
+                .buttonStyle(TactileButtonStyle())
+                .accessibilityIdentifier("list.matches.empty")
+                .accessibilityLabel(lines.joined(separator: ". "))
+                .accessibilityHint("Zeigt, als was Le Chariot dein Wort verstanden hat")
+        } else {
+            text.accessibilityIdentifier("list.matches.empty")
         }
     }
 
@@ -273,26 +317,6 @@ struct ShoppingListRowView: View {
         }
         parts.append("bei \(offer.market)")
         return parts.joined(separator: ", ")
-    }
-}
-
-/// Distinguishes an exact product hit from a category fallback. Only shown in
-/// the match-detail sheet, where the user is actively judging suggestions —
-/// in the list row it was noise, and "Direkt"/"Kategorie" named the matcher's
-/// internals rather than telling a shopper anything.
-struct MatchKindBadge: View {
-    let kind: MatchKind
-
-    var body: some View {
-        Text(kind == .direct ? "Genau das" : "Passt vielleicht")
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(
-                kind == .direct ? Theme.accent.opacity(0.15) : Color.secondary.opacity(0.15),
-                in: Capsule()
-            )
-            .foregroundStyle(kind == .direct ? Theme.accent : Color.secondary)
     }
 }
 

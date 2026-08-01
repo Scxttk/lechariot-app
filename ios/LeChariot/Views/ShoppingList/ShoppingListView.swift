@@ -89,6 +89,18 @@ struct ShoppingListView: View {
         return ItemSuggestion(match: fallback, dormantPin: item.pinned)
     }
 
+    /// Der Satz für eine Zeile ohne Treffer, wenn ein Suchwort dem Wörterbuch
+    /// fremd ist. `nil`, sobald es einen Treffer gibt — dann führt die Kachel
+    /// ins Trefferblatt, und dort steht die Auskunft im Kopf.
+    ///
+    /// Der Vorbehalt spart mehr als er aussieht: `QueryUnderstanding` liest den
+    /// ganzen Vorrat nur, wenn wirklich ein Wort unbekannt ist, und diese Zeile
+    /// fragt nur, wenn wirklich nichts gefunden wurde.
+    private func unknownWordNote(for item: ShoppingItem, suggestion: ItemSuggestion) -> String? {
+        guard suggestion.match == nil else { return nil }
+        return QueryUnderstanding.of(query: item.query, in: offerStore.offers).unknownNote
+    }
+
     private var ranks: [MarketListRank] {
         ShoppingListRanking.rank(
             items: list.uncheckedItems,
@@ -182,13 +194,15 @@ struct ShoppingListView: View {
 
             Section {
                 ForEach(Array(list.uncheckedItems.enumerated()), id: \.element.id) { index, item in
+                    let itemSuggestion = suggestion(for: item, plan: plan)
                     ShoppingListRowView(
                         item: item,
-                        suggestion: suggestion(for: item, plan: plan),
+                        suggestion: itemSuggestion,
                         hasMarkets: hasMarkets,
                         // Nur die erste offene Zeile trägt die Anker des
                         // Rundgangs — sonst zeigt das Loch auf sechs Stellen.
                         carriesTutorialAnchors: index == 0,
+                        unknownWordNote: unknownWordNote(for: item, suggestion: itemSuggestion),
                         onToggle: { check(item) },
                         onShowMatches: { detailItem = item },
                         onEditDetail: { editingItem = item }
