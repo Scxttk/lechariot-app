@@ -18,6 +18,14 @@ targets:
         # als APIKeys.example.plist im Bundle jedes Testers.
         excludes:
           - Resources/APIKeys.example.plist
+          - Resources/APIKeys.plist
+      # Benannt statt eingesammelt, weil die Datei gitignoriert ist: Der
+      # Sammelschritt erzeugte auf einer Maschine mit Schlüsseln eine andere
+      # `project.pbxproj` als auf einer ohne, und `release.sh` lehnt danach
+      # seinen eigenen schmutzigen Baum ab. `optional` heißt nur „beim Erzeugen
+      # nicht meckern"; gebaut wird weiter mit der Datei (README, Schritt 2).
+      - path: LeChariot/Resources/APIKeys.plist
+        optional: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skoehler.lechariot
