@@ -111,6 +111,14 @@ struct ShoppingPlanCard: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(headlineSummary(winner))
+        // Nur als Anker für den Barrierefreiheits-Audit: Diese Karte trägt
+        // `.themeCard()` mit zwei `.shadow`-Modifikatoren, und durch eine
+        // Schattenebene misst `performAccessibilityAudit` nicht mehr die
+        // gezeichnete Farbe. Die Ausnahme dafür war eine Liste deutscher
+        // Textschnipsel und wuchs mit jedem Gerät; jetzt ist sie eine Fläche,
+        // und die braucht zwei Bezeichner statt drei Sätze. Siehe
+        // `shadowedCardRegion()` in `AccessibilityAuditTests`.
+        .accessibilityIdentifier("list.plan.headline")
     }
 
     private func coverageText(_ rank: MarketListRank) -> String {
@@ -169,6 +177,8 @@ struct ShoppingPlanCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint(isExpanded ? "Blendet die Details aus" : "Zeigt Artikel und die anderen Filialen")
+        // Die zweite Ecke der Schattenfläche — siehe `list.plan.headline`.
+        .accessibilityIdentifier("list.plan.disclosure")
     }
 
     private func details(_ winner: MarketListRank) -> some View {
