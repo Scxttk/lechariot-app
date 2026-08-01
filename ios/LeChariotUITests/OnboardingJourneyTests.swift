@@ -15,6 +15,7 @@ final class OnboardingJourneyTests: XCTestCase {
     private var app: XCUIApplication!
 
     private let fixtureBranch = "Lidl, Dresden Reick"
+    private let fixtureChain = "Lidl"
 
     override func setUp() {
         super.setUp()
@@ -114,11 +115,70 @@ final class OnboardingJourneyTests: XCTestCase {
             "and the reason has to be on screen, not just implied by a grey button"
         )
 
+        openChain(fixtureChain)
         app.buttons[fixtureBranch].tap()
+        app.buttons["chain.done"].tap()
         XCTAssertTrue(done.isEnabled)
 
         XCTAssertTrue(app.buttons["Abbrechen"].exists,
                       "wer den Picker öffnet, muss auch wieder heraus")
+    }
+
+    /// **Die erste Seite des Wählers zeigt Ketten, keine Filialen** (01.08.).
+    /// Vorher standen bis zu drei Filialen je Kette gleich dort und „14
+    /// weitere EDEKA-Filialen" klappte im selben Bildschirm auf.
+    ///
+    /// Der Test beißt an beiden Enden: Die Filiale darf oben **nicht** stehen,
+    /// und hinter der Kette muss sie zu finden sein.
+    func testTheFirstScreenListsChainsAndTheBranchesLiveOneTapDeeper() {
+        completeOnboarding(name: "Scott")
+        app.buttons["list.chooseMarkets"].tap()
+
+        let chain = app.buttons["picker.chain.\(fixtureChain)"]
+        XCTAssertTrue(chain.waitForExistence(timeout: 15),
+                      "die Kette gehört auf die erste Seite")
+        XCTAssertFalse(app.buttons[fixtureBranch].exists,
+                       "…und die Filiale nicht, solange niemand gesucht hat")
+
+        chain.tap()
+        let branch = app.buttons[fixtureBranch]
+        XCTAssertTrue(branch.waitForExistence(timeout: 15),
+                      "hinter der Kette muss die Filiale stehen")
+        branch.tap()
+
+        // Das eigene „Fertig" der Kettenseite führt zurück in den Wähler,
+        // nicht aus ihm heraus.
+        app.buttons["chain.done"].tap()
+        XCTAssertTrue(app.buttons["picker.chain.\(fixtureChain)"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["markets.done"].isEnabled)
+    }
+
+    /// Gewählte Filialen stehen oben, ohne dass man die Kette wieder aufmachen
+    /// muss — sonst wäre eine Wahl leichter getroffen als rückgängig gemacht.
+    func testAChosenBranchIsReachableWithoutReenteringItsChain() {
+        completeOnboarding(name: "Scott")
+        pickFixtureBranchFromTheList()
+
+        openTab("Einstellungen")
+        app.buttons["Filialen bearbeiten"].tap()
+        XCTAssertTrue(app.staticTexts["Deine Filialen"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons[fixtureBranch].exists,
+                      "die getroffene Wahl steht auf der ersten Seite")
+    }
+
+    /// Die Suche ist die Einschränkung: Wer tippt, bekommt Filialen, keine
+    /// Kettenzeilen — sonst wäre der Treffer hinter einer Seite versteckt.
+    func testSearchingShowsBranchesRatherThanChains() {
+        completeOnboarding(name: "Scott")
+        app.buttons["list.chooseMarkets"].tap()
+
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 15))
+        field.tap()
+        field.typeText("Reick")
+
+        XCTAssertTrue(app.buttons[fixtureBranch].waitForExistence(timeout: 10),
+                      "der Treffer gehört direkt auf den Bildschirm")
     }
 
     // MARK: Regressions
@@ -252,10 +312,20 @@ final class OnboardingJourneyTests: XCTestCase {
         XCTAssertTrue(choose.waitForExistence(timeout: 15),
                       "Ohne Filiale muss die Liste den Weg dorthin anbieten")
         choose.tap()
+        openChain(fixtureChain)
         let branch = app.buttons[fixtureBranch]
         XCTAssertTrue(branch.waitForExistence(timeout: 15), "fixture branch missing")
         branch.tap()
+        app.buttons["chain.done"].tap()
         app.buttons["markets.done"].tap()
+    }
+
+    /// Öffnet die Kettenseite. Seit dem 2026-08-01 liegen die Filialen dort
+    /// und nicht mehr auf der ersten Seite des Wählers.
+    private func openChain(_ chain: String) {
+        let row = app.buttons["picker.chain.\(chain)"]
+        XCTAssertTrue(row.waitForExistence(timeout: 15), "Kettenzeile \(chain) fehlt")
+        row.tap()
     }
 
     /// The tab bar is a floating control on current iOS, so query it by button

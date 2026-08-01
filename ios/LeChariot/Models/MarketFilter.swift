@@ -137,4 +137,30 @@ enum MarketFilter {
     static func filter(_ markets: [Market], query: String) -> [Market] {
         markets.filter { matches($0, query: query) }
     }
+
+    // MARK: Beschriftungen des Wählers
+
+    /// „1,2 km" — eine Nachkommastelle unter 10 km, keine darüber.
+    ///
+    /// `locale:` ist der Punkt: ohne es schreibt `String(format:)` einen Punkt
+    /// statt des Kommas.
+    static func distanceLabel(_ km: Double) -> String {
+        km < 10
+            ? String(format: "%.1f km", locale: .current, km)
+            : String(format: "%.0f km", locale: .current, km)
+    }
+
+    /// Die Unterzeile einer Kettenzeile im Wähler: wie viele Filialen in
+    /// Reichweite sind, wie weit die nächste ist, wie viele davon gewählt.
+    ///
+    /// Die Wahl steht zuletzt: Wer die Kette antippt, sucht eine Filiale — was
+    /// er schon hat, steht oben unter „Deine Filialen".
+    static func chainSubtitle(
+        branchCount: Int, selectedCount: Int, nearestKm: Double?
+    ) -> String {
+        var parts = [branchCount == 1 ? "1 Filiale" : "\(branchCount) Filialen"]
+        if let nearestKm { parts.append("nächste \(distanceLabel(nearestKm))") }
+        if selectedCount > 0 { parts.append("\(selectedCount) gewählt") }
+        return parts.joined(separator: " · ")
+    }
 }

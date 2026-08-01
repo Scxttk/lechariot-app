@@ -28,15 +28,19 @@ final class MultiRegionJourneyTests: XCTestCase {
         addRegion("17419")
         openBranchPicker()
 
+        // Die Filiale der ersten Region ist gewählt und steht deshalb oben
+        // unter „Deine Filialen"; die der zweiten liegt seit dem 2026-08-01
+        // hinter ihrer Kettenzeile.
         XCTAssertTrue(
-            // „Am Haff", nicht „Penny Am Haff": Die Abschnittsüberschrift nennt
-            // die Kette schon, seit dem 2026-07-31 tut es die Zeile nicht mehr.
+            app.buttons["Lidl, Dresden Reick"].waitForExistence(timeout: 15),
+            "Die Filialen der ersten Region sind verschwunden"
+        )
+        openChain("Penny")
+        XCTAssertTrue(
+            // „Am Haff", nicht „Penny Am Haff": Die Überschrift nennt die Kette
+            // schon, seit dem 2026-07-31 tut es die Zeile nicht mehr.
             app.buttons["Penny, Am Haff"].waitForExistence(timeout: 15),
             "Die Filialen der zweiten Region fehlen im Picker"
-        )
-        XCTAssertTrue(
-            app.buttons["Lidl, Dresden Reick"].exists,
-            "Die Filialen der ersten Region sind verschwunden"
         )
     }
 
@@ -55,6 +59,7 @@ final class MultiRegionJourneyTests: XCTestCase {
         addRegion("17419")
         openBranchPicker()
 
+        openChain("Penny")
         let row = app.buttons["Penny, Am Haff"]
         XCTAssertTrue(row.waitForExistence(timeout: 15))
         XCTAssertTrue(
@@ -133,6 +138,13 @@ final class MultiRegionJourneyTests: XCTestCase {
         XCTAssertTrue(edit.waitForExistence(timeout: 15))
         edit.tap()
         XCTAssertTrue(app.navigationBars["Filialen wählen"].waitForExistence(timeout: 15))
+    }
+
+    /// Öffnet die Kettenseite — seit dem 2026-08-01 liegen die Filialen dort.
+    private func openChain(_ chain: String) {
+        let row = app.buttons["picker.chain.\(chain)"]
+        XCTAssertTrue(row.waitForExistence(timeout: 15), "Kettenzeile \(chain) fehlt")
+        row.tap()
     }
 
     /// Startet hinter dem Assistenten (`-uiTestingOnboarded`) und wartet, bis
