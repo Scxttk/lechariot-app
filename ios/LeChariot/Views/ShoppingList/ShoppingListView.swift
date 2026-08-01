@@ -368,8 +368,39 @@ struct ShoppingListView: View {
         .background(.bar)
     }
 
+    /// Die Wörterbuchwörter zum getippten Text — leer, solange nichts getippt
+    /// ist.
+    private var typedTerms: [String] {
+        TermSuggestions.words(for: newItemText, in: offerStore.offers)
+    }
+
+    /// **Beim Tippen zeigt dieselbe Fläche etwas anderes.**
+    ///
+    /// **Eine feste Höhe, und der Grund dafür ist nachgemessen ein anderer als
+    /// der naheliegende.** Die Vermutung war: Wächst die Fläche, schiebt sie
+    /// die Eingabezeile unter dem Daumen weg. Sie tut es nicht — die Zeile ist
+    /// das **unterste** Element des Blocks, sie klebt an der Tastaturkante, und
+    /// die Fläche wächst nach oben. Genau das hat L-2 (PR #29) gekauft.
+    /// Nachgeprüft, indem die feste Höhe probeweise entfernt wurde: Die Zeile
+    /// stand trotzdem auf den Zehntel-Punkt still.
+    ///
+    /// Was sich sehr wohl bewegt hätte, sind **die Kacheln selbst**. Die
+    /// Trefferzahl ist mit jedem Buchstaben eine andere; eine mitwachsende
+    /// Fläche schöbe die Kachel, auf die man gerade zielt, unter dem Finger
+    /// weg. Deshalb **eine** Reihe von fester Höhe, die zur Seite scrollt,
+    /// statt eines Rasters, das nach oben wächst — und deshalb auch keine
+    /// Leerfläche unter einer einzelnen Kachel.
     @ViewBuilder
     private var suggestionSurface: some View {
+        if !newItemText.trimmingCharacters(in: .whitespaces).isEmpty {
+            termSurface
+        } else {
+            stapleSurface
+        }
+    }
+
+    @ViewBuilder
+    private var stapleSurface: some View {
         let remaining = suggestions
         if !remaining.isEmpty && surfaceIsExpanded {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
@@ -389,6 +420,81 @@ struct ShoppingListView: View {
                 insertion: .move(edge: .bottom).combined(with: .opacity),
                 removal: .opacity
             ))
+        }
+    }
+
+    /// Das Raster beim Tippen.
+    ///
+    /// **Und die Zeile, wenn nichts passt, gehört dazu.** Sie ist der Grund,
+    /// aus dem die Fläche auch dann steht, wenn sie leer ist: „Kein Begriff
+    /// passt" ist eine Auskunft, kein Fehler — dieselbe Unterscheidung, die der
+    /// Kopf des Trefferblatts seit dem 01.08. trifft. Ein Raster, das sich
+    /// stillschweigend schließt, sagt genau das nicht.
+    private var termSurface: some View {
+        let terms = typedTerms
+        return VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Text(terms.isEmpty ? "Kein bekannter Begriff" : "Le Chariot kennt")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.secondaryText)
+                .accessibilityIdentifier("list.terms.title")
+
+            Group {
+                if terms.isEmpty {
+                    Text("Kein Wort im Wörterbuch passt zu \u{201E}\(newItemText.trimmingCharacters(in: .whitespaces))\u{201C}. Aufschreiben kannst du es trotzdem.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("list.terms.empty")
+                } else {
+                    termChips(terms)
+                }
+            }
+            // Die eine Zahl, an der alles hängt: Kachelhöhe. Ob eine Kachel
+            // dasteht, sechs oder keine, ändert an ihr nichts.
+            .frame(height: 44)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Theme.Spacing.lg)
+        .padding(.top, Theme.Spacing.sm)
+        .readableWidth()
+    }
+
+    private func termChips(_ terms: [String]) -> some View {
+        // Waagerecht statt als Raster: Eine Reihe kann acht Kacheln tragen,
+        // ohne dabei höher zu werden. Ein Raster müsste entweder umbrechen
+        // (dann wandern die Kacheln) oder abschneiden (dann sind Begriffe
+        // unerreichbar, die es gibt).
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Spacing.sm) {
+                ForEach(terms, id: \.self) { term in
+                Button {
+                    // Der Tipp legt **das Wort** auf die Liste, nicht den
+                    // getippten Anfang. Genau dafür ist das Raster da: Was
+                    // hier steht, versteht der Matcher.
+                    newItemText = ""
+                    inputFocused = true
+                    withAnimation { _ = list.add(term) }
+                } label: {
+                    Text(term)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                        .padding(.horizontal, Theme.Spacing.md)
+                        .frame(minWidth: 96)
+                        .frame(height: 44)
+                        .background(
+                            Theme.surface,
+                            in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                                .strokeBorder(Theme.stroke)
+                        )
+                }
+                    .buttonStyle(TactileButtonStyle())
+                    .accessibilityLabel("\(term) hinzufügen")
+                }
+            }
         }
     }
 

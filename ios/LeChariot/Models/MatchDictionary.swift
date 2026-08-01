@@ -45,6 +45,24 @@ enum MatchDictionary {
     /// Wie viele Suchwörter das Wörterbuch kennt — nur für Tests und Diagnose.
     static var wordCount: Int { byWord.count }
 
+    /// Alle Begriffe des Wörterbuchs — nur für Tests und Diagnose.
+    static var allTerms: [String] { Array(Set(byWord.values.flatMap { $0 })).sorted() }
+
+    /// Die Suchwörter, die mit diesem Präfix beginnen — **nicht** die Begriffe
+    /// dahinter.
+    ///
+    /// Das Raster beim Tippen zeigt Wörter, keine Schlüssel: „Buttermilch" ist
+    /// das, was jemand sucht, `milch` das, was daraus wird. Ein Raster aus
+    /// Schlüsseln wäre eine kürzere Liste derselben vier Kacheln, alle mit
+    /// demselben Wort beschriftet.
+    ///
+    /// Ungeordnet — die Reihenfolge entscheidet der Aufrufer, weil sie von der
+    /// Eingabe abhängt und nicht vom Wörterbuch.
+    static func words(startingWith prefix: String) -> [String] {
+        guard !prefix.isEmpty else { return [] }
+        return byWord.keys.filter { $0.hasPrefix(prefix) }
+    }
+
     // MARK: Laden
 
     private struct Entry: Decodable {
