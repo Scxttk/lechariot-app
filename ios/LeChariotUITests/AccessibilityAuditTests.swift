@@ -86,10 +86,21 @@ final class AccessibilityAuditTests: XCTestCase {
         // dieser Datei nachgemessen ist, dass der Audit Zwischenwerte liest.
         // Sie ist ohnehin `accessibilityHidden`, weil ihr Inhalt im Hinweis des
         // Knopfes steht.
+        //
+        // Seit dem 2026-08-01 liegen die Filialen hinter der Kettenzeile. Die
+        // Kettenseite wird deshalb mitgemessen — sonst fiele mit dem Umbau
+        // genau die Zeile aus dem Audit, um die es hier geht.
         app.buttons["list.chooseMarkets"].tap()
+        let chain = app.buttons["picker.chain.Lidl"]
+        XCTAssertTrue(chain.waitForExistence(timeout: 15), "Picker nicht geladen")
+        chain.tap()
         let branch = app.buttons["Lidl, Dresden Reick"]
-        XCTAssertTrue(branch.waitForExistence(timeout: 15), "Picker nicht geladen")
+        XCTAssertTrue(branch.waitForExistence(timeout: 15), "Kettenseite nicht geladen")
         branch.tap()
+        try audit("Lidl")
+
+        app.buttons["chain.done"].tap()
+        XCTAssertTrue(app.buttons["picker.chain.Lidl"].waitForExistence(timeout: 10))
         try audit("Filialen wählen")
     }
 

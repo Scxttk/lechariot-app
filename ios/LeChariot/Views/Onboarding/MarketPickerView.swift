@@ -75,40 +75,10 @@ struct MarketPickerView: View {
             .sorted { $0.chain < $1.chain }
     }
 
-    /// How many stores of one chain the list shows before it stops.
-    ///
-    /// Since the picker draws from the directory rather than from `markets`,
-    /// a city chain brings dozens: measured on 2026-07-26, the 10 km around
-    /// Dresden-Strehlen hold **44 Netto branches**. Listing all of them turns
-    /// the first screen of the app into a scroll through 142 rows. The nearest
-    /// few answer the question for almost everyone; the rest are one tap away
-    /// and, if the store is even further out, the search field finds it by name.
-    ///
-    /// **Von fünf auf drei gesenkt am 2026-07-30.** Fünf war die erste Deckelung
-    /// gegen die 44 Netto-Filialen und schon eine Verbesserung; am Gerät ist die
-    /// Liste trotzdem zu lang geblieben („insgesamt zu viele Zeilen"). Bei acht
-    /// Ketten sind fünf Zeilen je Kette bis zu 40, drei sind 24 — und wer seinen
-    /// Laden nicht unter den drei nächsten findet, findet ihn auch nicht unter
-    /// den fünf nächsten, sondern über die Suche.
-    static let visiblePerChain = 3
-
-    /// Chains the user unfolded to see every branch.
-    @State private var expandedChains: Set<String> = []
-
-    private func visibleMarkets(_ group: (chain: String, markets: [Market])) -> [Market] {
-        // While searching, showing everything is the point — the query IS the
-        // narrowing, and hiding matches behind "show all" would hide the hit.
-        guard query.trimmingCharacters(in: .whitespaces).isEmpty,
-              !expandedChains.contains(group.chain)
-        else { return group.markets }
-        // An already chosen store is never hidden behind the fold, however far
-        // away it is. With honest distances a branch picked at the other home
-        // sinks past position five, and a ticked box the user cannot see is the
-        // reported bug in a new costume.
-        var shown = Array(group.markets.prefix(Self.visiblePerChain))
-        let shownIds = Set(shown.map(\.marketId))
-        shown += group.markets.filter { store.isFavorite($0) && !shownIds.contains($0.marketId) }
-        return shown
+    /// Ob gerade gesucht wird. Die Suche ist die Einschränkung — dann stehen
+    /// die Treffer flach da statt hinter einer Kettenseite.
+    private var isSearching: Bool {
+        !query.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     private func nearerFirst(_ lhs: Market, _ rhs: Market) -> Bool {
@@ -128,17 +98,6 @@ struct MarketPickerView: View {
         guard let entry = plan?.byMarketId[market.marketId] else { return nil }
         guard let deviceAnchor else { return entry.distanceKm }
         return entry.branch.distanceKm(from: deviceAnchor.lat, deviceAnchor.lon)
-    }
-
-    /// "1,2 km" — one decimal below 10 km, none above. Nobody navigates by
-    /// 100 m at that distance, and the extra digit only adds noise.
-    private func distanceLabel(_ km: Double) -> String {
-        // `locale:` is the point: without it `String(format:)` writes a period,
-        // and the comma this comment has promised since it was written never
-        // actually appeared.
-        km < 10
-            ? String(format: "%.1f km", locale: .current, km)
-            : String(format: "%.0f km", locale: .current, km)
     }
 
     private var nationwideMarkets: [Market] {
@@ -178,31 +137,22 @@ struct MarketPickerView: View {
                 }
             }
 
-            ForEach(chainGroups, id: \.chain) { group in
-                Section(group.chain) {
-                    let shown = visibleMarkets(group)
-                    ForEach(shown) { marketRow($0) }
-                    if shown.count < group.markets.count {
-                        let hidden = group.markets.count - shown.count
-                        Button {
-                            withAnimation(Theme.Motion.element.animation) {
-                                _ = expandedChains.insert(group.chain)
-                            }
-                        } label: {
-                            Label(
-                                "\(hidden) weitere \(group.chain)-Filialen",
-                                systemImage: "chevron.down"
-                            )
-                            .font(.subheadline)
-                        }
-                        .accessibilityHint("Zeigt alle Filialen dieser Kette")
+            if isSearching {
+                // Die Suche ist die Einschränkung: Treffer flach zeigen, nicht
+                // hinter einer Kettenseite verstecken.
+                ForEach(chainGroups, id: \.chain) { group in
+                    Section(group.chain) {
+                        ForEach(rows(for: group.markets)) { BranchPickerRow(row: $0) }
                     }
                 }
+            } else {
+                chosenSection
+                chainSection
             }
 
             if !nationwideMarkets.isEmpty {
                 Section {
-                    ForEach(nationwideMarkets) { marketRow($0) }
+                    ForEach(rows(for: nationwideMarkets)) { BranchPickerRow(row: $0) }
                 } header: {
                     Text("Überregionale Angebote")
                 } footer: {
@@ -332,69 +282,86 @@ struct MarketPickerView: View {
         return "Wir holen gerade die übrigen Märkte \(where_) — das dauert etwa drei Minuten. Du kannst schon wählen; wir sagen Bescheid, sobald mehr da ist."
     }
 
-    private func marketRow(_ market: Market) -> some View {
-        let isFav = store.isFavorite(market)
-        return Button {
-            // Eine Transaktion für alles, was an dieser Berührung hängt: die
-            // Zeile selbst, der Hinweis an der Unterkante und die Zeilen, die
-            // dabei ihren Platz ändern.
-            withAnimation(Theme.Motion.element.animation) { store.toggleFavorite(market) }
-            // Picking a store the backend has never fetched is the whole
-            // reason `branch_requests` exists: the region sync only ever
-            // scraped ONE branch per chain, so choosing the second REWE of a
-            // postcode used to select a store with no offers behind it.
-            // Measured on 2026-07-25: the request is answered in about 40
-            // seconds, so this happens quietly in the background rather than
-            // behind a modal.
-            if store.isFavorite(market) {
-                Task { await branchRequests.request(market.marketId) }
+    // MARK: Ketten statt Filialen auf der ersten Seite
+
+    /// Die schon gewählten Filialen, quer über alle Ketten.
+    ///
+    /// Sie stehen oben, damit man eine Wahl wieder los wird, ohne erst zu
+    /// erraten, hinter welcher Kettenseite sie liegt.
+    @ViewBuilder
+    private var chosenSection: some View {
+        let chosen = rows(for: filtered.filter { store.isFavorite($0) })
+        if !chosen.isEmpty {
+            Section {
+                ForEach(chosen) { BranchPickerRow(row: $0) }
+            } header: {
+                Text("Deine Filialen")
             }
+        }
+    }
+
+    /// Eine Zeile je Kette; die Filialen liegen eine Seite tiefer.
+    ///
+    /// Vorher standen bis zu drei Filialen je Kette direkt hier, und „14
+    /// weitere EDEKA-Filialen" klappte im selben Bildschirm auf. Gemeldet am
+    /// 2026-08-01: Wer drei Ketten durchgeht, scrollt an allen vorbei. Neun
+    /// Ketten sind jetzt neun Zeilen, unabhängig davon, wie viele Filialen
+    /// dahinter liegen — in Dresden sind das 113.
+    @ViewBuilder
+    private var chainSection: some View {
+        if !chainGroups.isEmpty {
+            Section {
+                ForEach(chainGroups, id: \.chain) { group in
+                    chainRow(chain: group.chain, markets: group.markets)
+                }
+            } header: {
+                Text("Ketten in deiner Nähe")
+            } footer: {
+                Text("Tippe eine Kette an, um ihre Filialen zu sehen.")
+            }
+        }
+    }
+
+    private func chainRow(chain: String, markets: [Market]) -> some View {
+        let selected = markets.filter { store.isFavorite($0) }.count
+        let subtitle = MarketFilter.chainSubtitle(
+            branchCount: markets.count,
+            selectedCount: selected,
+            nearestKm: markets.compactMap { distance(for: $0) }.min()
+        )
+        return NavigationLink {
+            ChainBranchesView(chain: chain, rows: rows(for: markets))
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(rowTitle(for: market))
+                    Text(chain)
                         .font(.body.weight(.medium))
                         .foregroundStyle(.primary)
-                    Text(subtitle(for: market))
+                    Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(Theme.secondaryText)
                 }
                 Spacer()
-                // Checkmark, not a star: this is a selection, not a rating —
-                // and `Color.yellow` on the cream surface measured 1.37:1,
-                // far below the 3:1 that a meaning-carrying glyph needs.
-                Image(systemName: isFav ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isFav ? Theme.accent : Color.secondary)
-                    .font(.title3)
-                    .contentTransition(.symbolEffect(.replace))
+                if selected > 0 {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Theme.accent)
+                        .font(.title3)
+                }
             }
-            // Without this the row only reacts where something is drawn — and
-            // the middle of the row is the `Spacer`. Tapping the obvious target,
-            // the gap between branch name and checkmark, did nothing at all.
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        // No `.accessibilityElement(children: .ignore)` here: on a Button it
-        // shadows the element VoiceOver actually focuses, and the label below
-        // was silently dropped — the row announced "Dresden Reick, PLZ 01219"
-        // with no chain name and no selected/not-selected state. A Button takes
-        // an overriding label directly.
-        // Die Kette bleibt im Label, auch wenn sie in der Zeile nicht mehr
-        // steht: VoiceOver liest die Abschnittsüberschrift nicht mit vor, und
-        // „Friedrichstadt" allein sagt nicht, um wessen Filiale es geht.
-        .accessibilityLabel(
-            "\(market.chain), \(market.isNationwide ? "deutschlandweit" : rowTitle(for: market))"
-        )
-        // Adresse und Entfernung stehen im Hinweis, nicht im Label: Das Label
-        // ist der Name, auf den auch die UI-Journeys zeigen, und ein Label,
-        // das sich mit der Entfernung ändert, wäre kein Name mehr.
-        .accessibilityHint(
-            [subtitle(for: market),
-             isFav ? "Doppeltippen zum Entfernen" : "Doppeltippen zum Hinzufügen"]
-                .joined(separator: ". ")
-        )
-        .accessibilityValue(isFav ? "ausgewählt" : "nicht ausgewählt")
-        .accessibilityAddTraits(isFav ? [.isSelected] : [])
+        .accessibilityLabel("\(chain), \(subtitle)")
+        .accessibilityHint("Öffnet die Filialen dieser Kette")
+        .accessibilityIdentifier("picker.chain.\(chain)")
+    }
+
+    /// Fertig beschriftete Zeilen. Titel und Untertitel rechnet der Wähler,
+    /// weil nur er Verzeichnis und Standort kennt.
+    private func rows(for markets: [Market]) -> [BranchPickerRow.Row] {
+        markets.map {
+            BranchPickerRow.Row(
+                market: $0, title: rowTitle(for: $0), subtitle: subtitle(for: $0)
+            )
+        }
     }
 
     /// Der Zeilentitel: der Kettenname nur bei den bundesweiten Katalogen, sonst
@@ -433,7 +400,7 @@ struct MarketPickerView: View {
         let entry = plan?.byMarketId[market.marketId]
         let address = entry?.address ?? ""
         let distance = distance(for: market).map { km -> String in
-            let label = distanceLabel(km)
+            let label = MarketFilter.distanceLabel(km)
             // Without the phone's position the number is measured from a
             // postcode centre, and with several regions a different one per
             // row. Then it has to say which — an unlabelled number that
@@ -602,6 +569,110 @@ struct MarketPickerView: View {
     private func askForLocation() async {
         locationOffered = true
         deviceAnchor = try? await locator.currentCoordinates()
+    }
+}
+
+/// Eine wählbare Filialzeile. Eigener Typ, weil Wähler, Suchtreffer und
+/// Kettenseite dieselbe Zeile zeigen.
+struct BranchPickerRow: View {
+    /// Fertig beschriftete Zeile — siehe `MarketPickerView.rows(for:)`.
+    struct Row: Identifiable {
+        let market: Market
+        let title: String
+        let subtitle: String
+        var id: String { market.marketId }
+    }
+
+    @Environment(RegionStore.self) private var store
+    @Environment(BranchRequestStore.self) private var branchRequests
+    let row: Row
+
+    var body: some View {
+        let market = row.market
+        let isFav = store.isFavorite(market)
+        return Button {
+            // Eine Transaktion für alles, was an dieser Berührung hängt: die
+            // Zeile selbst, der Hinweis an der Unterkante und die Zeilen, die
+            // dabei ihren Platz ändern.
+            withAnimation(Theme.Motion.element.animation) { store.toggleFavorite(market) }
+            // Eine Filiale, die das Backend nie geholt hat, ist der ganze Grund
+            // für `branch_requests` — der Regionslauf holte je Kette nur eine.
+            // Gemessen 2026-07-25: rund 40 s, deshalb still im Hintergrund.
+            if store.isFavorite(market) {
+                Task { await branchRequests.request(market.marketId) }
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(row.title)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.primary)
+                    Text(row.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                }
+                Spacer()
+                // Häkchen, kein Stern: eine Auswahl, keine Bewertung — und
+                // `Color.yellow` maß auf der cremefarbenen Fläche 1,37:1.
+                Image(systemName: isFav ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isFav ? Theme.accent : Color.secondary)
+                    .font(.title3)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            // Ohne das reagiert die Zeile nur dort, wo etwas gezeichnet ist —
+            // und in der Mitte sitzt der `Spacer`.
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        // Kein `.accessibilityElement(children: .ignore)`: auf einem Button
+        // verdeckt es das Element, das VoiceOver fokussiert, und das Label
+        // darunter fiel still weg. Die Kette bleibt im Label, weil VoiceOver
+        // die Abschnittsüberschrift nicht mitliest.
+        .accessibilityLabel(
+            "\(market.chain), \(market.isNationwide ? "deutschlandweit" : row.title)"
+        )
+        // Adresse und Entfernung in den Hinweis, nicht ins Label: Das Label ist
+        // der Name, auf den die UI-Journeys zeigen.
+        .accessibilityHint(
+            [row.subtitle, isFav ? "Doppeltippen zum Entfernen" : "Doppeltippen zum Hinzufügen"]
+                .joined(separator: ". ")
+        )
+        .accessibilityValue(isFav ? "ausgewählt" : "nicht ausgewählt")
+        .accessibilityAddTraits(isFav ? [.isSelected] : [])
+    }
+}
+
+/// Alle Filialen **einer** Kette, auf einer eigenen Seite mit eigenem „Fertig".
+///
+/// Scotts Weg vom 2026-08-01: Kette antippen, die drei Kaufland wählen,
+/// „Fertig", zurück, nächste Kette. Der Wähler wächst dabei nicht mit.
+private struct ChainBranchesView: View {
+    @Environment(\.dismiss) private var dismiss
+    let chain: String
+    let rows: [BranchPickerRow.Row]
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(rows) { BranchPickerRow(row: $0) }
+            } footer: {
+                Text("Mehrere Filialen einer Kette sind erlaubt — nur deren Angebote zählen für deine Liste.")
+            }
+            .listRowBackground(Theme.surface)
+        }
+        .themedScreen()
+        .navigationTitle(chain)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                // Nie gesperrt: Diese Seite ist nicht die Stelle, an der über
+                // „mindestens eine Filiale" entschieden wird — das tut der
+                // Wähler darunter. Wer eine Kette nur ansieht, muss auch
+                // wieder heraus.
+                Button("Fertig") { dismiss() }
+                    .accessibilityIdentifier("chain.done")
+            }
+        }
     }
 }
 

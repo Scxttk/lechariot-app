@@ -70,10 +70,15 @@ final class ReviewNoteJourneyTests: XCTestCase {
         XCTAssertTrue(choose.waitForExistence(timeout: 15),
                       "Schritt 4: Auf der Liste fehlt der Weg zu den Filialen")
         choose.tap()
+        let chain = app.buttons["picker.chain.Lidl"]
+        XCTAssertTrue(chain.waitForExistence(timeout: 20),
+                      "Schritt 4: Die Filialauswahl zeigt keine Ketten zu 01219")
+        chain.tap()
         let branch = app.buttons["Lidl, Dresden Reick"]
         XCTAssertTrue(branch.waitForExistence(timeout: 20),
-                      "Schritt 4: Die Filialauswahl zeigt keine Läden zu 01219")
+                      "Schritt 4: Die Kettenseite zeigt keine Läden zu 01219")
         branch.tap()
+        app.buttons["chain.done"].tap()
         app.buttons["markets.done"].tap()
 
         // 5. Ein Wort auf die Liste — und die Karte sagt, wo es am günstigsten ist.

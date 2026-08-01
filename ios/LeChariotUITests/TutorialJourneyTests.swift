@@ -226,10 +226,15 @@ final class TutorialJourneyTests: XCTestCase {
         tapThrough()
         answerMarketQuestion("Ja")
 
-        let branch = app.buttons[fixtureBranch]
-        XCTAssertTrue(branch.waitForExistence(timeout: 15),
+        // Seit dem 2026-08-01 liegen die Filialen hinter der Kettenzeile.
+        let chain = app.buttons["picker.chain.Lidl"]
+        XCTAssertTrue(chain.waitForExistence(timeout: 15),
                       "„Ja“ muss in der Filialauswahl landen")
+        chain.tap()
+        let branch = app.buttons[fixtureBranch]
+        XCTAssertTrue(branch.waitForExistence(timeout: 15))
         branch.tap()
+        app.buttons["chain.done"].tap()
         app.buttons["markets.done"].tap()
 
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),

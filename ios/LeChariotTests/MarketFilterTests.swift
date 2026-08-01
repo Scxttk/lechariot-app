@@ -120,4 +120,46 @@ final class MarketFilterTests: XCTestCase {
     func testANameThatIsNothingButTheChainSurvives() {
         XCTAssertEqual(MarketFilter.branchLabel(name: "Kaufland", chain: "Kaufland"), "Kaufland")
     }
+
+    // MARK: Kettenzeile des Wählers
+
+    func testTheChainLineCountsBranchesAndNamesTheNearest() {
+        XCTAssertEqual(
+            MarketFilter.chainSubtitle(branchCount: 14, selectedCount: 0, nearestKm: 1.24),
+            "14 Filialen · nächste 1,2 km"
+        )
+    }
+
+    /// Die Einzahl steht da, wo eine steht — „1 Filialen" ist der Fehler, den
+    /// eine feste Formulierung immer macht.
+    func testASingleBranchSaysSoInTheSingular() {
+        XCTAssertEqual(
+            MarketFilter.chainSubtitle(branchCount: 1, selectedCount: 1, nearestKm: nil),
+            "1 Filiale · 1 gewählt"
+        )
+    }
+
+    /// Ohne Entfernung fällt der Teil weg statt „nächste – km" zu schreiben:
+    /// Zeilen aus `markets` statt aus dem Verzeichnis tragen keine Koordinaten.
+    func testNoDistanceMeansNoDistancePart() {
+        XCTAssertEqual(
+            MarketFilter.chainSubtitle(branchCount: 3, selectedCount: 0, nearestKm: nil),
+            "3 Filialen"
+        )
+    }
+
+    /// Ohne Wahl steht nichts von einer Wahl da — „0 gewählt" ist eine Aussage
+    /// über nichts.
+    func testNothingChosenSaysNothingAboutChoosing() {
+        XCTAssertFalse(
+            MarketFilter.chainSubtitle(branchCount: 3, selectedCount: 0, nearestKm: 4.0)
+                .contains("gewählt")
+        )
+    }
+
+    /// Ab 10 km fällt die Nachkommastelle weg.
+    func testDistanceLosesItsDecimalBeyondTenKilometres() {
+        XCTAssertEqual(MarketFilter.distanceLabel(9.94), "9,9 km")
+        XCTAssertEqual(MarketFilter.distanceLabel(10.4), "10 km")
+    }
 }
