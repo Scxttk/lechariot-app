@@ -257,7 +257,11 @@ final class OfferStoreTests: XCTestCase {
         )
         let store = OfferStore(
             repository: StubOfferRepository(result: .success([week, knueller])),
-            cache: cache
+            cache: cache,
+            // Der 16.07. liegt in beiden Fenstern. Feste Uhr, weil der Store
+            // seit dem 01.08. auf die laufende Woche filtert und die Fixtures
+            // hier feste Tage tragen.
+            clock: { day.date(from: "2026-07-16")! }
         )
 
         await store.load(branchIds: ["lidl-01219-1", "aldi-01219-1"], chains: [])

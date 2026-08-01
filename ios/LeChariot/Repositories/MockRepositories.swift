@@ -107,6 +107,53 @@ enum MockFixtures {
         ),
     ]
 
+    /// Zeilen der Folgewoche — damit die Wochengrenze überhaupt prüfbar ist.
+    ///
+    /// Ohne sie sähen Xcode-Vorschau und Simulator nur eine Woche, und der Fehler,
+    /// gegen den diese Runde antritt, wäre in den UI-Journeys unsichtbar.
+    ///
+    /// **Getrennt von `offers`, nicht darin** — ein halbes Dutzend Tests prüft
+    /// gegen `MockFixtures.offers.count`, und genau das ist auch die Aussage:
+    /// Diese Zeilen gehören nicht zur laufenden Woche. `MockOfferRepository`
+    /// liefert beide Töpfe zusammen aus, so wie PostgREST es auch tut.
+    static let nextWeekStart: Date = weekStart.addingTimeInterval(7 * 24 * 60 * 60)
+    static let nextWeekEnd: Date = nextWeekStart.addingTimeInterval(5 * 24 * 60 * 60)
+
+    static let nextWeekOffers: [Offer] = [
+        Offer(
+            marketId: "lidl-01219-1",
+            market: "Lidl",
+            product: "Kaffee ganze Bohne",
+            price: 4.99,
+            regularPrice: 7.99,
+            unit: "je 1 kg",
+            category: "Kaffee & Tee",
+            emoji: "☕️",
+            validFrom: nextWeekStart,
+            validUntil: nextWeekEnd,
+            basePrice: 4.99,
+            baseUnit: "1 kg",
+            nationwide: false,
+            matchKey: ["kaffee"]
+        ),
+        Offer(
+            marketId: "lidl-01219-1",
+            market: "Lidl",
+            product: "Bio Vollmilch",
+            price: 0.79,
+            regularPrice: 1.29,
+            unit: "je 1 l",
+            category: "Molkerei & Eier",
+            emoji: "🥛",
+            validFrom: nextWeekStart,
+            validUntil: nextWeekEnd,
+            basePrice: 0.79,
+            baseUnit: "1 l",
+            nationwide: false,
+            matchKey: ["milch"]
+        ),
+    ]
+
     /// Three recorded weeks for the first offer fixture — enough for the
     /// detail sheet's price history to show up in previews and UI tests.
     static let priceHistory: [PriceHistoryPoint] = [
@@ -201,7 +248,9 @@ enum MockFixtures {
 }
 
 struct MockOfferRepository: OfferRepositoryProtocol {
-    var fixtures: [Offer] = MockFixtures.offers
+    /// Beide Wochen, wie die echte Abfrage: `select=*` kennt keine Datumsgrenze.
+    /// Getrennt werden sie erst im `OfferStore`.
+    var fixtures: [Offer] = MockFixtures.offers + MockFixtures.nextWeekOffers
 
     func offers(branchIds: [String]) async throws -> [Offer] {
         // Nationwide rows belong to every branch of their chain.

@@ -119,13 +119,40 @@ enum OfferQuery {
     ///
     /// `unit` is deliberately out too: the one-day row often drops it, and
     /// keeping it in the key would leave the duplicate on screen.
-    static func duplicateKey(_ offer: Offer) -> String {
+    ///
+    /// `separateWindows` puts `valid_from` back IN, for the one caller that
+    /// must NOT merge across weeks: two disjoint future weeks at the same price
+    /// are two offers, not one.
+    static func duplicateKey(_ offer: Offer, separateWindows: Bool = false) -> String {
         let product = offer.product
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
         // Cents, not the Double: 1.99 from two sources can differ in the last bit.
         let cents = offer.price.map { String(Int(($0 * 100).rounded())) } ?? "-"
-        return "\(offer.market.lowercased())|\(product)|\(cents)"
+        let window = separateWindows ? "|\(offer.validFrom.timeIntervalSince1970)" : ""
+        return "\(offer.market.lowercased())|\(product)|\(cents)\(window)"
+    }
+
+    /// The offers valid TODAY — the only ones the list, the ranking and the
+    /// shopping-list total may ever see.
+    ///
+    /// This filter did not exist until 2026-08-01, and its absence was a live
+    /// bug, not a gap: the app fetches `select=*` without a date bound, so
+    /// Penny's and NORMA's next-week rows stood in today's list (measured: 448
+    /// of 1 125 rows for a Penny branch). See [[Le Chariot Backlog]], "Das Leck".
+    static func current(_ offers: [Offer], now: Date = .now) -> [Offer] {
+        let today = Calendar.supabase.startOfDay(for: now)
+        return offers.filter { $0.validFrom <= today && today <= $0.validUntil }
+    }
+
+    /// The offers that only start later.
+    ///
+    /// Nothing user-facing reads these yet — they are separated so that
+    /// `offers` can be exactly the running week. Where they end up on screen is
+    /// a separate question and a separate branch.
+    static func upcoming(_ offers: [Offer], now: Date = .now) -> [Offer] {
+        let today = Calendar.supabase.startOfDay(for: now)
+        return offers.filter { $0.validFrom > today }
     }
 
     /// Which of two rows sharing a `duplicateKey` the user should see:
@@ -155,11 +182,15 @@ enum OfferQuery {
 
     /// Collapses rows published twice. The order of the survivors is the input
     /// order, so callers can still sort afterwards.
-    static func deduplicated(_ offers: [Offer], now: Date = .now) -> [Offer] {
+    static func deduplicated(
+        _ offers: [Offer],
+        now: Date = .now,
+        separateWindows: Bool = false
+    ) -> [Offer] {
         var best: [String: Offer] = [:]
         var order: [String] = []
         for offer in offers {
-            let key = duplicateKey(offer)
+            let key = duplicateKey(offer, separateWindows: separateWindows)
             if let incumbent = best[key] {
                 best[key] = preferred(incumbent, offer, now: now)
             } else {
@@ -209,7 +240,12 @@ final class OfferStore {
     }
 
     private(set) var state: State = .loading
+    /// The offers of the running week. Everything downstream — list, Top-Deals,
+    /// shopping-list matcher, market ranking — reads this and only this.
     private(set) var offers: [Offer] = []
+    /// The offers that only start next week. Fed from the same fetch, kept in
+    /// its own property so no caller can reach them by accident.
+    private(set) var upcomingOffers: [Offer] = []
     private(set) var fetchedAt: Date?
     /// True while a background refresh is running behind cached data.
     private(set) var isRefreshing = false
@@ -237,9 +273,18 @@ final class OfferStore {
     /// Lets the empty-state suggest picking other markets in the settings.
     var hasFavoriteChains: Bool { !chains.isEmpty }
 
-    init(repository: OfferRepositoryProtocol, cache: OfferCache?) {
+    /// Injectable so the week-boundary tests state their own "today" instead of
+    /// rotting the day the fixtures fall out of the current week.
+    private let clock: () -> Date
+
+    init(
+        repository: OfferRepositoryProtocol,
+        cache: OfferCache?,
+        clock: @escaping () -> Date = Date.init
+    ) {
         self.repository = repository
         self.cache = cache
+        self.clock = clock
     }
 
     /// Shows the cached offers immediately (if any), then refreshes.
@@ -252,14 +297,14 @@ final class OfferStore {
         self.branchIds = branchIds
         self.chains = chains
         guard !branchIds.isEmpty else {
-            offers = []
+            apply([])
             state = .empty
             return
         }
         let cached = (try? cache?.load()) ?? nil
         let cachedOffers = cached?.offers ?? []
         if !cachedOffers.isEmpty {
-            offers = display(cachedOffers)
+            apply(cachedOffers)
             fetchedAt = cached?.fetchedAt
             state = offers.isEmpty ? .empty : .loaded
         } else {
@@ -295,12 +340,12 @@ final class OfferStore {
             let fresh = try await repository.offers(branchIds: requested)
             try Task.checkCancellation()
             guard requested == branchIds else { return }
-            let now = Date.now
+            let now = clock()
             // The cache keeps the RAW rows — dedupe is a display concern
             // applied on read. Written before `offers` for exactly that reason;
             // don't fold the two together.
             try? cache?.replaceAll(fresh, branchIds: requested, fetchedAt: now)
-            offers = display(fresh)
+            apply(fresh)
             fetchedAt = now
             isOffline = false
             state = offers.isEmpty ? .empty : .loaded
@@ -319,12 +364,23 @@ final class OfferStore {
     }
 
     /// The single funnel every offer takes on its way to the screen: narrowed
-    /// to the chosen stores, then collapsed where a chain published the same
-    /// offer twice. Both `offers` assignments go through here, so the Angebote
-    /// list, the Top-Deals section and the shopping-list matcher — all of which
-    /// read `store.offers` — see the same set.
-    private func display(_ offers: [Offer]) -> [Offer] {
-        OfferQuery.deduplicated(filteredToChosenStores(offers))
+    /// to the chosen stores, split into this week and next, then collapsed
+    /// where a chain published the same offer twice. Every assignment to
+    /// `offers`/`upcomingOffers` goes through here, so the Angebote list, the
+    /// Top-Deals section and the shopping-list matcher — all of which read
+    /// `store.offers` — see the same set, and none of them can see next week.
+    ///
+    /// The split runs BEFORE the dedupe on purpose: `duplicateKey` ignores the
+    /// dates, so a future row would otherwise still compete for a slot with
+    /// today's row and could take it. `upcomingOffers` dedupes with the window
+    /// IN, so two disjoint future weeks stay two rows.
+    private func apply(_ raw: [Offer]) {
+        let now = clock()
+        let mine = filteredToChosenStores(raw)
+        offers = OfferQuery.deduplicated(OfferQuery.current(mine, now: now), now: now)
+        upcomingOffers = OfferQuery.deduplicated(
+            OfferQuery.upcoming(mine, now: now), now: now, separateWindows: true
+        )
     }
 
     /// The cache stores every store of a region as fetched; narrow it for
