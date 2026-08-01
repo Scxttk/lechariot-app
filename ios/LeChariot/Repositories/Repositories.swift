@@ -66,3 +66,37 @@ protocol MatchFeedbackRepositoryProtocol {
     /// the app never reads feedback back.
     func submit(_ report: MatchFeedbackReport) async throws
 }
+
+/// Auskunft und Löschung zu einer Installation.
+///
+/// Beides geht über `security definer`-Funktionen, nicht über PostgREST:
+/// Die Tabellen haben nur eine INSERT-Policy, ein anon-DELETE darauf schlägt
+/// **nicht fehl**, sondern löscht nichts und meldet 204. Siehe
+/// `supabase/migration_v25_dsgvo.sql`.
+protocol PrivacyRepositoryProtocol {
+    /// Löscht die hochgeladenen Zeilen. Gibt zurück, was tatsächlich
+    /// verschwunden ist — nicht, was verschwinden sollte.
+    func deleteInstallation(_ installId: UUID) async throws -> DeletedRows
+
+    /// Was zu dieser Installation auf dem Server liegt, als JSON-Text.
+    func exportInstallation(_ installId: UUID) async throws -> String
+}
+
+/// Was das Löschen wirklich getroffen hat.
+struct DeletedRows: Codable, Equatable {
+    let profiles: Int
+    let feedback: Int
+
+    var total: Int { profiles + feedback }
+
+    /// Der Satz für den Bildschirm. Zählt auf, statt „erledigt" zu behaupten.
+    var summary: String {
+        guard total > 0 else { return "Auf dem Server lag nichts zu dieser Installations-ID." }
+        var parts: [String] = []
+        if profiles > 0 { parts.append(profiles == 1 ? "1 Profil" : "\(profiles) Profile") }
+        if feedback > 0 {
+            parts.append(feedback == 1 ? "1 Rückmeldung" : "\(feedback) Rückmeldungen")
+        }
+        return "Gelöscht: " + parts.joined(separator: " und ") + "."
+    }
+}

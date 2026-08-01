@@ -350,3 +350,23 @@ final class MockMatchFeedbackRepository: MatchFeedbackRepositoryProtocol, @unche
     }
 }
 
+
+/// Zählt statt zu löschen. Der Ausgang ist einstellbar, damit die Journeys
+/// beide Fälle sehen: etwas gelöscht — und gar nichts, weil nie etwas
+/// hochgeladen wurde.
+final class MockPrivacyRepository: PrivacyRepositoryProtocol, @unchecked Sendable {
+    var rows = DeletedRows(profiles: 1, feedback: 3)
+    var failure: Error?
+    private(set) var deleted: [UUID] = []
+
+    func deleteInstallation(_ installId: UUID) async throws -> DeletedRows {
+        if let failure { throw failure }
+        deleted.append(installId)
+        return rows
+    }
+
+    func exportInstallation(_ installId: UUID) async throws -> String {
+        if let failure { throw failure }
+        return "{\"install_id\":\"\(installId.uuidString)\",\"user_profiles\":[],\"match_feedback\":[]}"
+    }
+}

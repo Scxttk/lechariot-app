@@ -105,6 +105,7 @@ final class MultiRegionJourneyTests: XCTestCase {
     func testABranchIsRemovedInTheSettings() {
         waitForList()
         app.tabBars.buttons["Einstellungen"].tap()
+        openPlaces()
 
         let remove = app.buttons["Lidl Dresden Reick entfernen"]
         XCTAssertTrue(remove.waitForExistence(timeout: 15), "Kein Entfernen-Knopf an der Filiale")
@@ -117,6 +118,7 @@ final class MultiRegionJourneyTests: XCTestCase {
 
     private func addRegion(_ plz: String) {
         app.tabBars.buttons["Einstellungen"].tap()
+        openPlaces()
         let add = app.buttons["Region hinzufügen"]
         XCTAssertTrue(add.waitForExistence(timeout: 15))
         add.tap()
@@ -134,10 +136,24 @@ final class MultiRegionJourneyTests: XCTestCase {
     }
 
     private func openBranchPicker() {
+        openPlaces()
         let edit = app.buttons["Filialen bearbeiten"]
         XCTAssertTrue(edit.waitForExistence(timeout: 15))
         edit.tap()
         XCTAssertTrue(app.navigationBars["Filialen wählen"].waitForExistence(timeout: 15))
+    }
+
+    /// Öffnet „Filialen und Regionen" — seit dem 2026-08-01 liegen beide
+    /// Listen eine Seite tiefer.
+    ///
+    /// Prüft zuerst, ob die Seite schon offen ist: `addRegion` landet dort und
+    /// bleibt dort, und ein zweiter Tipp auf eine Zeile, die es gerade nicht
+    /// gibt, wäre kein Befund über die App.
+    private func openPlaces() {
+        guard !app.navigationBars["Filialen und Regionen"].exists else { return }
+        let row = app.buttons["settings.places"]
+        XCTAssertTrue(row.waitForExistence(timeout: 15), "Kein Weg zu den Filialen")
+        row.tap()
     }
 
     /// Öffnet die Kettenseite — seit dem 2026-08-01 liegen die Filialen dort.

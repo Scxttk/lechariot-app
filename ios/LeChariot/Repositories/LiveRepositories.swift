@@ -195,3 +195,25 @@ struct LiveAreaRequestRepository: AreaRequestRepositoryProtocol {
     }
 }
 
+
+/// Auskunft und Löschung über die zwei `security definer`-Funktionen aus
+/// `supabase/migration_v25_dsgvo.sql`.
+struct LivePrivacyRepository: PrivacyRepositoryProtocol {
+    let client: SupabaseClient
+
+    func deleteInstallation(_ installId: UUID) async throws -> DeletedRows {
+        let json = try await client.rpc(
+            "delete_installation", body: ["p_install_id": installId.uuidString]
+        )
+        guard let data = json.data(using: .utf8) else {
+            throw SupabaseError.httpError(statusCode: 0, body: json)
+        }
+        return try JSONDecoder().decode(DeletedRows.self, from: data)
+    }
+
+    func exportInstallation(_ installId: UUID) async throws -> String {
+        try await client.rpc(
+            "export_installation", body: ["p_install_id": installId.uuidString]
+        )
+    }
+}

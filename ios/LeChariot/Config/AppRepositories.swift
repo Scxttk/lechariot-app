@@ -84,4 +84,18 @@ enum AppRepositories {
         guard let client else { return nil }
         return LiveMatchFeedbackRepository(client: client)
     }
+
+    /// nil heißt hier: Es liegt nichts auf dem Server, weil nie etwas
+    /// hochgeladen wurde. Die Einstellungen sagen dann genau das, statt einen
+    /// Knopf anzubieten, der ins Leere greift.
+    ///
+    /// In UI-Läufen steht die Attrappe, damit die Journey den ganzen Weg
+    /// sieht — sonst prüfte sie nur den Satz „nichts hochgeladen".
+    static func privacy() -> PrivacyRepositoryProtocol? {
+        #if DEBUG
+        if UITestSupport.isActive { return MockPrivacyRepository() }
+        #endif
+        guard let client else { return nil }
+        return LivePrivacyRepository(client: client)
+    }
 }

@@ -295,7 +295,7 @@ enum CategoryGlyph {
 /// Eigener Typ statt roher `Path`-Aufrufe in jeder Zeichnung, damit die
 /// fünfzehn Rezepte oben lesbar bleiben — dort steht die Gestaltung, hier die
 /// Rechnerei.
-private struct Pen {
+struct Pen {
     let rect: CGRect
     var stroke = Path()
     var fill = Path()

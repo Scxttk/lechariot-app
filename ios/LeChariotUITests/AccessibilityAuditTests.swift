@@ -187,6 +187,19 @@ final class AccessibilityAuditTests: XCTestCase {
         // niemand". Und weil jetzt an zwei Positionen gemessen wird, ist die
         // Liste besser abgedeckt als vor dem Abschalten.
         try audit("Einstellungen unten")
+
+        // **Filialen und Regionen liegen seit dem 2026-08-01 eine Seite
+        // tiefer** ([UI-2]). Ohne diesen Schritt fielen beide Listen aus dem
+        // Audit — genau die zwei Abschnitte, die vorher die erste Seite
+        // ausgemacht haben.
+        var back = 0
+        while !app.buttons["settings.places"].exists && back < 14 {
+            app.swipeDown()
+            back += 1
+        }
+        app.buttons["settings.places"].tap()
+        XCTAssertTrue(app.navigationBars["Filialen und Regionen"].waitForExistence(timeout: 10))
+        try audit("Filialen und Regionen")
     }
 
     /// Der dunkle Modus hat eigene Farbwerte — die Rechnung deckte beide ab,
