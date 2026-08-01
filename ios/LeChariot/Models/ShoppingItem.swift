@@ -44,6 +44,21 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
     /// `PinnedOfferTests.testAListWrittenWithTheOldSinglePinKeepsItsChoice`.
     private var pinned: PinnedOffer?
 
+    /// Freitext am Artikel — **eine Notiz für den Menschen im Laden**
+    /// ([UI-8], Scott 2026-08-01).
+    ///
+    /// Die Chips daneben sind bewusst ein Wortschatz („es gibt nichts zu
+    /// säubern, weil es nichts zu tippen gibt"). Hier gibt es etwas zu tippen,
+    /// und damit gilt eine harte Regel: **Dieses Feld verlässt das Gerät
+    /// nie.** Es geht nicht in die Suche, nicht in die Marktrechnung und vor
+    /// allem nicht in den `MatchFeedback`-Payload — dort landet Freitext sonst
+    /// auf einem fremden Server, und niemand weiß, was jemand hineinschreibt.
+    /// Festgehalten in `ItemDetailTests.testTheNoteNeverReachesTheFeedbackPayload`.
+    ///
+    /// Optional, aus demselben Grund wie `detail` und `pins`: Ein Pflichtfeld
+    /// ohne Vorgabe löscht jedem Tester beim Update still die Liste.
+    var note: String?
+
     /// Die gewählten Angebote dieses Eintrags — 0..n.
     ///
     /// **Ein zweiter Pin ersetzt den ersten nicht, er kommt dazu** (Scott,
@@ -68,6 +83,7 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
         isChecked: Bool = false,
         addedAt: Date = .now,
         detail: [String]? = nil,
+        note: String? = nil,
         pins: [PinnedOffer]? = nil
     ) {
         self.id = id
@@ -75,6 +91,7 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
         self.isChecked = isChecked
         self.addedAt = addedAt
         self.detail = detail
+        self.note = note
         self.pins = pins
         self.pinned = nil
     }
@@ -93,6 +110,7 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
         isChecked = try c.decodeIfPresent(Bool.self, forKey: .isChecked) ?? false
         addedAt = try c.decodeIfPresent(Date.self, forKey: .addedAt) ?? .now
         detail = try c.decodeIfPresent([String].self, forKey: .detail)
+        note = try c.decodeIfPresent(String.self, forKey: .note)
         pinned = nil
         let stored = try c.decodeIfPresent([PinnedOffer].self, forKey: .pins)
         let alt = try c.decodeIfPresent(PinnedOffer.self, forKey: .pinned)
@@ -108,11 +126,12 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
         try c.encode(isChecked, forKey: .isChecked)
         try c.encode(addedAt, forKey: .addedAt)
         try c.encodeIfPresent(detail, forKey: .detail)
+        try c.encodeIfPresent(note, forKey: .note)
         try c.encodeIfPresent(pins, forKey: .pins)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, text, isChecked, addedAt, detail, pins, pinned
+        case id, text, isChecked, addedAt, detail, note, pins, pinned
     }
 
     /// The one string that leaves this item — to the matcher, to the purchase
@@ -124,8 +143,13 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
     var query: String { text }
 
     /// The detail as one line, or nil when there is nothing to show.
+    ///
+    /// Die Notiz hängt hinten dran: Sie steht an derselben Stelle und meint
+    /// dasselbe („was genau ich brauche"), nur getippt statt getippt-ausgewählt.
     var detailLine: String? {
-        guard let detail, !detail.isEmpty else { return nil }
-        return detail.joined(separator: " · ")
+        let chips = (detail ?? []).joined(separator: " · ")
+        let note = (note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = [chips, note].filter { !$0.isEmpty }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }

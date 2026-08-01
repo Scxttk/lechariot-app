@@ -24,19 +24,12 @@ enum Theme {
 
     // MARK: Colors
 
-    /// Brand palette: green + brown, green leads in BOTH appearances.
-    /// Light mode: #3F6444 on cream #EDE9C0. Dark mode mirrors that look —
-    /// brightened green on deep green-olive; brown is demoted to secondary
-    /// there (brown surfaces on olive clashed).
+    /// Markenpalette: Grün führt in beiden Erscheinungsbildern.
     ///
-    /// Every color below is measured against the surface it actually sits on,
-    /// WCAG 2.1: text ≥ 4.5:1, graphics ≥ 3:1. Adding a raw SwiftUI color
-    /// (`.red`, `.orange`, `.yellow`) in a view skips that check — use a token.
-    ///
-    /// Light accent was #507C55, which reached only 3.85:1 on the cream
-    /// background and 3.63:1 as pill text on its own 15 % tint. Same hue, one
-    /// step deeper: 5.43:1 on cream, 6.12:1 on surface, 6.74:1 for white text
-    /// on top of it, 4.95:1 on the tint.
+    /// Jede Farbe ist gegen die Fläche gemessen, auf der sie sitzt (WCAG 2.1:
+    /// Text ≥ 4,5:1, Grafik ≥ 3:1). Eine rohe SwiftUI-Farbe in einer Ansicht
+    /// überspringt diese Prüfung — deshalb Tokens.
+    /// Messwerte: [[Le Chariot Entscheidungen]], „Palette und Kontrast".
     static let accent = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
             // The light green lacks contrast on the dark surfaces; same hue, lifted.
@@ -97,19 +90,10 @@ enum Theme {
             : UIColor(red: 0.97, green: 0.96, blue: 0.88, alpha: 1)   // lifted #EDE9C0
     })
 
-    /// Secondary text — labels, footnotes, sub-lines.
-    ///
-    /// Replaces Apple's `.secondary`, which the accessibility audit caught at
-    /// **3.15:1 on the cream and 3.30:1 on the cards** (measured 2026-07-20,
-    /// recomputed 2026-07-26). The project set itself 4.5:1, and Phase 7 did
-    /// the arithmetic for its **own** tokens — `.secondary` is a system colour
-    /// and was never in that calculation. It is tuned for white and black
-    /// backgrounds, not for cream and olive.
-    ///
-    /// Measured against both surfaces it can appear on:
-    /// light **5.21:1** on the background, **5.89:1** on the cards;
-    /// dark **8.34:1** and **6.90:1**. Warm rather than grey, so it stays in
-    /// the same family as the brown — a neutral grey looks dirty on cream.
+    /// Sekundärtext. Ersetzt Apples `.secondary`, das auf Creme nur 3,15:1
+    /// erreichte — es ist für Weiß und Schwarz abgestimmt, nicht für Creme und
+    /// Olive. Warm statt grau: Ein neutrales Grau wirkt auf Creme schmutzig.
+    /// Messwerte: [[Le Chariot Entscheidungen]], „Palette und Kontrast".
     static let secondaryText = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
             ? UIColor(red: 0.72, green: 0.72, blue: 0.64, alpha: 1)
@@ -155,16 +139,10 @@ enum Theme {
             : UIColor(red: 0.20, green: 0.42, blue: 0.24, alpha: 1)
     })
 
-    /// Linien **auf** der Abdunklung des Rundgangs.
-    ///
-    /// In beiden Erscheinungsbildern dieselbe Farbe, weil die Abdunklung in
-    /// beiden dieselbe ist: 60 % Schwarz über allem. Der Akzent taugt hier
-    /// nicht — im hellen Modus ist er das dunkle `#3F6444`, und über der
-    /// abgedunkelten Creme-Fläche erreicht er **1,01:1**: Die beiden Farben
-    /// sind dort praktisch gleich hell, die Linie wäre unsichtbar gewesen.
-    /// Genau das war die Meldung vom 31.07.: „oft nicht erkenntlich, was
-    /// gemeint ist". Dieses helle Grün misst **5,5:1** über der hellen und
-    /// **16,1:1** über der dunklen Abdunklung — und bleibt trotzdem Marke.
+    /// Linien **auf** der Abdunklung des Rundgangs — in beiden
+    /// Erscheinungsbildern dieselbe Farbe, weil die Abdunklung dieselbe ist.
+    /// Der Akzent erreicht dort nur 1,01:1 und wäre unsichtbar.
+    /// Herleitung: [[Le Chariot Entscheidungen]], „Palette und Kontrast".
     static let onScrim = Color(red: 0.86, green: 0.93, blue: 0.87) // #DBEDDE
 }
 
@@ -173,28 +151,12 @@ enum Theme {
 extension Theme {
     /// **Wie ein Zustand den anderen ablöst — die eine Regel der App.**
     ///
-    /// Bis zum 31.07. gab es keine. Vierzehn Stellen bewegten etwas, mit sechs
-    /// verschiedenen Kurven (`.snappy`, `.snappy(0.3)`, `.snappy(0.28)`,
-    /// `.easeOut(0.25)`, `.easeOut(0.2)`, `.easeOut(0.15)`) plus dem blanken
-    /// `withAnimation`, das die Vorgabe nimmt — und dort, wo ein **ganzer
-    /// Bildschirm** den anderen ablöst, mit gar keiner. Vom Gerät kamen daraus
-    /// drei getrennte Meldungen, die derselbe Fehler sind:
-    ///
-    /// - Die Onboarding-Seiten springen (`phase` wechselte ohne Transaktion).
-    /// - Vom Onboarding ins Filialwählen gibt es keinen Übergang (dieselbe
-    ///   `phase`, plus der Wechsel `OnboardingFlowView` → Tabs).
-    /// - Im Filialwählen blendet der graue Hinweis langsam aus, während der
-    ///   grüne Aufklapper darunter schlagartig erscheint — zwei Ansichten
-    ///   desselben Wechsels mit zwei verschiedenen Übergängen. Dieselbe Form
-    ///   wie der Foto-über-Emoji-Fehler vom 24.07.
-    ///
-    /// **Die Regel besteht aus zwei Hälften, die zusammengehören:** der
-    /// *Übergang* sitzt an der Ansicht, die kommt oder geht
-    /// (`stateTransition`), die *Kurve* am gemeinsamen Behälter der Ansichten,
-    /// die einander ablösen (`stateAnimation`) — oder an der einen
-    /// Transaktion, die den Zustand umsetzt (`Motion.element.animation`).
-    /// Wer nur die eine Hälfte setzt, bekommt den gemeldeten Fehler zurück:
-    /// eine Seite bewegt sich, die andere springt.
+    /// Zwei Hälften, die zusammengehören: der *Übergang* sitzt an der Ansicht,
+    /// die kommt oder geht (`stateTransition`), die *Kurve* am gemeinsamen
+    /// Behälter (`stateAnimation`) oder an der Transaktion, die den Zustand
+    /// umsetzt. Wer nur eine Hälfte setzt, bekommt den gemeldeten Fehler
+    /// zurück: eine Seite bewegt sich, die andere springt.
+    /// Die drei Meldungen dahinter: [[Le Chariot Entscheidungen]], „Bewegung".
     enum Motion: CaseIterable {
         /// Ein ganzer Bildschirm löst einen anderen ab.
         case screen
@@ -223,26 +185,13 @@ extension Theme {
             reduceMotion ? nil : animation
         }
 
-        /// **Beide Seiten desselben Wechsels tragen denselben Übergang — und
-        /// beim Verschwinden wird nicht überblendet.**
+        /// Der neue Bildschirm blendet **ein**, der alte ist sofort weg.
         ///
-        /// Die zweite Hälfte ist keine Geschmacksfrage, sondern dieselbe
-        /// Entscheidung wie beim Foto über dem Emoji (#23, 24.07.): Zwei
-        /// Ansichten, die denselben Platz einnehmen, dürfen dort nicht 0,3 s
-        /// lang halbdurchsichtig übereinanderliegen. Dort schien das Emoji
-        /// durch den Freisteller; hier ist es schlimmer, weil eine ganze
-        /// Ansicht mehr als Farbe mitbringt: **Der abgelöste Bildschirm bleibt
-        /// so lange bedienbar und im Barrierefreiheits-Baum.**
-        ///
-        /// Am eigenen Prüfstand aufgeflogen: Mit `.opacity` auf beiden Seiten
-        /// fand `AccessibilityAuditTests` zwei Knöpfe `onboarding.skip` —
-        /// den des gehenden Schritts und den des kommenden —, tippte den
-        /// gehenden, und der Assistent blieb stehen. Was ein Testlauf in
-        /// 26 Sekunden trifft, trifft auch ein Daumen, der zweimal schnell
-        /// hintereinander tippt.
-        ///
-        /// Also: Der neue Bildschirm blendet **ein**, der alte ist sofort weg.
-        /// Der Wechsel bleibt weich, ohne dass es je zwei von allem gibt.
+        /// Kein Überblenden: Zwei Ansichten auf demselben Platz hießen, dass
+        /// der abgelöste Bildschirm 0,3 s lang bedienbar und im
+        /// Barrierefreiheits-Baum bleibt. Der Audit fand so zwei Knöpfe
+        /// `onboarding.skip` und tippte den gehenden.
+        /// Siehe [[Le Chariot Entscheidungen]], „Bewegung".
         var transition: AnyTransition {
             .asymmetric(insertion: .opacity, removal: .identity)
         }
@@ -314,24 +263,13 @@ extension Theme {
 // MARK: - Themed screen background
 
 extension View {
-    /// Replaces the default grouped background of a List/ScrollView screen
-    /// with the brand background (cream / dark olive), and keeps the content
-    /// itself to a readable column — see `readableWidth()`.
+    /// Markenhintergrund statt der grauen Systemfläche, Inhalt in einer
+    /// lesbaren Spalte (siehe `readableWidth()`).
     ///
     /// **Der Hintergrund ignoriert die sicheren Bereiche, der Inhalt nicht.**
-    ///
-    /// Ein blankes `.background(Theme.background)` endet an jeder sicheren
-    /// Kante — auch an der, die die eingeblendete Tastatur aufspannt. Die
-    /// Tastatur ist aber durchscheinend, und dort, wo sie als freistehende
-    /// Fläche Luft lässt (untere Displayecken), scheint dann nicht der
-    /// Creme-Hintergrund durch, sondern das schwarze Fenster. Am Gerät
-    /// gemeldet am 31.07. an der Namenseingabe (Build 2026.0731.1147); dieselbe
-    /// Ursache lag hier, wo neun Bildschirme sie teilen — darunter Angebote
-    /// (`.searchable`), die Einkaufsliste und die Rückmeldung mit Freitext.
-    ///
-    /// Nur die Farbe wandert nach außen: `.background` legt sie hinter den
-    /// Inhalt, ohne dessen Maße anzufassen. Der Inhalt bleibt in seinen
-    /// sicheren Bereichen, also auch über der Tab-Leiste.
+    /// Sonst scheint an den unteren Displayecken neben der durchscheinenden
+    /// Tastatur das schwarze Fenster durch — die schwarzen Ecken vom 31.07.
+    /// Siehe [[Le Chariot Entscheidungen]], „Schwarze Ecken".
     func themedScreen() -> some View {
         scrollContentBackground(.hidden)
             .readableWidth()
@@ -479,18 +417,9 @@ struct OfferImageContent: View {
     var category: String? = nil
     var title: String? = nil
 
-    /// Womit die Kachel gefüllt wird, wenn kein Foto da ist.
-    ///
-    /// Vier Stufen, und jede tiefere ist ein Eingeständnis: das Zeichen der
-    /// Kategorie, sonst das Emoji des Imports, sonst der Anfangsbuchstabe des
-    /// Produkts, sonst der Einkaufswagen. **Der Buchstabe ist bewusst
-    /// gestaltet und keine Notlösung** — ein Rückfall, den man ansieht, ist
-    /// besser als einer, für den man sich entschuldigt.
-    ///
-    /// Die erste Stufe trägt seit dem 2026-08-01 die **Kategorie** statt
-    /// eines SF-Symbol-Namens: Gezeichnet wird aus `CategoryGlyph`, und
-    /// dessen Schlüssel ist die Kategorie. Ein Zwischenname wäre eine zweite
-    /// Liste, die mit der ersten Schritt halten müsste.
+    /// Womit die Kachel gefüllt wird, wenn kein Foto da ist: gezeichnetes
+    /// Kategoriezeichen, sonst Import-Emoji, sonst Anfangsbuchstabe, sonst
+    /// Einkaufswagen. Der Buchstabe ist gestaltet, keine Notlösung.
     enum Fallback: Equatable {
         case glyph(String)
         case emoji(String)
@@ -513,14 +442,10 @@ struct OfferImageContent: View {
         return .cart
     }
 
-    /// Was auf der Kachel liegt — **entweder** das Foto **oder** der Rückfall,
-    /// nie beides.
-    ///
-    /// Steht als eigene Entscheidung da und nicht nur als `switch` im `body`,
-    /// weil genau sie schon einmal falsch war: Das Emoji lag als dauerhafte
-    /// ZStack-Ebene darunter, und durch REWEs alphaerhaltende WebP und Netto
-    /// freigestellte Produkte schien es hindurch. Ein Test kann die Kachel
-    /// nicht ansehen, diese Entscheidung schon.
+    /// Was auf der Kachel liegt — **entweder** das Foto **oder** der
+    /// Rückfall, nie beides. Eigener Typ statt eines `switch` im `body`, weil
+    /// ein Test die Kachel nicht ansehen kann, diese Entscheidung schon
+    /// (Emoji schien durch freigestellte WebP, 24.07.).
     enum Layer: Equatable {
         case photo
         case fallback
@@ -554,17 +479,9 @@ struct OfferImageContent: View {
         }
     }
 
-    /// **Beim Verschwinden wird nicht überblendet.**
-    ///
-    /// Vorher trugen Foto und Emoji beide `.transition(.opacity)`: Das Emoji
-    /// blendete aus, während das Foto einblendete, und für diese 0,2 s lagen
-    /// beide halbdurchsichtig übereinander. Bei einem freigestellten Produkt
-    /// mit Alpha — REWE spiegelt PNG→WebP alphaerhaltend, Netto liefert
-    /// Freisteller — schien das Emoji genau dann wieder durch. Dieselbe
-    /// Erscheinung wie die dauerhafte ZStack-Ebene von früher, nur kurz.
-    ///
-    /// Der Rückfall selbst blendet weiter ein: Kommt er *nach* einem
-    /// Fehlschlag, soll er nicht aufpoppen.
+    /// **Beim Verschwinden wird nicht überblendet** — sonst lägen Foto und
+    /// Emoji 0,2 s halbdurchsichtig übereinander, und bei freigestellten
+    /// Produkten schiene das Emoji durch. Der Rückfall blendet weiter ein.
     @ViewBuilder
     private var fallback: some View {
         Group {
@@ -651,18 +568,12 @@ extension View {
             .cardSurface()
     }
 
-    /// Row background that carries the group's rounding itself.
+    /// Zeilenhintergrund, der die Rundung des Abschnitts selbst trägt.
     ///
-    /// `.listRowBackground(Theme.surface)` hands the list a flat colour, and a
-    /// flat colour does not know it sits at the top or bottom of a rounded
-    /// section. While the row is still, the system container hides that; the
-    /// moment it slides — a swipe action — the row travels out of the container
-    /// and shows a hard rectangular edge inside the rounded frame. Reported
-    /// 2026-07-30 as "there is a round container and if you swipe it gets a
-    /// hard line".
-    ///
-    /// Only needed on rows that can actually move. A static section is fine
-    /// with the plain colour.
+    /// Eine flache Farbe weiß nicht, dass sie oben oder unten in einem
+    /// gerundeten Abschnitt sitzt — beim Wischen zeigt die Zeile eine harte
+    /// Kante im runden Rahmen (gemeldet 30.07.). Nur für Zeilen nötig, die
+    /// sich bewegen können.
     func groupedRowBackground(_ position: GroupedRowPosition) -> some View {
         let radius = Theme.Radius.card
         let top = position.roundsTop ? radius : 0

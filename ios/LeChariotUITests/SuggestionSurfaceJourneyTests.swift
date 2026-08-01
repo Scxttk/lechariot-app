@@ -65,6 +65,7 @@ final class SuggestionSurfaceJourneyTests: XCTestCase {
 
         feld.tap()
         feld.typeText("Vollmilch\n")
+        dismissQuantitySheet()
         XCTAssertTrue(app.buttons["Vollmilch"].waitForExistence(timeout: 10),
                       "Der Artikel ist nicht auf der Liste gelandet")
 
@@ -93,4 +94,13 @@ final class SuggestionSurfaceJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
                       "Der Start hinter dem Assistenten landet nicht in der Liste")
     }
+
+    /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst
+    /// aufgeht. Diese Journey testet nicht das Menü, sondern die
+    /// Vorschlagsfläche darunter.
+    private func dismissQuantitySheet() {
+        let abbrechen = app.buttons["itemDetail.cancel"]
+        if abbrechen.waitForExistence(timeout: 5) { abbrechen.tap() }
+    }
+
 }

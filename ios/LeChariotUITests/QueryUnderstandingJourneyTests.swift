@@ -83,9 +83,18 @@ final class QueryUnderstandingJourneyTests: XCTestCase {
         feld.tap()
         feld.typeText(text)
         app.buttons["Artikel hinzufügen"].tap()
+        dismissQuantitySheet()
         XCTAssertTrue(app.buttons[text].waitForExistence(timeout: 10),
                       "\(text) ist nicht auf der Liste gelandet")
     }
+    /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst
+    /// aufgeht. Die Journeys unten testen nicht das Menü, sondern was danach
+    /// kommt — für sie ist es ein Zwischenschritt.
+    private func dismissQuantitySheet() {
+        let abbrechen = app.buttons["itemDetail.cancel"]
+        if abbrechen.waitForExistence(timeout: 5) { abbrechen.tap() }
+    }
+
 
     private func attach(_ name: String) {
         let shot = XCTAttachment(screenshot: app.screenshot())

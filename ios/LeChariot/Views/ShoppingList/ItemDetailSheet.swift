@@ -9,15 +9,17 @@ import SwiftUI
 /// expect the offer underneath to change, and it does not.
 struct ItemDetailSheet: View {
     let item: ShoppingItem
-    let onSave: ([String]) -> Void
+    let onSave: ([String], String) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var chosen: [String]
+    @State private var note: String
 
-    init(item: ShoppingItem, onSave: @escaping ([String]) -> Void) {
+    init(item: ShoppingItem, onSave: @escaping ([String], String) -> Void) {
         self.item = item
         self.onSave = onSave
         _chosen = State(initialValue: item.detail ?? [])
+        _note = State(initialValue: item.note ?? "")
     }
 
     var body: some View {
@@ -35,6 +37,33 @@ struct ItemDetailSheet: View {
                                 .foregroundStyle(Theme.secondaryText)
                             chips(of: group)
                         }
+                    }
+
+                    // **Der Freitext** ([UI-8], Scott 01.08.). Der Wortschatz
+                    // daneben ist bewusst ein Wortschatz; hier gibt es doch
+                    // etwas zu tippen, und dafür gilt die Regel aus der
+                    // Überschrift dieser Datei doppelt: Was hier steht, geht
+                    // nirgendwo hin. Nicht in die Suche, nicht in die
+                    // Marktrechnung, **nicht in den Rückmeldungs-Payload**.
+                    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                        Text("Notiz")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.secondaryText)
+                        TextField("z. B. die im blauen Becher", text: $note, axis: .vertical)
+                            .lineLimit(1...3)
+                            .textFieldStyle(.plain)
+                            .padding(Theme.Spacing.sm)
+                            .background(
+                                Theme.surface,
+                                in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                                    .strokeBorder(Theme.stroke)
+                            )
+                            .accessibilityIdentifier("itemDetail.note")
+                            .accessibilityLabel("Notiz zum Artikel")
+                            .accessibilityHint("Bleibt auf dem Gerät und geht nicht in die Suche")
                     }
 
                     // Words from an older vocabulary keep their place and stay
@@ -60,7 +89,7 @@ struct ItemDetailSheet: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Fertig") {
-                        onSave(chosen)
+                        onSave(chosen, note)
                         dismiss()
                     }
                     .fontWeight(.semibold)
@@ -116,5 +145,5 @@ struct ItemDetailSheet: View {
 }
 
 #Preview {
-    ItemDetailSheet(item: ShoppingItem(text: "Milch", detail: ["1 l", "Bio"])) { _ in }
+    ItemDetailSheet(item: ShoppingItem(text: "Milch", detail: ["1 l", "Bio"])) { _, _ in }
 }

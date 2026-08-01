@@ -87,6 +87,7 @@ final class ReviewNoteJourneyTests: XCTestCase {
         XCTAssertTrue(input.waitForExistence(timeout: 15), "Schritt 5: keine Eingabezeile")
         input.tap()
         input.typeText("Vollmilch\n")
+        dismissQuantitySheet()
 
         XCTAssertTrue(app.buttons["Vollmilch"].waitForExistence(timeout: 15),
                       "Schritt 5: Der Artikel landet nicht auf der Liste")
@@ -96,4 +97,12 @@ final class ReviewNoteJourneyTests: XCTestCase {
         XCTAssertTrue(plan.waitForExistence(timeout: 15),
                       "Schritt 6: Die App sagt nicht, welcher Markt die Liste abdeckt")
     }
+
+    /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst
+    /// aufgeht.
+    private func dismissQuantitySheet() {
+        let abbrechen = app.buttons["itemDetail.cancel"]
+        if abbrechen.waitForExistence(timeout: 5) { abbrechen.tap() }
+    }
+
 }

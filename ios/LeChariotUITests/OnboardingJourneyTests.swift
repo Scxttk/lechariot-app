@@ -63,6 +63,7 @@ final class OnboardingJourneyTests: XCTestCase {
         XCTAssertTrue(field.exists, "ohne Eingabezeile ist es keine Einkaufsliste")
         field.tap()
         field.typeText("Vollmilch\n")
+        dismissQuantitySheet()
         XCTAssertTrue(app.buttons["Vollmilch"].waitForExistence(timeout: 10),
                       "Artikel müssen auch ohne Filiale auf die Liste gehen")
         XCTAssertTrue(
@@ -255,6 +256,7 @@ final class OnboardingJourneyTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         field.tap()
         field.typeText("Milch\n")
+        dismissQuantitySheet()
 
         XCTAssertTrue(app.buttons["Milch"].waitForExistence(timeout: 5))
     }
@@ -268,12 +270,14 @@ final class OnboardingJourneyTests: XCTestCase {
         let milch = app.buttons["Milch hinzufügen"]
         XCTAssertTrue(milch.waitForExistence(timeout: 15))
         milch.tap()
+        dismissQuantitySheet()
 
         XCTAssertTrue(app.buttons["Milch"].waitForExistence(timeout: 5))
         let brot = app.buttons["Brot hinzufügen"]
         XCTAssertTrue(brot.waitForExistence(timeout: 5),
                       "the remaining suggestions must survive the first tap")
         brot.tap()
+        dismissQuantitySheet()
 
         XCTAssertTrue(app.buttons["Brot"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Milch hinzufügen"].exists,
@@ -362,4 +366,12 @@ final class OnboardingJourneyTests: XCTestCase {
         tapPrimary()                       // diet
         tapPrimary()                       // consent
     }
+
+    /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst
+    /// aufgeht.
+    private func dismissQuantitySheet() {
+        let abbrechen = app.buttons["itemDetail.cancel"]
+        if abbrechen.waitForExistence(timeout: 5) { abbrechen.tap() }
+    }
+
 }

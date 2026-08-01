@@ -316,6 +316,11 @@ final class ShoppingListStore {
         return true
     }
 
+    /// Der zuletzt angelegte Eintrag — das Mengen-Menü hängt sich daran
+    /// ([UI-8]). `add` gibt nur Bescheid, *ob* etwas dazukam; welches es war,
+    /// weiß nur der Speicher.
+    var lastAdded: ShoppingItem? { items.last }
+
     func toggle(_ item: ShoppingItem) {
         guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
         items[idx].isChecked.toggle()
@@ -336,6 +341,17 @@ final class ShoppingListStore {
     func setDetail(_ detail: [String], for item: ShoppingItem) {
         guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
         items[idx].detail = detail.isEmpty ? nil : detail
+        persist()
+    }
+
+    /// Setzt Chips und Freitext in einem Zug — beide kommen aus demselben
+    /// Blatt, und zwei Schreibvorgänge wären zwei Gelegenheiten, dass einer
+    /// von beiden vergessen wird.
+    func setDetail(_ detail: [String], note: String, for item: ShoppingItem) {
+        guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
+        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        items[idx].detail = detail.isEmpty ? nil : detail
+        items[idx].note = trimmed.isEmpty ? nil : trimmed
         persist()
     }
 

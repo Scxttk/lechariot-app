@@ -167,8 +167,8 @@ struct ShoppingListView: View {
                 .environment(list)
         }
         .sheet(item: $editingItem) { item in
-            ItemDetailSheet(item: item) { detail in
-                list.setDetail(detail, for: item)
+            ItemDetailSheet(item: item) { detail, note in
+                list.setDetail(detail, note: note, for: item)
             }
         }
     }
@@ -488,7 +488,10 @@ struct ShoppingListView: View {
                     // hier steht, versteht der Matcher.
                     newItemText = ""
                     inputFocused = true
-                    withAnimation { _ = list.add(term) }
+                    // Nur bei Erfolg: Bei einem Duplikat legt `add` nichts an,
+                    // und `lastAdded` wäre dann ein fremder Eintrag.
+                    let angelegt = withAnimation { list.add(term) }
+                    if angelegt { editingItem = list.lastAdded }
                 } label: {
                     Text(term)
                         .font(.subheadline.weight(.medium))
@@ -529,9 +532,9 @@ struct ShoppingListView: View {
                     // ist schon einmal dagewesen (2026-07-26, damals mit dem
                     // Leerzustand als Ursache).
                     suggestionChoice = true
-                    // `add` is @discardableResult Bool; swallow it explicitly so
-                    // withAnimation's generic result type stays unambiguous.
-                    withAnimation { _ = list.add(staple) }
+                    // Nur bei Erfolg — siehe die Vorschlagskacheln oben.
+                    let angelegt = withAnimation { list.add(staple) }
+                    if angelegt { editingItem = list.lastAdded }
                 } label: {
                     Text(staple)
                         .font(.subheadline.weight(.medium))
@@ -642,6 +645,11 @@ struct ShoppingListView: View {
         guard list.add(newItemText) else { return }
         newItemText = ""
         inputFocused = true
+        // **Das Mengen-Menü kommt von selbst** ([UI-8], Scott 01.08.) — der
+        // Moment nach dem Anlegen ist der einzige, in dem jemand noch weiß,
+        // welche Größe er meint. Nur hier und bei den Kacheln, nicht beim
+        // Antippen eines vorhandenen Eintrags.
+        editingItem = list.lastAdded
         // Wer tippt, weiß was er braucht — die Fläche gibt der Liste ihren
         // Platz zurück. Die Gegenrichtung steht bei den Kacheln.
         withAnimation(.snappy) { suggestionChoice = false }
