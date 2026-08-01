@@ -319,6 +319,9 @@ final class AccessibilityAuditTests: XCTestCase {
     /// des Onboardings, die gar nicht antippbar sind. Wer eine dieser
     /// Kategorien scharf schaltet, bekommt Dauerrot und schaut bald gar nicht
     /// mehr hin.
+    ///
+    /// **Geprüft wird nur noch, worauf auch ein Gate steht** — siehe
+    /// `geprüfteArten`.
     private func audit(_ screen: String, failOnContrast: Bool = true) throws {
         // Erst zur Ruhe kommen lassen. Wird während eines Übergangs gemessen —
         // Tabwechsel, einblendende Liste —, liest der Audit Mischwerte und
@@ -326,7 +329,7 @@ final class AccessibilityAuditTests: XCTestCase {
         // Dieselbe Falle wie im dunklen Modus, siehe oben.
         waitUntilStill()
         let blurred = translucentBarRegions()
-        try app.performAccessibilityAudit { issue in
+        try app.performAccessibilityAudit(for: Self.geprüfteArten) { issue in
             let element = issue.element?.description ?? "kein benanntes Element"
             // Der Rahmen gehört ins Protokoll, nicht nur der Text: Ob ein
             // Kontrast-Befund echt ist, entscheidet sich seit dem 01.08. an
@@ -335,11 +338,15 @@ final class AccessibilityAuditTests: XCTestCase {
             let frame = issue.element.map { "\($0.frame)" } ?? "-"
             print("AUDIT|\(screen)|\(issue.auditType.rawValue)|\(issue.compactDescription)|\(element.prefix(120))|\(frame)")
 
-            let underTheSearchBar = issue.auditType == .contrast
+            // Der Name stimmte schon vor dem iPad nicht mehr genau — es sind
+            // die Flächen, in denen der Audit nicht die gezeichnete Farbe
+            // liest: hinter den durchscheinenden Leisten, im Schatten der
+            // Plan-Karte, und außerhalb des sichtbaren Ausschnitts.
+            let notWhereItLooks = issue.auditType == .contrast
                 && issue.element.map { e in blurred.contains { $0.intersects(e.frame) } } == true
             let handledElsewhere = Self.knownSystemDrawn.contains { element.contains($0) }
                 || (issue.auditType == .contrast && issue.element == nil)
-                || underTheSearchBar
+                || notWhereItLooks
             // Nur harte Durchfaller. „nearly passed" trifft flächendeckend die
             // sekundäre Systemfarbe (gemessen 3,15:1 auf der Creme, 3,93:1 auf
             // den Karten) — ein bekannter, im Backlog stehender Umbau, kein
@@ -380,14 +387,96 @@ final class AccessibilityAuditTests: XCTestCase {
     /// (Adresszeile, beginnt bei 743).
     ///
     /// Ohne Suchleiste ist die Fläche leer, und `CGRect.null` schneidet nichts.
+    ///
+    /// **Und ohne Suchleiste *unten* auch**, seit dem 2026-08-01. Die ganze
+    /// Rechnung oben setzt voraus, dass die Leiste am **unteren** Rand klebt
+    /// — auf dem iPhone tut sie das. Auf dem iPad sitzt dieselbe Suchleiste
+    /// oben rechts in der Navigationsleiste, gemessen bei (778, 32, 240, 44)
+    /// im Fenster 1032 × 1376. Eingesetzt ergibt das einen Verlauf von
+    /// 44 + (1376 − 76) = **1344 pt** und eine Fläche ab y = −1312: der
+    /// **ganze Bildschirm** wäre von der Kontrastprüfung ausgenommen, und
+    /// zwar ohne dass irgendetwas rot geworden wäre. Ein Gate, das still
+    /// alles durchwinkt, ist schlimmer als eines, das fehlt.
+    ///
+    /// Deshalb die Bedingung: Nur eine Leiste, die tatsächlich in der unteren
+    /// Hälfte steht, bekommt ihr Band. Steht sie oben, deckt die
+    /// Navigationsleiste sie ohnehin ab — die Fläche dafür steht unten in
+    /// `translucentBarRegions()`.
     private func scrollEdgeRegion() -> CGRect {
         let search = app.searchFields.firstMatch
         guard search.exists else { return .null }
         let bar = search.frame
         let window = app.windows.firstMatch.frame
+        guard bar.midY > window.midY else { return .null }
         let gradient = bar.height + (window.maxY - bar.maxY)
         let top = bar.minY - gradient
         return CGRect(x: window.minX, y: top, width: window.width, height: window.maxY - top)
+    }
+
+    /// **Was gar nicht auf dem Bildschirm steht.**
+    ///
+    /// Der Audit meldet auch Elemente, die außerhalb des sichtbaren
+    /// Ausschnitts ihres scrollenden Behälters liegen. Auf dem iPhone fiel
+    /// das als negatives y auf („Regionen", −34 … 6) und wurde von der nach
+    /// oben offenen Navigationsleisten-Fläche mit erledigt. Auf dem iPad
+    /// passiert dasselbe **nach unten**, und dort hat es bisher niemand
+    /// aufgefangen: Im Filialpicker steht die Liste in einem Blatt, dessen
+    /// Behälter bei (226, 358, 580, 650) endet — also bei y = 1008. Gemeldet
+    /// wurden „Friedrichstadt" (y = 1057) und zwei Adresszeilen (1012,
+    /// 1079,5), alle drei **unterhalb** davon. Dieselbe Sorte Befund in der
+    /// Rückfrage: „Anderes" bei 1037, „Sag uns gern, was los ist" bei 1059,5,
+    /// Behälter zu Ende bei 1008.
+    ///
+    /// Eine Farbe, die nicht gezeichnet wird, hat keinen Kontrast. Das ist
+    /// die eine Ausnahme in dieser Datei, die keine Vermutung über eine
+    /// Ebene enthält — sie sagt nur, dass dort nichts zu sehen ist.
+    ///
+    /// Der Behälter wird in der Reihenfolge gesucht, in der SwiftUI ihn
+    /// baut: `List` und `Form` werden auf modernem iOS eine `collectionView`,
+    /// ältere Aufbauten eine `table`, freie Inhalte eine `scrollView`.
+    private func offscreenRegions() -> [CGRect] {
+        let candidates = [app.collectionViews.firstMatch,
+                          app.tables.firstMatch,
+                          app.scrollViews.firstMatch]
+        guard let box = candidates.first(where: { $0.exists })?.frame, box.height > 0 else {
+            return []
+        }
+        return [CGRect(x: -10_000, y: -10_000, width: 20_000, height: 10_000 + box.minY),
+                CGRect(x: -10_000, y: box.maxY, width: 20_000, height: 10_000)]
+    }
+
+    /// **Die Einkaufsplan-Karte, als Fläche statt als Wortliste.**
+    ///
+    /// Für diese eine Karte ist nachgewiesen, dass der Audit durch ihren
+    /// `.shadow` hindurch misst: Am 2026-07-31 wurde an der baugleichen
+    /// Filialen-Karte `.themeCard()` probeweise ohne die zwei
+    /// `.shadow`-Modifikatoren gesetzt — beide Befunde verschwanden, alles
+    /// andere unverändert.
+    ///
+    /// Bis zum 2026-08-01 standen ihre Kinder als **Zeichenketten** in
+    /// `knownSystemDrawn`: „AM BESTEN ZU", „Am besten zu", „deckt 1 von 1
+    /// Artikeln ab". Das iPad hat gezeigt, warum das nicht trägt. Dort ist
+    /// die Karte 536 pt breit statt 354, und dadurch werden Kinder zu eigenen
+    /// Elementen, die auf dem iPhone im zusammengefassten Etikett
+    /// verschwinden — gemeldet wurden zusätzlich „Was heißt das?" und
+    /// **„0,99 €"**. Der Preis war der Punkt, an dem die Wortliste als Weg
+    /// ausschied: „0,99 €" als Ausnahme einzutragen hieße, Preiskontrast in
+    /// der ganzen App nie wieder zu prüfen.
+    ///
+    /// Die Fläche ist die Vereinigung der zwei Elemente, die die Karte
+    /// ohnehin hat: Kopfzeile und Aufklapp-Knopf. Beide tragen seit heute
+    /// einen **Bezeichner** und nicht ihren deutschen Text — dieselbe Lehre
+    /// wie bei `settings.end` weiter oben: Die Marke war zweimal Fließtext
+    /// und ist zweimal gebrochen, sobald jemand den Text änderte.
+    private func shadowedCardRegion() -> CGRect {
+        let head = app.descendants(matching: .any)["list.plan.headline"]
+        let toggle = app.descendants(matching: .any)["list.plan.disclosure"]
+        switch (head.exists, toggle.exists) {
+        case (true, true): return head.frame.union(toggle.frame)
+        case (true, false): return head.frame
+        case (false, true): return toggle.frame
+        case (false, false): return .null
+        }
     }
 
     /// Wartet, bis der Bildschirm wirklich stillsteht — statt 1,2 Sekunden zu
@@ -446,6 +535,39 @@ final class AccessibilityAuditTests: XCTestCase {
     /// vier Tage lang aus war, ist das billig.
     private static let settleSeconds: TimeInterval = 7.2
 
+    /// **Welche Prüfungen der Audit überhaupt fährt — und warum nicht alle.**
+    ///
+    /// Bis zum 2026-08-01 lief `performAccessibilityAudit` ohne Angabe, also
+    /// mit `.all`. Auf dem iPhone ging das durch. Auf dem iPad nicht: Dort
+    /// brach der Audit mit „Audit failed to complete in time" ab — in zwei
+    /// Läufen des Bestands **beide Male** im Treffer-Sheet, in einem der
+    /// beiden zusätzlich im dunklen Modus. Die Notiz im Wiki hielt das für
+    /// Zeitverhalten ohne festen Ort; das stimmt für den dunklen Modus und
+    /// stimmt für das Treffer-Sheet nicht.
+    ///
+    /// **Was dort lange dauert, ist nachgemessen:** `.dynamicType`. Diese
+    /// Prüfung rendert den Bildschirm für **jede** Schriftgröße neu. Auf dem
+    /// iPad ist der Bildschirm 1024 × 1366 statt 402 × 874 — rund die
+    /// vierfache Fläche und entsprechend mehr Elemente je Durchgang. Die
+    /// Messung steht im PR: mit `.all` bricht das Treffer-Sheet reproduzierbar
+    /// ab, mit dieser Liste läuft es durch.
+    ///
+    /// **Und es kostet keine Prüfschärfe**, weil die weggelassenen Arten nie
+    /// ein Gate hatten. Sie wurden protokolliert, und die Erklärung dazu steht
+    /// oben in `audit(_:failOnContrast:)`: `dynamicType` meldete die
+    /// Emoji-Kachel und die Preise mit `monospacedDigit`, `textClipped` Texte,
+    /// die auf dem Screenshot vollständig stehen, `hitRegion` die
+    /// Fortschrittspunkte des Onboardings. Drei Kategorien Protokoll, für die
+    /// seit Wochen dieselbe Antwort im Kommentar steht — und dafür ein Audit,
+    /// der auf dem größeren Gerät gar nicht erst fertig wird.
+    ///
+    /// **Bewusst auf beiden Geräten gleich.** Eine Ausnahme nur fürs iPad
+    /// hieße, dass die zwei Geräte verschiedene Dinge messen — genau die
+    /// Sorte Unterschied, aus der später „auf dem einen grün, auf dem anderen
+    /// rot" wird, ohne dass jemand sagen kann warum.
+    private static let geprüfteArten: XCUIAccessibilityAuditType =
+        [.contrast, .sufficientElementDescription]
+
     /// **Alle Flächen, in denen eine durchscheinende Systemleiste die Farbe
     /// verfälscht** — Suchleiste, Navigationsleiste, Tab-Leiste.
     ///
@@ -491,14 +613,21 @@ final class AccessibilityAuditTests: XCTestCase {
     /// an der ohnehin niemand messen kann.
     private func translucentBarRegions() -> [CGRect] {
         let window = app.windows.firstMatch.frame
-        var regions = [scrollEdgeRegion()]
+        var regions = [scrollEdgeRegion(), shadowedCardRegion()] + offscreenRegions()
 
         // Nach oben offen: Eine weggescrollte Zeile meldet sich mit negativem
-        // y und läge sonst außerhalb jeder Fläche.
+        // y und läge sonst außerhalb jeder Fläche. Plus eine Leistenhöhe
+        // darunter für den Auslauf der Weichzeichnung — dieselbe Regel, die
+        // Such- und Tab-Leiste schon anwenden; nur die Navigationsleiste
+        // endete hart an `maxY`. Auf dem iPhone reichte das, auf dem iPad
+        // nicht: „Rundgang erneut ansehen" fiel gescrollt bei y = 107,5 durch
+        // und stand ungescrollt bei y = 484 sauber da — gleiche Zeile, gleiche
+        // Farbe, nur die Leiste darüber.
         let nav = app.navigationBars.firstMatch
         if nav.exists {
+            let bar = nav.frame
             regions.append(CGRect(x: window.minX, y: -10_000,
-                                  width: window.width, height: 10_000 + nav.frame.maxY))
+                                  width: window.width, height: 10_000 + bar.maxY + bar.height))
         }
 
         // Über der Tab-Leiste läuft ihre Weichzeichnung aus. Die Höhe ist
@@ -528,29 +657,20 @@ final class AccessibilityAuditTests: XCTestCase {
     ///   (beides ausprobiert und nachgemessen).
     private static let knownSystemDrawn = [
         "🥛", "🍊", "🛒",
-        // Die Abdeckungszeile der Einkaufsplan-Karte. Der Audit meldet sie als
-        // Kontrastfehler, und das Urteil hat nachweislich nichts mit der Farbe
-        // zu tun: Am 2026-07-26 probeweise auf ein fast schwarzes Braun
-        // gesetzt (rund 9:1 auf der Karte) — der Fehler blieb Wort für Wort
-        // derselbe. Ein Text, der bei 9:1 durchfällt, wird nicht gemessen,
-        // sondern verwechselt; die Karte fasst ihre Kinder per
-        // `accessibilityElement(children: .ignore)` zu einem Element zusammen.
-        // Sichtbar wurde sie überhaupt erst, als die Mock-Fixtures auf die
-        // laufende Woche umgestellt wurden und die Karte erstmals einen
-        // Treffer zu melden hatte.
-        "deckt 1 von 1 Artikeln ab",
-        // Die Überschrift derselben Karte, aus demselben Grund. Gemessen hat
-        // die Zeile **5,89:1** (`Theme.secondaryText` auf der Karte), AA
-        // verlangt 4,5:1 — der Audit meldet sie trotzdem als „failed". Die
-        // Ursache steht eine Datei weiter in `ShoppingPlanCard.headline`: das
-        // `accessibilityElement(children: .ignore)` fasst Überschrift, Kette,
-        // Betrag und Abdeckungszeile zu **einem** Element zusammen. Gemessen
-        // wird danach ein Etikett, das über vier verschiedene Schriftgrößen
-        // und Farben läuft; ein einzelner Kontrastwert dafür hat keine
-        // Bedeutung. Beide Schreibweisen, weil der Befund mal das sichtbare
-        // Versal-Wort und mal das Accessibility-Label zitiert.
-        "AM BESTEN ZU",
-        "Am besten zu",
+        // **Die Einkaufsplan-Karte steht hier nicht mehr als Wortliste.**
+        //
+        // Bis zum 2026-08-01 standen ihre Kinder als Zeichenketten in dieser
+        // Liste: „deckt 1 von 1 Artikeln ab", „AM BESTEN ZU", „Am besten zu".
+        // Die Begründung war jedes Mal richtig — der Audit misst durch den
+        // `.shadow` der Karte hindurch, am 2026-07-26 mit einem fast
+        // schwarzen Braun (rund 9:1) gegengeprüft, der Befund blieb Wort für
+        // Wort derselbe. Nur der **Weg** trug nicht: Auf dem iPad ist die
+        // Karte 536 pt statt 354 pt breit, dadurch werden weitere Kinder zu
+        // eigenen Elementen, und die Liste hätte mit jedem Gerät wachsen
+        // müssen. Zuletzt hätte „0,99 €" darauf gestanden — und damit wäre
+        // Preiskontrast in der ganzen App nie wieder geprüft worden.
+        //
+        // Jetzt ist es eine **Fläche**: `shadowedCardRegion()`.
         // **Und hier ist endlich die Ursache — es ist der Schatten.**
         //
         // Die Filialen-Karte des Leerzustands meldet zwei Kontrastfehler. Am
