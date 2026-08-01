@@ -200,22 +200,51 @@ private struct PriceHistorySection: View {
     /// Six weeks fill the sheet; older ones are scrolling for its own sake.
     private let maxRows = 6
 
+    /// **Die Überschrift steht immer da** ([UI-5], 2026-08-01).
+    ///
+    /// Vorher fiel der ganze Abschnitt weg, solange weniger als zwei Wochen
+    /// erfasst waren — mit Begründung („eine Überschrift über einer einzigen
+    /// Zahl ist kein Verlauf"), aber mit der Folge, dass er auf den meisten
+    /// Angeboten **gar nicht existierte**. Daraus wurde Scotts Frage „where can
+    /// i see the preisverlauf?": Er hat den Weg gefunden und nichts vorgefunden.
+    ///
+    /// Die Tabelle ist jung, das bleibt so. Was sich ändert, ist die Auskunft.
     var body: some View {
         switch store.state {
         case .idle, .loading:
-            // No spinner: on most offers it would appear and vanish again
-            // without a section ever following it.
-            EmptyView()
+            frame {
+                Text("wird geladen …")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.secondaryText)
+            }
         case .failed(let message):
-            Label(message, systemImage: "exclamationmark.triangle")
-                .font(.footnote)
-                .foregroundStyle(Theme.warning)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            frame {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.warning)
+            }
         case .loaded:
             if let points = store.points {
                 card(points)
+            } else {
+                frame {
+                    Text("Für dieses Produkt ist bisher nur diese Woche erfasst. Sobald es ein zweites Mal im Angebot war, steht hier, ob es teurer oder billiger geworden ist.")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
+    }
+
+    /// Überschrift plus Inhalt, in derselben Karte wie der fertige Verlauf.
+    private func frame<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            Text("Preisverlauf").font(.headline)
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .themeCard()
     }
 
     private func card(_ points: [PriceHistoryPoint]) -> some View {

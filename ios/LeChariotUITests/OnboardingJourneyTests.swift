@@ -160,6 +160,7 @@ final class OnboardingJourneyTests: XCTestCase {
         pickFixtureBranchFromTheList()
 
         openTab("Einstellungen")
+        openPlaces()
         app.buttons["Filialen bearbeiten"].tap()
         XCTAssertTrue(app.staticTexts["Deine Filialen"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons[fixtureBranch].exists,
@@ -191,6 +192,7 @@ final class OnboardingJourneyTests: XCTestCase {
         pickFixtureBranchFromTheList()
 
         openTab("Einstellungen")
+        openPlaces()
         app.buttons["Filialen bearbeiten"].tap()
         let branch = app.buttons[fixtureBranch]
         XCTAssertTrue(branch.waitForExistence(timeout: 15))
@@ -318,6 +320,15 @@ final class OnboardingJourneyTests: XCTestCase {
         branch.tap()
         app.buttons["chain.done"].tap()
         app.buttons["markets.done"].tap()
+    }
+
+    /// Öffnet „Filialen und Regionen". Seit dem 2026-08-01 liegen beide
+    /// Listen eine Seite tiefer, damit die Filialliste die Einstellungen nicht
+    /// mehr auffrisst.
+    private func openPlaces() {
+        let row = app.buttons["settings.places"]
+        XCTAssertTrue(row.waitForExistence(timeout: 15), "Kein Weg zu den Filialen")
+        row.tap()
     }
 
     /// Öffnet die Kettenseite. Seit dem 2026-08-01 liegen die Filialen dort

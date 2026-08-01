@@ -105,20 +105,28 @@ enum ShoppingListRanking {
                 for item in items {
                     // `query`, nicht `text`: Die Angabe am Artikel (L-5a) ist eine
                     // Notiz und darf die Abdeckungszahl nicht bewegen.
-                    if let pin = livingPins[item.id] {
-                        guard let offer = ShoppingListMatcher.pinnedOffer(pin, in: chainOffers) else {
-                            elsewhere.append(PinnedElsewhere(item: item.query, pin: pin))
-                            continue
+                    // Mehrere Heftungen sind mehrere **Positionen**: „Milch"
+                    // mit Bio-Milch und normaler Milch kostet beides. Eine
+                    // Kette, die nur eine davon führt, deckt auch nur eine —
+                    // untergeschoben wird weiterhin nichts.
+                    let pins = livingPins[item.id] ?? []
+                    if !pins.isEmpty {
+                        for pin in pins {
+                            guard let offer = ShoppingListMatcher.pinnedOffer(pin, in: chainOffers)
+                            else {
+                                elsewhere.append(PinnedElsewhere(item: item.query, pin: pin))
+                                continue
+                            }
+                            matched.append(RankedItemMatch(
+                                item: item.query,
+                                match: OfferMatch(
+                                    offer: offer,
+                                    kind: ShoppingListMatcher.kind(of: offer, for: item.query)
+                                ),
+                                isPinned: true
+                            ))
+                            count(offer)
                         }
-                        matched.append(RankedItemMatch(
-                            item: item.query,
-                            match: OfferMatch(
-                                offer: offer,
-                                kind: ShoppingListMatcher.kind(of: offer, for: item.query)
-                            ),
-                            isPinned: true
-                        ))
-                        count(offer)
                         continue
                     }
 
@@ -165,12 +173,12 @@ enum ShoppingListRanking {
         currentWinner: String? = nil,
         isRejected: (String, Offer) -> Bool = { _, _ in false }
     ) -> String? {
-        guard items.contains(where: { $0.pinned != nil }) else { return nil }
+        guard items.contains(where: { !$0.pinnedOffers.isEmpty }) else { return nil }
         let sieger = currentWinner
             ?? rank(items: items, offers: offers, chains: chains, isRejected: isRejected).first?.chain
         let ohne = items.map { item -> ShoppingItem in
             var kopie = item
-            kopie.pinned = nil
+            kopie.pins = nil
             return kopie
         }
         let ohneHeftung = rank(items: ohne, offers: offers, chains: chains, isRejected: isRejected)
@@ -184,12 +192,13 @@ enum ShoppingListRanking {
     private static func livingPins(
         items: [ShoppingItem],
         offers: [Offer]
-    ) -> [UUID: PinnedOffer] {
-        var living: [UUID: PinnedOffer] = [:]
+    ) -> [UUID: [PinnedOffer]] {
+        var living: [UUID: [PinnedOffer]] = [:]
         for item in items {
-            guard let pin = item.pinned,
-                  ShoppingListMatcher.pinnedOffer(pin, in: offers) != nil else { continue }
-            living[item.id] = pin
+            let alive = item.pinnedOffers.filter {
+                ShoppingListMatcher.pinnedOffer($0, in: offers) != nil
+            }
+            if !alive.isEmpty { living[item.id] = alive }
         }
         return living
     }

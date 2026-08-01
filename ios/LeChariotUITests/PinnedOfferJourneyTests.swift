@@ -26,6 +26,35 @@ final class PinnedOfferJourneyTests: XCTestCase {
 
     // MARK: Journeys
 
+    /// **Ein zweiter Pin ersetzt den ersten nicht, er kommt dazu** ([UI-7],
+    /// von Scott am 01.08. durchentschieden).
+    ///
+    /// Der Fall dahinter ist die Bio-Milch: „Milch" kann Bio-Milch *und*
+    /// normale Milch meinen, und bis hierher galt ein Eintrag = ein Suchwort =
+    /// **genau ein** getroffenes Angebot. Gegen den alten Stand fällt dieser
+    /// Test durch — dort hätte der zweite Pin den ersten überschrieben und die
+    /// Zeile trüge nur ein Produkt.
+    func testASecondPinAddsAPositionInsteadOfReplacingTheFirst() {
+        launch()
+        addItem("Vollmilch")
+
+        pinTheDearerOffer()
+        XCTAssertTrue(waitForRowLabel(containing: gewaehltes))
+
+        alsoPinTheCheapestOffer()
+
+        // Beide Wahlen stehen als eigene Kacheln auf der Zeile.
+        let zweite = app.buttons["list.matches.more"].firstMatch
+        XCTAssertTrue(zweite.waitForExistence(timeout: 10),
+                      "Der zweite Pin hat den ersten ersetzt statt danebenzustehen")
+        let beide = rowLabel() + " " + zweite.label
+        XCTAssertTrue(beide.contains(billigstes) && beide.contains(gewaehltes),
+                      "Beide Produkte müssen auf der Zeile stehen: \(beide)")
+        XCTAssertTrue(app.staticTexts["2 Produkte"].exists,
+                      "Ohne Abzeichen sehen zwei Kacheln nach einem Fehler aus")
+    }
+
+
     /// Der gemeldete Fall, von vorn bis hinten: Das teurere Angebot wird
     /// geheftet, steht danach auf der Hauptseite — und die Heftung lässt sich
     /// an derselben Stelle wieder lösen.
@@ -165,6 +194,17 @@ final class PinnedOfferJourneyTests: XCTestCase {
 
     private func rowLabel() -> String {
         app.buttons["list.matches"].firstMatch.label
+    }
+
+    /// Heftet zusätzlich das billigste Angebot — der zweite Pin.
+    private func alsoPinTheCheapestOffer() {
+        app.buttons["list.matches"].firstMatch.tap()
+        let heften = app.buttons.matching(identifier: "matches.pin").firstMatch
+        XCTAssertTrue(heften.waitForExistence(timeout: 10))
+        XCTAssertEqual(heften.label, "Auf die Liste heften",
+                       "Der erste Pin darf diesen Knopf nicht schon umgeschaltet haben")
+        heften.tap()
+        app.buttons["Fertig"].firstMatch.tap()
     }
 
     private func waitForRowLabel(containing text: String) -> Bool {

@@ -5,6 +5,10 @@ enum SupabaseError: Error {
     case notConfigured
     case invalidURL
     case httpError(statusCode: Int, body: String)
+    /// Die Datenbank kennt diese Funktion nicht — Migration noch nicht
+    /// eingespielt. Eigener Fall, weil „noch nicht da" etwas anderes ist als
+    /// „kaputt" und der Nutzer beides unterschiedlich behandeln muss.
+    case functionMissing(name: String)
 }
 
 /// Thin async wrapper around the Supabase PostgREST endpoint. No third-party dependencies.
@@ -59,6 +63,35 @@ struct SupabaseClient {
             return
         }
         try validate(response: response, data: data)
+    }
+
+    /// POST /rest/v1/rpc/{name} und gibt den Antwortkörper roh zurück.
+    ///
+    /// Roh und nicht dekodiert, weil der eine Aufrufer (der Datenexport) den
+    /// Text unverändert weiterreicht — ihn zu dekodieren und wieder zu
+    /// kodieren hieße, dem Nutzer eine Umschrift statt seiner Daten zu geben.
+    ///
+    /// Eine fehlende Funktion antwortet mit 404 und dem PostgREST-Code
+    /// `PGRST202`; sie wird als eigener Fehler gemeldet, damit „Migration
+    /// fehlt" nicht als Netzwerkfehler durchgeht.
+    func rpc<Body: Encodable>(_ name: String, body: Body) async throws -> String {
+        guard let url = URL(string: baseURL.absoluteString + "/rest/v1/rpc/" + name) else {
+            throw SupabaseError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        applyHeaders(&request)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await session.data(for: request)
+        let text = String(data: data, encoding: .utf8) ?? ""
+        if let http = response as? HTTPURLResponse, http.statusCode == 404,
+           text.contains("PGRST202") {
+            throw SupabaseError.functionMissing(name: name)
+        }
+        try validate(response: response, data: data)
+        return text
     }
 
     /// GET returning a JSON array, decoded per element: a single malformed

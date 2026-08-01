@@ -28,19 +28,39 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
     /// bug this app could ship.
     var detail: [String]?
 
-    /// Das Angebot, das diese Person für den Eintrag gewählt hat — statt des
-    /// billigsten, das die App sonst nimmt.
+    /// Die Wahl eines einzelnen Angebots, wie [App #40](https://github.com/Scxttk/lechariot-app/pull/40)
+    /// sie gebaut hat — **nur noch als Altlast gelesen, nie geschrieben.**
     ///
-    /// Siehe `PinnedOffer` für den Schlüssel und warum es nicht die Zeilen-ID
-    /// sein darf. **Optional mit Vorgabewert**, aus demselben Grund wie
-    /// `detail`: Auf den Geräten der Tester liegen Listen, die von Builds ohne
-    /// dieses Feld geschrieben wurden. Ein Pflichtfeld hier hieße, dass
-    /// `JSONDecoder` den ganzen Bestand verwirft und `ShoppingListStore` mit
-    /// einer leeren Liste startet — der schlimmste Fehler, den diese App
-    /// ausliefern kann. Nachgewiesen wird das nicht am erzeugten
-    /// Initialisierer, sondern an einem Datensatz aus der Zeit davor:
-    /// `PinnedOfferTests.testAListWrittenBeforeThePinExistedStillDecodes`.
-    var pinned: PinnedOffer?
+    /// Seit [UI-7] (2026-08-01) trägt ein Eintrag `pins` (0..n). Das Feld
+    /// bleibt trotzdem stehen, und genau darin liegt die Migration: Auf den
+    /// Geräten der Tester liegen Listen mit `pinned`, und `ShoppingListStore`
+    /// liest sie mit `try? JSONDecoder().decode(...)`. **Ein umbenanntes Feld
+    /// allein macht die gespeicherte Liste nicht unlesbar** — beide sind
+    /// optional —, aber die alte Wahl wäre still weg. Deshalb wird `pinned`
+    /// beim Dekodieren nach `pins` gehoben (siehe `init(from:)`) und danach
+    /// nicht mehr geschrieben.
+    ///
+    /// Nachgewiesen an einem echten Datensatz von vorher:
+    /// `PinnedOfferTests.testAListWrittenWithTheOldSinglePinKeepsItsChoice`.
+    private var pinned: PinnedOffer?
+
+    /// Die gewählten Angebote dieses Eintrags — 0..n.
+    ///
+    /// **Ein zweiter Pin ersetzt den ersten nicht, er kommt dazu** (Scott,
+    /// 01.08.): „Milch" kann Bio-Milch *und* normale Milch enthalten, jede als
+    /// eigene Position. Pin heißt immer „ich will es"; die Lesart „eins von
+    /// beiden" gibt es gratis über die nicht weggeklickten Vorschläge.
+    ///
+    /// Optional mit Vorgabewert, aus demselben Grund wie `detail`: Ein
+    /// Pflichtfeld ohne Vorgabe wäre der Tag, an dem alle Tester beim Update
+    /// ihre Liste verlieren — ohne Fehlermeldung.
+    var pins: [PinnedOffer]?
+
+    /// Die Wahl(en) dieses Eintrags, egal aus welchem Build sie stammen.
+    var pinnedOffers: [PinnedOffer] { pins ?? [] }
+
+    /// Ob das Matching für diesen Platz eingefroren ist.
+    var usesAutoMatch: Bool { pinnedOffers.isEmpty }
 
     init(
         id: UUID = UUID(),
@@ -48,14 +68,51 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
         isChecked: Bool = false,
         addedAt: Date = .now,
         detail: [String]? = nil,
-        pinned: PinnedOffer? = nil
+        pins: [PinnedOffer]? = nil
     ) {
         self.id = id
         self.text = text
         self.isChecked = isChecked
         self.addedAt = addedAt
         self.detail = detail
-        self.pinned = pinned
+        self.pins = pins
+        self.pinned = nil
+    }
+
+    /// **Der Migrationsschritt, ausdrücklich statt nebenbei.**
+    ///
+    /// Eine Liste aus einem Build vor dem 2026-08-01 trägt `pinned` und kein
+    /// `pins`. Ohne diesen Schritt dekodiert sie zwar sauber — beide Felder
+    /// sind optional —, aber die Heftung wäre still verschwunden. „Still" ist
+    /// hier das Problem: Der Nutzer sähe wieder das billigste Angebot und
+    /// hielte seine Wahl für vergessen.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        text = try c.decode(String.self, forKey: .text)
+        isChecked = try c.decodeIfPresent(Bool.self, forKey: .isChecked) ?? false
+        addedAt = try c.decodeIfPresent(Date.self, forKey: .addedAt) ?? .now
+        detail = try c.decodeIfPresent([String].self, forKey: .detail)
+        pinned = nil
+        let stored = try c.decodeIfPresent([PinnedOffer].self, forKey: .pins)
+        let alt = try c.decodeIfPresent(PinnedOffer.self, forKey: .pinned)
+        pins = stored ?? alt.map { [$0] }
+    }
+
+    /// `pinned` wird gelesen, aber nie wieder geschrieben — sonst stünden zwei
+    /// Wahrheiten in derselben Datei.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(text, forKey: .text)
+        try c.encode(isChecked, forKey: .isChecked)
+        try c.encode(addedAt, forKey: .addedAt)
+        try c.encodeIfPresent(detail, forKey: .detail)
+        try c.encodeIfPresent(pins, forKey: .pins)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, text, isChecked, addedAt, detail, pins, pinned
     }
 
     /// The one string that leaves this item — to the matcher, to the purchase

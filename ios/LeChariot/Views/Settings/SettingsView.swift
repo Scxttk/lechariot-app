@@ -1,8 +1,14 @@
 import SwiftUI
 import UIKit
 
-/// Einstellungen tab: manage regions (PLZs) and branches, reusing the
-/// onboarding components; plus the profile, appearance and app info.
+/// Einstellungen: Filialen und Regionen, Hilfe, Profil, Datenschutz.
+///
+/// **Die erste Seite trägt keine Listen mehr** ([UI-2], 2026-08-01). Vorher
+/// stand die Filialliste ganz oben und wuchs mit jeder gewählten Filiale;
+/// wer viele hatte, sah nichts anderes mehr und kam an den Rest nur durch
+/// Scrollen. Filialen und Regionen liegen jetzt zusammen eine Seite tiefer —
+/// sie beantworten dieselbe Frage („wo kaufst du ein"), und beide sind
+/// Listen unbekannter Länge.
 struct SettingsView: View {
     @Environment(RegionStore.self) private var store
     @Environment(ProfileStore.self) private var profile
@@ -18,23 +24,24 @@ struct SettingsView: View {
     let marketRepository: MarketRepositoryProtocol
 
     @State private var showResetConfirmation = false
-    @State private var regionToRemove: String?
     @State private var installIdCopied = false
     @State private var showForgetConfirmation = false
+    @State private var showDeleteConfirmation = false
+    @State private var privacy = PrivacyStore()
 
     var body: some View {
         NavigationStack {
             List {
                 Group {
-                    marketSection
-                    // Direkt unter den Filialen, nicht ganz unten: Der letzte
-                    // Rahmen des Rundgangs zeigt auf beide Abschnitte, und
-                    // dafür müssen sie ohne Scrollen zusammen sichtbar sein.
+                    shoppingSection
+                    // Direkt darunter, nicht ganz unten: Der letzte Rahmen des
+                    // Rundgangs zeigt auf beide Abschnitte, und dafür müssen
+                    // sie ohne Scrollen zusammen sichtbar sein.
                     helpSection
-                    regionSection
                     profileSection
                     feedbackSection
                     appearanceSection
+                    privacySection
                     appSection
                 }
                 .listRowBackground(Theme.surface)
@@ -42,6 +49,379 @@ struct SettingsView: View {
             .themedScreen()
             .navigationTitle("Einstellungen")
         }
+    }
+
+    // MARK: Einkaufen
+
+    /// Eine Zeile statt zweier Listen. Was dahinter liegt, steht in
+    /// `ShoppingPlacesScreen`.
+    private var shoppingSection: some View {
+        Section {
+            NavigationLink {
+                ShoppingPlacesScreen(marketRepository: marketRepository)
+            } label: {
+                LabeledContent("Filialen und Regionen", value: placesSummary)
+            }
+            .accessibilityIdentifier("settings.places")
+            // Der Anker sitzt auf der Zeile, nicht auf dem Abschnitt: Ein
+            // `Section` reicht den Modifikator an jede Zeile einzeln durch.
+            .tutorialAnchor(.settingsMarkets)
+        } header: {
+            Text("Einkaufen")
+        } footer: {
+            Text(store.hasFavorites
+                 ? "Nur Angebote deiner Filialen zählen für deine Liste."
+                 : "Ohne gewählte Filiale werden keine Angebote angezeigt.")
+        }
+    }
+
+    /// „8 Filialen · 2 Regionen" — die Zeile sagt, wie viel dahinter liegt,
+    /// damit man nicht hineingehen muss, um es zu erfahren.
+    private var placesSummary: String {
+        let branches = store.favoriteMarkets.count
+        let regions = store.regions.count
+        guard branches > 0 else { return "keine gewählt" }
+        let left = branches == 1 ? "1 Filiale" : "\(branches) Filialen"
+        let right = regions == 1 ? "1 Region" : "\(regions) Regionen"
+        return "\(left) · \(right)"
+    }
+
+    // MARK: Hilfe
+
+    private var helpSection: some View {
+        Section {
+            Button {
+                // Aus den Einstellungen: **keine** Frage nach den Filialen am
+                // Ende. Wer hier startet, hat seine Wahl längst getroffen oder
+                // sitzt eine Zeile über dem Weg dorthin.
+                tutorial.start(origin: .settings, hasMarkets: store.hasFavorites)
+            } label: {
+                // Gezeichneter Wegweiser statt `sparkles` — siehe `AppGlyph`.
+                // Die zwei Glitzer-Glyphen versprachen Zauberei, wo eine
+                // Einführung und ein Aufräumen stehen ([UI-3], 01.08.).
+                AppGlyphLabel(title: "Rundgang erneut ansehen", glyph: .tour)
+                    .foregroundStyle(Theme.accent)
+            }
+            .accessibilityIdentifier("settings.tutorial")
+            .tutorialAnchor(.settingsHelp)
+
+            // **Nur die Vorschläge, nicht die App.**
+            //
+            // Eine Kaufhistorie sagt etwas über Ernährung, Alkohol, Kinder,
+            // Gesundheit — Dinge, die eine Einkaufsliste nicht sagt. Wer sie
+            // loswerden will, soll dafür nicht Filialen, Profil und Onboarding
+            // mit aufgeben müssen. Scotts Entscheidung vom 2026-07-31; sie ist
+            // der Grund, warum es diesen Knopf **neben** dem Zurücksetzen gibt
+            // und nicht nur das Zurücksetzen.
+            //
+            // Ohne Warnfarbe und ohne `role: .destructive`: Was hier
+            // verschwindet, ist ein Komfort, kein Besitz.
+            Button {
+                showForgetConfirmation = true
+            } label: {
+                AppGlyphLabel(title: "Vorschläge vergessen", glyph: .forgetSuggestions)
+                    .foregroundStyle(Theme.accent)
+            }
+            .accessibilityIdentifier("settings.forgetSuggestions")
+            .confirmationDialog(
+                "Vorschläge vergessen?",
+                isPresented: $showForgetConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Vergessen", role: .destructive) { history.forget() }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                Text("Le Chariot vergisst, was du bisher abgehakt hast. „Häufig gekauft“ zeigt danach wieder die Standardvorschläge. Deine Liste, deine Filialen und deine Angaben bleiben.")
+            }
+
+            // Der Notausgang, und ab 2026-07-30 in **jedem** Build. Vorher gab
+            // es ihn nur unter `#if DEBUG`; wer in TestFlight feststeckte,
+            // konnte die App nur löschen und neu installieren. Genau die
+            // Tester, die das am ehesten bräuchten — Scotts Großeltern —, sind
+            // die, denen man es am schwersten erklärt.
+            //
+            // Ganz unten in der Sektion und mit Rückfrage: Er steht neben einem
+            // Knopf, den man aus Neugier drückt, und tut etwas Endgültiges.
+            Button(role: .destructive) {
+                showResetConfirmation = true
+            } label: {
+                Label("App zurücksetzen", systemImage: "arrow.counterclockwise")
+                    .foregroundStyle(Theme.error)
+            }
+            .accessibilityIdentifier("settings.reset")
+            .confirmationDialog(
+                "App zurücksetzen?",
+                isPresented: $showResetConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Zurücksetzen", role: .destructive) {
+                    AppReset.everything(
+                        regions: store,
+                        profile: profile,
+                        list: list,
+                        rejections: rejections,
+                        feedback: feedback,
+                        tutorial: tutorial,
+                        areaRequests: areaRequests,
+                        branchRequests: branchRequests,
+                        history: history
+                    )
+                }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                // Der zweite Satz kam am 2026-07-31 dazu, zusammen mit der
+                // sichtbaren Installations-ID: Das Zurücksetzen vergibt eine
+                // neue, und damit sind die schon hochgeladenen Zeilen von
+                // niemandem mehr zu benennen — auch nicht von dem, der sie
+                // löschen lassen will. Das ist eine Folge, die man vorher
+                // wissen muss, nicht hinterher.
+                Text("Deine Filialen, deine Einkaufsliste und deine Angaben aus dem Onboarding werden gelöscht. Danach startet Le Chariot wie nach einer Neuinstallation. Du bekommst dabei eine neue Installations-ID — willst du früher hochgeladene Angaben löschen lassen, kopier die alte vorher unter „App“.")
+            }
+        } header: {
+            Text("Hilfe")
+        } footer: {
+            Text("Der Rundgang zeigt die kurze Einführung auf der Einkaufsliste noch einmal; Le Chariot legt dafür ein paar Beispiel-Artikel auf die Liste und räumt sie danach wieder ab. Zurücksetzen hilft, wenn etwas hakt — es löscht alles, was auf dem Gerät liegt.")
+        }
+    }
+
+    // MARK: Profil
+
+    private var profileSection: some View {
+        Section {
+            NavigationLink {
+                ProfileEditScreen()
+            } label: {
+                LabeledContent("Dein Profil", value: profileSummary)
+            }
+        } header: {
+            Text("Profil")
+        } footer: {
+            Text(profile.hasConsented
+                 ? "Deine Angaben helfen bei der Weiterentwicklung und werden anonym übermittelt. Vorname und Einkaufsliste bleiben auf dem Gerät."
+                 : "Deine Angaben bleiben vollständig auf diesem Gerät.")
+        }
+    }
+
+    private var profileSummary: String {
+        let size = profile.profile.householdSize
+        var parts = [size == 1 ? "1 Person" : "\(size) Personen"]
+        parts.append("\(profile.profile.rhythm.label)/Woche")
+        if !profile.profile.dietTags.isEmpty {
+            parts.append("\(profile.profile.dietTags.count) Angaben")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    // MARK: Rückfragen
+
+    private var feedbackSection: some View {
+        @Bindable var feedback = feedback
+        return Section {
+            Toggle("Nach Ablehnungen fragen", isOn: $feedback.isAskingEnabled)
+                .tint(Theme.accent)
+        } header: {
+            Text("Rückfragen")
+        } footer: {
+            Text(feedback.isAskingEnabled
+                 ? "Wenn du einen Treffer weglegst, fragt Le Chariot kurz nach dem Grund. Das ist der einzige Weg, wie falsche Treffer gefunden und behoben werden. Überspringen geht immer."
+                 : "Weglegen funktioniert unverändert. Es wird nicht gefragt und nichts übertragen.")
+        }
+    }
+
+    // MARK: Darstellung
+
+    private var appearanceSection: some View {
+        Section("Darstellung") {
+            Picker("Erscheinungsbild", selection: $appearance) {
+                ForEach(AppAppearance.allCases) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    // MARK: Datenschutz
+
+    /// **Auskunft und Löschung, selbst auslösbar** ([UI-4], 2026-08-01).
+    ///
+    /// Bis hierher gab es nur „App zurücksetzen" (rein lokal) und die
+    /// kopierbare ID. Wer löschen lassen wollte, konnte seine ID nennen und
+    /// warten — das Löschversprechen der Datenschutzerklärung war damit zur
+    /// Hälfte eingelöst, der Export gar nicht.
+    private var privacySection: some View {
+        Section {
+            installIdRow
+
+            Button {
+                let local = LocalDataExport.collect(
+                    profile: profile, regions: store, list: list, history: history
+                )
+                Task { await privacy.buildExport(local: local) }
+            } label: {
+                LabeledContent("Deine Daten exportieren") {
+                    if privacy.export == .working { ProgressView() }
+                }
+                .foregroundStyle(Theme.accent)
+            }
+            .accessibilityIdentifier("settings.export")
+            // Ein Button verdeckt das Label seines `LabeledContent` — die
+            // Zeile war im Audit ohne Beschreibung. Dieselbe Falle wie bei
+            // `BranchPickerRow`; ein Button nimmt das Label direkt.
+            .accessibilityLabel("Deine Daten exportieren")
+            .accessibilityHint("Legt alles, was Le Chariot über dich hat, als Datei bereit")
+
+            if case let .done(note) = privacy.export, let file = privacy.exportFile {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    ShareLink(item: file) {
+                        Label("Datei teilen oder sichern", systemImage: "square.and.arrow.up")
+                    }
+                    .accessibilityIdentifier("settings.export.share")
+                    Text(note)
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                }
+            }
+            if case let .failed(message) = privacy.export {
+                Text(message).font(.caption).foregroundStyle(Theme.error)
+            }
+
+            Button(role: .destructive) {
+                showDeleteConfirmation = true
+            } label: {
+                LabeledContent("Hochgeladene Daten löschen") {
+                    if privacy.deletion == .working { ProgressView() }
+                }
+                .foregroundStyle(Theme.error)
+            }
+            .accessibilityIdentifier("settings.deleteUploaded")
+            .accessibilityLabel("Hochgeladene Daten löschen")
+            .accessibilityHint("Löscht deine Profilangaben und Rückmeldungen auf dem Server")
+            .confirmationDialog(
+                "Hochgeladene Daten löschen?",
+                isPresented: $showDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Löschen", role: .destructive) {
+                    let id = profile.profile.installId
+                    Task { await privacy.deleteUploadedData(installId: id) }
+                }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                Text("Deine Profilangaben und deine Rückmeldungen zu Treffern werden auf dem Server gelöscht. Was auf diesem Gerät liegt — Liste, Filialen, Vorname — bleibt; dafür ist „App zurücksetzen“ da.")
+            }
+
+            if case let .done(message) = privacy.deletion {
+                Text(message).font(.caption).foregroundStyle(Theme.secondaryText)
+            }
+            if case let .failed(message) = privacy.deletion {
+                Text(message).font(.caption).foregroundStyle(Theme.error)
+            }
+        } header: {
+            Text("Datenschutz")
+        } footer: {
+            // Nennt beim Namen, was **nicht** gelöscht wird. Am 01.08. an den
+            // Migrationen nachgesehen: `install_id` steht nur in
+            // `user_profiles` und `match_feedback`. Die Filial- und
+            // Gebietsanforderungen sind je Laden **eine** Zeile für alle
+            // Tester — dort steht, welcher Laden geholt werden soll, nicht wer
+            // ihn wollte.
+            Text("Die Installations-ID ist das Einzige, womit sich die hochgeladenen Zeilen benennen lassen — sie hängt an keinem Namen und an keinem Gerät. Gelöscht werden deine Profilangaben und deine Rückmeldungen. Angeforderte Filialen bleiben: dort steht nur, welcher Laden geholt werden soll, nicht wer ihn wollte. Zurücksetzen vergibt eine neue ID; die alten Zeilen kann danach niemand mehr zuordnen, du auch nicht.")
+        }
+    }
+
+    // MARK: App
+
+    private var appSection: some View {
+        Section {
+            LabeledContent("Version", value: Self.appVersion)
+            // Endmarke für den Kontrast-Audit, der ans Ende der Liste scrollen
+            // muss, bevor er misst. Ein Bezeichner und kein Text: Die Marke war
+            // zweimal deutsche Prosa und ist zweimal gebrochen, als die Prosa
+            // sich änderte.
+            LabeledContent("Angebote", value: "wöchentlich aktualisiert")
+                .accessibilityIdentifier("settings.end")
+            // Reserved ad position — see `AdSlot`. Lowest-value slot, kept as the
+            // natural home for a house ad (e.g. a werbefreie Variante).
+            AdSlotView(slot: .settingsFooter)
+        } header: {
+            Text("App")
+        }
+    }
+
+    /// **Die ID, die die Datenschutzerklärung verspricht.**
+    ///
+    /// Dort steht seit jeher: „Weil wir bewusst nicht wissen, wer du bist,
+    /// brauchen wir für Auskunft oder Löschung deine Installations-ID … dann
+    /// sagen wir dir, wo du sie findest." Bis zum 2026-07-31 gab es diesen Ort
+    /// nicht — die ID stand in keinem Bildschirm der App. **Ein Recht, das man
+    /// nur mit einer Angabe wahrnehmen kann, die man nirgends ablesen kann,
+    /// ist keins.**
+    ///
+    /// Antippen kopiert. Ein Feld zum Markieren wäre der ehrlichere Weg, aber
+    /// 36 Zeichen in einer Listenzeile von Hand zu markieren ist genau die
+    /// Sorte Aufgabe, an der jemand aufgibt, der ohnehin schon verärgert genug
+    /// ist, um eine Löschung zu verlangen.
+    private var installIdRow: some View {
+        let id = profile.profile.installId.uuidString
+        return Button {
+            UIPasteboard.general.string = id
+            withAnimation { installIdCopied = true }
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text("Installations-ID")
+                        .foregroundStyle(Color.primary)
+                    Text(id)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(Theme.secondaryText)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: installIdCopied ? "checkmark" : "doc.on.doc")
+                    .foregroundStyle(Theme.accent)
+            }
+        }
+        .accessibilityIdentifier("settings.installId")
+        // Der Zustand steht **im Namen** und nicht nur im Zeichen: Ein
+        // Häkchen, das nur zu sehen ist, bestätigt niemandem etwas, der
+        // VoiceOver benutzt — und die ID ist gerade für den da, der sie
+        // weitergeben muss.
+        .accessibilityLabel(installIdCopied ? "Installations-ID kopiert" : "Installations-ID kopieren")
+        .accessibilityValue(id)
+        .accessibilityHint("Kopiert die ID in die Zwischenablage")
+    }
+
+    private static var appVersion: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        return version ?? "–"
+    }
+
+}
+
+// MARK: - Subscreens
+
+/// **Filialen und Regionen, eine Seite tiefer** ([UI-2], 2026-08-01).
+///
+/// Beide sind Listen unbekannter Länge und beantworten dieselbe Frage: wo
+/// kaufst du ein. Auf der ersten Seite der Einstellungen fraß die Filialliste
+/// alles andere weg, sobald jemand mehr als eine Handvoll Läden hatte.
+private struct ShoppingPlacesScreen: View {
+    @Environment(RegionStore.self) private var store
+    let marketRepository: MarketRepositoryProtocol
+
+    @State private var regionToRemove: String?
+
+    var body: some View {
+        List {
+            Group {
+                marketSection
+                regionSection
+            }
+            .listRowBackground(Theme.surface)
+        }
+        .themedScreen()
+        .navigationTitle("Filialen und Regionen")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: Filialen
@@ -140,101 +520,6 @@ struct SettingsView: View {
         .accessibilityLabel(label)
     }
 
-    // MARK: Hilfe
-
-    private var helpSection: some View {
-        Section {
-            Button {
-                // Aus den Einstellungen: **keine** Frage nach den Filialen am
-                // Ende. Wer hier startet, hat seine Wahl längst getroffen oder
-                // sitzt eine Zeile über dem Weg dorthin.
-                tutorial.start(origin: .settings, hasMarkets: store.hasFavorites)
-            } label: {
-                Label("Rundgang erneut ansehen", systemImage: "sparkles")
-                    .foregroundStyle(Theme.accent)
-            }
-            .accessibilityIdentifier("settings.tutorial")
-            .tutorialAnchor(.settingsHelp)
-
-            // **Nur die Vorschläge, nicht die App.**
-            //
-            // Eine Kaufhistorie sagt etwas über Ernährung, Alkohol, Kinder,
-            // Gesundheit — Dinge, die eine Einkaufsliste nicht sagt. Wer sie
-            // loswerden will, soll dafür nicht Filialen, Profil und Onboarding
-            // mit aufgeben müssen. Scotts Entscheidung vom 2026-07-31; sie ist
-            // der Grund, warum es diesen Knopf **neben** dem Zurücksetzen gibt
-            // und nicht nur das Zurücksetzen.
-            //
-            // Ohne Warnfarbe und ohne `role: .destructive`: Was hier
-            // verschwindet, ist ein Komfort, kein Besitz.
-            Button {
-                showForgetConfirmation = true
-            } label: {
-                Label("Vorschläge vergessen", systemImage: "wand.and.sparkles")
-                    .foregroundStyle(Theme.accent)
-            }
-            .accessibilityIdentifier("settings.forgetSuggestions")
-            .confirmationDialog(
-                "Vorschläge vergessen?",
-                isPresented: $showForgetConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Vergessen", role: .destructive) { history.forget() }
-                Button("Abbrechen", role: .cancel) {}
-            } message: {
-                Text("Le Chariot vergisst, was du bisher abgehakt hast. „Häufig gekauft“ zeigt danach wieder die Standardvorschläge. Deine Liste, deine Filialen und deine Angaben bleiben.")
-            }
-
-            // Der Notausgang, und ab 2026-07-30 in **jedem** Build. Vorher gab
-            // es ihn nur unter `#if DEBUG`; wer in TestFlight feststeckte,
-            // konnte die App nur löschen und neu installieren. Genau die
-            // Tester, die das am ehesten bräuchten — Scotts Großeltern —, sind
-            // die, denen man es am schwersten erklärt.
-            //
-            // Ganz unten in der Sektion und mit Rückfrage: Er steht neben einem
-            // Knopf, den man aus Neugier drückt, und tut etwas Endgültiges.
-            Button(role: .destructive) {
-                showResetConfirmation = true
-            } label: {
-                Label("App zurücksetzen", systemImage: "arrow.counterclockwise")
-                    .foregroundStyle(Theme.error)
-            }
-            .accessibilityIdentifier("settings.reset")
-            .confirmationDialog(
-                "App zurücksetzen?",
-                isPresented: $showResetConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Zurücksetzen", role: .destructive) {
-                    AppReset.everything(
-                        regions: store,
-                        profile: profile,
-                        list: list,
-                        rejections: rejections,
-                        feedback: feedback,
-                        tutorial: tutorial,
-                        areaRequests: areaRequests,
-                        branchRequests: branchRequests,
-                        history: history
-                    )
-                }
-                Button("Abbrechen", role: .cancel) {}
-            } message: {
-                // Der zweite Satz kam am 2026-07-31 dazu, zusammen mit der
-                // sichtbaren Installations-ID: Das Zurücksetzen vergibt eine
-                // neue, und damit sind die schon hochgeladenen Zeilen von
-                // niemandem mehr zu benennen — auch nicht von dem, der sie
-                // löschen lassen will. Das ist eine Folge, die man vorher
-                // wissen muss, nicht hinterher.
-                Text("Deine Filialen, deine Einkaufsliste und deine Angaben aus dem Onboarding werden gelöscht. Danach startet Le Chariot wie nach einer Neuinstallation. Du bekommst dabei eine neue Installations-ID — willst du früher hochgeladene Angaben löschen lassen, kopier die alte vorher unter „App“.")
-            }
-        } header: {
-            Text("Hilfe")
-        } footer: {
-            Text("Der Rundgang zeigt die kurze Einführung auf der Einkaufsliste noch einmal; Le Chariot legt dafür ein paar Beispiel-Artikel auf die Liste und räumt sie danach wieder ab. Zurücksetzen hilft, wenn etwas hakt — es löscht alles, was auf dem Gerät liegt.")
-        }
-    }
-
     // MARK: Regionen
 
     /// Regions are pure status now. There used to be a checkmark picking one
@@ -304,136 +589,8 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: Profil
-
-    private var profileSection: some View {
-        Section {
-            NavigationLink {
-                ProfileEditScreen()
-            } label: {
-                LabeledContent("Dein Profil", value: profileSummary)
-            }
-        } header: {
-            Text("Profil")
-        } footer: {
-            Text(profile.hasConsented
-                 ? "Deine Angaben helfen bei der Weiterentwicklung und werden anonym übermittelt. Vorname und Einkaufsliste bleiben auf dem Gerät."
-                 : "Deine Angaben bleiben vollständig auf diesem Gerät.")
-        }
-    }
-
-    private var profileSummary: String {
-        let size = profile.profile.householdSize
-        var parts = [size == 1 ? "1 Person" : "\(size) Personen"]
-        parts.append("\(profile.profile.rhythm.label)/Woche")
-        if !profile.profile.dietTags.isEmpty {
-            parts.append("\(profile.profile.dietTags.count) Angaben")
-        }
-        return parts.joined(separator: " · ")
-    }
-
-    // MARK: Rückfragen
-
-    private var feedbackSection: some View {
-        @Bindable var feedback = feedback
-        return Section {
-            Toggle("Nach Ablehnungen fragen", isOn: $feedback.isAskingEnabled)
-                .tint(Theme.accent)
-        } header: {
-            Text("Rückfragen")
-        } footer: {
-            Text(feedback.isAskingEnabled
-                 ? "Wenn du einen Treffer weglegst, fragt Le Chariot kurz nach dem Grund. Das ist der einzige Weg, wie falsche Treffer gefunden und behoben werden. Überspringen geht immer."
-                 : "Weglegen funktioniert unverändert. Es wird nicht gefragt und nichts übertragen.")
-        }
-    }
-
-    // MARK: Darstellung
-
-    private var appearanceSection: some View {
-        Section("Darstellung") {
-            Picker("Erscheinungsbild", selection: $appearance) {
-                ForEach(AppAppearance.allCases) { mode in
-                    Text(mode.label).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-        }
-    }
-
-    // MARK: App
-
-    private var appSection: some View {
-        Section {
-            LabeledContent("Version", value: Self.appVersion)
-            installIdRow
-            // Endmarke für den Kontrast-Audit, der ans Ende der Liste scrollen
-            // muss, bevor er misst. Ein Bezeichner und kein Text: Die Marke war
-            // zweimal deutsche Prosa und ist zweimal gebrochen, als die Prosa
-            // sich änderte — zuletzt am 2026-07-30, als der Debug-Abschnitt
-            // wegfiel, dessen Fußzeile sie war.
-            LabeledContent("Angebote", value: "wöchentlich aktualisiert")
-                .accessibilityIdentifier("settings.end")
-            // Reserved ad position — see `AdSlot`. Lowest-value slot, kept as the
-            // natural home for a house ad (e.g. a werbefreie Variante).
-            AdSlotView(slot: .settingsFooter)
-        } header: {
-            Text("App")
-        } footer: {
-            Text("Die Installations-ID ist das Einzige, womit sich die hochgeladenen Zeilen benennen lassen — sie hängt an keinem Namen und an keinem Gerät. Für eine Auskunft oder Löschung schick sie mit. Zurücksetzen vergibt eine neue; die alten Zeilen kann danach niemand mehr zuordnen, du auch nicht.")
-        }
-    }
-
-    /// **Die ID, die die Datenschutzerklärung verspricht.**
-    ///
-    /// Dort steht seit jeher: „Weil wir bewusst nicht wissen, wer du bist,
-    /// brauchen wir für Auskunft oder Löschung deine Installations-ID … dann
-    /// sagen wir dir, wo du sie findest." Bis zum 2026-07-31 gab es diesen Ort
-    /// nicht — die ID stand in keinem Bildschirm der App. **Ein Recht, das man
-    /// nur mit einer Angabe wahrnehmen kann, die man nirgends ablesen kann,
-    /// ist keins.**
-    ///
-    /// Antippen kopiert. Ein Feld zum Markieren wäre der ehrlichere Weg, aber
-    /// 36 Zeichen in einer Listenzeile von Hand zu markieren ist genau die
-    /// Sorte Aufgabe, an der jemand aufgibt, der ohnehin schon verärgert genug
-    /// ist, um eine Löschung zu verlangen.
-    private var installIdRow: some View {
-        let id = profile.profile.installId.uuidString
-        return Button {
-            UIPasteboard.general.string = id
-            withAnimation { installIdCopied = true }
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.md) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    Text("Installations-ID")
-                        .foregroundStyle(Color.primary)
-                    Text(id)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(Theme.secondaryText)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: installIdCopied ? "checkmark" : "doc.on.doc")
-                    .foregroundStyle(Theme.accent)
-            }
-        }
-        .accessibilityIdentifier("settings.installId")
-        // Der Zustand steht **im Namen** und nicht nur im Zeichen: Ein
-        // Häkchen, das nur zu sehen ist, bestätigt niemandem etwas, der
-        // VoiceOver benutzt — und die ID ist gerade für den da, der sie
-        // weitergeben muss.
-        .accessibilityLabel(installIdCopied ? "Installations-ID kopiert" : "Installations-ID kopieren")
-        .accessibilityValue(id)
-        .accessibilityHint("Kopiert die ID in die Zwischenablage")
-    }
-
-    private static var appVersion: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        return version ?? "–"
-    }
-
 }
 
-// MARK: - Subscreens
 
 /// Wraps MarketPickerView so "Fertig" pops back to the settings list.
 private struct EditMarketsScreen: View {

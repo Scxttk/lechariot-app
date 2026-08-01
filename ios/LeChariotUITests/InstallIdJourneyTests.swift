@@ -109,10 +109,58 @@ final class InstallIdJourneyTests: XCTestCase {
         if abbrechen.waitForExistence(timeout: 3) { abbrechen.tap() }
     }
 
+    /// **Das Löschversprechen ist einlösbar, nicht nur nennbar** ([UI-4],
+    /// 01.08.). Bis dahin gab es nur „App zurücksetzen" (rein lokal) und die
+    /// kopierbare ID — der Nutzer konnte seine ID nennen und warten.
+    ///
+    /// Der Test schaut auf den **Satz danach**: Die App muss sagen, was
+    /// wirklich verschwunden ist. Ein „Erledigt" ohne Zahl wäre genau die
+    /// Behauptung, gegen die dieser Weg gebaut wurde.
+    func testUploadedDataCanBeDeletedFromTheDevice() {
+        openSettings()
+        let löschen = scrollTo("settings.deleteUploaded")
+        löschen.tap()
+
+        let bestätigen = app.descendants(matching: .button)["Löschen"].firstMatch
+        XCTAssertTrue(bestätigen.waitForExistence(timeout: 5))
+        bestätigen.tap()
+
+        let ergebnis = app.staticTexts.containing(
+            NSPredicate(format: "label BEGINSWITH[c] %@", "Gelöscht:")
+        ).firstMatch
+        XCTAssertTrue(
+            ergebnis.waitForExistence(timeout: 10),
+            "Nach dem Löschen sagt nichts, was tatsächlich gelöscht wurde"
+        )
+    }
+
+    /// Der Export legt eine Datei bereit und bietet sie zum Teilen an — ein
+    /// Auskunftsrecht ohne Ausgang wäre keins.
+    func testTheExportProducesAFileToShare() {
+        openSettings()
+        scrollTo("settings.export").tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["settings.export.share"].waitForExistence(timeout: 10),
+            "Der Export lässt sich nicht weitergeben"
+        )
+    }
+
     // MARK: Helfer
 
     private func istUUID(_ text: String) -> Bool {
         UUID(uuidString: text) != nil
+    }
+
+    private func scrollTo(_ identifier: String) -> XCUIElement {
+        let element = app.descendants(matching: .any)[identifier]
+        var swipes = 0
+        while !element.exists && swipes < 14 {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(element.exists, "\(identifier) steht nirgends in den Einstellungen")
+        return element
     }
 
     private func scrollToInstallId() -> XCUIElement {

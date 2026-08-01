@@ -64,15 +64,26 @@ struct ShoppingListView: View {
     /// Die Karte widerspricht dem nicht: Sie führt denselben Artikel dann unter
     /// „Deine Wahl woanders" auf, statt ihn als abgedeckt zu zählen.
     private func suggestion(for item: ShoppingItem, plan: [MarketListRank]) -> ItemSuggestion {
-        if let pin = item.pinned,
-           let offer = ShoppingListMatcher.pinnedOffer(pin, in: offerStore.offers) {
-            return ItemSuggestion(
-                match: OfferMatch(
-                    offer: offer,
-                    kind: ShoppingListMatcher.kind(of: offer, for: item.query)
-                ),
-                isPinned: true
-            )
+        let pins = item.pinnedOffers
+        if !pins.isEmpty {
+            var positions: [ItemSuggestion.Position] = []
+            var dormant: [PinnedOffer] = []
+            for pin in pins {
+                if let offer = ShoppingListMatcher.pinnedOffer(pin, in: offerStore.offers) {
+                    positions.append(ItemSuggestion.Position(
+                        match: OfferMatch(
+                            offer: offer,
+                            kind: ShoppingListMatcher.kind(of: offer, for: item.query)
+                        ),
+                        isPinned: true
+                    ))
+                } else {
+                    dormant.append(pin)
+                }
+            }
+            if !positions.isEmpty {
+                return ItemSuggestion(positions: positions, dormantPins: dormant)
+            }
         }
         let fallback: OfferMatch? = {
             if let winner = plan.first,
@@ -86,7 +97,10 @@ struct ShoppingListView: View {
         // `dormantPin` ist genau dann gesetzt, wenn eine Wahl geheftet ist, es
         // sie diese Woche aber nirgends gibt — der Zweig darüber hat sie sonst
         // schon abgefangen.
-        return ItemSuggestion(match: fallback, dormantPin: item.pinned)
+        return ItemSuggestion(
+            positions: fallback.map { [ItemSuggestion.Position(match: $0, isPinned: false)] } ?? [],
+            dormantPins: item.pinnedOffers
+        )
     }
 
     /// Der Satz für eine Zeile ohne Treffer, wenn ein Suchwort dem Wörterbuch
