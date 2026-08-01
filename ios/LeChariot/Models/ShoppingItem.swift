@@ -28,18 +28,34 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
     /// bug this app could ship.
     var detail: [String]?
 
+    /// Das Angebot, das diese Person für den Eintrag gewählt hat — statt des
+    /// billigsten, das die App sonst nimmt.
+    ///
+    /// Siehe `PinnedOffer` für den Schlüssel und warum es nicht die Zeilen-ID
+    /// sein darf. **Optional mit Vorgabewert**, aus demselben Grund wie
+    /// `detail`: Auf den Geräten der Tester liegen Listen, die von Builds ohne
+    /// dieses Feld geschrieben wurden. Ein Pflichtfeld hier hieße, dass
+    /// `JSONDecoder` den ganzen Bestand verwirft und `ShoppingListStore` mit
+    /// einer leeren Liste startet — der schlimmste Fehler, den diese App
+    /// ausliefern kann. Nachgewiesen wird das nicht am erzeugten
+    /// Initialisierer, sondern an einem Datensatz aus der Zeit davor:
+    /// `PinnedOfferTests.testAListWrittenBeforeThePinExistedStillDecodes`.
+    var pinned: PinnedOffer?
+
     init(
         id: UUID = UUID(),
         text: String,
         isChecked: Bool = false,
         addedAt: Date = .now,
-        detail: [String]? = nil
+        detail: [String]? = nil,
+        pinned: PinnedOffer? = nil
     ) {
         self.id = id
         self.text = text
         self.isChecked = isChecked
         self.addedAt = addedAt
         self.detail = detail
+        self.pinned = pinned
     }
 
     /// The one string that leaves this item — to the matcher, to the purchase

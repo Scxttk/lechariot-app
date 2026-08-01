@@ -25,6 +25,70 @@ enum ShoppingListMatcher {
         let ranked = matches(for: text, in: offers, isRejected: isRejected)
         return ranked.first { $0.offer.price != nil } ?? ranked.first
     }
+
+    // MARK: Die geheftete Wahl
+
+    /// Das geheftete Angebot in diesem Vorrat, falls es diese Woche dabei ist.
+    ///
+    /// **Bewusst am Matcher vorbei.** Wer ein Produkt selbst ausgesucht hat,
+    /// will es sehen — auch dann, wenn das Wörterbuch es diese Woche nicht mehr
+    /// unter sein Listenwort sortiert oder der Prospekttitel ein Wort verloren
+    /// hat. Die Heftung ist eine Aussage über ein Produkt, keine Anfrage.
+    ///
+    /// **Und bewusst an den Ablehnungen vorbei.** Anheften ist die deutlichere
+    /// der beiden Aussagen; stünden beide gegeneinander, gewinnt die Heftung.
+    /// Die Oberfläche lässt es gar nicht erst so weit kommen — ein ✕ auf dem
+    /// gehefteten Angebot nimmt die Heftung mit, siehe `MatchDetailView`.
+    static func pinnedOffer(_ pin: PinnedOffer, in offers: [Offer]) -> Offer? {
+        offers.first { $0.matches(pin) }
+    }
+
+    /// Welcher Art der Treffer wäre, wenn man dieses eine Angebot durch den
+    /// Matcher schickt. Nur fürs Abzeichen im Treffer-Blatt — ein geheftetes
+    /// Angebot steht dort auch dann, wenn keine der beiden Stufen es findet;
+    /// „Passt vielleicht" ist dann die ehrlichere der zwei Beschriftungen.
+    static func kind(of offer: Offer, for query: String) -> MatchKind {
+        OfferMatcher.matches(for: query, in: [offer]).first?.kind ?? .category
+    }
+
+    /// Was in einer Listenzeile steht: das Angebot **und** ob es die eigene
+    /// Wahl ist.
+    ///
+    /// Die Heftung schlägt das billigste, solange es sie gibt. Gibt es sie
+    /// diese Woche nicht, fällt die Zeile auf das billigste zurück — aber
+    /// `dormantPin` zwingt sie, das auch zu sagen.
+    static func suggestion(
+        for item: ShoppingItem,
+        in offers: [Offer],
+        isRejected: (Offer) -> Bool = { _ in false }
+    ) -> ItemSuggestion {
+        if let pin = item.pinned, let offer = pinnedOffer(pin, in: offers) {
+            return ItemSuggestion(
+                match: OfferMatch(offer: offer, kind: kind(of: offer, for: item.query)),
+                isPinned: true
+            )
+        }
+        return ItemSuggestion(
+            match: cheapestMatch(for: item.query, in: offers, isRejected: isRejected),
+            dormantPin: item.pinned
+        )
+    }
+}
+
+/// Was eine Listenzeile über ihr Angebot zu sagen hat.
+///
+/// Drei Zustände in einem Wert, damit die Zeile sie nicht aus zwei Optionals
+/// zusammenraten muss: das billigste (Normalfall), die eigene Wahl
+/// (`isPinned`), und die eigene Wahl, die es diese Woche nicht gibt
+/// (`dormantPin` gesetzt, `match` ist dann der sichtbar gemachte Rückfall).
+struct ItemSuggestion: Equatable {
+    /// Das Angebot, das die Zeile zeigt. `nil` heißt „nichts gefunden".
+    let match: OfferMatch?
+    /// Ob `match` die geheftete Wahl ist.
+    var isPinned: Bool = false
+    /// Gesetzt, wenn eine Wahl geheftet ist, es sie diese Woche aber nirgends
+    /// gibt. Die Zeile **muss** das aussprechen.
+    var dormantPin: PinnedOffer?
 }
 
 // MARK: - Quick-add suggestions
@@ -225,6 +289,17 @@ final class ShoppingListStore {
     func setDetail(_ detail: [String], for item: ShoppingItem) {
         guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
         items[idx].detail = detail.isEmpty ? nil : detail
+        persist()
+    }
+
+    /// Heftet ein Angebot an den Eintrag, oder löst die Heftung (`nil`).
+    ///
+    /// Die Wahl liegt **im Artikel**, nicht in einem eigenen Speicher: Sie
+    /// gehört zu genau diesem Listeneintrag, verschwindet mit ihm, und
+    /// `AppReset` räumt sie schon mit ab, ohne dass jemand daran denken muss.
+    func setPin(_ pin: PinnedOffer?, for item: ShoppingItem) {
+        guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
+        items[idx].pinned = pin
         persist()
     }
 

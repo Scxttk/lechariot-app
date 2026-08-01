@@ -8,6 +8,14 @@ import SwiftUI
 /// compare — sits behind a disclosure, because on most days it is not needed.
 struct ShoppingPlanCard: View {
     let ranks: [MarketListRank]
+    /// Die Kette, die ohne die gehefteten Wahlen gewönne — `nil`, wenn sie am
+    /// Ergebnis nichts ändern.
+    ///
+    /// Eine Heftung darf den empfohlenen Markt kippen (sonst rechnete die Karte
+    /// einen Einkauf aus, den niemand macht), und **dann muss die Karte das
+    /// sagen dürfen**. Ein Sieger, der sich ohne erkennbaren Grund ändert,
+    /// sieht aus wie ein Fehler der App statt wie die Folge der eigenen Wahl.
+    var winnerWithoutPins: String? = nil
 
     @State private var isExpanded = false
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -23,7 +31,7 @@ struct ShoppingPlanCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 headline(winner)
 
-                if !winner.matchedItems.isEmpty || !others.isEmpty {
+                if !winner.matchedItems.isEmpty || !winner.pinnedElsewhere.isEmpty || !others.isEmpty {
                     Divider()
                         .padding(.vertical, Theme.Spacing.md)
                     disclosureButton
@@ -91,6 +99,15 @@ struct ShoppingPlanCard: View {
                 // Inside a List row a Text defaults to a single truncated line;
                 // this lets it grow downwards instead ("deckt 6 von …").
                 .fixedSize(horizontal: false, vertical: true)
+
+            // Steht **oben** und nicht hinter „Was heißt das?": Eine Karte, die
+            // ihren Ausschlag erst nach einem Tipp verrät, sagt ihn nicht.
+            if let flipLine {
+                Text(flipLine)
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(headlineSummary(winner))
@@ -103,6 +120,11 @@ struct ShoppingPlanCard: View {
         return "deckt \(rank.matchedCount) von \(rank.itemCount) Artikeln ab"
     }
 
+    /// Der Satz, der den Ausschlag der eigenen Wahl benennt.
+    private var flipLine: String? {
+        winnerWithoutPins.map { "Deine Wahl gibt den Ausschlag — ohne sie wäre \($0) am besten." }
+    }
+
     private func headlineSummary(_ rank: MarketListRank) -> String {
         guard rank.matchedCount > 0 else {
             return "Kein Markt hat diese Woche Angebote für deine Liste."
@@ -112,6 +134,9 @@ struct ShoppingPlanCard: View {
         if let total = rank.total {
             summary += ", zusammen \(total.formatted(.currency(code: "EUR")))"
         }
+        // Die Kopfzeile ist **ein** Element (`children: .ignore`) — was hier
+        // nicht mitkommt, existiert für VoiceOver nicht.
+        if let flipLine { summary += ". " + flipLine }
         return summary
     }
 
@@ -156,6 +181,17 @@ struct ShoppingPlanCard: View {
                     color: Theme.success
                 )
             }
+            // Eigene Gruppe, nicht unter „Zum Normalpreis": „Lidl hat keinen
+            // Käse im Angebot" und „Lidl hat Käse, aber nicht deinen" sind für
+            // jemanden, der einen Einkauf plant, zwei verschiedene Sätze.
+            if !winner.pinnedElsewhere.isEmpty {
+                itemGroup(
+                    title: "Deine Wahl woanders",
+                    items: winner.pinnedElsewhere.map(\.line),
+                    symbol: "pin.fill",
+                    color: Theme.accent
+                )
+            }
             if !winner.missingItems.isEmpty {
                 itemGroup(
                     title: "Zum Normalpreis",
@@ -167,7 +203,7 @@ struct ShoppingPlanCard: View {
             if !others.isEmpty {
                 otherMarkets
             }
-            Text("Erst Abdeckung, dann Preis. Die Summe zählt nur die gefundenen Angebote — Normalpreise sind nicht dabei.")
+            Text(footnote(winner))
                 .font(.caption)
                 .foregroundStyle(Theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
@@ -176,6 +212,15 @@ struct ShoppingPlanCard: View {
         // Eigener Abstand nach oben statt VStack-Spacing: er gehört zur
         // gemessenen Höhe und verschwindet damit im eingeklappten Zustand mit.
         .padding(.top, Theme.Spacing.md)
+    }
+
+    /// Die Fußnote sagt, wie die Summe zustande kommt — und **nur dann**
+    /// zusätzlich etwas über Heftungen, wenn eine im Spiel ist. Ein Satz über
+    /// eine Funktion, die dieser Nutzer nicht benutzt, ist Rauschen.
+    private func footnote(_ winner: MarketListRank) -> String {
+        let basis = "Erst Abdeckung, dann Preis. Die Summe zählt nur die gefundenen Angebote — Normalpreise sind nicht dabei."
+        guard winner.hasPinnedItems else { return basis }
+        return basis + " Angeheftete Artikel zählen mit deinem Preis, nicht mit dem billigsten."
     }
 
     private func itemGroup(
@@ -255,6 +300,30 @@ struct ShoppingPlanCard: View {
             total: 1.29
         ),
     ])
+    .padding()
+    .background(Theme.background)
+}
+
+#Preview("Mit geheftetem Artikel") {
+    ShoppingPlanCard(
+        ranks: [
+            MarketListRank(
+                chain: "Lidl",
+                matchedItems: [
+                    RankedItemMatch(item: "Milch", match: OfferMatch(offer: MockFixtures.offers[0], kind: .direct)),
+                ],
+                missingItems: [],
+                pinnedElsewhere: [
+                    PinnedElsewhere(item: "Käse", pin: PinnedOffer(
+                        marketKey: "netto-01219-1", market: "Netto",
+                        product: "GRÜNLÄNDER Schnittkäse"
+                    )),
+                ],
+                total: 0.99
+            ),
+        ],
+        winnerWithoutPins: "Netto"
+    )
     .padding()
     .background(Theme.background)
 }

@@ -50,6 +50,15 @@ All 21 columns, read from the live table on 2026-07-31. The app selects with
 > fail to decode — and only in production, because no fixture carried the
 > column. Any timestamp column added here inherits that trap.
 
+> **`id` is not a handle on a product.** Offers rotate on Thursdays, and on
+> 2026-07-31 the rebuild deleted and rewrote all 38 413 rows — every `id`
+> changed, for products that had not. Anything the app wants to remember about
+> a specific offer beyond one week (today: a pinned choice, `PinnedOffer`) must
+> key on `market_id` + `product`, the same identity the backend's upsert uses.
+> `Offer.id` in the app is not this column either: it is `market_id | product |
+> valid_from`, which is deliberately week-scoped — that is what makes a
+> rejection expire and what makes it useless as a pin.
+
 > **`region` is gone.** Backend migration v16 removed it; an offer has belonged
 > to a branch since v13. A query still filtering on it fails outright with
 > `column offers.region does not exist` — verified against production on

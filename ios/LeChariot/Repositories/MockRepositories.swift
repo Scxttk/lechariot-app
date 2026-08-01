@@ -52,6 +52,32 @@ enum MockFixtures {
             baseUnit: "1 kg",
             nationwide: false
         ),
+        // **Die teurere Alternative bei derselben Kette.** Ohne sie gibt es zu
+        // „Vollmilch" genau einen Treffer, und eine Wahl unter einem Angebot
+        // ist keine — der Tester-Wunsch vom 2026-07-31 („ich will lieber den,
+        // der nicht der billigste ist") wäre gar nicht nachstellbar.
+        //
+        // Zwei Entscheidungen an dieser Zeile, beide gegen stille Kollateralen:
+        // Sie ist **teurer** als „Bio Vollmilch", sonst würde sie zum
+        // vorgeschlagenen Angebot und drei bestehende Zusicherungen auf „Bio
+        // Vollmilch" fielen um, ohne dass an ihnen etwas kaputt wäre. Und sie
+        // steht **hinten**, weil `MockFixtures.offers[0]` und `[1]` quer durch
+        // die Tests als feste Handgriffe benutzt werden.
+        Offer(
+            marketId: "lidl-01219-1",
+            market: "Lidl",
+            product: "Landliebe Frische Vollmilch",
+            price: 1.49,
+            regularPrice: nil,
+            unit: "je 1 l",
+            category: "Molkerei & Eier",
+            emoji: "🥛",
+            validFrom: weekStart,
+            validUntil: weekEnd,
+            basePrice: 1.49,
+            baseUnit: "1 l",
+            nationwide: false
+        ),
     ]
 
     /// Three recorded weeks for the first offer fixture — enough for the

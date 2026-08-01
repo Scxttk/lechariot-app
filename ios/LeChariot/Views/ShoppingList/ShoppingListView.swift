@@ -56,14 +56,37 @@ struct ShoppingListView: View {
     /// sum in the card matches nothing the user can actually buy in one trip.
     /// Items the recommended market has nothing for fall back to the cheapest
     /// offer elsewhere; the market name on the row says where.
-    private func match(for item: ShoppingItem, plan: [MarketListRank]) -> OfferMatch? {
-        if let winner = plan.first,
-           let covered = winner.matchedItems.first(where: { $0.item == item.query }) {
-            return covered.match
+    ///
+    /// **Eine geheftete Wahl steht über dieser Regel.** Sie ist der Grund, aus
+    /// dem es die Zeile gibt: Wer den GRÜNLÄNDER gewählt hat, will ihn
+    /// dauerhaft auf der Liste sehen — auch dann, wenn die Karte gerade eine
+    /// andere Kette empfiehlt. Der Marktname an der Zeile sagt weiterhin, wo.
+    /// Die Karte widerspricht dem nicht: Sie führt denselben Artikel dann unter
+    /// „Deine Wahl woanders" auf, statt ihn als abgedeckt zu zählen.
+    private func suggestion(for item: ShoppingItem, plan: [MarketListRank]) -> ItemSuggestion {
+        if let pin = item.pinned,
+           let offer = ShoppingListMatcher.pinnedOffer(pin, in: offerStore.offers) {
+            return ItemSuggestion(
+                match: OfferMatch(
+                    offer: offer,
+                    kind: ShoppingListMatcher.kind(of: offer, for: item.query)
+                ),
+                isPinned: true
+            )
         }
-        return ShoppingListMatcher.cheapestMatch(for: item.query, in: offerStore.offers) {
-            rejections.isRejected(itemText: item.query, offer: $0)
-        }
+        let fallback: OfferMatch? = {
+            if let winner = plan.first,
+               let covered = winner.matchedItems.first(where: { $0.item == item.query }) {
+                return covered.match
+            }
+            return ShoppingListMatcher.cheapestMatch(for: item.query, in: offerStore.offers) {
+                rejections.isRejected(itemText: item.query, offer: $0)
+            }
+        }()
+        // `dormantPin` ist genau dann gesetzt, wenn eine Wahl geheftet ist, es
+        // sie diese Woche aber nirgends gibt — der Zweig darüber hat sie sonst
+        // schon abgefangen.
+        return ItemSuggestion(match: fallback, dormantPin: item.pinned)
     }
 
     private var ranks: [MarketListRank] {
@@ -71,6 +94,20 @@ struct ShoppingListView: View {
             items: list.uncheckedItems,
             offers: offerStore.offers,
             chains: chains
+        ) { rejections.isRejected(itemText: $0, offer: $1) }
+    }
+
+    /// Die Kette, die ohne die Heftungen gewönne — `nil`, wenn sie nichts
+    /// ändern. Kostet nur dann einen zweiten Durchlauf, wenn überhaupt etwas
+    /// geheftet ist; die Prüfung darauf steckt in `winnerWithoutPins`. Der
+    /// schon gerechnete Plan wird durchgereicht, damit es bei **einem**
+    /// zusätzlichen Durchlauf bleibt.
+    private func winnerWithoutPins(_ plan: [MarketListRank]) -> String? {
+        ShoppingListRanking.winnerWithoutPins(
+            items: list.uncheckedItems,
+            offers: offerStore.offers,
+            chains: chains,
+            currentWinner: plan.first?.chain
         ) { rejections.isRejected(itemText: $0, offer: $1) }
     }
 
@@ -98,6 +135,10 @@ struct ShoppingListView: View {
                 favoriteMarkets: favoriteMarkets
             )
                 .environment(rejections)
+                // Das Blatt schreibt die Heftung selbst und muss den Artikel
+                // dafür **live** lesen: `detailItem` ist eine Kopie vom Moment
+                // des Antippens und wüsste von der eigenen Änderung nichts.
+                .environment(list)
         }
         .sheet(item: $editingItem) { item in
             ItemDetailSheet(item: item) { detail in
@@ -113,7 +154,7 @@ struct ShoppingListView: View {
             let plan = ranks
             if !plan.isEmpty {
                 Section {
-                    ShoppingPlanCard(ranks: plan)
+                    ShoppingPlanCard(ranks: plan, winnerWithoutPins: winnerWithoutPins(plan))
                         .tutorialAnchor(.planCard)
                         .listRowInsets(EdgeInsets(
                             top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
@@ -143,7 +184,7 @@ struct ShoppingListView: View {
                 ForEach(Array(list.uncheckedItems.enumerated()), id: \.element.id) { index, item in
                     ShoppingListRowView(
                         item: item,
-                        match: match(for: item, plan: plan),
+                        suggestion: suggestion(for: item, plan: plan),
                         hasMarkets: hasMarkets,
                         // Nur die erste offene Zeile trägt die Anker des
                         // Rundgangs — sonst zeigt das Loch auf sechs Stellen.
@@ -172,7 +213,6 @@ struct ShoppingListView: View {
                     ForEach(Array(list.checkedItems.enumerated()), id: \.element.id) { index, item in
                         ShoppingListRowView(
                             item: item,
-                            match: nil,
                             onToggle: { check(item) },
                             // Auch am erledigten Artikel: Die Angabe gilt beim
                             // nächsten Mal genauso, und wer im Laden merkt,
