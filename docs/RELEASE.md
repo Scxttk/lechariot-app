@@ -13,27 +13,35 @@ filled-in `APIKeys.plist` — without real keys `APIConfig.isConfigured` is fals
 and the app quietly serves mock offers, which nobody would recognise as a fault
 on a real phone.
 
-**Signing is proven; uploading is not.** The archive-and-export path produces a
-genuinely App-Store-signed `.ipa` — `Apple Distribution: Scott Koehler
+**Signing is proven, and so is uploading.** The archive-and-export path produces
+a genuinely App-Store-signed `.ipa` — `Apple Distribution: Scott Koehler
 (3DZ9T8SGX5)`, chained to Apple WWDR, with a store profile and
 `get-task-allow: false`. Verified on the unpacked artifact.
 
-Uploading is a different door, and it is shut. There is **no Apple ID signed
-into Xcode** — `DVTDeveloperAccountManagerAppleIDLists` is empty — so the upload
-step fails:
+`--upload` works too, and has since an Apple ID was added to Xcode. It was first
+walked end to end on 2026-07-31 with build `0.1.0 (2026.0731.2046)`, which went
+up without a prompt, and again on 2026-08-01.
 
-```
-IDEDistributionUploadAccountStep: "Failed to Use Accounts"
-App Store Connect access for "3DZ9T8SGX5" is required.
-```
+**How it authenticates:** the script uses the three `ASC_*` variables if all of
+them are set, and otherwise falls back to the Apple ID signed into Xcode,
+printing `Kein API-Schlüssel gesetzt` when it does. There is no `.p8` on this Mac
+today, so the fallback *is* the live path. An API key is only needed where nobody
+is signed in — that is, CI.
 
-A first attempt reported `missingApp(bundleId: "com.skoehler.lechariot")`
-instead, which reads like "only the app record is missing". It is not that:
-the same log shows `App Store Connect team IDs for account (null) are ()` — an
-empty team list from a session that does not exist. The missing record was a
-symptom of having no account, not the sole blocker.
+If an upload ever does fail, the signed `.ipa` is already in `build/export/` and
+goes out through Xcode → Organizer → Distribute App. That is a failed upload, not
+a failed build.
 
-So there are two prerequisites below, not one.
+> **This section used to say the opposite** — that uploading was "a different
+> door, and it is shut", because `DVTDeveloperAccountManagerAppleIDLists` was
+> empty and the step died with `IDEDistributionUploadAccountStep: "Failed to Use
+> Accounts"`. That was true when written and stopped being true the moment an
+> account was added. It is recorded rather than deleted because the failure mode
+> is worth recognising if it returns: an empty account list *also* reports
+> `missingApp(bundleId: "com.skoehler.lechariot")`, which reads like a missing
+> App Store Connect record and is not one. The giveaway in the same log is
+> `App Store Connect team IDs for account (null) are ()` — an empty team list
+> from a session that does not exist.
 
 ## Version and build number
 
@@ -55,11 +63,12 @@ touch the build number.
 
 None of this is in the repo, because none of it can be.
 
-0. **An Apple ID in Xcode.** Xcode → Settings → Accounts → **+** → Apple ID,
-   with the account that holds team `3DZ9T8SGX5`. Needs the password and the
-   two-factor code, so it is yours to do and cannot be scripted. Nothing signs
-   in today; signing works anyway because the certificate and store profile
-   already exist locally, but the upload has no session to use.
+0. ~~**An Apple ID in Xcode.**~~ ✅ **Done.** Xcode → Settings → Accounts holds
+   the account for team `3DZ9T8SGX5`, and `--upload` uses that session. Listed
+   here only so the order stays readable: it needs a password and a two-factor
+   code, so if it ever has to be redone it is yours and cannot be scripted.
+   Signing itself never depended on it — the certificate and store profile are
+   local — only the upload did.
 
 1. **App record.** appstoreconnect.apple.com → Apps → +, platform iOS, bundle ID
    `com.skoehler.lechariot`, primary language German. The App ID is already
@@ -169,4 +178,8 @@ report eight times:
   shopping list, and the list asks for branches — so a tester who skips that
   step has a working shopping list with no price comparison, which looks like a
   gap and is one.
-- Contrast in Settings is not covered by the accessibility gate.
+- ~~Contrast in Settings is not covered by the accessibility gate.~~ Covered
+  again since 2026-08-01: the gate was off from 28.07. because the audit
+  measures *through* the shadow of a card and reported findings the rendered
+  pixels contradict. Bars are excluded and the screen is given longer to settle,
+  so Settings is measured sharply again.
