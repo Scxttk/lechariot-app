@@ -44,9 +44,11 @@ enum ShoppingListMatcher {
     }
 
     /// Welcher Art der Treffer wäre, wenn man dieses eine Angebot durch den
-    /// Matcher schickt. Nur fürs Abzeichen im Treffer-Blatt — ein geheftetes
-    /// Angebot steht dort auch dann, wenn keine der beiden Stufen es findet;
-    /// „Passt vielleicht" ist dann die ehrlichere der zwei Beschriftungen.
+    /// Matcher schickt. Ein geheftetes Angebot steht im Trefferblatt auch dann,
+    /// wenn keine der beiden Stufen es findet — `category` ist dann die
+    /// zurückhaltendere der beiden Antworten. Die Zeile behauptet daraus nichts
+    /// mehr: Wo eine Heftung steht, sagt das Abzeichen „Deine Wahl", und die
+    /// Herkunftszeile schweigt (siehe `MatchDetailView.rowSubtitle`).
     static func kind(of offer: Offer, for query: String) -> MatchKind {
         OfferMatcher.matches(for: query, in: [offer]).first?.kind ?? .category
     }

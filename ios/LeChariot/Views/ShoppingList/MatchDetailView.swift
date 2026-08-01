@@ -33,6 +33,20 @@ struct MatchDetailView: View {
         ShoppingListMatcher.matches(for: item.query, in: offers)
     }
 
+    /// Was aus dem getippten Wort in die Suche gegangen ist.
+    private var understanding: QueryUnderstanding {
+        QueryUnderstanding.of(query: item.query, in: offers)
+    }
+
+    /// Ob die Zeilen sich in der Herkunft überhaupt unterscheiden.
+    ///
+    /// Kommen alle über denselben Weg, sagt eine Herkunftszeile je Zeile
+    /// nichts, was der Kopf nicht schon gesagt hat — sie wäre dann
+    /// dasselbe Wort so oft auf dem Bildschirm, wie es Treffer gibt.
+    private var routesDiffer: Bool {
+        Set(allMatches.map(\.kind)).count > 1
+    }
+
     /// Die aktuelle Heftung — **aus dem Speicher**, nicht aus `item`.
     ///
     /// `item` ist die Kopie, mit der das Blatt geöffnet wurde; sie wüsste von
@@ -69,6 +83,8 @@ struct MatchDetailView: View {
     var body: some View {
         NavigationStack {
             List {
+                understandingSection
+
                 if let pin, !pinIsListed {
                     pinnedSection(pin)
                 }
@@ -127,6 +143,44 @@ struct MatchDetailView: View {
                     presentation: .pushed
                 )
             }
+        }
+    }
+
+    // MARK: Was die App aus dem Wort gemacht hat
+
+    /// Der Kopf des Trefferblatts: **als was** das getippte Wort gesucht wurde.
+    ///
+    /// Er steht oben und nicht an jeder Zeile, weil er bei einem Suchwort auf
+    /// jeder Zeile derselbe wäre. Und er steht **auch dann**, wenn unten nichts
+    /// ist — der leere Bildschirm ist genau der, auf dem die Frage brennt.
+    @ViewBuilder
+    private var understandingSection: some View {
+        let reading = understanding
+        if reading.headline != nil || reading.unknownNote != nil {
+            Section {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    if let headline = reading.headline {
+                        HStack(spacing: Theme.Spacing.xs) {
+                            Image(systemName: "text.magnifyingglass")
+                                .foregroundStyle(Theme.secondaryText)
+                            Text(headline)
+                                .font(.subheadline.weight(.medium))
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("matches.understanding")
+                        }
+                    }
+                    if let note = reading.unknownNote {
+                        Text(note)
+                            .font(.caption)
+                            .foregroundStyle(Theme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("matches.understanding.unknown")
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, Theme.Spacing.xs)
+            }
+            .listRowBackground(Theme.surface)
         }
     }
 
@@ -197,14 +251,15 @@ struct MatchDetailView: View {
                             // einer scrollenden Liste billig, Breite nicht.
                             .lineLimit(3)
                         HStack(spacing: Theme.Spacing.xs) {
-                            if isPinned {
-                                PinnedBadge()
-                            } else {
-                                MatchKindBadge(kind: match.kind)
-                            }
-                            Text(offer.market)
+                            if isPinned { PinnedBadge() }
+                            // Markt und Herkunft in **einem** Text: zwei
+                            // Beschriftungen nebeneinander sind zwei Elemente
+                            // im Bedienungshilfen-Baum und zwei Messstellen im
+                            // Kontrast-Audit, für einen Satz.
+                            Text(rowSubtitle(match, isPinned: isPinned))
                                 .font(.caption)
                                 .foregroundStyle(Theme.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     Spacer(minLength: Theme.Spacing.sm)
@@ -265,6 +320,30 @@ struct MatchDetailView: View {
             .accessibilityLabel(isRejected ? "Wieder vorschlagen" : "Weglegen")
         }
         .opacity(isRejected ? 0.5 : 1)
+    }
+
+    /// Markt — und, wenn es etwas zu unterscheiden gibt, woher dieser Treffer
+    /// kommt.
+    ///
+    /// **Das ersetzt „Genau das" / „Passt vielleicht".** Die zwei Abzeichen
+    /// behaupteten Güte und beschrieben Mechanik, und in Scotts Screenshot vom
+    /// 01.08. kippt das ins Gegenteil: Der Speck-Käse-Twister nennt „Käse"
+    /// wörtlich und bekam „Genau das", der GRÜNLÄNDER Schnittkäse trägt es nur
+    /// zusammengeschrieben und bekam „Passt vielleicht". Ein Wort im Titel ist
+    /// das **schwächere** Signal, wurde aber als das stärkere angezeigt.
+    ///
+    /// Die Unterscheidung selbst verschwindet nicht — bei „vegan" ist ein
+    /// Tag-Treffer wirklich ein Vielleicht. Sie sagt ab jetzt nur, **worüber**
+    /// die Zeile gefunden wurde, und behauptet nicht mehr, wie gut sie ist.
+    private func rowSubtitle(_ match: OfferMatch, isPinned: Bool) -> String {
+        // Bei einer Heftung ist die Frage „warum steht das hier" schon vom
+        // Abzeichen beantwortet: weil ein Mensch es ausgesucht hat.
+        guard !isPinned, routesDiffer else { return match.offer.market }
+        let note = QueryUnderstanding.rowNote(
+            for: item.query, of: match.offer,
+            namesWords: understanding.words.count > 1
+        )
+        return "\(match.offer.market) · \(note ?? "im Namen")"
     }
 
     /// Heften und Weglegen sind zwei Aussagen über dasselbe Angebot; sie dürfen
