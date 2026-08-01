@@ -27,9 +27,12 @@ final class NextWeekJourneyTests: XCTestCase {
     }
 
     private func launch(previewOn: Bool) {
+        // Beide Richtungen ausdrücklich, nicht über die Vorgabe: Die Journey
+        // soll sagen, was sie prüft, auch wenn der Schalter später kippt.
         app.launchArguments = ["-uiTesting", "-uiTestingOnboarded",
-                               "-uiTestingOnboardedAllBranches"]
-            + (previewOn ? ["-feature.nextWeekPreview"] : [])
+                               "-uiTestingOnboardedAllBranches",
+                               previewOn ? "-feature.nextWeekPreview"
+                                         : "-feature.nextWeekPreview.aus"]
         app.launch()
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
         openTab("Angebote")
@@ -77,5 +80,28 @@ final class NextWeekJourneyTests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts[thisWeekOnly].waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts[nextWeekOnly].exists)
+    }
+
+    /// **Eine gewählte Kette ohne Vorschau darf nicht einfach fehlen.**
+    /// Das Saatgut wählt Lidl und Aldi; nur Lidl hat Zeilen der Folgewoche.
+    /// Aldi muss deshalb sichtbar dastehen — mit dem Grund, nicht als Lücke.
+    ///
+    /// Eine fehlende Kette sähe für den Nutzer genauso aus wie eine kaputte
+    /// App; das ist der Fehler, den die Vorschau als Ganzes vermeiden soll.
+    /// Welcher Satz zu welcher Kette gehört, prüft `NextWeekReasonTests`.
+    func testAChosenChainWithoutRowsIsNamedWithItsReason() {
+        launch(previewOn: true)
+
+        app.buttons["offers.nextWeek"].tap()
+        XCTAssertTrue(app.navigationBars["Nächste Woche"].waitForExistence(timeout: 10))
+
+        // Die Zeile fasst Kettenname und Grund zu einem Element zusammen
+        // (`accessibilityElement(children: .combine)`), deshalb wird auf das
+        // kombinierte Label geprüft und nicht auf zwei getrennte Texte.
+        let zeile = app.descendants(matching: .any).containing(
+            NSPredicate(format: "label CONTAINS %@", "liegt hier noch nichts vor")
+        ).firstMatch
+        XCTAssertTrue(zeile.waitForExistence(timeout: 10),
+                      "Aldi steht ohne Grund da — oder gar nicht:\n\(app.debugDescription)")
     }
 }

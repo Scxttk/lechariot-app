@@ -21,7 +21,23 @@ struct NextWeekView: View {
     /// Gemessen am 01.08.2026 im Browser: EDEKAs Angebotsseite zeigt am Tag vor
     /// dem Wochenwechsel kein „nächste Woche", weder im Text noch in den Links.
     /// Steht hier und nicht im Backend, weil nur die App den Satz sagen muss.
-    private static let chainsWithoutPreview: Set<String> = ["EDEKA"]
+    static let chainsWithoutPreview: Set<String> = ["EDEKA"]
+
+    /// Warum zu dieser Kette nichts dasteht.
+    ///
+    /// **Zwei verschiedene Wahrheiten, nicht ein Sammelsatz.** „Veröffentlicht
+    /// nichts im Voraus" ist ein Dauerzustand — wer ihn liest, hört auf zu
+    /// warten. „Noch nichts da" geht vorbei, und wer ihn liest, schaut morgen
+    /// wieder her. Ein gemeinsamer Satz für beide wäre für die eine Hälfte der
+    /// Ketten gelogen.
+    ///
+    /// Eigene Funktion statt Ternär in der Ansicht, damit beide Zweige geprüft
+    /// werden können — der Satz ist die Zusage, nicht die Deko.
+    static func reason(for chain: String) -> String {
+        chainsWithoutPreview.contains(chain)
+            ? "\(chain) veröffentlicht seine Angebote nicht im Voraus."
+            : "Für nächste Woche liegt hier noch nichts vor."
+    }
 
     private var sections: [(key: String, offers: [Offer])] {
         OfferQuery.grouped(store.upcomingOffers, by: .market)
@@ -115,16 +131,13 @@ struct NextWeekView: View {
         return parts.joined(separator: ", ")
     }
 
-    /// Zwei verschiedene Wahrheiten, nicht ein Sammelsatz: „veröffentlicht
-    /// nichts im Voraus" ist ein Dauerzustand, „noch nichts da" geht vorbei.
+    /// Der Grund je Kette — siehe `reason(for:)`.
     private var withoutPreviewSection: some View {
         Section {
             ForEach(chainsWithoutRows, id: \.self) { chain in
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text(chain).font(.subheadline.weight(.medium))
-                    Text(Self.chainsWithoutPreview.contains(chain)
-                        ? "\(chain) veröffentlicht seine Angebote nicht im Voraus."
-                        : "Für nächste Woche liegt hier noch nichts vor.")
+                    Text(Self.reason(for: chain))
                         .font(.caption)
                         .foregroundStyle(Theme.secondaryText)
                 }
