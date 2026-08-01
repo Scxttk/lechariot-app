@@ -161,8 +161,14 @@ struct MatchDetailView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     if let headline = reading.headline {
                         HStack(spacing: Theme.Spacing.xs) {
+                            // Rein dekorativ, und deshalb ausdrücklich stumm:
+                            // Der Satz daneben sagt schon alles. Ohne diese
+                            // Zeile meldet `testShoppingListAndSettingsPassTheAudit`
+                            // „Label not human-readable — text.magnifyingglass"
+                            // — vom Audit gefunden, nicht überlegt.
                             Image(systemName: "text.magnifyingglass")
                                 .foregroundStyle(Theme.secondaryText)
+                                .accessibilityHidden(true)
                             Text(headline)
                                 .font(.subheadline.weight(.medium))
                                 .fixedSize(horizontal: false, vertical: true)
