@@ -1,5 +1,5 @@
 import XCTest
-import UIKit
+import SwiftUI
 @testable import LeChariot
 
 /// **Das Zeichen auf der Angebotskachel.**
@@ -8,35 +8,155 @@ import UIKit
 /// Imports zurück. Bei Lidl gibt es aus dem PDF-Prospekt kaum Bild-URLs, und
 /// die Liste sah dort aus wie ein Emoji-Teppich (gemeldet am 2026-07-30).
 ///
-/// Schritt 1 von zwei: Systemzeichen je Kategorie. Schritt 2 — ein eigener
-/// gezeichneter Satz — steht als eigene Aufgabe. Diese Tests sichern, was
-/// Schritt 1 verspricht, und nicht mehr.
+/// Schritt 1 lieh sich fünfzehn Systemglyphen aus SF Symbols. Seit dem
+/// 2026-08-01 steht hier Schritt 2: der **eigene gezeichnete Satz** in
+/// `CategoryGlyph`. Diese Tests sichern, dass jede Kategorie eine Zeichnung
+/// hat, dass jede Zeichnung auch etwas zeichnet, und dass die Leiter der
+/// Rückfälle darunter unverändert greift.
 final class CategorySymbolTests: XCTestCase {
+
+    /// Das Quadrat, in dem gemessen wird. 100 × 100 statt 1 × 1, damit die
+    /// Schwellen unten in etwas Ablesbarem stehen.
+    private let feld = CGRect(x: 0, y: 0, width: 100, height: 100)
+
+    // MARK: Der Satz ist vollständig
 
     /// **Der Wachstumsmechanismus.** Kommt eine sechzehnte Kategorie dazu,
     /// sagt dieser Test welche — statt dass sie still auf den nächsten
     /// Rückfall durchfällt und niemandem auffällt.
-    func testEveryCategoryHasASymbolAndNoSymbolIsOrphaned() {
-        let ohne = Categories.all.filter { Categories.symbol(for: $0) == nil }
-        XCTAssertTrue(ohne.isEmpty, "Ohne Zeichen: \(ohne)")
+    func testEveryCategoryHasAGlyphAndNoGlyphIsOrphaned() {
+        let ohne = Categories.all.filter { !Categories.hasSymbol($0) }
+        XCTAssertTrue(ohne.isEmpty, "Ohne Zeichnung: \(ohne)")
 
-        let verwaist = Set(Categories.allSymbols.keys).subtracting(Categories.all).sorted()
-        XCTAssertTrue(verwaist.isEmpty, "Zeichen für Kategorien, die es nicht gibt: \(verwaist)")
+        let verwaist = Set(CategoryGlyph.drawnCategories).subtracting(Categories.all).sorted()
+        XCTAssertTrue(verwaist.isEmpty, "Zeichnungen für Kategorien, die es nicht gibt: \(verwaist)")
     }
 
-    /// **Jeder Name muss ein Zeichen sein, das dieses iOS auch kennt.**
+    /// **Jede Zeichnung muss etwas zeichnen, und zwar in der ganzen Kachel.**
     ///
-    /// `Image(systemName:)` zeichnet für einen unbekannten Namen schlicht
-    /// nichts — keine Warnung, kein Absturz, eine leere Kachel. Genau die
-    /// stille Sorte, gegen die dieses Projekt inzwischen mehrfach angetreten
-    /// ist, und ein Tippfehler reicht.
-    func testEverySymbolNameExistsOnThisSystem() {
-        for (kategorie, name) in Categories.allSymbols.sorted(by: { $0.key < $1.key }) {
-            XCTAssertNotNil(
-                UIImage(systemName: name),
-                "„\(name)“ (\(kategorie)) gibt es auf diesem System nicht — die Kachel bliebe leer"
-            )
+    /// Der Vorgänger prüfte, ob `UIImage(systemName:)` den Namen kennt — ein
+    /// Tippfehler dort ergab eine leere Kachel ohne Warnung. Beim eigenen
+    /// Satz gibt es keine Namen mehr, die falsch sein können, dafür Rezepte,
+    /// die versehentlich nichts oder fast nichts hinterlassen: ein `guard`,
+    /// der zu früh greift, ein Pfad, der nie geschlossen wird, oder — schon
+    /// einmal passiert — Punkte, die nicht durch `at()` gehen und deshalb bei
+    /// ein paar Pixeln links oben landen statt in der Kachel.
+    ///
+    /// Deshalb wird der **Rahmen** gemessen und nicht nur „nicht leer".
+    ///
+    /// **Die Schwellen sind erlaufen, nicht gewählt**, und der erste Versuch
+    /// war falsch: 60 % auf *beiden* Achsen. Daran fielen sechs Zeichnungen
+    /// durch, die völlig in Ordnung sind — eine Flasche ist schmal (48 breit),
+    /// ein Weinglas auch (48), ein Brotlaib flach (56,5 hoch). Das ist
+    /// Gestaltung, kein Fehler. Geprüft wird deshalb, was ein kaputtes Rezept
+    /// wirklich verrät: Die **lange** Seite muss die Kachel ausnutzen
+    /// (≥ 70 von 100 — die kleinste ist die Milchtüte mit 84), und die
+    /// **kurze** darf nicht zum Strich entarten (≥ 40; die schmalsten sind
+    /// Flasche und Glas mit 48).
+    ///
+    /// Und der Rahmen muss **in** der Kachel liegen — gegen eine Zeichnung,
+    /// die neben der Kachel landet. Gegen eine, die *in* der Kachel an der
+    /// falschen Stelle landet, hilft er nicht; dafür steht
+    /// `testEveryPointScalesWithTheTile` weiter unten.
+    func testEveryGlyphDrawsSomethingThatFillsItsTile() throws {
+        for kategorie in Categories.all {
+            let zeichnung = try XCTUnwrap(CategoryGlyph.drawing(for: kategorie, in: feld),
+                                          "\(kategorie) hat gar keine Zeichnung")
+            let rahmen = zeichnung.stroke.boundingRect.union(zeichnung.fill.boundingRect)
+            XCTAssertFalse(rahmen.isNull, "\(kategorie) zeichnet nichts")
+            XCTAssertGreaterThanOrEqual(
+                max(rahmen.width, rahmen.height), 70,
+                "\(kategorie) nutzt die Kachel nicht aus: \(rahmen.size)")
+            XCTAssertGreaterThanOrEqual(
+                min(rahmen.width, rahmen.height), 40,
+                "\(kategorie) ist zu einem Strich entartet: \(rahmen.size)")
+            // Luft nach außen: die halbe Strichstärke darf über den Rand.
+            let luft = 100 * CategoryGlyph.lineWidthRatio
+            XCTAssertGreaterThan(rahmen.minX, -luft, "\(kategorie) ragt links aus der Kachel")
+            XCTAssertGreaterThan(rahmen.minY, -luft, "\(kategorie) ragt oben aus der Kachel")
+            XCTAssertLessThan(rahmen.maxX, 100 + luft, "\(kategorie) ragt rechts aus der Kachel")
+            XCTAssertLessThan(rahmen.maxY, 100 + luft, "\(kategorie) ragt unten aus der Kachel")
         }
+    }
+
+    /// **Jeder Punkt muss mit der Kachel wachsen.**
+    ///
+    /// Das ist der Test für den einen Fehler, den dieser Satz beim Zeichnen
+    /// tatsächlich hatte: Die Äste der Schneeflocke wurden aus rohen
+    /// Einheitszahlen gebaut und nie durch `at()` geschickt. Sie landeten
+    /// dadurch bei Bruchteilen eines Punktes neben dem Ursprung statt am Arm
+    /// — auf dem Prüfbogen ein Fleck neben der Flocke, bei 13 pt Schmutz.
+    ///
+    /// **Der Rahmentest darüber fängt das nicht**, und das ist nachgeprüft
+    /// und nicht vermutet: Der Fehler wurde nach dem Beheben noch einmal
+    /// eingebaut, und alle elf Tests blieben grün. Die Achsen der Flocke
+    /// spannen die Kachel weiterhin auf, und die verirrten Striche liegen in
+    /// der Ecke **innerhalb** der Kachel — für einen Rahmen ist das nicht zu
+    /// unterscheiden.
+    ///
+    /// Was den Unterschied macht, ist die **Skalierung**: Ein Punkt, der
+    /// durch `at()` geht, wird viermal so groß, wenn die Kachel viermal so
+    /// groß wird. Eine Einheitszahl, die es nicht tut, bleibt stehen, wo sie
+    /// ist. Ein Verhältnis braucht keine Schwelle, die jemand geraten hat.
+    func testEveryPointScalesWithTheTile() throws {
+        for kategorie in Categories.all {
+            let klein = try XCTUnwrap(CategoryGlyph.drawing(for: kategorie, in: feld))
+            let groß = try XCTUnwrap(CategoryGlyph.drawing(
+                for: kategorie, in: CGRect(x: 0, y: 0, width: 400, height: 400)))
+            let a = klein.stroke.boundingRect.union(klein.fill.boundingRect)
+            let b = groß.stroke.boundingRect.union(groß.fill.boundingRect)
+            for (name, paar) in [("minX", (a.minX, b.minX)), ("minY", (a.minY, b.minY)),
+                                 ("maxX", (a.maxX, b.maxX)), ("maxY", (a.maxY, b.maxY))] {
+                XCTAssertEqual(paar.1, paar.0 * 4, accuracy: 0.5,
+                               "\(kategorie): \(name) wächst nicht mit der Kachel "
+                               + "(\(paar.0) → \(paar.1), erwartet \(paar.0 * 4)). "
+                               + "Ein Punkt ist nicht durch at() gegangen.")
+            }
+        }
+    }
+
+    /// **Zwei Kategorien dürfen nicht dieselbe Zeichnung bekommen.**
+    ///
+    /// Beim Abtippen von fünfzehn Rezepten ist eine kopierte Zeile die
+    /// naheliegendste Verwechslung, und sie fällt beim Ansehen nicht auf:
+    /// Zwei gleiche Zeichen stehen selten nebeneinander. Verglichen wird die
+    /// Beschreibung des Pfades, nicht der Rahmen — zwei verschiedene Motive
+    /// können denselben Rahmen haben.
+    func testNoTwoCategoriesShareTheSameDrawing() {
+        var gesehen: [String: String] = [:]
+        for kategorie in Categories.all {
+            guard let zeichnung = CategoryGlyph.drawing(for: kategorie, in: feld) else { continue }
+            let abdruck = zeichnung.stroke.description + "|" + zeichnung.fill.description
+            if let anderer = gesehen[abdruck] {
+                XCTFail("\(kategorie) und \(anderer) zeichnen dasselbe")
+            }
+            gesehen[abdruck] = kategorie
+        }
+    }
+
+    /// Die Kachel ist quadratisch, auch wenn das Rechteck es nicht ist: In
+    /// ein doppelt so breites Rechteck gelegt, kommt **dieselbe** Zeichnung
+    /// heraus, nur in die Mitte gerückt. Eine gestreckte Milchtüte wäre keine.
+    ///
+    /// Verglichen wird gegen das Quadrat und nicht Breite gegen Höhe: Die
+    /// Tüte ist auch im Quadrat 56 × 84, sie ist eben hochkant. Ohne das
+    /// Quadrieren in `path(in:)` wäre sie hier 112 breit.
+    func testTheGlyphStaysSquareInsideAWideRect() {
+        let form = CategoryGlyphShape(category: "Molkerei & Eier", part: .stroke)
+        let imQuadrat = form.path(in: CGRect(x: 0, y: 0, width: 100, height: 100)).boundingRect
+        let imBreiten = form.path(in: CGRect(x: 0, y: 0, width: 200, height: 100)).boundingRect
+        XCTAssertEqual(imBreiten.width, imQuadrat.width, accuracy: 0.5,
+                       "Die Zeichnung wurde in die Breite gezogen")
+        XCTAssertEqual(imBreiten.height, imQuadrat.height, accuracy: 0.5,
+                       "Die Zeichnung wurde in die Höhe gezogen")
+        XCTAssertEqual(imBreiten.midX, 100, accuracy: 1, "Nicht mittig")
+    }
+
+    /// Eine Kategorie, die der Satz nicht kennt, zeichnet nichts — und liefert
+    /// nicht etwa ein leeres `Path()`, das aussähe wie eine Zeichnung.
+    func testAnUnknownCategoryHasNoDrawingAtAll() {
+        XCTAssertNil(CategoryGlyph.drawing(for: "Blumen & Pflanzen", in: feld))
+        XCTAssertFalse(Categories.hasSymbol("Blumen & Pflanzen"))
     }
 
     // MARK: Die Leiter der Rückfälle
@@ -46,16 +166,16 @@ final class CategorySymbolTests: XCTestCase {
         OfferImageContent.fallback(category: category, emoji: emoji, title: title)
     }
 
-    /// Die Kategorie gewinnt gegen das Emoji — das ist die eigentliche
-    /// Änderung. Vorher war es andersherum.
-    func testTheCategorySymbolWinsOverTheImportsEmoji() {
+    /// Die Kategorie gewinnt gegen das Emoji — die Reihenfolge der Leiter ist
+    /// dieselbe geblieben, nur die erste Sprosse zeichnet jetzt selbst.
+    func testTheCategoryGlyphWinsOverTheImportsEmoji() {
         XCTAssertEqual(
             stufe(category: "Molkerei & Eier", emoji: "🥛", title: "Bio Vollmilch"),
-            .symbol("waterbottle")
+            .glyph("Molkerei & Eier")
         )
     }
 
-    /// Eine Kategorie, die diese Liste nicht kennt, darf kein Zeichen
+    /// Eine Kategorie, die dieser Satz nicht kennt, darf keine Zeichnung
     /// erfinden — dann trägt das Emoji weiter. Der Import kann Kategorien
     /// liefern, die hier noch fehlen.
     func testAnUnknownCategoryFallsThroughToTheEmoji() {

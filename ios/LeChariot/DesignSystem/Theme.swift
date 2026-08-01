@@ -486,16 +486,21 @@ struct OfferImageContent: View {
     /// Produkts, sonst der Einkaufswagen. **Der Buchstabe ist bewusst
     /// gestaltet und keine Notlösung** — ein Rückfall, den man ansieht, ist
     /// besser als einer, für den man sich entschuldigt.
+    ///
+    /// Die erste Stufe trägt seit dem 2026-08-01 die **Kategorie** statt
+    /// eines SF-Symbol-Namens: Gezeichnet wird aus `CategoryGlyph`, und
+    /// dessen Schlüssel ist die Kategorie. Ein Zwischenname wäre eine zweite
+    /// Liste, die mit der ersten Schritt halten müsste.
     enum Fallback: Equatable {
-        case symbol(String)
+        case glyph(String)
         case emoji(String)
         case initial(String)
         case cart
     }
 
     static func fallback(category: String?, emoji: String?, title: String?) -> Fallback {
-        if let category, let name = Categories.symbol(for: category) {
-            return .symbol(name)
+        if let category, Categories.hasSymbol(category) {
+            return .glyph(category)
         }
         // Das Emoji des Imports ist ab jetzt die **zweite** Reserve, nicht die
         // erste: Es trägt ein Produkt genauer als eine Warengruppe, aber eine
@@ -564,9 +569,11 @@ struct OfferImageContent: View {
     private var fallback: some View {
         Group {
             switch Self.fallback(category: category, emoji: emoji, title: title) {
-            case .symbol(let name):
-                Image(systemName: name)
-                    .font(.system(size: emojiSize * 0.82, weight: .regular))
+            case .glyph(let category):
+                // Dieselbe optische Größe wie vorher das Systemzeichen: Die
+                // Kachel ist auf 0,82 der Emoji-Größe eingestellt, und die
+                // Zeile darf nicht springen, je nachdem was gerade greift.
+                CategoryGlyphView(category: category, size: emojiSize * 0.82)
                     .foregroundStyle(Theme.accent)
             case .emoji(let text):
                 Text(text).font(.system(size: emojiSize))
