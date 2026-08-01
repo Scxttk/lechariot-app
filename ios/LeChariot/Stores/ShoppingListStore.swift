@@ -64,16 +64,33 @@ enum ShoppingListMatcher {
         in offers: [Offer],
         isRejected: (Offer) -> Bool = { _ in false }
     ) -> ItemSuggestion {
-        if let pin = item.pinned, let offer = pinnedOffer(pin, in: offers) {
+        let pins = item.pinnedOffers
+        guard !pins.isEmpty else {
+            let cheapest = cheapestMatch(for: item.query, in: offers, isRejected: isRejected)
             return ItemSuggestion(
-                match: OfferMatch(offer: offer, kind: kind(of: offer, for: item.query)),
-                isPinned: true
+                positions: cheapest.map { [ItemSuggestion.Position(match: $0, isPinned: false)] } ?? []
             )
         }
-        return ItemSuggestion(
-            match: cheapestMatch(for: item.query, in: offers, isRejected: isRejected),
-            dormantPin: item.pinned
-        )
+        // Jede lebende Heftung ist eine eigene Position; die toten sagen es.
+        var positions: [ItemSuggestion.Position] = []
+        var dormant: [PinnedOffer] = []
+        for pin in pins {
+            if let offer = pinnedOffer(pin, in: offers) {
+                positions.append(ItemSuggestion.Position(
+                    match: OfferMatch(offer: offer, kind: kind(of: offer, for: item.query)),
+                    isPinned: true
+                ))
+            } else {
+                dormant.append(pin)
+            }
+        }
+        // Ist **keine** Wahl mehr im Prospekt, fällt die Zeile aufs billigste
+        // zurück — sichtbar, nie still.
+        if positions.isEmpty,
+           let fallback = cheapestMatch(for: item.query, in: offers, isRejected: isRejected) {
+            positions = [ItemSuggestion.Position(match: fallback, isPinned: false)]
+        }
+        return ItemSuggestion(positions: positions, dormantPins: dormant)
     }
 }
 
@@ -84,13 +101,41 @@ enum ShoppingListMatcher {
 /// (`isPinned`), und die eigene Wahl, die es diese Woche nicht gibt
 /// (`dormantPin` gesetzt, `match` ist dann der sichtbar gemachte Rückfall).
 struct ItemSuggestion: Equatable {
-    /// Das Angebot, das die Zeile zeigt. `nil` heißt „nichts gefunden".
-    let match: OfferMatch?
-    /// Ob `match` die geheftete Wahl ist.
-    var isPinned: Bool = false
-    /// Gesetzt, wenn eine Wahl geheftet ist, es sie diese Woche aber nirgends
-    /// gibt. Die Zeile **muss** das aussprechen.
-    var dormantPin: PinnedOffer?
+    /// Eine gezeigte Position. Ohne Heftung gibt es genau eine (das
+    /// billigste), mit Heftungen eine je lebender Wahl.
+    struct Position: Equatable, Identifiable {
+        let match: OfferMatch
+        var isPinned = false
+        var offer: Offer { match.offer }
+        var id: String { match.offer.id }
+    }
+
+    /// Was die Zeile zeigt. Leer heißt „nichts gefunden".
+    var positions: [Position] = []
+    /// Geheftete Wahlen, die es diese Woche nirgends gibt. Die Zeile **muss**
+    /// das aussprechen — ein stiller Rückfall wäre genau die unsichtbare
+    /// Ableitung, gegen die am 2026-07-31 entschieden wurde.
+    var dormantPins: [PinnedOffer] = []
+
+    /// Die erste Position — für alles, was weiterhin genau ein Angebot zeigt
+    /// (Rundgang-Anker, Kurzfassung für VoiceOver).
+    var match: OfferMatch? { positions.first?.match }
+    var isPinned: Bool { positions.first?.isPinned ?? false }
+    /// Wahr, sobald der Eintrag mehr als ein Produkt trägt — dann bekommt die
+    /// Zeile ihr Abzeichen.
+    var hasMultiplePositions: Bool { positions.count > 1 }
+
+    init(positions: [Position] = [], dormantPins: [PinnedOffer] = []) {
+        self.positions = positions
+        self.dormantPins = dormantPins
+    }
+
+    /// Bequemlichkeit für Aufrufstellen mit genau einem Angebot (Vorschauen,
+    /// Tests). `match: nil` heißt „nichts gefunden".
+    init(match: OfferMatch?, isPinned: Bool = false, dormantPin: PinnedOffer? = nil) {
+        self.positions = match.map { [Position(match: $0, isPinned: isPinned)] } ?? []
+        self.dormantPins = dormantPin.map { [$0] } ?? []
+    }
 }
 
 // MARK: - Quick-add suggestions
@@ -301,7 +346,48 @@ final class ShoppingListStore {
     /// `AppReset` räumt sie schon mit ab, ohne dass jemand daran denken muss.
     func setPin(_ pin: PinnedOffer?, for item: ShoppingItem) {
         guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
-        items[idx].pinned = pin
+        items[idx].pins = pin.map { [$0] }
+        persist()
+    }
+
+    /// Heftet dazu oder löst wieder — **ein zweiter Pin ersetzt den ersten
+    /// nicht** (Scott, 2026-08-01). „Milch" kann Bio-Milch und normale Milch
+    /// enthalten, jede als eigene Position.
+    func togglePin(_ pin: PinnedOffer, for item: ShoppingItem) {
+        guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
+        var pins = items[idx].pinnedOffers
+        if let at = pins.firstIndex(of: pin) {
+            pins.remove(at: at)
+        } else {
+            pins.append(pin)
+        }
+        items[idx].pins = pins.isEmpty ? nil : pins
+        persist()
+    }
+
+    /// Löst alle Heftungen — der Eintrag fällt auf automatisches Matching
+    /// zurück.
+    func clearPins(for item: ShoppingItem) {
+        guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
+        items[idx].pins = nil
+        persist()
+    }
+
+    /// Löst einen Pin aus dem Eintrag heraus und legt ihn als **eigenen**
+    /// Eintrag an („als eigenes Produkt trennen", Scott 01.08.).
+    ///
+    /// Hafermilch ist kein Ersatz für Milch, sondern ein eigener Bedarf. Der
+    /// neue Eintrag ist ein ganz normaler Listeneintrag und bleibt — auch
+    /// nächste Woche, auch ohne Angebot. Die Liste ist zuerst ein Merkzettel.
+    func splitPinIntoOwnItem(_ pin: PinnedOffer, from item: ShoppingItem) {
+        guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
+        var pins = items[idx].pinnedOffers
+        pins.removeAll { $0 == pin }
+        items[idx].pins = pins.isEmpty ? nil : pins
+        items.insert(
+            ShoppingItem(text: pin.product, pins: [pin]),
+            at: items.index(after: idx)
+        )
         persist()
     }
 

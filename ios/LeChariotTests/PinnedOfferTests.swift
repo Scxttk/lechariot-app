@@ -86,7 +86,7 @@ final class PinnedOfferTests: XCTestCase {
         let items = try JSONDecoder().decode([ShoppingItem].self, from: Data(alt.utf8))
         XCTAssertEqual(items.map(\.text), ["Käse"])
         XCTAssertEqual(items[0].detail, ["500 g"], "Das ältere Feld darf dabei nicht verloren gehen")
-        XCTAssertNil(items[0].pinned)
+        XCTAssertTrue(items[0].pinnedOffers.isEmpty)
     }
 
     /// Und der Gegenbeweis, dass der Test oben scharf ist: Ein Bestand, der
@@ -99,7 +99,52 @@ final class PinnedOfferTests: XCTestCase {
         let items = try JSONDecoder().decode([ShoppingItem].self, from: Data(ganzAlt.utf8))
         XCTAssertEqual(items.count, 1)
         XCTAssertNil(items[0].detail)
-        XCTAssertNil(items[0].pinned)
+        XCTAssertTrue(items[0].pinnedOffers.isEmpty)
+    }
+
+    /// **Die Migration `pinned` → `pins`, an einem echten Datensatz von
+    /// vorher** ([UI-7], 2026-08-01).
+    ///
+    /// Auf den Geräten der Tester liegen Listen, die [App #40](https://github.com/Scxttk/lechariot-app/pull/40)
+    /// mit einem einzelnen `pinned` geschrieben hat. Das Feld einfach
+    /// umzubenennen macht die Liste **nicht** unlesbar — beide sind optional —,
+    /// und genau darin liegt die Falle: Die Wahl wäre still weg, der Nutzer
+    /// sähe wieder das billigste und hielte sie für vergessen.
+    ///
+    /// Der Datensatz unten ist der Ausgabestand von vorher, nicht ein
+    /// erzeugter: `pinned` als Objekt, kein `pins`.
+    func testAListWrittenWithTheOldSinglePinKeepsItsChoice() throws {
+        let vorher = """
+        [{"id":"8B2A1F3C-0000-4000-8000-000000000002","text":"Käse",\
+        "isChecked":false,"addedAt":768000000,\
+        "pinned":{"marketKey":"netto-01219-1","market":"Netto",\
+        "product":"GRÜNLÄNDER Schnittkäse"}}]
+        """
+        let items = try JSONDecoder().decode([ShoppingItem].self, from: Data(vorher.utf8))
+        XCTAssertEqual(items[0].pinnedOffers.map(\.product), ["GRÜNLÄNDER Schnittkäse"],
+                       "Die alte Wahl darf beim Update nicht still verschwinden")
+        XCTAssertEqual(items[0].pinnedOffers.first?.market, "Netto")
+        XCTAssertFalse(items[0].usesAutoMatch)
+    }
+
+    /// Und danach steht sie im neuen Feld: Ein Schreibvorgang schreibt `pins`,
+    /// nie wieder `pinned` — sonst stünden zwei Wahrheiten in derselben Datei.
+    func testTheMigratedChoiceIsWrittenBackAsPins() throws {
+        let vorher = """
+        [{"id":"8B2A1F3C-0000-4000-8000-000000000003","text":"Käse",\
+        "isChecked":false,"addedAt":768000000,\
+        "pinned":{"marketKey":"netto-01219-1","market":"Netto",\
+        "product":"GRÜNLÄNDER Schnittkäse"}}]
+        """
+        let items = try JSONDecoder().decode([ShoppingItem].self, from: Data(vorher.utf8))
+        let wieder = try JSONEncoder().encode(items)
+        let text = String(data: wieder, encoding: .utf8) ?? ""
+        XCTAssertTrue(text.contains("\"pins\""), "Die Wahl muss im neuen Feld landen")
+        XCTAssertFalse(text.contains("\"pinned\""), "…und das alte darf nicht mitgeschrieben werden")
+
+        // Und noch einmal gelesen ist sie immer noch da.
+        let nochmal = try JSONDecoder().decode([ShoppingItem].self, from: wieder)
+        XCTAssertEqual(nochmal[0].pinnedOffers.map(\.product), ["GRÜNLÄNDER Schnittkäse"])
     }
 
     @MainActor
@@ -113,11 +158,61 @@ final class PinnedOfferTests: XCTestCase {
         store.setPin(offer("GRÜNLÄNDER Schnittkäse").asPin, for: store.items[0])
 
         let neuGestartet = ShoppingListStore(defaults: defaults)
-        XCTAssertEqual(neuGestartet.items[0].pinned?.product, "GRÜNLÄNDER Schnittkäse")
-        XCTAssertEqual(neuGestartet.items[0].pinned?.market, "Netto")
+        XCTAssertEqual(neuGestartet.items[0].pinnedOffers.first?.product, "GRÜNLÄNDER Schnittkäse")
+        XCTAssertEqual(neuGestartet.items[0].pinnedOffers.first?.market, "Netto")
 
         store.setPin(nil, for: store.items[0])
-        XCTAssertNil(ShoppingListStore(defaults: defaults).items[0].pinned)
+        XCTAssertTrue(ShoppingListStore(defaults: defaults).items[0].pinnedOffers.isEmpty)
+    }
+
+    /// **Ein zweiter Pin ersetzt den ersten nicht, er kommt dazu** (Scott,
+    /// [UI-7]). Das ist der ganze Punkt: „Milch" kann Bio-Milch *und* normale
+    /// Milch enthalten.
+    @MainActor
+    func testASecondPinAddsInsteadOfReplacing() {
+        let defaults = UserDefaults(suiteName: "PinnedOfferTests.multi")!
+        defaults.removePersistentDomain(forName: "PinnedOfferTests.multi")
+        defer { defaults.removePersistentDomain(forName: "PinnedOfferTests.multi") }
+
+        let store = ShoppingListStore(defaults: defaults)
+        store.add("Milch")
+        store.togglePin(offer("Bio Vollmilch").asPin, for: store.items[0])
+        store.togglePin(offer("GRÜNLÄNDER Schnittkäse").asPin, for: store.items[0])
+
+        XCTAssertEqual(store.items[0].pinnedOffers.count, 2, "Der zweite Pin hat den ersten ersetzt")
+        XCTAssertFalse(store.items[0].usesAutoMatch)
+
+        // Und derselbe Tipp nimmt ihn wieder weg.
+        store.togglePin(offer("Bio Vollmilch").asPin, for: store.items[0])
+        XCTAssertEqual(store.items[0].pinnedOffers.map(\.product), ["GRÜNLÄNDER Schnittkäse"])
+
+        // Über einen Neustart hinweg.
+        XCTAssertEqual(
+            ShoppingListStore(defaults: defaults).items[0].pinnedOffers.count, 1
+        )
+    }
+
+    /// „Als eigenes Produkt trennen": Hafermilch ist kein Ersatz für Milch,
+    /// sondern ein eigener Bedarf — und der neue Eintrag **bleibt**, auch ohne
+    /// Angebot. Die Liste ist zuerst ein Merkzettel.
+    @MainActor
+    func testSplittingAPinMakesItItsOwnItem() {
+        let defaults = UserDefaults(suiteName: "PinnedOfferTests.split")!
+        defaults.removePersistentDomain(forName: "PinnedOfferTests.split")
+        defer { defaults.removePersistentDomain(forName: "PinnedOfferTests.split") }
+
+        let store = ShoppingListStore(defaults: defaults)
+        store.add("Milch")
+        let bio = offer("Bio Vollmilch").asPin
+        store.togglePin(bio, for: store.items[0])
+        store.togglePin(offer("GRÜNLÄNDER Schnittkäse").asPin, for: store.items[0])
+
+        store.splitPinIntoOwnItem(bio, from: store.items[0])
+
+        XCTAssertEqual(store.items.map(\.text), ["Milch", "Bio Vollmilch"],
+                       "Der neue Eintrag steht direkt unter dem alten")
+        XCTAssertEqual(store.items[0].pinnedOffers.count, 1, "…und ist beim alten weg")
+        XCTAssertEqual(store.items[1].pinnedOffers.map(\.product), ["Bio Vollmilch"])
     }
 
     // MARK: Was die Zeile zeigt
@@ -135,11 +230,11 @@ final class PinnedOfferTests: XCTestCase {
             "Ohne Heftung bleibt es beim billigsten — sonst prüft der Test daneben"
         )
 
-        let mit = ShoppingItem(text: "Käse", pinned: gruenlaender.asPin)
+        let mit = ShoppingItem(text: "Käse", pins: [gruenlaender.asPin])
         let vorschlag = ShoppingListMatcher.suggestion(for: mit, in: offers)
         XCTAssertEqual(vorschlag.match?.offer.product, "GRÜNLÄNDER Schnittkäse")
         XCTAssertTrue(vorschlag.isPinned)
-        XCTAssertNil(vorschlag.dormantPin, "Solange es sie gibt, schläft die Heftung nicht")
+        XCTAssertTrue(vorschlag.dormantPins.isEmpty, "Solange es sie gibt, schläft die Heftung nicht")
     }
 
     /// **Entscheidung vom 2026-07-31: kein stiller Rückfall.** Ist das
@@ -147,15 +242,15 @@ final class PinnedOfferTests: XCTestCase {
     /// mit dem billigsten — aber die Zeile bekommt den Satz dazu.
     func testAPinWithoutAnOfferThisWeekIsSaidOutLoud() {
         let twister = offer("Speck-Käse-Twister", price: 0.69)
-        let item = ShoppingItem(text: "Käse", pinned: offer("GRÜNLÄNDER Schnittkäse").asPin)
+        let item = ShoppingItem(text: "Käse", pins: [offer("GRÜNLÄNDER Schnittkäse").asPin])
 
         let vorschlag = ShoppingListMatcher.suggestion(for: item, in: [twister])
         XCTAssertEqual(vorschlag.match?.offer.product, "Speck-Käse-Twister",
                        "Der Rückfall selbst ist richtig")
         XCTAssertFalse(vorschlag.isPinned)
-        XCTAssertEqual(vorschlag.dormantPin?.product, "GRÜNLÄNDER Schnittkäse",
+        XCTAssertEqual(vorschlag.dormantPins.first?.product, "GRÜNLÄNDER Schnittkäse",
                        "…er darf nur nicht stumm sein")
-        XCTAssertEqual(vorschlag.dormantPin?.absenceLine,
+        XCTAssertEqual(vorschlag.dormantPins.first?.absenceLine,
                        "GRÜNLÄNDER Schnittkäse ist diese Woche nicht im Angebot")
     }
 
@@ -165,7 +260,7 @@ final class PinnedOfferTests: XCTestCase {
     /// ein Wort verliert, darf die eigene Wahl nicht wegräumen.
     func testThePinIsNotSubjectToTheMatcher() {
         let umbenannt = offer("GRÜNLÄNDER Schnittkäse", price: 0.99)
-        let item = ShoppingItem(text: "Schnittkäse Bergbauern", pinned: umbenannt.asPin)
+        let item = ShoppingItem(text: "Schnittkäse Bergbauern", pins: [umbenannt.asPin])
 
         XCTAssertNil(
             ShoppingListMatcher.cheapestMatch(for: item.query, in: [umbenannt]),
@@ -185,7 +280,7 @@ final class PinnedOfferTests: XCTestCase {
     func testAPinnedOfferStaysEvenWhenItIsAlsoRejected() {
         let gruenlaender = offer("GRÜNLÄNDER Schnittkäse", price: 0.99)
         let twister = offer("Speck-Käse-Twister", price: 0.69)
-        let item = ShoppingItem(text: "Käse", pinned: gruenlaender.asPin)
+        let item = ShoppingItem(text: "Käse", pins: [gruenlaender.asPin])
 
         let vorschlag = ShoppingListMatcher.suggestion(
             for: item, in: [twister, gruenlaender],
@@ -217,7 +312,7 @@ final class PinnedOfferTests: XCTestCase {
         let verraeterisch = "GRÜNLÄNDER Schnittkäse"
         let item = ShoppingItem(
             text: "Käse",
-            pinned: offer(verraeterisch).asPin
+            pins: [offer(verraeterisch).asPin]
         )
         let report = MatchFeedbackReport(
             installId: UUID(uuidString: "8B2A1F3C-0000-4000-8000-000000000003")!,
@@ -253,7 +348,7 @@ final class PinnedOfferTests: XCTestCase {
     /// weiter nach Käse; sonst wäre der Artikel überall unabgedeckt, wo diese
     /// eine Marke nicht im Prospekt steht.
     func testThePinDoesNotChangeTheQuery() {
-        let item = ShoppingItem(text: "Käse", pinned: offer("GRÜNLÄNDER Schnittkäse").asPin)
+        let item = ShoppingItem(text: "Käse", pins: [offer("GRÜNLÄNDER Schnittkäse").asPin])
         XCTAssertEqual(item.query, "Käse")
         XCTAssertEqual(item.query, ShoppingItem(text: "Käse").query)
     }
@@ -269,7 +364,7 @@ final class PinnedOfferTests: XCTestCase {
         let heute = Date(timeIntervalSince1970: 1_800_000_000)
         history.record(ShoppingItem(text: "Käse").query, now: heute)
         history.record(
-            ShoppingItem(text: "Käse", pinned: offer("GRÜNLÄNDER Schnittkäse").asPin).query,
+            ShoppingItem(text: "Käse", pins: [offer("GRÜNLÄNDER Schnittkäse").asPin]).query,
             now: heute
         )
 

@@ -107,14 +107,12 @@ struct ShoppingListRowView: View {
     /// entschieden wurde.
     @ViewBuilder
     private var offerBlock: some View {
-        if let pin = suggestion.dormantPin {
-            dormantNotice(pin)
-        }
+        ForEach(suggestion.dormantPins, id: \.key) { dormantNotice($0) }
         // Ohne Rückfall trägt die Zeile darüber schon alles. Sonst stünden hier
         // zwei Sätze übereinander, die fast dasselbe sagen („… ist diese Woche
         // nicht im Angebot" / „Diese Woche nirgends im Angebot") — am
         // Simulator gesehen, nicht vermutet.
-        if suggestion.match != nil || suggestion.dormantPin == nil {
+        if suggestion.match != nil || suggestion.dormantPins.isEmpty {
             suggestionTile
         }
     }
@@ -156,31 +154,19 @@ struct ShoppingListRowView: View {
 
     @ViewBuilder
     private var suggestionTile: some View {
-        if let match = suggestion.match {
-            Button(action: { onShowMatches?() }) {
-                suggestionContent(match.offer)
-                    // Screen background as nested fill: reads as "recessed into
-                    // the row" and stays in the brand palette instead of system gray.
-                    .padding(Theme.Spacing.sm)
-                    .background(
-                        Theme.background,
-                        in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                            .strokeBorder(Theme.stroke)
-                    )
+        if !suggestion.positions.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                // Das Abzeichen sagt, dass hier mehr als ein Produkt hängt —
+                // sonst sähen zwei Kacheln nach einem Fehler aus.
+                if suggestion.hasMultiplePositions {
+                    Text("\(suggestion.positions.count) Produkte")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Theme.secondaryText)
+                }
+                ForEach(Array(suggestion.positions.enumerated()), id: \.element.id) { index, position in
+                    positionTile(position, isFirst: index == 0)
+                }
             }
-            .buttonStyle(TactileButtonStyle())
-            // See MarketPickerView.marketRow: `.accessibilityElement(children:
-            // .ignore)` on a Button drops the label that follows it, so the tile
-            // was read out as its raw parts instead of one sentence.
-            .accessibilityLabel(suggestionSummary(match))
-            .accessibilityHint("Zeigt alle passenden Angebote")
-            // Stable handle for the UI journeys — the label is a whole
-            // sentence built from whatever offer happens to match.
-            .accessibilityIdentifier("list.matches")
-            .tutorialAnchor(.rowMatch, when: carriesTutorialAnchors)
         } else if !hasMarkets {
             // Trägt den Anker, obwohl hier nichts anzutippen ist: Ohne ihn
             // überspringt sich der Rahmen, der erklärt, **was** an dieser
@@ -232,10 +218,38 @@ struct ShoppingListRowView: View {
         }
     }
 
+    /// Eine Kachel je Position. Den Rundgang-Anker trägt nur die erste — ein
+    /// Rahmen, der auf zwei Kacheln zeigt, zeigt auf keine.
+    private func positionTile(_ position: ItemSuggestion.Position, isFirst: Bool) -> some View {
+        Button(action: { onShowMatches?() }) {
+            suggestionContent(position.offer, isPinned: position.isPinned)
+                // Screen background as nested fill: reads as "recessed into
+                // the row" and stays in the brand palette instead of system gray.
+                .padding(Theme.Spacing.sm)
+                .background(
+                    Theme.background,
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                        .strokeBorder(position.isPinned ? Theme.accent.opacity(0.45) : Theme.stroke)
+                )
+        }
+        .buttonStyle(TactileButtonStyle())
+        // See BranchPickerRow: `.accessibilityElement(children: .ignore)` on a
+        // Button drops the label that follows it.
+        .accessibilityLabel(suggestionSummary(position))
+        .accessibilityHint("Zeigt alle passenden Angebote und ihren Preisverlauf")
+        // Stable handle for the UI journeys — the label is a whole sentence
+        // built from whatever offer happens to match.
+        .accessibilityIdentifier(isFirst ? "list.matches" : "list.matches.more")
+        .tutorialAnchor(.rowMatch, when: carriesTutorialAnchors && isFirst)
+    }
+
     /// At accessibility sizes the price no longer fits beside a truncated
     /// product name; stack the tile instead of shrinking it to nothing.
     @ViewBuilder
-    private func suggestionContent(_ offer: Offer) -> some View {
+    private func suggestionContent(_ offer: Offer, isPinned: Bool) -> some View {
         if typeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 HStack(spacing: Theme.Spacing.sm) {
@@ -243,7 +257,7 @@ struct ShoppingListRowView: View {
                         imageUrl: offer.imageUrl, emoji: offer.emoji,
                         category: offer.category, title: offer.product, size: 32
                     )
-                    offerText(offer, lineLimit: nil)
+                    offerText(offer, lineLimit: nil, isPinned: isPinned)
                     Spacer(minLength: 0)
                 }
                 HStack(spacing: Theme.Spacing.sm) {
@@ -264,7 +278,7 @@ struct ShoppingListRowView: View {
                 // Two lines: real product names ("Landliebe Butter Original")
                 // truncated to "Landliebe B…" at one line, which is not enough
                 // to tell whether the match is right.
-                offerText(offer, lineLimit: 2)
+                offerText(offer, lineLimit: 2, isPinned: isPinned)
                 Spacer(minLength: Theme.Spacing.sm)
                 if let discount = offer.discountPercent {
                     DiscountBadge(percent: discount)
@@ -276,25 +290,22 @@ struct ShoppingListRowView: View {
         }
     }
 
-    private func offerText(_ offer: Offer, lineLimit: Int?) -> some View {
+    private func offerText(_ offer: Offer, lineLimit: Int?, isPinned: Bool) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(offer.product)
                 .font(.caption)
                 .foregroundStyle(Theme.secondaryText)
                 .lineLimit(lineLimit)
-            HStack(spacing: 4) {
+            HStack(spacing: Theme.Spacing.xs) {
                 // Die Heftung steht in derselben Zeile wie der Markt, weil sie
-                // dieselbe Frage beantwortet: **woher** kommt das hier. Ein
-                // eigenes Abzeichen daneben wäre eine dritte Zeile in einer
-                // Kachel, die schon Bild, Name, Rabatt und Preis trägt.
-                if suggestion.isPinned {
-                    Image(systemName: "pin.fill")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.accent)
-                    Text("Deine Wahl ·")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
-                }
+                // dieselbe Frage beantwortet: **woher** kommt das hier.
+                //
+                // [UI-6], 01.08.: Vorher standen hier Reißzwecke und „Deine
+                // Wahl ·" als zwei lose Textstücke in Akzentfarbe, gefolgt vom
+                // Markt — drei Dinge in einer Reihe, ohne dass etwas sagte,
+                // welche zwei zusammengehören. Jetzt ein Chip: eine Fläche,
+                // eine Bedeutung.
+                if isPinned { PinnedChip() }
                 Text(offer.market)
                     .font(.caption2)
                     .foregroundStyle(Theme.secondaryText)
@@ -304,11 +315,11 @@ struct ShoppingListRowView: View {
 
     /// One VoiceOver utterance for the suggestion tile: product, price,
     /// discount and market.
-    private func suggestionSummary(_ match: OfferMatch) -> String {
-        let offer = match.offer
+    private func suggestionSummary(_ position: ItemSuggestion.Position) -> String {
+        let offer = position.offer
         // „Günstigstes Angebot" wäre bei einer Heftung schlicht falsch — sie
         // ist ja meistens genau das nicht.
-        var parts = [(suggestion.isPinned ? "Deine Wahl: " : "Günstigstes Angebot: ") + offer.product]
+        var parts = [(position.isPinned ? "Deine Wahl: " : "Günstigstes Angebot: ") + offer.product]
         if let price = offer.price {
             parts.append(price.formatted(.currency(code: "EUR")))
         }
@@ -330,7 +341,7 @@ struct ShoppingListRowView: View {
             onToggle: {}
         )
         ShoppingListRowView(
-            item: ShoppingItem(text: "Käse", pinned: MockFixtures.offers[2].asPin),
+            item: ShoppingItem(text: "Käse", pins: [MockFixtures.offers[2].asPin]),
             suggestion: ItemSuggestion(
                 match: OfferMatch(offer: MockFixtures.offers[2], kind: .direct),
                 isPinned: true
@@ -348,10 +359,58 @@ struct ShoppingListRowView: View {
             ),
             onToggle: {}
         )
+        // Zwei Wahlen an einem Eintrag — der Fall, um den es in [UI-7] geht.
+        ShoppingListRowView(
+            item: ShoppingItem(
+                text: "Milch",
+                pins: [MockFixtures.offers[0].asPin, MockFixtures.offers[2].asPin]
+            ),
+            suggestion: ItemSuggestion(positions: [
+                ItemSuggestion.Position(
+                    match: OfferMatch(offer: MockFixtures.offers[0], kind: .direct),
+                    isPinned: true
+                ),
+                ItemSuggestion.Position(
+                    match: OfferMatch(offer: MockFixtures.offers[2], kind: .direct),
+                    isPinned: true
+                ),
+            ]),
+            onToggle: {}
+        )
         ShoppingListRowView(item: ShoppingItem(text: "Zahnpasta"), onToggle: {})
         ShoppingListRowView(
             item: ShoppingItem(text: "Orangen", isChecked: true),
             onToggle: {}
         )
+    }
+}
+
+/// **„Deine Wahl" als Chip** ([UI-6], 2026-08-01).
+///
+/// Vorher: eine Reißzwecke und der Text „Deine Wahl ·" in Akzentfarbe, lose
+/// neben dem Marktnamen. Scott am Gerät: „sieht schlecht aus" — und der Grund
+/// ist nicht die Farbe, sondern dass drei Dinge nebeneinanderstehen und
+/// nichts sagt, welche zwei zusammengehören. Eine Fläche mit Rand bindet
+/// Zeichen und Wort zu einem Ding und trennt es vom Markt.
+///
+/// Die Mechanik bleibt unberührt: Dies ist eine Anzeige, kein Bedienelement.
+struct PinnedChip: View {
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "pin.fill")
+                .font(.system(size: 9, weight: .semibold))
+            Text("Deine Wahl")
+                .font(.caption2.weight(.semibold))
+        }
+        .foregroundStyle(Theme.accent)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(
+            Theme.accent.opacity(0.12),
+            in: Capsule(style: .continuous)
+        )
+        .overlay(Capsule(style: .continuous).strokeBorder(Theme.accent.opacity(0.30)))
+        // Der Chip steht schon im Satz, den die Kachel als Label trägt.
+        .accessibilityHidden(true)
     }
 }

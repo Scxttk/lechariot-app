@@ -157,7 +157,7 @@ final class ShoppingListRankingTests: XCTestCase {
     func testAPinnedChoiceCountsWithItsOwnPrice() {
         var kaese = ShoppingItem(text: "Käse")
         let gruenlaender = offer("GRÜNLÄNDER Schnittkäse", market: "Lidl", price: 0.99)
-        kaese.pinned = gruenlaender.asPin
+        kaese.pins = [gruenlaender.asPin]
         let offers = [
             offer("Speck-Käse-Twister", market: "Lidl", price: 0.69),
             gruenlaender,
@@ -181,7 +181,7 @@ final class ShoppingListRankingTests: XCTestCase {
     func testAChainWithoutThePinnedProductListsItSeparatelyFromTheMissingOnes() {
         var kaese = ShoppingItem(text: "Käse")
         let gruenlaender = offer("GRÜNLÄNDER Schnittkäse", market: "Lidl", price: 0.99)
-        kaese.pinned = gruenlaender.asPin
+        kaese.pins = [gruenlaender.asPin]
         let offers = [
             gruenlaender,
             offer("Käse Würfel", market: "Netto", price: 0.55),
@@ -206,7 +206,7 @@ final class ShoppingListRankingTests: XCTestCase {
     func testAPinCanFlipTheRecommendedMarketAndSaysSo() {
         var kaese = ShoppingItem(text: "Käse")
         let gruenlaender = offer("GRÜNLÄNDER Schnittkäse", market: "Lidl", price: 0.99)
-        kaese.pinned = gruenlaender.asPin
+        kaese.pins = [gruenlaender.asPin]
         let list = [ShoppingItem(text: "Milch"), kaese]
         let offers = [
             offer("Frische Milch", market: "Lidl", price: 1.19),
@@ -216,7 +216,7 @@ final class ShoppingListRankingTests: XCTestCase {
         ]
 
         let ohne = ShoppingListRanking.rank(
-            items: list.map { var k = $0; k.pinned = nil; return k },
+            items: list.map { var k = $0; k.pins = nil; return k },
             offers: offers, chains: ["Lidl", "Netto"]
         )
         XCTAssertEqual(ohne.first?.chain, "Netto", "Ohne Heftung deckt Netto beides billiger ab")
@@ -239,7 +239,7 @@ final class ShoppingListRankingTests: XCTestCase {
     func testWithoutAFlipTheCardStaysQuiet() {
         var kaese = ShoppingItem(text: "Käse")
         let gruenlaender = offer("GRÜNLÄNDER Schnittkäse", market: "Lidl", price: 0.99)
-        kaese.pinned = gruenlaender.asPin
+        kaese.pins = [gruenlaender.asPin]
         let offers = [
             gruenlaender,
             offer("Speck-Käse-Twister", market: "Lidl", price: 0.69),
@@ -258,7 +258,7 @@ final class ShoppingListRankingTests: XCTestCase {
     /// Rückfall trotzdem ausspricht, prüft `PinnedOfferTests`.
     func testAPinWhoseProductIsGoneFallsBackToTheCheapestEverywhere() {
         var kaese = ShoppingItem(text: "Käse")
-        kaese.pinned = offer("GRÜNLÄNDER Schnittkäse", market: "Netto", price: 0.99).asPin
+        kaese.pins = [offer("GRÜNLÄNDER Schnittkäse", market: "Netto", price: 0.99).asPin]
         let offers = [offer("Käse Würfel", market: "Lidl", price: 0.55)]
 
         let lidl = ShoppingListRanking.rank(items: [kaese], offers: offers, chains: ["Lidl"])[0]
