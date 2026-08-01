@@ -192,4 +192,71 @@ final class ItemDetailTests: XCTestCase {
             "Neues Feld im Rückmelde-Datensatz — ist es wirklich gewollt?"
         )
     }
+
+    // MARK: Der Freitext ([UI-8], 2026-08-01)
+
+    /// **Der Freitext verlässt das Gerät nie.**
+    ///
+    /// Die Chips sind bewusst ein Wortschatz — „es gibt nichts zu säubern,
+    /// weil es nichts zu tippen gibt". Mit der Notiz gibt es doch etwas zu
+    /// tippen, und damit ist dieser Test der Ort, an dem die Zusage steht:
+    /// Was jemand hier hineinschreibt, kann alles sein, und es darf auf
+    /// keinem fremden Server landen.
+    ///
+    /// Geprüft am **kodierten Datensatz**, nicht am Aufrufweg — ein Feld, das
+    /// jemand später anhängt, fällt hier auf.
+    func testTheNoteNeverReachesTheFeedbackPayload() throws {
+        let verraeterisch = "Telefonnummer von Oma"
+        let item = ShoppingItem(text: "Butter", note: verraeterisch)
+        let report = MatchFeedbackReport(
+            installId: UUID(uuidString: "8B2A1F3C-0000-4000-8000-000000000004")!,
+            query: item.query,
+            offer: MockFixtures.offers[0],
+            kind: .direct,
+            reason: .wrongProduct,
+            comment: ""
+        )
+        let json = try XCTUnwrap(
+            String(data: try JSONEncoder().encode(report), encoding: .utf8)
+        )
+
+        XCTAssertEqual(report.query, "Butter", "Die Anfrage ist der Artikel, nicht die Notiz")
+        XCTAssertFalse(json.contains(verraeterisch),
+                       "Die Notiz darf an keiner Stelle des Datensatzes auftauchen")
+    }
+
+    /// Und sie ändert nicht, was gefunden wird — dieselbe Regel wie bei den
+    /// Chips: „Landliebe" als viertes Suchwort bräche die UND-Verknüpfung.
+    func testTheNoteDoesNotChangeWhichOfferIsFound() {
+        let ohne = ShoppingItem(text: "Vollmilch")
+        let mit = ShoppingItem(text: "Vollmilch", note: "die im blauen Becher")
+        XCTAssertEqual(ohne.query, mit.query)
+        XCTAssertEqual(
+            ShoppingListMatcher.suggestion(for: mit, in: MockFixtures.offers).match?.offer.product,
+            ShoppingListMatcher.suggestion(for: ohne, in: MockFixtures.offers).match?.offer.product
+        )
+    }
+
+    /// Sie steht aber unter dem Artikel — sonst hätte sie niemand geschrieben.
+    func testTheNoteShowsUpUnderTheItem() {
+        XCTAssertEqual(
+            ShoppingItem(text: "Butter", detail: ["250 g"], note: "gesalzen").detailLine,
+            "250 g · gesalzen"
+        )
+        XCTAssertEqual(ShoppingItem(text: "Butter", note: "gesalzen").detailLine, "gesalzen")
+        XCTAssertNil(ShoppingItem(text: "Butter", note: "   ").detailLine,
+                     "Leerzeichen sind keine Notiz")
+    }
+
+    /// Und ein Bestand von vor dem Freitext dekodiert weiter — dieselbe Falle
+    /// wie bei `detail` und `pins`.
+    func testAListWrittenBeforeTheNoteExistedStillDecodes() throws {
+        let alt = """
+        [{"id":"8B2A1F3C-0000-4000-8000-000000000005","text":"Butter",\
+        "isChecked":false,"addedAt":768000000,"detail":["250 g"]}]
+        """
+        let items = try JSONDecoder().decode([ShoppingItem].self, from: Data(alt.utf8))
+        XCTAssertNil(items[0].note)
+        XCTAssertEqual(items[0].detailLine, "250 g")
+    }
 }

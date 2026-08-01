@@ -86,6 +86,7 @@ final class MatchFeedbackJourneyTests: XCTestCase {
         XCTAssertTrue(input.waitForExistence(timeout: 15))
         input.tap()
         input.typeText(item + "\n")
+        dismissQuantitySheet()
 
         let matches = app.buttons["list.matches"].firstMatch
         XCTAssertTrue(matches.waitForExistence(timeout: 15),
@@ -111,4 +112,12 @@ final class MatchFeedbackJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
                       "Der Start hinter dem Assistenten landet nicht in der Liste")
     }
+
+    /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst
+    /// aufgeht.
+    private func dismissQuantitySheet() {
+        let abbrechen = app.buttons["itemDetail.cancel"]
+        if abbrechen.waitForExistence(timeout: 5) { abbrechen.tap() }
+    }
+
 }

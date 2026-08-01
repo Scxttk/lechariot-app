@@ -737,7 +737,16 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(input.waitForExistence(timeout: 15))
         input.tap()
         input.typeText(text + "\n")
+        dismissQuantitySheet()
     }
+    /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst
+    /// aufgeht. Die Journeys unten testen nicht das Menü, sondern was danach
+    /// kommt — für sie ist es ein Zwischenschritt.
+    private func dismissQuantitySheet() {
+        let abbrechen = app.buttons["itemDetail.cancel"]
+        if abbrechen.waitForExistence(timeout: 5) { abbrechen.tap() }
+    }
+
 
     private func enterPLZ() {
         let plz = app.textFields["Postleitzahl"]

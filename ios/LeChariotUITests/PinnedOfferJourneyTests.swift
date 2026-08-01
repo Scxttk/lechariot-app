@@ -173,7 +173,16 @@ final class PinnedOfferJourneyTests: XCTestCase {
         XCTAssertTrue(feld.waitForExistence(timeout: 15))
         feld.tap()
         feld.typeText(text + "\n")
+        dismissQuantitySheet()
     }
+    /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst
+    /// aufgeht. Die Journeys unten testen nicht das Menü, sondern was danach
+    /// kommt — für sie ist es ein Zwischenschritt.
+    private func dismissQuantitySheet() {
+        let abbrechen = app.buttons["itemDetail.cancel"]
+        if abbrechen.waitForExistence(timeout: 5) { abbrechen.tap() }
+    }
+
 
     /// Öffnet das Treffer-Blatt und heftet die **zweite** Zeile an.
     ///
