@@ -42,7 +42,10 @@ struct OffersView: View {
                 .themedScreen()
                 .navigationTitle("Angebote")
                 .searchable(text: $search, prompt: "Produkt suchen")
-                .toolbar { filterMenu }
+                .toolbar {
+                    filterMenu
+                    nextWeekLink
+                }
                 .sheet(item: $selectedOffer) { offer in
                     OfferDetailView(
                         offer: offer,
@@ -417,6 +420,29 @@ struct OffersView: View {
     private func sectionTitle(_ key: String) -> String {
         guard grouping == .market else { return key }
         return Market.displayTitle(chain: key, favorites: favoriteMarkets)
+    }
+
+    /// Der Weg in die Vorschau — beschriftet, nicht als Reiter neben „Angebote".
+    ///
+    /// Ein Reiter stünde gleichrangig neben der laufenden Woche und wäre genau
+    /// die Verwechslung, die die Vorschau nicht haben darf. Als eigener
+    /// Bildschirm hinter einem benannten Knopf muss man ihn absichtlich öffnen.
+    @ToolbarContentBuilder
+    private var nextWeekLink: some ToolbarContent {
+        if FeatureFlags.nextWeekPreview {
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    NextWeekView(
+                        favoriteMarkets: favoriteMarkets,
+                        store: store,
+                        priceHistoryRepository: priceHistoryRepository
+                    )
+                } label: {
+                    Label("Nächste Woche", systemImage: "calendar")
+                }
+                .accessibilityIdentifier("offers.nextWeek")
+            }
+        }
     }
 
     private var filterMenu: some ToolbarContent {
