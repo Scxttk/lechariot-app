@@ -52,14 +52,19 @@ struct MatchDetailView: View {
     /// `item` ist die Kopie, mit der das Blatt geöffnet wurde; sie wüsste von
     /// einer Heftung, die auf diesem Blatt gerade gesetzt wurde, nichts. Ohne
     /// den Speicher (Previews) bleibt sie der Stand von damals.
-    private var pin: PinnedOffer? {
-        guard let list else { return item.pinned }
-        return list.items.first { $0.id == item.id }?.pinned
+    private var pins: [PinnedOffer] {
+        guard let list else { return item.pinnedOffers }
+        return list.items.first { $0.id == item.id }?.pinnedOffers ?? []
     }
 
-    /// Das geheftete Angebot, falls es diese Woche dabei ist.
-    private var pinnedOffer: Offer? {
-        pin.flatMap { ShoppingListMatcher.pinnedOffer($0, in: offers) }
+    /// Die gehefteten Angebote, die es diese Woche gibt.
+    private var pinnedOffers: [Offer] {
+        pins.compactMap { ShoppingListMatcher.pinnedOffer($0, in: offers) }
+    }
+
+    /// Die Heftungen, deren Produkt diese Woche nirgends steht.
+    private var dormantPins: [PinnedOffer] {
+        pins.filter { ShoppingListMatcher.pinnedOffer($0, in: offers) == nil }
     }
 
     /// Ob die geheftete Wahl in der Trefferliste unten überhaupt vorkommt.
@@ -67,9 +72,8 @@ struct MatchDetailView: View {
     /// Sie kann fehlen, ohne dass es die Woche war: Die Heftung geht am Matcher
     /// vorbei, also steht ein geheftetes Produkt auch dann auf der Liste, wenn
     /// sein Prospekttitel ein Wort verloren hat oder ein Tag weggefallen ist.
-    private var pinIsListed: Bool {
-        guard let pin else { return false }
-        return allMatches.contains { $0.offer.matches(pin) }
+    private func isListed(_ pin: PinnedOffer) -> Bool {
+        allMatches.contains { $0.offer.matches(pin) }
     }
 
     private var active: [OfferMatch] {
@@ -85,9 +89,10 @@ struct MatchDetailView: View {
             List {
                 understandingSection
 
-                if let pin, !pinIsListed {
-                    pinnedSection(pin)
-                }
+                // Je Heftung, die unten nicht vorkommt, eine eigene Zeile:
+                // Ohne sie wäre eine Wahl, die man nicht mehr will, nie wieder
+                // loszuwerden.
+                ForEach(pins.filter { !isListed($0) }, id: \.key) { pinnedSection($0) }
 
                 if active.isEmpty && rejected.isEmpty {
                     ContentUnavailableView(
@@ -104,7 +109,11 @@ struct MatchDetailView: View {
                             matchRow(match, isRejected: false)
                         }
                     } footer: {
-                        Text("Tippe die Reißzwecke, um ein Angebot dauerhaft auf die Liste zu heften — auch wenn es nicht das billigste ist. Passt eines gar nicht zu deinem Artikel? Leg es weg, dann schlägt Le Chariot es nicht mehr vor.")
+                        // Der erste Satz benennt, was hinter einer Zeile
+                        // liegt. Der Preisverlauf war gebaut und erreichbar,
+                        // aber nichts sagte, dass es ihn gibt — Scotts Frage
+                        // „where can i see the preisverlauf?" ([UI-5]).
+                        Text("Tippe ein Angebot an: Packungsgröße, Gültigkeit und der Preisverlauf der letzten Wochen. Tippe die Reißzwecke, um es dauerhaft auf die Liste zu heften — auch wenn es nicht das billigste ist. Passt eines gar nicht zu deinem Artikel? Leg es weg, dann schlägt Le Chariot es nicht mehr vor.")
                     }
                     .listRowBackground(Theme.surface)
                 }
@@ -203,7 +212,7 @@ struct MatchDetailView: View {
     /// Zeile könnte man eine Wahl, die man nicht mehr will, nie wieder
     /// loswerden.
     private func pinnedSection(_ pin: PinnedOffer) -> some View {
-        let vorhanden = pinnedOffer
+        let vorhanden = ShoppingListMatcher.pinnedOffer(pin, in: offers)
         return Section("Angeheftet") {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 HStack(spacing: Theme.Spacing.sm) {
@@ -221,10 +230,16 @@ struct MatchDetailView: View {
                     .font(.caption)
                     .foregroundStyle(Theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("Heftung lösen") { setPin(nil) }
-                    .font(.subheadline.weight(.semibold))
-                    .buttonStyle(TactileButtonStyle())
-                    .accessibilityIdentifier("matches.unpin.dormant")
+                HStack(spacing: Theme.Spacing.md) {
+                    Button("Heftung lösen") { unpin(pin) }
+                        .accessibilityIdentifier("matches.unpin.dormant")
+                    // „Als eigenes Produkt trennen" ([UI-7]): Hafermilch ist
+                    // kein Ersatz für Milch, sondern ein eigener Bedarf.
+                    Button("Als eigenes Produkt") { split(pin) }
+                        .accessibilityIdentifier("matches.split")
+                }
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(TactileButtonStyle())
             }
             .padding(.vertical, Theme.Spacing.xs)
         }
@@ -235,7 +250,7 @@ struct MatchDetailView: View {
 
     private func matchRow(_ match: OfferMatch, isRejected: Bool) -> some View {
         let offer = match.offer
-        let isPinned = pin.map { offer.matches($0) } == true
+        let isPinned = pins.contains { offer.matches($0) }
         return HStack(spacing: Theme.Spacing.sm) {
             // Die Zeile führt jetzt ins Detail. Vorher war sie ein reiner
             // HStack: Man sah Produkt, Markt und Preis — und kam nicht weiter.
@@ -283,12 +298,23 @@ struct MatchDetailView: View {
             // ✕, weil er die häufigere und die harmlosere der beiden Gesten
             // ist — und weil das Wegwerfen dort bleibt, wo Testerhände es
             // schon kennen.
+            //
+            // **Ein zweiter Pin ersetzt den ersten nicht, er kommt dazu**
+            // (Scott, [UI-7], 01.08.). „Milch" trägt dann Bio-Milch *und*
+            // normale Milch als eigene Positionen. Pin heißt immer „ich will
+            // es"; die Lesart „eins von beiden" gibt es gratis über die nicht
+            // weggeklickten Vorschläge — ✕ = nie, Pin = auf jeden Fall,
+            // unberührt = entscheide du.
             Button {
-                withAnimation { setPin(isPinned ? nil : offer.asPin) }
+                withAnimation(Theme.Motion.element.animation) { togglePin(offer) }
             } label: {
                 Image(systemName: isPinned ? "pin.fill" : "pin")
                     .font(.title3)
                     .foregroundStyle(isPinned ? Theme.accent : Theme.secondaryText)
+                    // [UI-6]: Vorher wechselte das Zeichen hart. Der
+                    // Symbolwechsel ist die Bewegung, die zu einem 44-pt-Knopf
+                    // passt — kein Hüpfen, kein Aufblitzen.
+                    .contentTransition(.symbolEffect(.replace))
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(TactileButtonStyle())
@@ -297,8 +323,8 @@ struct MatchDetailView: View {
             .accessibilityIdentifier("matches.pin")
             .accessibilityLabel(isPinned ? "Heftung lösen" : "Auf die Liste heften")
             .accessibilityHint(isPinned
-                               ? "Dann steht wieder das billigste Angebot auf der Liste"
-                               : "Dieses Angebot steht dann dauerhaft auf der Liste")
+                               ? "Nimmt dieses Produkt wieder von der Liste"
+                               : "Dieses Angebot steht dann dauerhaft auf der Liste, zusätzlich zu schon gehefteten")
 
             Button {
                 withAnimation {
@@ -310,7 +336,7 @@ struct MatchDetailView: View {
                         // anders überlegt — die Heftung geht mit. Sonst
                         // stünde ein weggelegtes Angebot weiter auf der
                         // Liste, und das ✕ wäre ein Knopf ohne Wirkung.
-                        if isPinned { setPin(nil) }
+                        if isPinned { togglePin(offer) }
                         // The rejection is already done and persisted; the
                         // question is an optional afterthought on top of it.
                         if feedback.isAskingEnabled { askingAbout = match }
@@ -354,11 +380,24 @@ struct MatchDetailView: View {
 
     /// Heften und Weglegen sind zwei Aussagen über dasselbe Angebot; sie dürfen
     /// einander nicht widersprechen. Wer heftet, holt es damit zurück.
-    private func setPin(_ pin: PinnedOffer?) {
-        if let pin, let offer = ShoppingListMatcher.pinnedOffer(pin, in: offers) {
-            rejections.unreject(itemText: item.query, offer: offer)
-        }
-        list?.setPin(pin, for: item)
+    private func togglePin(_ offer: Offer) {
+        rejections.unreject(itemText: item.query, offer: offer)
+        list?.togglePin(offer.asPin, for: item)
+    }
+
+    /// Löst eine Heftung, deren Produkt diese Woche gar nicht im Vorrat steht.
+    private func unpin(_ pin: PinnedOffer) {
+        list?.togglePin(pin, for: item)
+    }
+
+    /// „Als eigenes Produkt trennen" (Scott, [UI-7]).
+    ///
+    /// Hafermilch ist kein Ersatz für Milch, sondern ein eigener Bedarf. Wer
+    /// sie unter „Milch" anheftet, kann sie hier zu einem eigenen Eintrag
+    /// machen — mit eigenem Suchbegriff, und er bleibt auch nächste Woche.
+    private func split(_ pin: PinnedOffer) {
+        list?.splitPinIntoOwnItem(pin, from: item)
+        dismiss()
     }
 }
 
