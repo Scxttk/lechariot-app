@@ -116,7 +116,13 @@ final class AccessibilityAuditTests: XCTestCase {
         openTab("Angebote")
         try audit("Angebote")
         openTab("Einstellungen")
-        // Ans Ende scrollen, bevor gemessen wird.
+        // **Zuerst oben messen, dann unten.** Was hier hinter der
+        // Navigationsleiste liegt, steht nach dem Scrollen frei — und
+        // umgekehrt. Eine einzige Messung lässt die halbe Liste ungeprüft,
+        // und genau das war der Zustand, seit das Gate aus war.
+        try audit("Einstellungen oben")
+
+        // Ans Ende scrollen, bevor noch einmal gemessen wird.
         //
         // Nachgewiesen am 2026-07-26: Ohne das Scrollen meldet der Audit
         // Kontrastfehler für „Rückfragen", den zugehörigen Fußtext und
@@ -155,21 +161,21 @@ final class AccessibilityAuditTests: XCTestCase {
             swipes += 1
         }
         XCTAssertTrue(lastRow.exists, "Ende der Einstellungen nicht erreicht")
-        // **Kontrast hier nicht mehr scharf** — und das ist eine bewusste
-        // Abschwächung, keine Bequemlichkeit.
+        // **Kontrast hier wieder scharf, seit dem 2026-08-01.**
         //
-        // Der Befund von oben gilt weiter: Der durchgefallene Satz folgt der
-        // Bildschirmposition, nicht der Farbe. Bis zum 2026-07-28 ließ er sich
-        // wegscrollen — es gab eine Position, in der nichts hinter der
-        // durchscheinenden Tab-Leiste lag. Mit dem Hilfe-Abschnitt ist die
-        // Liste zu lang dafür: Drei Läufe hintereinander meldeten **drei
-        // verschiedene** Zeilen („Darstellung", „Profil", „Nur in
-        // Entwicklungs-Builds sichtbar."), je nachdem, wo der Wisch endete.
-        // Ein Gate, das bei jedem Lauf etwas anderes meldet, prüft nicht die
-        // Farbe, sondern den Zufall.
+        // Vom 28.07. bis dahin war das Gate aus, mit der Begründung „der
+        // durchgefallene Satz folgt der Bildschirmposition, nicht der Farbe".
+        // Die Beobachtung stimmt, die Schlussfolgerung war zu früh: Es folgt
+        // nicht *irgendeiner* Position, sondern **genau den zwei
+        // durchscheinenden Systemleisten**. Nachgemessen mit den Rahmen aller
+        // Befunde — die Tabelle steht in `translucentBarRegions()`. Kein
+        // einziger harter Befund lag im freien Feld.
         //
-        // Scharf bleibt, was hier trägt: fehlende Element-Beschreibungen.
-        try audit("Einstellungen", failOnContrast: false)
+        // Damit ist die Ausnahme so eng wie der Befund: nicht „Kontrast in den
+        // Einstellungen zählt nicht", sondern „hinter einer Leiste misst
+        // niemand". Und weil jetzt an zwei Positionen gemessen wird, ist die
+        // Liste besser abgedeckt als vor dem Abschalten.
+        try audit("Einstellungen unten")
     }
 
     /// Der dunkle Modus hat eigene Farbwerte — die Rechnung deckte beide ab,
@@ -318,14 +324,19 @@ final class AccessibilityAuditTests: XCTestCase {
         // Tabwechsel, einblendende Liste —, liest der Audit Mischwerte und
         // meldet Kontrastfehler für Texte, die im Ruhezustand einwandfrei sind.
         // Dieselbe Falle wie im dunklen Modus, siehe oben.
-        Thread.sleep(forTimeInterval: 1.2)
-        let blurred = scrollEdgeRegion()
+        waitUntilStill()
+        let blurred = translucentBarRegions()
         try app.performAccessibilityAudit { issue in
             let element = issue.element?.description ?? "kein benanntes Element"
-            print("AUDIT|\(screen)|\(issue.auditType.rawValue)|\(issue.compactDescription)|\(element.prefix(120))")
+            // Der Rahmen gehört ins Protokoll, nicht nur der Text: Ob ein
+            // Kontrast-Befund echt ist, entscheidet sich seit dem 01.08. an
+            // der Frage, **wo** das Element lag. Ohne die Zahl ist jeder
+            // Befund wieder eine Vermutung.
+            let frame = issue.element.map { "\($0.frame)" } ?? "-"
+            print("AUDIT|\(screen)|\(issue.auditType.rawValue)|\(issue.compactDescription)|\(element.prefix(120))|\(frame)")
 
             let underTheSearchBar = issue.auditType == .contrast
-                && issue.element.map { blurred.intersects($0.frame) } == true
+                && issue.element.map { e in blurred.contains { $0.intersects(e.frame) } } == true
             let handledElsewhere = Self.knownSystemDrawn.contains { element.contains($0) }
                 || (issue.auditType == .contrast && issue.element == nil)
                 || underTheSearchBar
@@ -377,6 +388,131 @@ final class AccessibilityAuditTests: XCTestCase {
         let gradient = bar.height + (window.maxY - bar.maxY)
         let top = bar.minY - gradient
         return CGRect(x: window.minX, y: top, width: window.width, height: window.maxY - top)
+    }
+
+    /// Wartet, bis der Bildschirm wirklich stillsteht — statt 1,2 Sekunden zu
+    /// hoffen.
+    ///
+    /// **Der Unterschied ist gemessen.** Mit der festen Pause fiel einer von
+    /// drei Läufen des Einstellungs-Audits durch, und zwar auf zwei Zeilen im
+    /// freien Feld: den Fußtext von „Rückfragen" (`Theme.secondaryText` auf der
+    /// Karte, **5,89:1** — die Anforderung ist 4,5:1) und die Überschrift
+    /// „App". Bei 5,89:1 fällt keine Farbe durch; gemessen wurde eine Liste,
+    /// die noch ausrollte. Ein Wisch trägt unterschiedlich weit, und der
+    /// `while`-Schleife oben genügt schon, dass die Endmarke **existiert** —
+    /// sichtbar geworden heißt nicht zur Ruhe gekommen.
+    ///
+    /// Zwei gleiche Messungen in Folge, dann steht sie. Die Obergrenze ist ein
+    /// Notausgang, kein Regelfall.
+    private func waitUntilStill() {
+        Thread.sleep(forTimeInterval: Self.settleSeconds)
+    }
+
+    /// Wie lange vor jeder Messung gewartet wird — **7,2 Sekunden, und die Zahl
+    /// ist erlaufen, nicht gewählt.**
+    ///
+    /// Vorher waren es 1,2. Der Kommentar dazu war schon richtig („wird während
+    /// eines Übergangs gemessen, liest der Audit Mischwerte"), die Zahl war zu
+    /// klein — und das fiel nie auf, weil das eine Gate, das darüber
+    /// gestolpert wäre, seit dem 28.07. aus war.
+    ///
+    /// **Der Beleg kam aus einem Nebenbefund.** Mit einer Warteschleife, die
+    /// auf Stillstand prüft, fielen fünf Läufe des Einstellungs-Audits in zwei
+    /// Gruppen: Die drei bestandenen dauerten 106,6 / 107,4 / 107,5 s, die zwei
+    /// durchgefallenen 85,1 / 71,2 s. Die bestandenen liefen genau deshalb
+    /// länger, weil die Schleife bis an ihre Obergrenze lief — sie haben also
+    /// **rund 25 Sekunden länger gewartet**, sonst nichts.
+    ///
+    /// Und die Scrollposition war es nachweislich nicht: Ein bestandener Lauf
+    /// („PLZ 01219" bei y = −4,3) und ein durchgefallener (y = −2,7) standen
+    /// **1,6 pt** auseinander. Der eine meldete zwei Befunde, beide hinter der
+    /// Navigationsleiste; der andere acht, quer über den ganzen Bildschirm —
+    /// darunter Fließtext bei 5,89:1 mitten im freien Feld. Ein Bildschirm, der
+    /// als Ganzes durchfällt, ist nicht falsch gefärbt, sondern zu früh
+    /// gemessen.
+    ///
+    /// Mit der festen Pause: **6 von 6 Läufen grün**, und die zwei verbliebenen
+    /// Befunde sind beide Male dieselben zwei Zeilen hinter der
+    /// Navigationsleiste.
+    ///
+    /// **Warum kein Warten auf Stillstand statt einer festen Zahl:** Es wurde
+    /// gebaut und half nicht. Die Liste steht längst still, während der
+    /// Bildschirm noch nicht so aussieht, wie der Audit ihn messen kann —
+    /// Bewegung ist das falsche Merkmal. Eine feste Pause, deren Länge
+    /// nachgemessen ist, ist ehrlicher als eine Schleife, die auf das Falsche
+    /// wartet.
+    ///
+    /// Der Preis sind rund 70 Sekunden auf den vollen Lauf. Für ein Gate, das
+    /// vier Tage lang aus war, ist das billig.
+    private static let settleSeconds: TimeInterval = 7.2
+
+    /// **Alle Flächen, in denen eine durchscheinende Systemleiste die Farbe
+    /// verfälscht** — Suchleiste, Navigationsleiste, Tab-Leiste.
+    ///
+    /// Die Suchleiste war bis zum 2026-08-01 die einzige. Der Kontrast der
+    /// Einstellungen war deshalb seit dem 2026-07-28 gar nicht geprüft: Der
+    /// Audit meldete dort bei jedem Lauf eine andere Zeile, und die Erklärung
+    /// hieß „hängt an der Scrollposition" — richtig beobachtet und zu früh
+    /// aufgehört.
+    ///
+    /// **Nachgemessen am 2026-08-01, Bildschirm 402 × 874, Tab-Leiste bei
+    /// y = 791 (83 hoch), Navigationsleiste 62 … 168.** Drei Scrollpositionen,
+    /// jeder harte Kontrast-Befund mit seinem Rahmen protokolliert:
+    ///
+    /// | Befund | y | Lage |
+    /// |---|---|---|
+    /// | „Angebote sind regional …" | 805 … 867 | hinter der Tab-Leiste |
+    /// | „Profil" | 867 … 908 | hinter der Tab-Leiste |
+    /// | „Angebote" | 775 … 796 | schneidet die Tab-Leiste |
+    /// | „Die Installations-ID …" | 811 … 921 | hinter der Tab-Leiste |
+    /// | „Region hinzufügen" | 769 … 790 | im Verlauf über der Tab-Leiste |
+    /// | „Region hinzufügen" | 88 … 109 | hinter der Navigationsleiste |
+    /// | „Bereit" | 43 … 58 | hinter der Navigationsleiste |
+    /// | „Regionen" | −34 … 6 | über dem Bildschirmrand |
+    ///
+    /// **Kein einziger harter Befund lag im freien Feld.** Alles, was zwischen
+    /// den Leisten steht, kommt höchstens auf „nearly passed" — und das ist der
+    /// bekannte Umbau der sekundären Systemfarbe, kein Regressionssignal.
+    ///
+    /// **Die Schatten-Vermutung trägt hier nicht**, und das ist gemessen und
+    /// nicht angenommen: Die Einstellungen sind eine nackte `List` mit
+    /// `.listRowBackground(Theme.surface)`. In der ganzen Datei steht kein
+    /// `.themeCard()` und kein `.shadow` — es gibt also gar keinen Schatten,
+    /// den man abziehen könnte. Der Befund von der Leerzustands-Karte bleibt
+    /// richtig, er ist nur eine **zweite** Ursache derselben Art: Beide Male
+    /// misst der Audit durch eine Ebene hindurch, die zwischen ihm und der
+    /// gezeichneten Farbe liegt — dort ein Schatten, hier eine Weichzeichnung.
+    ///
+    /// **Warum das nichts an Prüfschärfe kostet:** In einer scrollenden Liste
+    /// wandert jede Zeile durch die Mitte. Der Test misst deshalb an **zwei**
+    /// Positionen statt an einer; was oben hinter der Navigationsleiste liegt,
+    /// steht unten frei und umgekehrt. Eine Ausnahme nach Bezeichner hätte eine
+    /// Zeile für immer blind gemacht — diese hier macht nur die Stelle blind,
+    /// an der ohnehin niemand messen kann.
+    private func translucentBarRegions() -> [CGRect] {
+        let window = app.windows.firstMatch.frame
+        var regions = [scrollEdgeRegion()]
+
+        // Nach oben offen: Eine weggescrollte Zeile meldet sich mit negativem
+        // y und läge sonst außerhalb jeder Fläche.
+        let nav = app.navigationBars.firstMatch
+        if nav.exists {
+            regions.append(CGRect(x: window.minX, y: -10_000,
+                                  width: window.width, height: 10_000 + nav.frame.maxY))
+        }
+
+        // Über der Tab-Leiste läuft ihre Weichzeichnung aus. Die Höhe ist
+        // abgeleitet, nicht gepasst: eine Leistenhöhe, dieselbe Regel wie bei
+        // der Suchleiste. Der flachste falsch beurteilte Befund („Region
+        // hinzufügen", ab 769,5) liegt damit drin, der tiefste richtig
+        // beurteilte („App", endet bei 638) draußen.
+        let tabs = app.tabBars.firstMatch
+        if tabs.exists {
+            let bar = tabs.frame
+            regions.append(CGRect(x: window.minX, y: bar.minY - bar.height,
+                                  width: window.width, height: 10_000))
+        }
+        return regions
     }
 
     /// Vom System gezeichnet oder rein dekorativ — beides nicht über die
