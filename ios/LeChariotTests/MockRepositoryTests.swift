@@ -5,8 +5,10 @@ final class MockRepositoryTests: XCTestCase {
     func testMockOfferRepositoryFiltersByBranch() async throws {
         let repository = MockOfferRepository()
 
+        // Beide Wochen: Das Repository ist die Abfrage, und die kennt keine
+        // Datumsgrenze. Getrennt wird erst im `OfferStore`.
         let both = try await repository.offers(branchIds: ["lidl-01219-1", "aldi-01219-1"])
-        XCTAssertEqual(both.count, MockFixtures.offers.count)
+        XCTAssertEqual(both.count, MockFixtures.offers.count + MockFixtures.nextWeekOffers.count)
 
         // Eine Filiale liefert nur ihre eigenen Angebote — das ist der ganze
         // Unterschied zur PLZ-Abfrage, die immer alle Läden der Gegend brachte.

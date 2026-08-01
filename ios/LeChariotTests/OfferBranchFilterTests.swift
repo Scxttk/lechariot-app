@@ -44,7 +44,13 @@ final class OfferBranchFilterTests: XCTestCase {
     }
 
     private func store(_ offers: [Offer]) -> OfferStore {
-        OfferStore(repository: StubOfferRepository(result: offers), cache: nil)
+        // Fester Stichtag im Fenster der Fixtures. Seit dem 01.08. filtert der
+        // Store auf die laufende Woche; ohne die Uhr würden diese Tests am
+        // 26.07.2026 grundlos rot.
+        OfferStore(
+            repository: StubOfferRepository(result: offers), cache: nil,
+            clock: { self.day }
+        )
     }
 
     func testChosenBranchHidesTheNeighbourBranchOfTheSameChain() async {
@@ -169,7 +175,13 @@ final class NationwideOfferTests: XCTestCase {
     }
 
     private func store(_ offers: [Offer]) -> OfferStore {
-        OfferStore(repository: StubOfferRepository(result: offers), cache: nil)
+        // Fester Stichtag im Fenster der Fixtures. Seit dem 01.08. filtert der
+        // Store auf die laufende Woche; ohne die Uhr würden diese Tests am
+        // 26.07.2026 grundlos rot.
+        OfferStore(
+            repository: StubOfferRepository(result: offers), cache: nil,
+            clock: { self.day }
+        )
     }
 
     /// Der Kern: Die gewählte ALDI-Filiale heißt `ALDI_NORD_4711`, die Zeile
