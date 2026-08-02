@@ -20,6 +20,30 @@ enum OfferCoverage {
     /// `Market.isNationwide` fängt das nicht ab: Das prüft die Endung `_DE`,
     /// und eine Filiale aus dem Verzeichnis heißt `ALDI_NORD_DE029038`. Die
     /// Kette ist hier die richtige Frage, nicht die ID.
+    /// Ab wann der Prospekt dieser Filiale gilt, wenn er **schon da ist, aber
+    /// erst später anfängt**.
+    ///
+    /// **Scotts Ahlbeck-Probe am Sonntag, 02.08.** REWE und Netto standen dort
+    /// mit „Dieser Markt veröffentlicht seinen Prospekt nicht online" — in der
+    /// Produktion lagen zur selben Zeit 254 bzw. 253 Zeilen für die Filiale.
+    /// Alle mit `valid_from = 03.08.`, also ab Montag. Der Sync hat die alte
+    /// Woche beim Neuschreiben geleert, die neue hatte noch nicht begonnen,
+    /// und dazwischen ist die laufende Woche schlicht leer.
+    ///
+    /// Das ist **kein Sonderfall, sondern jeder Sonntagabend** — und der
+    /// vierte Fall, in dem derselbe Satz etwas über den Markt behauptet, was
+    /// wir gar nicht wissen. Hier wissen wir sogar das Gegenteil: Der Prospekt
+    /// liegt vor uns, wir kennen sein Anfangsdatum.
+    ///
+    /// Bundesweite Ketten zählen über den Kettennamen, aus demselben Grund wie
+    /// unten: Ihre Zeilen tragen nie die ID der Filiale.
+    static func upcomingStart(for market: Market, in upcoming: [Offer]) -> Date? {
+        upcoming
+            .filter { $0.marketId == market.marketId || ($0.isNationwide && $0.market == market.chain) }
+            .map(\.validFrom)
+            .min()
+    }
+
     static func branchesWithoutOffers(favorites: [Market], offers: [Offer]) -> [Market] {
         let coveredBranches = Set(offers.compactMap(\.marketId))
         let nationwideChains = Set(offers.filter(\.isNationwide).map(\.market))

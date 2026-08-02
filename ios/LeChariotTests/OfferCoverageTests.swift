@@ -14,11 +14,14 @@ final class OfferCoverageTests: XCTestCase {
         Market(chain: chain, branchName: "\(chain) Anklam", marketId: id, plz: "17389")
     }
 
-    private func offer(_ marketId: String?, _ chain: String, nationwide: Bool = false) -> Offer {
+    private func offer(
+        _ marketId: String?, _ chain: String,
+        nationwide: Bool = false, validFrom: Date = .now
+    ) -> Offer {
         Offer(
             marketId: marketId, market: chain, product: "Butter", price: 1.99,
             regularPrice: 2.49, unit: nil, category: "Molkereiprodukte", emoji: "🧈",
-            validFrom: .now, validUntil: .now.addingTimeInterval(86_400),
+            validFrom: validFrom, validUntil: validFrom.addingTimeInterval(6 * 86_400),
             basePrice: nil, baseUnit: nil, nationwide: nationwide
         )
     }
@@ -61,6 +64,43 @@ final class OfferCoverageTests: XCTestCase {
             OfferCoverage.branchesWithoutOffers(favorites: [voll, leer], offers: offers)
                 .map(\.marketId),
             ["5846"]
+        )
+    }
+
+    // MARK: Der Prospekt, der erst anfängt
+
+    /// Ahlbeck am Sonntag: Die Filiale hat Zeilen, sie gelten nur noch nicht.
+    func testTheStartOfTheComingProspectusIsFound() {
+        let rewe = market("540481", "REWE")
+        let montag = Date(timeIntervalSince1970: 1_785_628_800)
+        let kommend = [
+            offer("540481", "REWE", validFrom: montag.addingTimeInterval(86_400)),
+            offer("540481", "REWE", validFrom: montag),
+        ]
+        XCTAssertEqual(
+            OfferCoverage.upcomingStart(for: rewe, in: kommend), montag,
+            "der früheste Anfang zählt, nicht der erste in der Liste"
+        )
+    }
+
+    /// Fremde Filialen zählen nicht — sonst erbte ein stummer Markt das Datum
+    /// des Nachbarn.
+    func testAnotherBranchesProspectusDoesNotCount() {
+        let netto = market("7608", "Netto")
+        let montag = Date(timeIntervalSince1970: 1_785_628_800)
+        XCTAssertNil(OfferCoverage.upcomingStart(for: netto, in: [offer("540481", "REWE", validFrom: montag)]))
+    }
+
+    /// Bundesweit über die Kette, wie überall in dieser Datei.
+    func testANationwideCatalogueCountsForItsBranches() {
+        let aldi = market("ALDI_NORD_DE029038", "ALDI Nord")
+        let montag = Date(timeIntervalSince1970: 1_785_628_800)
+        XCTAssertEqual(
+            OfferCoverage.upcomingStart(
+                for: aldi,
+                in: [offer("ALDI_NORD_DE", "ALDI Nord", nationwide: true, validFrom: montag)]
+            ),
+            montag
         )
     }
 
