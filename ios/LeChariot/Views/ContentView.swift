@@ -3,6 +3,8 @@ import SwiftUI
 struct ContentView: View {
     @Environment(RegionStore.self) private var store
     @Environment(AreaRequestStore.self) private var areaRequests
+    /// Übersetzt die PLZ in den Ort — siehe `PlaceNameStore`.
+    @Environment(PlaceNameStore.self) private var placeNames
     let marketRepository: MarketRepositoryProtocol
 
     @State private var shoppingList = ShoppingListStore()
@@ -216,7 +218,9 @@ struct ContentView: View {
         guard finished.count == 1, store.regions.count > 1 else {
             return "Wir haben die übrigen Supermärkte in deiner Nähe nachgeladen. Schau nach, ob dein Markt jetzt dabei ist."
         }
-        return "Wir haben die übrigen Supermärkte um \(finished[0]) nachgeladen. Schau nach, ob dein Markt jetzt dabei ist."
+        // Ortsname statt Zahl, wo einer bekannt ist (02.08.) — „um Anklam"
+        // liest sich wie ein Satz, „um 17389" wie eine Fehlermeldung.
+        return "Wir haben die übrigen Supermärkte um \(placeNames.name(forPLZ: finished[0])) nachgeladen. Schau nach, ob dein Markt jetzt dabei ist."
     }
 
     private var areaCompletedNotice: some View {
@@ -335,4 +339,5 @@ struct ContentView: View {
         // beim Wechsel in die Einstellungen ab.
         .environment(ProfileStore())
         .environment(AreaRequestStore(repository: MockAreaRequestRepository()))
+        .environment(PlaceNameStore())
 }
