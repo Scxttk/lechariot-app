@@ -18,6 +18,11 @@ struct RegionSetupView: View {
     /// woher die Zahl im Feld stammt. Wer sie überschreibt, bekommt die Zeile
     /// nicht mehr zu sehen: Dann ist es wieder seine eigene Eingabe.
     @State private var locatedPLZ: String?
+    /// Wie der erkannte Punkt **heißt** — „Anklam, Friedländer Straße" statt
+    /// „17389". Scotts Fund vom 02.08.: Die Zahl ist unser Suchschlüssel,
+    /// nicht die Antwort auf „wo bin ich". Nil, solange Apple nichts gesagt
+    /// hat; dann steht dort weiter die PLZ.
+    @State private var locatedPlaceName: String?
     @State private var isLocating = false
     @State private var isChecking = false
     @State private var errorMessage: String?
@@ -102,7 +107,7 @@ struct RegionSetupView: View {
             // tippt — dann ist es keine Ableitung mehr.
             if let locatedPLZ, locatedPLZ == manualPLZ {
                 Label(
-                    "Aus deinem Standort: \(locatedPLZ). Stimmt das nicht, überschreib es.",
+                    "Aus deinem Standort: \(locatedPlaceName ?? locatedPLZ). Stimmt das nicht, überschreib es.",
                     systemImage: "location.circle"
                 )
                 .font(.footnote)
@@ -150,9 +155,12 @@ struct RegionSetupView: View {
         isLocating = true
         Task {
             do {
-                let plz = try await locator.currentPLZ()
-                manualPLZ = plz
-                locatedPLZ = plz
+                let place = try await locator.currentPlace()
+                manualPLZ = place.plz
+                locatedPLZ = place.plz
+                // Der Name nur, wenn er mehr sagt als die Zahl — sonst stünde
+                // dort „Aus deinem Standort: 17389", also das Alte in neu.
+                locatedPlaceName = place.name == place.plz ? nil : place.name
                 isLocating = false
                 // Kein `submit`. „Weiter" drückt der Mensch.
             } catch {

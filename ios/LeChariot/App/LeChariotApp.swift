@@ -7,6 +7,7 @@ struct LeChariotApp: App {
     @State private var areaRequests: AreaRequestStore
     @State private var branchRequests: BranchRequestStore
     @State private var history = PurchaseHistoryStore()
+    @State private var placeNames = PlaceNameStore()
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     @Environment(\.scenePhase) private var scenePhase
@@ -47,6 +48,7 @@ struct LeChariotApp: App {
                 .environment(areaRequests)
                 .environment(branchRequests)
                 .environment(history)
+                .environment(placeNames)
                 // Beim Start und bei jeder Rückkehr prüfen, ob ein
                 // angefordertes Gebiet inzwischen fertig ist. Der Lauf dauert
                 // ~3 Minuten und überlebt die App — ohne diese Frage erführe
