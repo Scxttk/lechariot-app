@@ -154,6 +154,55 @@ enum MockFixtures {
         ),
     ]
 
+    /// **Die dritte Kette, nur für die Vorschau-Parität** (2026-08-02).
+    ///
+    /// Die Markt-Leiste erscheint erst ab zwei Ketten. Damit die Vorschau eine
+    /// bekommt, brauchen zwei gewählte Ketten Zeilen der Folgewoche — und für
+    /// den Abschnitt „Ohne Vorschau" muss gleichzeitig eine dritte **keine**
+    /// haben. Mit den zwei alten Saatgut-Filialen (Lidl, Aldi) ist das nicht zu
+    /// haben: Gäbe man Aldi Zeilen, verlöre `NextWeekJourneyTests` seinen Fall.
+    ///
+    /// Deshalb Netto: Lidl und Netto liefern die Folgewoche, **Aldi nicht** —
+    /// die drei Zustände, die der Bildschirm auseinanderhalten muss, in einem
+    /// Saatgut.
+    ///
+    /// **Getrennt von `offers` und `nextWeekOffers`**, weil ein halbes Dutzend
+    /// Tests gegen deren `count` prüft. Sichtbar wird die Kette ohnehin nur,
+    /// wenn ihre Filiale gewählt ist — `MockOfferRepository` filtert nach
+    /// `branchIds`, und das tut nur `-uiTestingOnboardedThreeChains`.
+    static let thirdChainOffers: [Offer] = [
+        Offer(
+            marketId: "netto-01219-1",
+            market: "Netto",
+            product: "Deutsche Erdbeeren",
+            price: 1.99,
+            regularPrice: 2.99,
+            unit: "je 500 g Schale",
+            category: "Obst & Gemüse",
+            emoji: "🍓",
+            validFrom: weekStart,
+            validUntil: weekEnd,
+            basePrice: 3.98,
+            baseUnit: "1 kg",
+            nationwide: false
+        ),
+        Offer(
+            marketId: "netto-01219-1",
+            market: "Netto",
+            product: "Rügenwalder Teewurst",
+            price: 1.29,
+            regularPrice: 1.99,
+            unit: "je 125 g",
+            category: "Fleisch & Wurst",
+            emoji: "🥓",
+            validFrom: nextWeekStart,
+            validUntil: nextWeekEnd,
+            basePrice: 10.32,
+            baseUnit: "1 kg",
+            nationwide: false
+        ),
+    ]
+
     /// Three recorded weeks for the first offer fixture — enough for the
     /// detail sheet's price history to show up in previews and UI tests.
     static let priceHistory: [PriceHistoryPoint] = [
@@ -251,6 +300,7 @@ struct MockOfferRepository: OfferRepositoryProtocol {
     /// Beide Wochen, wie die echte Abfrage: `select=*` kennt keine Datumsgrenze.
     /// Getrennt werden sie erst im `OfferStore`.
     var fixtures: [Offer] = MockFixtures.offers + MockFixtures.nextWeekOffers
+        + MockFixtures.thirdChainOffers
 
     func offers(branchIds: [String]) async throws -> [Offer] {
         // Nationwide rows belong to every branch of their chain.

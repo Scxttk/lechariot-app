@@ -16,12 +16,12 @@ struct OffersView: View {
     /// nichts liefert — siehe `unavailableBranchesSection`.
     @Environment(BranchRequestStore.self) private var branchRequests
 
-    @State private var search = ""
+    /// Suche, Filter, Sortierung und Markt-Leiste — geteilt mit der Vorschau,
+    /// siehe `OfferBrowser`. Jeder Bildschirm hält seinen eigenen Zustand und
+    /// füttert ihn mit seinem eigenen Topf; damit kann keiner die Zeilen des
+    /// anderen sehen.
+    @State private var browser = OfferBrowser()
     @State private var selectedOffer: Offer?
-    @State private var grouping: OfferGrouping = .market
-    @State private var sort: OfferSort = .standard
-    @State private var categoryFilter: String?
-    @State private var marketFilter: String?
 
     private var chains: [String] {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
@@ -41,7 +41,7 @@ struct OffersView: View {
             content
                 .themedScreen()
                 .navigationTitle("Angebote")
-                .searchable(text: $search, prompt: "Produkt suchen")
+                .searchable(text: $browser.search, prompt: "Produkt suchen")
                 .toolbar {
                     filterMenu
                     nextWeekLink
@@ -61,9 +61,7 @@ struct OffersView: View {
         // the settings and the Angebote tab was left filtering on a chain that no
         // longer has offers, i.e. permanently empty with no visible cause.
         .onChange(of: chains) { _, updated in
-            if let marketFilter, !updated.contains(marketFilter) {
-                self.marketFilter = nil
-            }
+            browser.dropMarketFilterIfGone(from: updated)
         }
     }
 
@@ -104,72 +102,13 @@ struct OffersView: View {
 
     // MARK: Markt-Leiste
 
-    /// Die Ketten, für die die Leiste einen Chip zeigt.
-    ///
-    /// Gerechnet aus den **geladenen Angeboten**, nicht aus den gewählten
-    /// Filialen. Ein Chip für eine Kette, die diese Woche nichts hat, wäre
-    /// ein Tipp in die Sackgasse „Nichts für diesen Filter"; dass eine
-    /// gewählte Filiale leer ist, erklärt der Abschnitt „Ohne Angebote" am
-    /// Ende der Liste, und zwar mit dem Grund.
-    ///
-    /// Die aktive Kette bleibt drin, auch wenn sie gerade aus den Angeboten
-    /// fällt (eine Aktualisierung kann das). Sonst verschwände mit dem Chip
-    /// der einzige sichtbare Hinweis darauf, warum die Liste leer ist — und
-    /// das ist genau die Fehlerklasse, gegen die diese Runde antritt.
-    private var chipChains: [String] {
-        var ketten = Set(store.offers.map(\.market))
-        if let marketFilter { ketten.insert(marketFilter) }
-        return ketten.sorted()
-    }
-
-    /// Ein Tipp statt einer Scroll-Lotterie.
-    ///
-    /// Den Marktfilter gab es schon, aber als vierten Picker in einem Menü
-    /// der Werkzeugleiste — wer zu Lidl wollte, scrollte trotzdem. Die Leiste
-    /// steht deshalb **über** der Liste und scrollt nicht mit ihr weg.
-    ///
-    /// Bei genau einer Kette filtert sie nichts und wäre reine Höhe; dann
-    /// bleibt sie weg. Dieselbe Regel wie bei der Konsum-Zeile im Picker: Was
-    /// fast niemandem hilft, darf nicht jeder bezahlen.
-    @ViewBuilder
+    /// Siehe `MarketChipBar` — gebaut aus den Zeilen **dieses** Bildschirms.
     private var marketChips: some View {
-        let ketten = chipChains
-        if ketten.count > 1 {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Spacing.sm) {
-                    marketChip("Alle", chain: nil)
-                    ForEach(ketten, id: \.self) { marketChip($0, chain: $0) }
-                }
-                .padding(.horizontal, Theme.Spacing.lg)
-                .padding(.vertical, Theme.Spacing.sm)
-            }
-            .background(Theme.background)
-            .accessibilityIdentifier("offers.marketChips")
-        }
-    }
-
-    /// Mindestens 44 pt hoch, nicht die hübscheren 36: `performAccessibilityAudit`
-    /// misst Trefferflächen mit, und der Angebote-Bildschirm steht in
-    /// `AccessibilityAuditTests` unter Gate.
-    private func marketChip(_ title: String, chain: String?) -> some View {
-        let aktiv = marketFilter == chain
-        return Button {
-            // Ein zweiter Tipp auf den aktiven Chip hebt ihn auf. „Alle" liegt
-            // am anderen Ende der Leiste, und dorthin zurückzuscrollen wäre
-            // wieder genau die Lotterie, gegen die die Leiste gebaut ist.
-            marketFilter = aktiv ? nil : chain
-        } label: {
-            Text(title)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(aktiv ? Theme.onAccent : Color.primary)
-                .padding(.horizontal, Theme.Spacing.lg)
-                .frame(minHeight: 44)
-                .background(aktiv ? Theme.accent : Theme.surface, in: Capsule())
-                .overlay(Capsule().strokeBorder(aktiv ? Color.clear : Theme.stroke))
-        }
-        .buttonStyle(TactileButtonStyle())
-        .accessibilityLabel(chain == nil ? "Alle Märkte" : title)
-        .accessibilityAddTraits(aktiv ? [.isSelected] : [])
+        MarketChipBar(
+            chains: browser.chipChains(in: store.offers),
+            selection: $browser.market,
+            identifier: "offers.marketChips"
+        )
     }
 
     /// Region is ready, but there are no offers to show.
@@ -274,72 +213,24 @@ struct OffersView: View {
         }
     }
 
-    /// Everything was filtered away. Distinct from `emptyState`: here the data
-    /// is fine and the user's own filter is in the way, so the fix is one tap.
-    private var noFilterMatchState: some View {
-        ContentUnavailableView {
-            Label("Nichts für diesen Filter", systemImage: "line.3.horizontal.decrease.circle")
-        } description: {
-            Text("Für die gewählte Kategorie oder den gewählten Markt gibt es diese Woche keine Angebote.")
-        } actions: {
-            Button("Filter zurücksetzen") { resetFilters() }
-                .buttonStyle(.borderedProminent)
-                .foregroundStyle(Theme.onAccent)
-        }
-    }
-
-    private func resetFilters() {
-        categoryFilter = nil
-        marketFilter = nil
-        sort = .standard
-    }
-
-    /// Gesucht **innerhalb** einer Kette und nichts gefunden.
-    ///
-    /// `ContentUnavailableView.search` sagt an dieser Stelle nur „Keine
-    /// Ergebnisse für ‚Butter'" — und verschweigt, dass die Suche gerade auf
-    /// einen Markt eingeschränkt ist. Bei den anderen liegt vielleicht Butter.
-    /// Dieselbe Halbwahrheit wie der Leertext, der EDEKA Böse ein „schau
-    /// später noch einmal vorbei" mitgab: ein Satz, der eine Lage behauptet,
-    /// die er nicht geprüft hat. Der Ausweg steht daneben und kostet einen Tipp.
-    private func noSearchHitInOneMarket(_ chain: String) -> some View {
-        ContentUnavailableView {
-            Label("Nichts bei \(chain)", systemImage: "magnifyingglass")
-        } description: {
-            Text("„\(search.trimmingCharacters(in: .whitespaces))" + "“ steht diese Woche nicht in den Angeboten von \(chain). Die anderen Märkte sind gerade ausgeblendet.")
-        } actions: {
-            Button("In allen Märkten suchen") { marketFilter = nil }
-                .buttonStyle(.borderedProminent)
-                .foregroundStyle(Theme.onAccent)
-        }
-    }
-
     private var offerList: some View {
         List {
             if store.isStale {
                 staleBanner
             }
-            let visible = OfferQuery.apply(
-                store.offers, search: search,
-                category: categoryFilter, market: marketFilter, sort: sort
-            )
+            let visible = browser.visible(in: store.offers)
             if visible.isEmpty {
-                // Drei Sackgassen, die einmal identisch aussahen. Eine leere
-                // Suche zeigte die Suchleere („Keine Ergebnisse für ‚'"),
-                // obwohl nur ein Filter im Weg stand — und eine Suche
-                // innerhalb einer Kette verschwieg, dass sie eingeschränkt ist.
-                if !search.trimmingCharacters(in: .whitespaces).isEmpty {
-                    if let marketFilter {
-                        noSearchHitInOneMarket(marketFilter)
-                    } else {
-                        ContentUnavailableView.search(text: search)
-                    }
-                } else {
-                    noFilterMatchState
-                }
+                // Die drei Sackgassen stehen seit dem 2026-08-02 in
+                // `OfferEmptyResultView`, weil die Vorschau dieselben drei hat.
+                OfferEmptyResultView(
+                    browser: browser,
+                    scope: .current,
+                    onResetFilters: { browser.resetFilters() },
+                    onClearMarket: { browser.market = nil }
+                )
             } else {
                 topDealsSection
-                ForEach(Array(OfferQuery.grouped(visible, by: grouping).enumerated()), id: \.element.key) { index, section in
+                ForEach(Array(OfferQuery.grouped(visible, by: browser.grouping).enumerated()), id: \.element.key) { index, section in
                     Section(sectionTitle(section.key)) {
                         ForEach(section.offers) { offerRow($0) }
                     }
@@ -355,9 +246,7 @@ struct OffersView: View {
                 // Woche nichts hat, ist eine Fußnote zur Liste, kein Ergebnis
                 // in ihr — und wer nach „Butter" sucht, will sie erst recht
                 // nicht dazwischen haben.
-                if search.trimmingCharacters(in: .whitespaces).isEmpty,
-                   categoryFilter == nil, marketFilter == nil,
-                   !branchesWithoutOffers.isEmpty {
+                if browser.isBrowsing, !branchesWithoutOffers.isEmpty {
                     unavailableBranchesSection
                 }
             }
@@ -391,8 +280,7 @@ struct OffersView: View {
     /// something specific and a "best of" list is only in the way.
     @ViewBuilder
     private var topDealsSection: some View {
-        let isBrowsing = search.isEmpty && !hasActiveFilter
-        let deals = isBrowsing ? OfferAnalytics.topDeals(store.offers, limit: 5) : []
+        let deals = browser.isBrowsing ? OfferAnalytics.topDeals(store.offers, limit: 5) : []
         if !deals.isEmpty {
             Section {
                 ForEach(deals) { offerRow($0) }
@@ -418,7 +306,7 @@ struct OffersView: View {
     /// Market sections show the branch name when the chain has exactly one
     /// favorited branch across the shown regions.
     private func sectionTitle(_ key: String) -> String {
-        guard grouping == .market else { return key }
+        guard browser.grouping == .market else { return key }
         return Market.displayTitle(chain: key, favorites: favoriteMarkets)
     }
 
@@ -447,31 +335,13 @@ struct OffersView: View {
 
     private var filterMenu: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Picker("Gruppierung", selection: $grouping) {
-                    ForEach(OfferGrouping.allCases) { Text($0.rawValue).tag($0) }
-                }
-                Picker("Sortierung", selection: $sort) {
-                    ForEach(OfferSort.allCases) { Text($0.rawValue).tag($0) }
-                }
-                Picker("Kategorie", selection: $categoryFilter) {
-                    Text("Alle Kategorien").tag(String?.none)
-                    ForEach(Categories.all, id: \.self) { Text($0).tag(String?.some($0)) }
-                }
-                // Kein „Markt"-Picker mehr: Das steht seit dem 2026-07-31 als
-                // Chip-Leiste über der Liste, sichtbar statt vier Ebenen tief.
-                // Zwei Bedienelemente für denselben Zustand sind die Sorte
-                // Ballast, die dieselbe Runde im Filial-Picker abgeräumt hat.
-            } label: {
-                Label("Filter", systemImage: hasActiveFilter
-                    ? "line.3.horizontal.decrease.circle.fill"
-                    : "line.3.horizontal.decrease.circle")
-            }
+            OfferFilterMenu(
+                grouping: $browser.grouping,
+                sort: $browser.sort,
+                category: $browser.category,
+                hasActiveFilter: browser.hasActiveFilter
+            )
         }
-    }
-
-    private var hasActiveFilter: Bool {
-        categoryFilter != nil || marketFilter != nil || sort == .deals
     }
 }
 

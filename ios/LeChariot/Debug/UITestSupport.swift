@@ -78,6 +78,17 @@ enum UITestSupport {
     private static let seedsAllBranches =
         ProcessInfo.processInfo.arguments.contains("-uiTestingOnboardedAllBranches")
 
+    /// Zusätzlich `-uiTestingOnboardedThreeChains`: eine **dritte** Filiale,
+    /// deren Kette Zeilen der Folgewoche hat.
+    ///
+    /// Die Vorschau-Parität braucht drei Zustände gleichzeitig: zwei Ketten mit
+    /// Vorschau (sonst zeigt die Markt-Leiste nichts — sie erscheint erst ab
+    /// zwei) und eine ohne (sonst ist der Abschnitt „Ohne Vorschau" leer und
+    /// die Zusage „auch unter Filter" nicht prüfbar). Siehe
+    /// `MockFixtures.thirdChainOffers`.
+    private static let seedsThreeChains =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingOnboardedThreeChains")
+
     /// Die Filialen, die das Saatgut wählt — dieselben, die die Onboarding-
     /// Journeys im Picker antippen, damit beide Wege denselben Zustand
     /// erreichen. Lidl zuerst: Wer nur eine bekommt, bekommt die, auf die die
@@ -87,9 +98,20 @@ enum UITestSupport {
                marketId: "lidl-01219-1", plz: "01219"),
         Market(chain: "Aldi", branchName: "Dresden Prohlis",
                marketId: "aldi-01219-1", plz: "01219"),
+        Market(chain: "Netto", branchName: "Dresden Strehlen",
+               marketId: "netto-01219-1", plz: "01219"),
     ]
 
     static let seededPLZ = "01219"
+
+    /// Eine, zwei oder drei Filialen — je nachdem, was der Lauf braucht. Die
+    /// Reihenfolge ist die von `seededBranches`, damit ein Lauf mit zwei
+    /// Filialen genau den Zustand bekommt, den er vor dem 2026-08-02 hatte.
+    private static var seededFavorites: [Market] {
+        if seedsThreeChains { return seededBranches }
+        if seedsAllBranches { return Array(seededBranches.prefix(2)) }
+        return [seededBranches[0]]
+    }
 
     /// Launched with `-uiTestingOnboardingLost`: den Merker „Onboarding
     /// durchlaufen" abräumen und **sonst nichts** anfassen.
@@ -115,7 +137,7 @@ enum UITestSupport {
         guard seedsOnboardedState else { return }
         regions.seedOnboarded(
             region: seededPLZ,
-            favorites: seedsAllBranches ? seededBranches : [seededBranches[0]]
+            favorites: seededFavorites
         )
         // Ohne das hielte `OnboardingFlowView.resume` den Assistenten für
         // unterbrochen — sichtbar wird es erst, wenn jemand zurücksetzt.
