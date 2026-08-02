@@ -56,6 +56,38 @@ final class PLZLocator: NSObject, CLLocationManagerDelegate {
 
     /// Requests permission if needed, fetches one location and reverse-geocodes
     /// it to a postal code.
+    /// PLZ **und** Ortsname aus einer einzigen Reverse-Abfrage.
+    ///
+    /// Beides aus demselben Placemark, weil es dasselbe Placemark ist: Wer
+    /// den Namen in einer zweiten Abfrage holt, zahlt eine zweite Runde ans
+    /// Apple-Kontingent und kann obendrein zwei verschiedene Antworten
+    /// bekommen. Der Name ist Straßenebene, wenn Apple sie hergibt — das ist
+    /// die Anzeige, die Scott am 02.08. vermisst hat.
+    ///
+    /// **Die Koordinate verlässt das Gerät nur Richtung Apple.** An unseren
+    /// Server geht die PLZ, nie die Position.
+    func currentPlace() async throws -> (plz: String, name: String) {
+        if let stub = UserDefaults.standard.string(forKey: "uiTestingLocatedPLZ"),
+           PLZValidator.isValid(stub) {
+            return (stub, stub)
+        }
+        let point = try await currentCoordinates()
+        let location = CLLocation(latitude: point.lat, longitude: point.lon)
+        let placemarks = try await CLGeocoder().reverseGeocodeLocation(location)
+        guard let placemark = placemarks.first,
+              let plz = placemark.postalCode, PLZValidator.isValid(plz) else {
+            throw LocatorError.noPLZ
+        }
+        let name = PlaceName.position(
+            locality: placemark.locality,
+            subLocality: placemark.subLocality,
+            thoroughfare: placemark.thoroughfare,
+            subThoroughfare: placemark.subThoroughfare,
+            plz: plz
+        )
+        return (plz, name)
+    }
+
     func currentPLZ() async throws -> String {
         // Unter `-uiTestingLocatedPLZ 01067` antwortet der Locator sofort mit
         // dieser PLZ — ohne CoreLocation-Dialog und ohne Geocoder.

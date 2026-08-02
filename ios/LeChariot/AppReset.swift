@@ -35,7 +35,8 @@ enum AppReset {
         tutorial: TutorialStore,
         areaRequests: AreaRequestStore,
         branchRequests: BranchRequestStore,
-        history: PurchaseHistoryStore
+        history: PurchaseHistoryStore,
+        placeNames: PlaceNameStore
     ) {
         regions.resetAllData()
         profile.resetAllData()
@@ -56,6 +57,9 @@ enum AppReset {
         // können soll, ohne alles aufzugeben — hier wird sie trotzdem
         // mitgelöscht, sonst wäre der Reset nicht exakt.
         history.resetAllData()
+        // Abgeleitet, aber nicht harmlos: Der Zwischenspeicher nennt die Orte,
+        // an denen jemand eingecheckt hat.
+        placeNames.resetAllData()
 
         // Not owned by any store: the appearance override (a fresh install
         // follows the system) and the two caches that would otherwise make the

@@ -73,7 +73,7 @@ final class PickerDirectoryTests: XCTestCase {
         // damit von der besser bestückten Region beantwortet.
         let merged = [pennyGoessnitz, nettoSchmoelln, pennyAmHaff, pennyKarlshagen]
         XCTAssertFalse(
-            AreaRequestStore.areaLooksUnfetched(merged),
+            AreaRequestStore.areaLooksUnfetched(merged, around: schmoelln.lat, schmoelln.lon),
             "Der zusammengeworfene Topf sah vollständig aus — das war der Fehler"
         )
     }
@@ -135,6 +135,56 @@ final class PickerDirectoryTests: XCTestCase {
         let plan = PickerDirectory.plan([
             find("04626", schmoelln, [pennyGoessnitz, nettoSchmoelln]),
         ])
+        XCTAssertTrue(plan.areaCandidates.isEmpty)
+    }
+
+    // MARK: Anklam, 02.08. — die Fremdkette im Nachbarort
+
+    /// **Scotts Feldtest.** In Anklam zeigte die App nur Penny, und die Gegend
+    /// wurde nie angefordert. Die Zahlen aus der Produktion, an diesem Tag
+    /// gemessen: Im Kasten um Anklam stehen genau zwei Filialen — der Penny in
+    /// der Friedländer Straße und ein Netto in Ducherow, 11 km weiter. Weil
+    /// der Picker bis 40 km aufmacht, wenn weniger als sechs Filialen
+    /// dastehen, lagen im Fund auch EDEKA Lassan (15 km) und Lidl Gützkow
+    /// (21 km) — und jede einzelne dieser Fremdketten reichte, damit das
+    /// Gebiet als geholt galt.
+    ///
+    /// Gegen den Stand vor dem Fix fällt dieser Test: `areaCandidates` war
+    /// leer, also ging nie eine Anforderung raus, also blieb Anklam für immer
+    /// bei einem Markt.
+    func testAnklamAsksForItsAreaAlthoughTheNextTownHasAChain() {
+        let anklam = (lat: 53.8607, lon: 13.6903)
+        let pennyAnklam = branch("561536", chain: "Penny", name: "Penny Friedländer Straße",
+                                 lat: 53.85032, lon: 13.69157)
+        let nettoDucherow = branch("7453", chain: "Netto", name: "Netto Ducherow",
+                                   lat: 53.7659278, lon: 13.7781329)
+        let edekaLassan = branch("216828", chain: "EDEKA", name: "Frischemarkt Lehmann",
+                                 lat: 53.9905, lon: 13.8420)
+
+        let plan = PickerDirectory.plan([
+            find("17389", anklam, [pennyAnklam, nettoDucherow, edekaLassan]),
+        ])
+
+        // Bewusst ohne `try! XCTUnwrap`: Gegen den Stand vor dem Fix ist die
+        // Liste leer, und ein `try!` reißt dort den ganzen Lauf mit — eine
+        // Gegenprobe, die den Prüfstand abschießt, ist keine.
+        XCTAssertEqual(plan.areaCandidates.count, 1, "Anklam muss angefordert werden")
+        XCTAssertEqual(plan.areaCandidates.first?.plz, "17389")
+        XCTAssertEqual(
+            plan.areaCandidates.first?.anchor.marketId, "561536",
+            "der Penny vor Ort ist der Anker"
+        )
+        // Und die drei bleiben natürlich wählbar — angefordert wird zusätzlich,
+        // nicht statt.
+        XCTAssertEqual(plan.entries.count, 3)
+    }
+
+    /// Die Gegenrichtung: Dresden hat sein Verzeichnis, und daran ändert der
+    /// Fix nichts. Ohne diese Sperre würde eine zu scharfe Regel jede Stadt
+    /// jede Nacht neu anfordern.
+    func testDresdenIsStillNotRequested() {
+        let dresdenBranches = MockFixtures.branches.filter { ($0.plz ?? "").hasPrefix("01") }
+        let plan = PickerDirectory.plan([find("01067", dresden, dresdenBranches)])
         XCTAssertTrue(plan.areaCandidates.isEmpty)
     }
 

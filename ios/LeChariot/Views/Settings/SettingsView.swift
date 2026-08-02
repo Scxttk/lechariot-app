@@ -19,6 +19,9 @@ struct SettingsView: View {
     @Environment(AreaRequestStore.self) private var areaRequests
     @Environment(BranchRequestStore.self) private var branchRequests
     @Environment(PurchaseHistoryStore.self) private var history
+    /// Übersetzt die PLZ in den Ort, an dem man wirklich steht — siehe
+    /// `PlaceNameStore`.
+    @Environment(PlaceNameStore.self) private var placeNames
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
@@ -164,7 +167,8 @@ struct SettingsView: View {
                         tutorial: tutorial,
                         areaRequests: areaRequests,
                         branchRequests: branchRequests,
-                        history: history
+                        history: history,
+                        placeNames: placeNames
                     )
                 }
                 Button("Abbrechen", role: .cancel) {}
@@ -407,6 +411,8 @@ struct SettingsView: View {
 /// alles andere weg, sobald jemand mehr als eine Handvoll Läden hatte.
 private struct ShoppingPlacesScreen: View {
     @Environment(RegionStore.self) private var store
+    /// Übersetzt die PLZ in den Ort — siehe `PlaceNameStore`.
+    @Environment(PlaceNameStore.self) private var placeNames
     let marketRepository: MarketRepositoryProtocol
 
     @State private var regionToRemove: String?
@@ -531,10 +537,22 @@ private struct ShoppingPlacesScreen: View {
             ForEach(store.regions, id: \.self) { plz in
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("PLZ \(plz)")
+                        // Der Ort steht vorn, die Zahl klein daneben: Gesucht
+                        // wird mit der PLZ, gewohnt wird in einer Stadt
+                        // (Scotts Fund vom 02.08.). Solange der Geocoder
+                        // schweigt, ist der Name die PLZ und die Zeile sieht
+                        // aus wie vorher.
+                        let name = placeNames.name(forPLZ: plz)
+                        Text(name == plz ? "PLZ \(plz)" : name)
                             .font(.body.weight(.medium))
+                        if name != plz {
+                            Text("PLZ \(plz)")
+                                .font(.caption)
+                                .foregroundStyle(Theme.secondaryText)
+                        }
                         syncStateLabel(store.syncState(for: plz))
                     }
+                    .task { await placeNames.resolve(plz: plz) }
                     Spacer()
                     removeButton("PLZ \(plz) entfernen") { regionToRemove = plz }
                 }
