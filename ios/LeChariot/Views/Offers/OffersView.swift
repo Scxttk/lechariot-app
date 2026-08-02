@@ -215,10 +215,7 @@ struct OffersView: View {
     /// Zeilen tragen die synthetische ID `ALDI_NORD_DE` und nie die der Filiale,
     /// sie stünden also immer fälschlich hier.
     private var branchesWithoutOffers: [Market] {
-        let covered = Set(store.offers.compactMap(\.marketId))
-        return favoriteMarkets
-            .filter { !$0.isNationwide && !covered.contains($0.marketId) }
-            .sorted { ($0.chain, $0.branchName) < ($1.chain, $1.branchName) }
+        OfferCoverage.branchesWithoutOffers(favorites: favoriteMarkets, offers: store.offers)
     }
 
     /// Sagt je Filiale, **warum** dort nichts steht.
