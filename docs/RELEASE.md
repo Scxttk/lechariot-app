@@ -63,28 +63,53 @@ touch the build number.
 
 None of this is in the repo, because none of it can be.
 
-0. ~~**An Apple ID in Xcode.**~~ ✅ **Done.** Xcode → Settings → Accounts holds
-   the account for team `3DZ9T8SGX5`, and `--upload` uses that session. Listed
-   here only so the order stays readable: it needs a password and a two-factor
-   code, so if it ever has to be redone it is yours and cannot be scripted.
-   Signing itself never depended on it — the certificate and store profile are
-   local — only the upload did.
+0. **An Apple ID in Xcode** — Xcode → Settings → Accounts, team `3DZ9T8SGX5`.
+   It needs a password and a two-factor code, so it is yours and cannot be
+   scripted.
+
+   ⚠️ **This is not a one-time step, and the note here used to claim it was.**
+   On 2026-08-02 the account list was empty and `Apple Distribution: Scott
+   Koehler (3DZ9T8SGX5)` was gone from both keychains; the run died with `No
+   Accounts: Add a new account in Accounts settings.` The day before, the same
+   command had uploaded a build. In between: the Xcode update to 26.3. The
+   store provisioning profile survived (valid to 2027-07-30) — only the
+   certificate and the session were gone, and Xcode re-issued the certificate
+   by itself once the account was back.
+
+   The old note also said signing never depended on the account. That was
+   wrong in the case that matters: without an account there is no distribution
+   certificate to sign *with*. **Step 2 is the way out of this whole class.**
 
 1. **App record.** appstoreconnect.apple.com → Apps → +, platform iOS, bundle ID
    `com.skoehler.lechariot`, primary language German. The App ID is already
    registered on the developer portal, and the distribution certificate plus the
    store provisioning profile exist — nothing has to be clicked for signing.
 
-2. **API key**, only if you want `--upload` instead of Xcode's Organizer:
-   App Store Connect → Users and Access → Integrations → App Store Connect API,
-   role *App Manager*. The `.p8` downloads exactly once. Then
+2. **API key** — the fix for step 0. A key is a file; it survives Xcode
+   updates, and `--upload` then never asks who is logged in.
 
-   ```
-   export ASC_KEY_ID=…  ASC_ISSUER_ID=…  ASC_KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_….p8
+   App Store Connect → Users and Access → Integrations → App Store Connect API
+   → Team Keys → **+**, name it (`Le Chariot Upload`), role **App Manager**.
+   Copy the **Issuer ID** shown above the key list — it is not in the file and
+   cannot be derived. **The `.p8` downloads exactly once**, so put it away
+   before closing the tab:
+
+   ```bash
+   mkdir -p ~/.appstoreconnect/private_keys && chmod 700 ~/.appstoreconnect/private_keys
+   mv ~/Downloads/AuthKey_*.p8 ~/.appstoreconnect/private_keys/
+   chmod 600 ~/.appstoreconnect/private_keys/AuthKey_*.p8
+   echo 'export ASC_ISSUER_ID=<Issuer-ID>' > ~/.config/lechariot/asc-env
    ```
 
-   Keep it out of the repo — `~/.config/lechariot/env` is where the backend
-   credentials already live.
+   That is all. `release.sh` finds the key itself: exactly one `AuthKey_*.p8`
+   in that directory, key id read from the filename (Apple's own naming rule),
+   issuer id from `~/.config/lechariot/asc-env`. Two keys in the directory and
+   it refuses to guess; a key without an issuer id and it says so instead of
+   silently falling back. Environment variables still win if they are set.
+
+   Nothing of this goes in the repo. `~/.config/lechariot/env` holds the
+   backend credentials; the issuer id gets its own file next to it so a
+   backend run never has to source app-release settings.
 
 3. **Privacy answers.** App Store Connect asks the same questions the privacy
    manifest answers, and the two have to agree.
