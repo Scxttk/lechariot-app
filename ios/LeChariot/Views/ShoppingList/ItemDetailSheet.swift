@@ -12,6 +12,7 @@ struct ItemDetailSheet: View {
     let onSave: ([String], String) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var chosen: [String]
     @State private var note: String
 
@@ -97,6 +98,19 @@ struct ItemDetailSheet: View {
                 }
             }
         }
+        // **Halb, wie bei Bring!** (Scott, 02.08.). Das Menü kommt beim
+        // Anlegen von selbst — als ganzer Bildschirm verdeckte es genau die
+        // Liste, in die man gerade etwas einträgt, und wer zwei Dinge
+        // hintereinander aufschreibt, musste dazwischen jedes Mal eine
+        // Vollbildansicht wegräumen. Auf halber Höhe bleibt die Liste sichtbar,
+        // und `.large` ist einen Zug nach oben entfernt, wenn jemand die Notiz
+        // tippt.
+        //
+        // Bei großen Schriftgraden nur `.large`: Auf halber Höhe stünde vom
+        // Wortschatz keine ganze Gruppe mehr da. Dieselbe Rücksicht wie in
+        // `OfferDetailView`.
+        .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 
     private var strangers: [String] {
