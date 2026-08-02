@@ -112,17 +112,22 @@ struct OnboardingFlowView: View {
         Task { await profile.sync(plz: plz, branchIds: branchIds) }
     }
 
-    /// Der Rundgang wird angeboten — außer in UI-Läufen, die ihn nicht meinen.
+    /// Der Rundgang wird angeboten — einmal, und außer in UI-Läufen, die ihn
+    /// nicht meinen.
     ///
     /// Er hängt einen Bildschirm ans Onboarding und sperrt danach die Liste
     /// hinter Sperrflächen; jede bestehende Journey würde daran hängenbleiben,
     /// ohne dass an ihr etwas kaputt wäre. Wer ihn prüfen will, startet mit
     /// `-uiTestingTutorial`.
+    ///
+    /// **„Einmal" stand bis zum 2026-08-02 nur im Kommentar des Merkers.** Hier
+    /// stand `return true`, also wurde der Rundgang jedes Mal angeboten, wenn
+    /// der Assistent lief — siehe `TutorialStore.offersTourAfterOnboarding`.
     private var offersTour: Bool {
         #if DEBUG
-        if UITestSupport.isActive { return UITestSupport.showsTutorial }
+        if UITestSupport.isActive, !UITestSupport.showsTutorial { return false }
         #endif
-        return true
+        return tutorial.offersTourAfterOnboarding
     }
 
     /// Picks up where the user left off: they answered the questions before but

@@ -20,12 +20,60 @@ final class TutorialJourneyTests: XCTestCase {
         app = XCUIApplication()
     }
 
-    private func launch(withTour: Bool, keepState: Bool = false) {
+    private func launch(withTour: Bool, keepState: Bool = false, onboardingLost: Bool = false) {
         var arguments = ["-uiTesting"]
         if withTour { arguments.append("-uiTestingTutorial") }
         if keepState { arguments.append("-uiTestingKeepState") }
+        if onboardingLost { arguments.append("-uiTestingOnboardingLost") }
         app.launchArguments = arguments
         app.launch()
+    }
+
+    // MARK: Scotts Meldung aus Build 2026.0801.1951
+
+    /// **„Der Rundgang startet wieder automatisch los."**
+    ///
+    /// Der Assistent läuft ein zweites Mal — hier erzwungen mit
+    /// `-uiTestingOnboardingLost`, das genau einen Merker abräumt und sonst
+    /// nichts. Alles andere liegt unverändert da, **einschließlich** des
+    /// „Rundgang gesehen"-Merkers.
+    ///
+    /// Bis zum 2026-08-02 bekam man in dieser Lage den Rundgang wieder
+    /// vorgesetzt: `offersTour` gab `true` zurück, ohne den Merker je zu
+    /// lesen, und `resume()` springt sofort auf diesen Schritt. Der Fall ist
+    /// bewusst über den verlorenen Merker gestellt und nicht über eine
+    /// vermutete Ursache — die Regel gilt für jede.
+    func testASecondRunOfTheAssistantDoesNotOfferASeenTourAgain() {
+        launch(withTour: true)
+        completeOnboarding()
+        XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15))
+        app.buttons["onboarding.skip"].tap()          // gesehen: „Später" zählt
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+
+        app.terminate()
+        launch(withTour: true, keepState: true, onboardingLost: true)
+
+        XCTAssertFalse(app.staticTexts[tourTitle].waitForExistence(timeout: 6),
+                       "ein zweiter Lauf des Assistenten darf einen gesehenen Rundgang nicht wieder anbieten")
+        XCTAssertFalse(tourCard.exists, "und erst recht nicht von allein starten")
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 20),
+                      "ohne Angebot ist der Assistent an dieser Stelle fertig — direkt in die Liste")
+    }
+
+    /// Die Gegenrichtung: Wer den Rundgang **nicht** gesehen hat, bekommt ihn
+    /// im zweiten Lauf des Assistenten weiterhin angeboten. Ohne diesen Fall
+    /// wäre der obige auch mit einem hart auf `false` verdrahteten Angebot grün.
+    func testAnUnseenTourIsStillOfferedInASecondRun() {
+        launch(withTour: true)
+        completeOnboarding()
+        XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15))
+        // Kein Tipp auf „Los geht's" oder „Später": Die App wird mitten im
+        // Angebot abgeschossen, der Merker bleibt also ungesetzt.
+        app.terminate()
+
+        launch(withTour: true, keepState: true, onboardingLost: true)
+        XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 20),
+                      "ungesehen heißt: das Angebot steht weiter")
     }
 
     // MARK: Das Angebot am Ende des Onboardings

@@ -415,6 +415,11 @@ struct PinnedBadge: View {
         .padding(.vertical, 2)
         .background(Theme.accent.opacity(0.15), in: Capsule())
         .foregroundStyle(Theme.accent)
+        // Dieselbe Regel wie bei `PinnedChip` — siehe dort. Das Abzeichen sitzt
+        // hier in einer breiteren Zeile, gemeldet wurde also der andere; ein
+        // Abzeichen, das nur an manchen Stellen nicht umbricht, ist keins.
+        .lineLimit(1)
+        .fixedSize()
     }
 }
 
