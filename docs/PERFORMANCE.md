@@ -33,6 +33,21 @@ eine Differenz nahe null ist.
 
 ## Grundwerte
 
+> [!warning] **Diese Grundwerte sind auf einer belegten Maschine entstanden.**
+> Am 02.08. lief während der ganzen Messung Côte d'OS als Debug-Build mit
+> ~30 % CPU, dazu WindowServer mit ~31 %; die Lastmittel lagen bei 8. Wie sehr
+> das die Zahlen hebt, ist **nicht gemessen** — es ist also unbekannt, nicht
+> „wahrscheinlich wenig".
+>
+> **Was trotzdem gilt:** die A/B-Vergleiche weiter unten. Sie sind in einer
+> Sitzung unter derselben Last gefahren, und genau dafür ist der Messstand
+> gebaut. **Was nicht gilt:** jede Aussage über einen Absolutwert.
+>
+> **Vor dem nächsten Vergleich `tools/perf.sh --record` auf einer ruhigen
+> Maschine neu fahren** (`ps -Ao pcpu,comm -r | head` vorher ansehen), sonst
+> meldet der Wächter beim ersten sauberen Lauf eine „Verbesserung", die keine
+> ist.
+
 iPhone 17 Pro (Simulator), 400 Zeilen je Kette, 5 Durchläufe je Strecke,
 2026-08-02. Vollständig in `tools/perf-baseline.json`.
 

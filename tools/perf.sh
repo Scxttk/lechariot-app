@@ -52,6 +52,17 @@ target="LeChariotUITests/PerformanceJourneyTests"
 
 echo "▸ Messgeschirr — $bulk Zeilen je Kette, Ziel: $DESTINATION"
 
+# Wer misst, während die Maschine etwas anderes tut, misst die Maschine.
+# Am 02.08. lief Côte d'OS mit ~30 % CPU durch die ganze Messung, und die
+# UI-Suite brauchte 7,5 Stunden statt 30 Minuten — fünf Journeys fielen mit
+# "Timed out while synthesizing event", also gar nicht an einer Zusicherung.
+noisy="$(ps -Ao pcpu,comm -r | awk 'NR>1 && $1>15 {print "    " $0}' | head -5)"
+if [ -n "$noisy" ]; then
+	echo "⚠ Diese Prozesse nehmen gerade über 15 % CPU:"
+	echo "$noisy"
+	echo "  Absolutwerte daraus sind wertlos. A/B in einer Sitzung geht trotzdem."
+fi
+
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 
