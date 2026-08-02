@@ -1,5 +1,43 @@
 import SwiftUI
 
+/// **Warum bei dieser Filiale nichts steht** — als reine Rechnung, damit der
+/// Satz prüfbar ist, ohne eine Ansicht zu bauen.
+///
+/// Die Unterscheidung ist der ganze Punkt, und sie war am 02.08. in Anklam
+/// falsch: `.failed(.timedOut)` teilte sich den Zweig mit `.ready` und
+/// behauptete damit „veröffentlicht nichts online" über eine Filiale, die
+/// gerade erst angefordert worden war. Der Penny Friedländer Straße trug
+/// anderthalb Minuten später 283 Angebote.
+enum NoOffersReason {
+    static func text(for state: BranchSyncState) -> String {
+        switch state {
+        case .requested, .syncing:
+            "Die Angebote werden gerade geholt — das dauert etwa eine Minute."
+        case .unknown:
+            // Kommt nur noch vor, bevor die Prüfung beim Start durch ist.
+            "Die Angebote werden gleich geholt."
+        case .failed(.network):
+            "Die Angebote konnten nicht geladen werden. Prüf deine Verbindung."
+        case .failed(.timedOut):
+            // Wir wissen hier ausschließlich, dass **wir** nicht mehr warten —
+            // nichts über den Markt. Alles andere wäre geraten.
+            "Die Angebote sind noch unterwegs. Sie erscheinen, sobald der Markt gesynct ist — spätestens mit dem nächsten Nachtlauf."
+        case .ready:
+            // Das Backend war da und hat nichts gefunden. Bei EDEKA Böse in
+            // Ahlbeck ist das der Dauerzustand: `edeka.de` gibt für diesen
+            // Markt die Marktseite statt einer Angebotsliste zurück.
+            "Dieser Markt veröffentlicht seinen Prospekt nicht online."
+        }
+    }
+
+    /// Nur wenn wirklich eine Filiale fertig gesynct ist und nichts geliefert
+    /// hat, stimmt der Satz „nicht jeder Markt stellt seinen Prospekt ins
+    /// Netz". Über eine Filiale, auf die wir noch warten, ist er eine Ausrede.
+    static func footerApplies(to states: [BranchSyncState]) -> Bool {
+        states.contains { $0 == .ready }
+    }
+}
+
 /// Angebote tab: cached-first offer list of the chosen branches. Decoupled
 /// from RegionStore — it takes the markets, nothing else.
 struct OffersView: View {
@@ -15,6 +53,11 @@ struct OffersView: View {
     /// Sagt, ob eine Filiale ohne Angebote gerade geholt wird oder dauerhaft
     /// nichts liefert — siehe `unavailableBranchesSection`.
     @Environment(BranchRequestStore.self) private var branchRequests
+
+    /// Sagt, ob gerade das Verzeichnis der Gegend geholt wird — der Zustand
+    /// zwischen „eingecheckt" und „hier gibt es Märkte", der bis zum 02.08.
+    /// wie eine Sackgasse aussah.
+    @Environment(AreaRequestStore.self) private var areaRequests
 
     /// Suche, Filter, Sortierung und Markt-Leiste — geteilt mit der Vorschau,
     /// siehe `OfferBrowser`. Jeder Bildschirm hält seinen eigenen Zustand und
@@ -120,7 +163,20 @@ struct OffersView: View {
     /// falsch: Da liegt nichts, und da wird auch nächste Woche nichts liegen.
     @ViewBuilder
     private var emptyState: some View {
-        if !branchesWithoutOffers.isEmpty {
+        if areaRequests.isFetchingArea {
+            // **Der Zustand, den Anklam nicht hatte.** Wer frisch in eine
+            // Gegend eincheckt, deren Verzeichnis noch geholt wird, sah hier
+            // dieselbe Leere wie jemand, für den es nichts zu holen gibt.
+            // Der Lauf ist echt, also darf er einen Kreisel haben.
+            ContentUnavailableView {
+                Label("Deine Gegend wird geholt", systemImage: "arrow.down.circle")
+            } description: {
+                Text("Wir sammeln gerade die Märkte um dich herum. Das dauert ein paar Minuten — die Angebote kommen danach, spätestens mit dem nächsten Nachtlauf.")
+            } actions: {
+                ProgressView()
+            }
+            .accessibilityIdentifier("offers.areaFetching")
+        } else if !branchesWithoutOffers.isEmpty {
             List {
                 unavailableBranchesSection
             }
@@ -191,26 +247,15 @@ struct OffersView: View {
         } header: {
             Text("Ohne Angebote")
         } footer: {
-            Text("Nicht jeder Markt stellt seinen Prospekt ins Netz. Le Chariot kann nur zeigen, was die Kette selbst veröffentlicht.")
+            if NoOffersReason.footerApplies(to: branchesWithoutOffers.map { branchRequests.state(for: $0.marketId) }) {
+                Text("Nicht jeder Markt stellt seinen Prospekt ins Netz. Le Chariot kann nur zeigen, was die Kette selbst veröffentlicht.")
+            }
         }
         .accessibilityIdentifier("offers.unavailableBranches")
     }
 
     private func reasonForNoOffers(_ market: Market) -> String {
-        switch branchRequests.state(for: market.marketId) {
-        case .requested, .syncing:
-            "Die Angebote werden gerade geholt — das dauert etwa eine Minute."
-        case .unknown:
-            // Kommt nur noch vor, bevor die Prüfung beim Start durch ist.
-            "Die Angebote werden gleich geholt."
-        case .failed(.network):
-            "Die Angebote konnten nicht geladen werden. Prüf deine Verbindung."
-        case .ready, .failed(.timedOut):
-            // Das Backend war da und hat nichts gefunden. Bei EDEKA Böse in
-            // Ahlbeck ist das der Dauerzustand: `edeka.de` gibt für diesen
-            // Markt die Marktseite statt einer Angebotsliste zurück.
-            "Dieser Markt veröffentlicht seinen Prospekt nicht online."
-        }
+        NoOffersReason.text(for: branchRequests.state(for: market.marketId))
     }
 
     private var offerList: some View {
@@ -352,4 +397,5 @@ struct OffersView: View {
         priceHistoryRepository: MockPriceHistoryRepository()
     )
     .environment(BranchRequestStore(repository: MockBranchRequestRepository()))
+    .environment(AreaRequestStore(repository: MockAreaRequestRepository()))
 }

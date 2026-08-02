@@ -106,12 +106,30 @@ final class AreaRequestStore {
         set { defaults.set(Array(newValue), forKey: Self.announcedKey) }
     }
 
-    /// True when the stores in reach are only the two nationwide chains — the
-    /// signal that this area's directory was never fetched.
+    /// Der Kreis, in dem eine gebietsweise Kette stehen muss, damit das Gebiet
+    /// als geholt gilt — derselbe Ausgangsradius, mit dem der Picker sucht.
+    ///
+    /// **Anklam, 02.08.:** Ohne diese Grenze entschied der *geweitete* Fund.
+    /// Der Picker verdoppelt den Umkreis bis 40 km, wenn weniger als sechs
+    /// Filialen dastehen — und zog damit Netto Ducherow (11 km), EDEKA Lassan
+    /// (15 km) und Lidl Gützkow (21 km) herein. Eine einzige Fremdkette im
+    /// Nachbarort genügte, und Anklam galt als versorgt, obwohl vor Ort
+    /// ausschließlich der bundesweite Penny im Verzeichnis stand. Die Gegend
+    /// wurde nie angefordert, und ohne Anforderung wird sie nie geholt.
+    static let localRadiusKm: Double = 10
+
+    /// True when the stores **in this area** are only the two nationwide
+    /// chains — the signal that its directory was never fetched.
+    ///
+    /// „In diesem Gebiet" heißt: im Ausgangskreis um die Regionsmitte, nicht
+    /// im geweiteten Fund. Ein Markt im 20 km entfernten Nachbarort beweist,
+    /// dass *dessen* Gebiet einmal geholt wurde — über dieses hier sagt er
+    /// nichts.
     ///
     /// An empty list is deliberately *not* that signal: it means the search
     /// found nothing at all (no coordinates, no network), and requesting an
-    /// area needs an anchor anyway.
+    /// area needs an anchor anyway. Steht dagegen etwas im geweiteten Fund,
+    /// aber nichts im Ausgangskreis, ist das Gebiet erst recht unversorgt.
     ///
     /// Ask it **per region**, never over several merged: one region that has
     /// been fetched answers for all of them, and the others then never get a
@@ -119,8 +137,18 @@ final class AreaRequestStore {
     ///
     /// `nonisolated` because it is a pure test over an array, and
     /// `PickerDirectory` asks it while building its plan, off the main actor.
-    nonisolated static func areaLooksUnfetched(_ branches: [Branch]) -> Bool {
-        !branches.isEmpty && branches.allSatisfy { nationwideChains.contains($0.chain) }
+    nonisolated static func areaLooksUnfetched(
+        _ branches: [Branch],
+        around lat: Double,
+        _ lon: Double,
+        radiusKm: Double = localRadiusKm
+    ) -> Bool {
+        guard !branches.isEmpty else { return false }
+        let local = branches.filter { branch in
+            guard let distance = branch.distanceKm(from: lat, lon) else { return false }
+            return distance <= radiusKm
+        }
+        return local.allSatisfy { nationwideChains.contains($0.chain) }
     }
 
     /// Der Gebietsschlüssel einer Regionsmitte — **dieselbe Regel wie

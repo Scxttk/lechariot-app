@@ -131,7 +131,8 @@ enum PickerDirectory {
             }
 
             // Asked per region, not once over everything — see the type's note.
-            if AreaRequestStore.areaLooksUnfetched(find.branches), !nearestHere.isEmpty {
+            if AreaRequestStore.areaLooksUnfetched(find.branches, around: find.lat, find.lon),
+               !nearestHere.isEmpty {
                 // Stabil sortiert: Bei gleicher Entfernung entscheidet die
                 // market_id, sonst hinge die Anker-Reihenfolge an der Laune der
                 // Verzeichnisantwort — und damit auch, welche Zeile in

@@ -9,6 +9,7 @@ struct LeChariotApp: App {
     @State private var history = PurchaseHistoryStore()
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
+    @Environment(\.scenePhase) private var scenePhase
     private let marketRepository: MarketRepositoryProtocol
 
     init() {
@@ -58,6 +59,22 @@ struct LeChariotApp: App {
                     await branchRequests.checkPendingBranches(
                         for: store.favoriteMarkets.map(\.marketId)
                     )
+                }
+                // **„Bei jeder Rückkehr" stand bis zum 02.08. nur im
+                // Kommentar.** `.task` läuft genau einmal je Ansichtsleben —
+                // wer die App währenddessen zur Seite legt (und das tut man
+                // bei einem Lauf, der Minuten dauert, zwangsläufig), kam
+                // zurück auf denselben leeren Bildschirm, den er verlassen
+                // hatte. Die Abfrage kostet zwei GETs; der stille Stillstand
+                // hat einen Feldtest gekostet.
+                .onChange(of: scenePhase) { _, phase in
+                    guard phase == .active else { return }
+                    Task { await areaRequests.checkPendingArea() }
+                    Task {
+                        await branchRequests.checkPendingBranches(
+                            for: store.favoriteMarkets.map(\.marketId)
+                        )
+                    }
                 }
                 // App-wide accent, so onboarding matches the tabs instead of
                 // falling back to system blue.

@@ -23,6 +23,10 @@ final class AreaRequestStoreTests: XCTestCase {
         super.tearDown()
     }
 
+    /// Der Punkt, um den die Fixtures unten stehen — sie tragen alle genau
+    /// diese Koordinaten, liegen also im Ausgangskreis.
+    private let goessnitz = (lat: 50.887, lon: 12.433)
+
     private func branch(_ id: String, chain: String) -> Branch {
         Branch(
             marketId: id, chain: chain, name: "\(chain) Test",
@@ -38,7 +42,7 @@ final class AreaRequestStoreTests: XCTestCase {
     /// nicht „dünn besiedelt", sondern „dieses Gebiet hat nie jemand geholt".
     func testOnlyNationwideChainsMeansTheAreaWasNeverFetched() {
         let found = [branch("1", chain: "Penny"), branch("2", chain: "Kaufland")]
-        XCTAssertTrue(AreaRequestStore.areaLooksUnfetched(found))
+        XCTAssertTrue(AreaRequestStore.areaLooksUnfetched(found, around: goessnitz.lat, goessnitz.lon))
     }
 
     /// Steht auch nur eine der sechs gebietsweisen Ketten da, war das Gebiet
@@ -49,13 +53,55 @@ final class AreaRequestStoreTests: XCTestCase {
             branch("2", chain: "Kaufland"),
             branch("3", chain: "Netto"),
         ]
-        XCTAssertFalse(AreaRequestStore.areaLooksUnfetched(found))
+        XCTAssertFalse(AreaRequestStore.areaLooksUnfetched(found, around: goessnitz.lat, goessnitz.lon))
     }
 
     /// Eine leere Liste ist kein Signal, sondern eine gescheiterte Suche —
     /// und ohne Filiale gäbe es ohnehin keinen Anker.
     func testAnEmptyListIsNotTheSignal() {
-        XCTAssertFalse(AreaRequestStore.areaLooksUnfetched([]))
+        XCTAssertFalse(AreaRequestStore.areaLooksUnfetched([], around: goessnitz.lat, goessnitz.lon))
+    }
+
+    /// **Anklam, 02.08.** Die Fremdkette steht im Nachbarort, nicht hier: Um
+    /// den Penny in Anklam ist im Ausgangskreis nichts als der Penny, das
+    /// nächste Netto liegt 11 km weit in Ducherow. Vorher zählte der
+    /// geweitete Fund mit — und das Gebiet galt als versorgt.
+    func testAChainInTheNextTownDoesNotCountAsFetchedHere() {
+        let anklam = (lat: 53.85032, lon: 13.69157)
+        let found = [
+            Branch(
+                marketId: "561536", chain: "Penny", name: "Penny Friedländer Straße",
+                street: "Friedländer Straße", plz: "17389", city: "Anklam",
+                lat: 53.85032, lon: 13.69157
+            ),
+            // 11,0 km — außerhalb des Ausgangskreises.
+            Branch(
+                marketId: "7453", chain: "Netto", name: "Netto Ducherow",
+                street: "Thomas-Müntzer-Str. 1a", plz: "17398", city: "Ducherow",
+                lat: 53.7659278, lon: 13.7781329
+            ),
+        ]
+        XCTAssertTrue(AreaRequestStore.areaLooksUnfetched(found, around: anklam.lat, anklam.lon))
+    }
+
+    /// Die Gegenrichtung, damit der Fix nicht überschießt: dieselbe Fremdkette
+    /// im Ausgangskreis heißt weiterhin „geholt".
+    func testAChainInsideTheCircleStillCountsAsFetched() {
+        let anklam = (lat: 53.85032, lon: 13.69157)
+        let found = [
+            Branch(
+                marketId: "561536", chain: "Penny", name: "Penny Friedländer Straße",
+                street: "Friedländer Straße", plz: "17389", city: "Anklam",
+                lat: 53.85032, lon: 13.69157
+            ),
+            // Rund 2 km — mitten in der Stadt.
+            Branch(
+                marketId: "netto-anklam", chain: "Netto", name: "Netto Anklam",
+                street: "Pasewalker Allee 1", plz: "17389", city: "Anklam",
+                lat: 53.8672, lon: 13.6885
+            ),
+        ]
+        XCTAssertFalse(AreaRequestStore.areaLooksUnfetched(found, around: anklam.lat, anklam.lon))
     }
 
     // MARK: Anfordern

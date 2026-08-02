@@ -234,13 +234,23 @@ struct MarketPickerView: View {
         // die nachwächst. Deshalb nur ein Hinweis über der Liste.
         .safeAreaInset(edge: .top) {
             if areaRequests.isFetchingArea {
-                Text(areaFetchNotice)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .padding(Theme.Spacing.sm)
-                    .background(.bar)
+                // Anzeige statt nur grauem Text (Anklam, 02.08.): Ohne
+                // sichtbares Zeichen sieht „wird geholt" genauso aus wie
+                // „hier ist nichts". Der Kreisel steht für einen Lauf, der
+                // wirklich läuft — einen erfundenen Fortschrittsbalken gibt es
+                // bewusst nicht, wir kennen den Fortschritt nicht.
+                HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(areaFetchNotice)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.secondaryText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(Theme.Spacing.sm)
+                .background(.bar)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("markets.areaFetching")
             }
         }
         // **Der Hinweis und das, was unter ihm hervorkommt, gehören zu
