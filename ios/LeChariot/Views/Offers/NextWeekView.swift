@@ -7,6 +7,17 @@ import SwiftUI
 /// Zeile darin mit einem heutigen Preis verwechselt werden kann. Deshalb: eigene
 /// Überschrift, eigener Ton, und auf jeder Zeile das Startdatum.
 ///
+/// **Seit dem 2026-08-02 kann sie, was die Angebotsliste kann** — Suche, Filter,
+/// Sortierung, Markt-Leiste. Scotts Meldung aus Build `2026.0801.1951`: Der
+/// Bildschirm soll sich anfühlen wie die normale Liste. Die Bauteile sind
+/// dieselben (`OfferBrowser`, `MarketChipBar`, `OfferFilterMenu`,
+/// `OfferEmptyResultView`), nicht Kopien davon.
+///
+/// **Und die Wochengrenze bleibt, wo sie war.** Der Browser hält keine
+/// Angebote; er bekommt hier `store.upcomingOffers` gereicht und sonst nichts.
+/// Eine Zeile der laufenden Woche kann in dieser Suche gar nicht auftauchen,
+/// weil sie diesen Bildschirm nie erreicht.
+///
 /// Zahlen und Herleitung: [[Le Chariot Backlog]], „Finns zweiter Wunsch".
 struct NextWeekView: View {
     let favoriteMarkets: [Market]
@@ -14,6 +25,7 @@ struct NextWeekView: View {
 
     var priceHistoryRepository: PriceHistoryRepositoryProtocol = AppRepositories.priceHistory
 
+    @State private var browser = OfferBrowser()
     @State private var selectedOffer: Offer?
 
     /// Ketten, die nachweislich nichts im Voraus veröffentlichen.
@@ -39,11 +51,21 @@ struct NextWeekView: View {
             : "Für nächste Woche liegt hier noch nichts vor."
     }
 
+    /// Die sichtbaren Zeilen — **nur** aus der Folgewoche.
+    private var visible: [Offer] {
+        browser.visible(in: store.upcomingOffers)
+    }
+
     private var sections: [(key: String, offers: [Offer])] {
-        OfferQuery.grouped(store.upcomingOffers, by: .market)
+        OfferQuery.grouped(visible, by: browser.grouping)
     }
 
     /// Gewählte Ketten, zu denen die Vorschau nichts hat — mit dem Grund.
+    ///
+    /// Gerechnet über **alle** Zeilen der Folgewoche, nicht über die gerade
+    /// sichtbaren: Eine Suche nach „Kaffee" macht aus einer Kette, die etwas
+    /// hat, keine ohne Vorschau. Der Abschnitt beantwortet die Frage „warum
+    /// steht mein Kaufland nicht da", und die hängt nicht am Suchfeld.
     private var chainsWithoutRows: [String] {
         let covered = Set(store.upcomingOffers.map(\.market))
         return Set(favoriteMarkets.map(\.chain))
@@ -56,6 +78,28 @@ struct NextWeekView: View {
             .themedScreen()
             .navigationTitle("Nächste Woche")
             .navigationBarTitleDisplayMode(.inline)
+            // `navigationBarDrawer(displayMode: .always)`, nicht die Vorgabe:
+            // Auf einem geschobenen Bildschirm mit `.inline`-Titel klappt das
+            // Suchfeld sonst ein und ist erst nach einem Zug nach unten da —
+            // am Simulator gesehen, die Journeys fanden schlicht kein Feld.
+            .searchable(
+                text: $browser.search,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: "Produkt suchen"
+            )
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    OfferFilterMenu(
+                        grouping: $browser.grouping,
+                        sort: $browser.sort,
+                        category: $browser.category,
+                        hasActiveFilter: browser.hasActiveFilter
+                    )
+                }
+            }
+            .onChange(of: favoriteMarkets.map(\.chain)) { _, updated in
+                browser.dropMarketFilterIfGone(from: updated)
+            }
             .sheet(item: $selectedOffer) { offer in
                 OfferDetailView(
                     offer: offer,
@@ -75,10 +119,30 @@ struct NextWeekView: View {
             }
             .accessibilityIdentifier("nextWeek.empty")
         } else {
-            List {
-                explainer
+            VStack(spacing: 0) {
+                MarketChipBar(
+                    chains: browser.chipChains(in: store.upcomingOffers),
+                    selection: $browser.market,
+                    identifier: "nextWeek.marketChips"
+                )
+                list
+            }
+        }
+    }
+
+    private var list: some View {
+        List {
+            explainer
+            if visible.isEmpty {
+                OfferEmptyResultView(
+                    browser: browser,
+                    scope: .upcoming,
+                    onResetFilters: { browser.resetFilters() },
+                    onClearMarket: { browser.market = nil }
+                )
+            } else {
                 ForEach(sections, id: \.key) { section in
-                    Section(section.key) {
+                    Section(sectionTitle(section.key)) {
                         ForEach(section.offers) { offer in
                             Button { selectedOffer = offer } label: {
                                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -88,15 +152,30 @@ struct NextWeekView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(voiceOver(offer))
+                            .accessibilityIdentifier("nextWeek.row")
                         }
                         .listRowBackground(Theme.surface)
                     }
                 }
-                if !chainsWithoutRows.isEmpty { withoutPreviewSection }
             }
-            .refreshable { await store.refresh() }
-            .accessibilityIdentifier("nextWeek.list")
+            // **Auch unter Filter.** In der laufenden Woche steht die Fußnote
+            // der leeren Filialen nur ohne Suche und Filter — dort ist sie eine
+            // Randnotiz. Hier ist sie die Antwort auf „wo ist mein Kaufland",
+            // und die wird nicht falsch, weil jemand ins Suchfeld getippt hat.
+            // Wer nach „Kaffee" sucht und nichts findet, hat Anspruch darauf zu
+            // erfahren, dass drei seiner Ketten überhaupt nichts geliefert
+            // haben — sonst hält er die Vorschau für kaputt.
+            if !chainsWithoutRows.isEmpty { withoutPreviewSection }
         }
+        .refreshable { await store.refresh() }
+        .accessibilityIdentifier("nextWeek.list")
+    }
+
+    /// Abschnittstitel wie in der laufenden Woche: Bei einer einzigen gewählten
+    /// Filiale einer Kette steht ihr Name statt der Kette.
+    private func sectionTitle(_ key: String) -> String {
+        guard browser.grouping == .market else { return key }
+        return Market.displayTitle(chain: key, favorites: favoriteMarkets)
     }
 
     /// Sagt in einem Satz, was der Bildschirm ist — und was er nicht ist.
