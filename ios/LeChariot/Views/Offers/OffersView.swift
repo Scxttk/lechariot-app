@@ -9,30 +9,46 @@ import SwiftUI
 /// gerade erst angefordert worden war. Der Penny Friedländer Straße trug
 /// anderthalb Minuten später 283 Angebote.
 enum NoOffersReason {
-    static func text(for state: BranchSyncState) -> String {
+    /// `upcomingFrom` schlägt jeden Zustand: Wenn der nächste Prospekt schon
+    /// da ist, ist die Frage „warum steht hier nichts" beantwortet — mit einem
+    /// Datum statt mit einer Vermutung über den Markt.
+    static func text(for state: BranchSyncState, upcomingFrom: Date? = nil) -> String {
+        if let start = upcomingFrom {
+            return "Der neue Prospekt gilt ab \(Self.dayFormatter.string(from: start)) — bis dahin steht hier nichts."
+        }
         switch state {
         case .requested, .syncing:
-            "Die Angebote werden gerade geholt — das dauert etwa eine Minute."
+            return "Die Angebote werden gerade geholt — das dauert etwa eine Minute."
         case .unknown:
             // Kommt nur noch vor, bevor die Prüfung beim Start durch ist.
-            "Die Angebote werden gleich geholt."
+            return "Die Angebote werden gleich geholt."
         case .failed(.network):
-            "Die Angebote konnten nicht geladen werden. Prüf deine Verbindung."
+            return "Die Angebote konnten nicht geladen werden. Prüf deine Verbindung."
         case .failed(.timedOut):
             // Wir wissen hier ausschließlich, dass **wir** nicht mehr warten —
             // nichts über den Markt. Alles andere wäre geraten.
-            "Die Angebote sind noch unterwegs. Sie erscheinen, sobald der Markt gesynct ist — spätestens mit dem nächsten Nachtlauf."
+            return "Die Angebote sind noch unterwegs. Sie erscheinen, sobald der Markt gesynct ist — spätestens mit dem nächsten Nachtlauf."
         case .ready:
             // Das Backend war da und hat nichts gefunden. Bei EDEKA Böse in
             // Ahlbeck ist das der Dauerzustand: `edeka.de` gibt für diesen
             // Markt die Marktseite statt einer Angebotsliste zurück.
-            "Dieser Markt veröffentlicht seinen Prospekt nicht online."
+            return "Dieser Markt veröffentlicht seinen Prospekt nicht online."
         }
     }
 
+    /// „Montag, 3. August" — der Wochentag gehört dazu, weil „ab 3.8." niemand
+    /// ohne Kalender einordnet und die Frage immer „heute oder morgen?" ist.
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "de_DE")
+        f.setLocalizedDateFormatFromTemplate("EEEE d. MMMM")
+        return f
+    }()
+
     /// Nur wenn wirklich eine Filiale fertig gesynct ist und nichts geliefert
     /// hat, stimmt der Satz „nicht jeder Markt stellt seinen Prospekt ins
-    /// Netz". Über eine Filiale, auf die wir noch warten, ist er eine Ausrede.
+    /// Netz". Über eine Filiale, auf die wir noch warten, ist er eine Ausrede
+    /// — und über eine, deren Prospekt am Montag anfängt, schlicht falsch.
     static func footerApplies(to states: [BranchSyncState]) -> Bool {
         states.contains { $0 == .ready }
     }
@@ -244,7 +260,9 @@ struct OffersView: View {
         } header: {
             Text("Ohne Angebote")
         } footer: {
-            if NoOffersReason.footerApplies(to: branchesWithoutOffers.map { branchRequests.state(for: $0.marketId) }) {
+            if NoOffersReason.footerApplies(to: branchesWithoutOffers
+                .filter { OfferCoverage.upcomingStart(for: $0, in: store.upcomingOffers) == nil }
+                .map { branchRequests.state(for: $0.marketId) }) {
                 Text("Nicht jeder Markt stellt seinen Prospekt ins Netz. Le Chariot kann nur zeigen, was die Kette selbst veröffentlicht.")
             }
         }
@@ -252,7 +270,10 @@ struct OffersView: View {
     }
 
     private func reasonForNoOffers(_ market: Market) -> String {
-        NoOffersReason.text(for: branchRequests.state(for: market.marketId))
+        NoOffersReason.text(
+            for: branchRequests.state(for: market.marketId),
+            upcomingFrom: OfferCoverage.upcomingStart(for: market, in: store.upcomingOffers)
+        )
     }
 
     private var offerList: some View {

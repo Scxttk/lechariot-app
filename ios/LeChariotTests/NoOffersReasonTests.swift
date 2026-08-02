@@ -36,6 +36,44 @@ final class NoOffersReasonTests: XCTestCase {
         XCTAssertTrue(NoOffersReason.text(for: .failed(.network)).contains("Verbindung"))
     }
 
+    // MARK: Der Prospekt, der erst morgen anfängt
+
+    /// **Scotts Ahlbeck-Probe am Sonntag, 02.08.** REWE und Netto standen dort
+    /// beide mit „veröffentlicht seinen Prospekt nicht online" — und trugen zur
+    /// selben Zeit 254 bzw. 253 Zeilen in der Produktion, alle mit
+    /// `valid_from = 03.08.`. Der Sync leert die Tabelle vor jedem Lauf, die
+    /// neue Woche hatte noch nicht begonnen, und dazwischen ist die laufende
+    /// Woche leer.
+    ///
+    /// **Das ist jeder Sonntagabend, nicht ein Sonderfall** — und der vierte
+    /// Fall desselben Satzes über einen Markt, über den wir nichts wissen.
+    /// Hier wissen wir sogar das Gegenteil: Der Prospekt liegt vor uns.
+    func testAProspectusThatStartsTomorrowIsNotAMarketThatPublishesNothing() {
+        let montag = Date(timeIntervalSince1970: 1_785_628_800)  // 2026-08-03
+        let text = NoOffersReason.text(for: .ready, upcomingFrom: montag)
+        XCTAssertNotEqual(text, publishesNothing)
+        XCTAssertTrue(text.contains("Der neue Prospekt gilt ab"), text)
+        XCTAssertTrue(text.contains("August"), "das Datum gehört in den Satz: \(text)")
+    }
+
+    /// Das Datum schlägt auch die Wartezustände: Wer den Prospekt schon sieht,
+    /// braucht nicht zu hören, dass noch geholt wird.
+    func testTheDateWinsOverEveryOtherState() {
+        let montag = Date(timeIntervalSince1970: 1_785_628_800)
+        for state in [BranchSyncState.requested, .syncing, .unknown, .failed(.timedOut), .ready] {
+            XCTAssertTrue(
+                NoOffersReason.text(for: state, upcomingFrom: montag).contains("Der neue Prospekt"),
+                "Zustand \(state) hat das Datum überschrieben"
+            )
+        }
+    }
+
+    /// Und ohne kommenden Prospekt bleibt alles, wie es war — sonst hätte der
+    /// Fix den Fall von heute Mittag gleich mit weggeräumt.
+    func testWithoutAProspectusTheOldSentencesStand() {
+        XCTAssertEqual(NoOffersReason.text(for: .ready, upcomingFrom: nil), publishesNothing)
+    }
+
     // MARK: Die Fußnote unter der Liste
 
     /// „Nicht jeder Markt stellt seinen Prospekt ins Netz" ist dieselbe
