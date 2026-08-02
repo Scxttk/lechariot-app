@@ -89,6 +89,45 @@ final class TutorialStoreTests: XCTestCase {
         XCTAssertTrue(makeStore().hasSeenTutorial)
     }
 
+    // MARK: Das Angebot am Ende des Assistenten
+
+    /// **Der Fund vom 2026-08-02.** Der Merker wurde geschrieben und von keiner
+    /// Ansicht gelesen; `OnboardingFlowView.offersTour` gab `true` zurück. Ein
+    /// zweiter Lauf des Assistenten — aus welchem Grund auch immer — bot den
+    /// Rundgang deshalb wieder an. Diese vier Fälle sind die Regel, die es
+    /// vorher nur im Kommentar gab.
+    func testTheTourIsOfferedOnceAndThenNotAgain() {
+        XCTAssertTrue(makeStore().offersTourAfterOnboarding,
+                      "frische Installation: der Rundgang wird angeboten")
+
+        let store = makeStore()
+        store.decline()
+        XCTAssertFalse(store.offersTourAfterOnboarding)
+        XCTAssertFalse(makeStore().offersTourAfterOnboarding,
+                       "und auch nach einem Neustart nicht wieder — das war die Meldung")
+    }
+
+    func testWalkingTheTourAlsoEndsTheOffer() {
+        let store = makeStore()
+        store.start(origin: .onboarding, hasMarkets: false)
+        while store.isRunning { store.next() }
+
+        XCTAssertFalse(makeStore().offersTourAfterOnboarding)
+    }
+
+    /// Die Gegenrichtung, und sie ist gewollt: Wer alles zurücksetzt, ist eine
+    /// neue Installation und bekommt den Rundgang wieder angeboten.
+    func testAnExplicitResetOffersTheTourAgain() {
+        let store = makeStore()
+        store.decline()
+        XCTAssertFalse(store.offersTourAfterOnboarding)
+
+        store.resetAllData()
+        XCTAssertTrue(store.offersTourAfterOnboarding)
+        XCTAssertTrue(makeStore().offersTourAfterOnboarding,
+                      "kein Schlüssel darf den Reset überleben")
+    }
+
     func testStepsAreDistinctAndSpeakGerman() {
         let store = makeStore()
         XCTAssertEqual(Set(store.steps.map(\.id)).count, store.steps.count, "doppelte Schritt-IDs")

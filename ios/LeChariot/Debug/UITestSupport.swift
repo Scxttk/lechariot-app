@@ -91,11 +91,27 @@ enum UITestSupport {
 
     static let seededPLZ = "01219"
 
+    /// Launched with `-uiTestingOnboardingLost`: den Merker „Onboarding
+    /// durchlaufen" abräumen und **sonst nichts** anfassen.
+    ///
+    /// Damit lässt sich Scotts Meldung aus Build `2026.0801.1951` nachstellen,
+    /// ohne sich auf eine Ursache festzulegen: Der Assistent läuft ein zweites
+    /// Mal, PLZ, Filialen, Profil und der Rundgang-Merker liegen unverändert
+    /// da. Genau in dieser Lage bot der Assistent den Rundgang wieder an —
+    /// und die Journey darüber ist der Nachweis, dass er es nicht mehr tut.
+    ///
+    /// Ein eigener Schalter statt „App löschen und neu aufsetzen": Ein Neustart
+    /// von Null räumt den Merker mit ab und könnte die Regel deshalb gar nicht
+    /// prüfen.
+    private static let dropsOnboardingFlag =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingOnboardingLost")
+
     /// Legt den Zustand hin, den ein durchlaufenes Onboarding hinterlassen
     /// hätte. Läuft in `LeChariotApp.init`, also bevor irgendeine Ansicht ihn
     /// liest.
     @MainActor
     static func seedOnboardedState(regions: RegionStore, profile: ProfileStore) {
+        if dropsOnboardingFlag { regions.forgetOnboardingCompletion() }
         guard seedsOnboardedState else { return }
         regions.seedOnboarded(
             region: seededPLZ,

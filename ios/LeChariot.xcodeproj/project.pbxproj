@@ -40,6 +40,7 @@
 		378862DCFBC33DF6D3276BD6 /* Categories.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC35901A5880CB5D3E2B1BA3 /* Categories.swift */; };
 		394D1967FF955B0C864A9333 /* OfferRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D788470C564A715809FB014B /* OfferRowView.swift */; };
 		3BFE78271F7C2C7E3079464B /* LeChariotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DACCE0BB944358A8E9E36792 /* LeChariotApp.swift */; };
+		3C62E310649ABCCF29887622 /* BadgeLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4680F51135E3E3AA07BB9DD /* BadgeLayoutTests.swift */; };
 		3D129061277F9F5EC5A41C76 /* MatchFeedbackJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A9D8435B451C3CC5B59F2F3 /* MatchFeedbackJourneyTests.swift */; };
 		3EC77AFD4B9413B4A323C135 /* AppGlyphTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAF47EE77E57764F3E5BB539 /* AppGlyphTests.swift */; };
 		3F5F6D3D2B14F07D477892A6 /* OffersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F826415F9A5019BBEFB36748 /* OffersView.swift */; };
@@ -308,6 +309,7 @@
 		E2972EE832CF0C1F49848DCA /* AreaRequestStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaRequestStore.swift; sourceTree = "<group>"; };
 		E3EEDA6C283BDD9B46EF50FC /* MockRepositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockRepositories.swift; sourceTree = "<group>"; };
 		E3FE89A0049B517DF629F94D /* MatchFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchFeedback.swift; sourceTree = "<group>"; };
+		E4680F51135E3E3AA07BB9DD /* BadgeLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BadgeLayoutTests.swift; sourceTree = "<group>"; };
 		E60DEF00707CD54C6A897349 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		ECDACEF9C90BF20F6ADF0BFE /* WeekBoundaryJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekBoundaryJourneyTests.swift; sourceTree = "<group>"; };
 		EE1FD8F93A35C5C9FD947A78 /* LeChariot.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LeChariot.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -333,6 +335,7 @@
 				339624315CBF239B010721F4 /* AppearanceWindowBridgeTests.swift */,
 				CAF47EE77E57764F3E5BB539 /* AppGlyphTests.swift */,
 				07359672A7664F3F184BD4BC /* AreaRequestStoreTests.swift */,
+				E4680F51135E3E3AA07BB9DD /* BadgeLayoutTests.swift */,
 				C549F3693733C383160479E6 /* BranchRequestStoreTests.swift */,
 				B875EDDDF20D595E1294EECB /* BranchTests.swift */,
 				990453A1F71B432367A53E4B /* BranchTitleTests.swift */,
@@ -797,6 +800,7 @@
 				3EC77AFD4B9413B4A323C135 /* AppGlyphTests.swift in Sources */,
 				5EB566DE9037A839FD1C6785 /* AppearanceWindowBridgeTests.swift in Sources */,
 				2057B9D8FFBAC863A9D2F66D /* AreaRequestStoreTests.swift in Sources */,
+				3C62E310649ABCCF29887622 /* BadgeLayoutTests.swift in Sources */,
 				76532A2EB27D62670B17B0A4 /* BranchRequestStoreTests.swift in Sources */,
 				E8158E83EA5475B08787DBC4 /* BranchTests.swift in Sources */,
 				CF54B7C158BBAB03D6DC8274 /* BranchTitleTests.swift in Sources */,

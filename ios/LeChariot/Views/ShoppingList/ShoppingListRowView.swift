@@ -410,6 +410,14 @@ struct PinnedChip: View {
             in: Capsule(style: .continuous)
         )
         .overlay(Capsule(style: .continuous).strokeBorder(Theme.accent.opacity(0.30)))
+        // **„Dei ne Wa hl"**, gemeldet am 01.08. aus Build 2026.0801.1951.
+        // Der Chip steht in einer engen Spalte neben Bild, Rabatt und Preis;
+        // ohne diese Zeile nimmt er den Platz, der übrigbleibt, und bricht
+        // mitten im Wort um. `lineLimit(1)` allein kürzte nur zu „Deine W…" —
+        // `fixedSize` ist das, was ihm seine Breite gibt. Beide zusammen, damit
+        // keiner der zwei hässlichen Ausgänge offen bleibt.
+        .lineLimit(1)
+        .fixedSize()
         // Der Chip steht schon im Satz, den die Kachel als Label trägt.
         .accessibilityHidden(true)
     }

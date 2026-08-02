@@ -228,6 +228,16 @@ final class RegionStore {
     /// Steht **in** der Klasse, nicht daneben: Die Schlüssel sind privat, und
     /// ein Saatgut, das sie von außen nachbaut, ist genau die Sorte Kopie, die
     /// still falsch wird, sobald jemand einen Schlüssel umbenennt.
+    /// Räumt **nur** den Merker „Onboarding durchlaufen" ab — für
+    /// `-uiTestingOnboardingLost`, siehe `UITestSupport`.
+    ///
+    /// Steht hier, weil `Keys` privat ist; ein Test, der den Schlüssel von
+    /// außen nachbaut, prüft ab der ersten Umbenennung nichts mehr.
+    func forgetOnboardingCompletion() {
+        hasCompletedOnboarding = false
+        defaults.removeObject(forKey: Keys.onboarded)
+    }
+
     func seedOnboarded(region: String, favorites: [Market]) {
         regions = [region]
         selectedRegion = region

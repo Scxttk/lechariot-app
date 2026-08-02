@@ -133,8 +133,8 @@ final class TutorialStore {
     /// Rahmens lohnt.
     private(set) var isVoiceOverRunning = false
 
-    /// Überlebt Neustarts. Steuert nur noch, ob am Ende des Onboardings
-    /// überhaupt gefragt wird — automatisch startet der Rundgang nie.
+    /// Überlebt Neustarts. Steuert, ob am Ende des Onboardings überhaupt
+    /// gefragt wird — siehe `offersTourAfterOnboarding`.
     private(set) var hasSeenTutorial: Bool
 
     /// Was der Rundgang selbst auf die Liste gelegt hat. Kommt am Ende wieder
@@ -188,6 +188,23 @@ final class TutorialStore {
     }
 
     // MARK: Ablauf
+
+    /// Ob das Onboarding den Rundgang anbieten darf.
+    ///
+    /// **Der Merker war bis zum 2026-08-02 tot.** Er wurde geschrieben und von
+    /// keiner einzigen Ansicht gelesen — im ganzen Verlauf des Repos hat nie
+    /// eine auf ihn zugegriffen; `OnboardingFlowView.offersTour` gab schlicht
+    /// `true` zurück. Der Kommentar darüber („steuert, ob gefragt wird") war
+    /// eine Zusage, die nirgends eingelöst wurde. Wer den Assistenten aus
+    /// welchem Grund auch immer ein zweites Mal sah, bekam den Rundgang wieder
+    /// vorgesetzt — und `resume()` springt sofort auf genau diesen Schritt.
+    ///
+    /// Gemeldet am 01.08. aus Build `2026.0801.1951`: „Der Rundgang startet
+    /// wieder automatisch los."
+    ///
+    /// Ein Zurücksetzen darf ihn weiter anbieten: `resetAllData()` räumt den
+    /// Schlüssel ab, und danach ist die Installation eine neue.
+    var offersTourAfterOnboarding: Bool { !hasSeenTutorial }
 
     var stepCount: Int { steps.count }
     var step: TutorialStep { steps[min(index, steps.count - 1)] }
