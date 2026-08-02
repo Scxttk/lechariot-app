@@ -203,6 +203,64 @@ enum MockFixtures {
         ),
     ]
 
+    /// Was `MockOfferRepository` normalerweise ausliefert.
+    static let standard: [Offer] = offers + nextWeekOffers + thirdChainOffers
+
+    // MARK: Ein Prospekt in echter Größe
+
+    /// **Der Vorrat für das Messgeschirr** (2026-08-02).
+    ///
+    /// Sieben Fixture-Zeilen ruckeln nicht, und ein Messstand, der auf sieben
+    /// Zeilen misst, misst nichts. Eine Penny-Filiale trug am 01.08. in der
+    /// Produktion **1 125** Zeilen nach dem Dedupe; das hier ist dieselbe
+    /// Größenordnung, damit die Zahlen etwas mit dem Gerät zu tun haben.
+    ///
+    /// Gebaut statt abgetippt, weil nur die Menge zählt: Produktnamen,
+    /// Kategorien und Preise rotieren, damit Gruppierung, Sortierung und
+    /// Suche nicht auf einem Sonderfall messen. Die Bilder bleiben leer — ein
+    /// Netzabruf im Messlauf wäre die Leitung, nicht die App.
+    static let bulkChains = ["Lidl", "Aldi", "Netto"]
+
+    static func bulk(perChain: Int, weeksAhead: Int = 0) -> [Offer] {
+        let woerter = ["Vollmilch", "Butter", "Kaffee", "Joghurt", "Käse", "Hackfleisch",
+                       "Bananen", "Tomaten", "Nudeln", "Reis", "Waschmittel", "Zahnpasta"]
+        let marken = ["Landliebe", "Bärenmarke", "Milbona", "Gut & Günstig", "Ja!",
+                      "Rügenwalder", "Dr. Oetker", "Barilla"]
+        let from = weeksAhead == 0
+            ? weekStart
+            : weekStart.addingTimeInterval(TimeInterval(weeksAhead * 7 * 24 * 60 * 60))
+        let until = from.addingTimeInterval(6 * 24 * 60 * 60)
+
+        var result: [Offer] = []
+        for (chainIndex, chain) in bulkChains.enumerated() {
+            for i in 0..<perChain {
+                let wort = woerter[i % woerter.count]
+                let marke = marken[(i / woerter.count) % marken.count]
+                let preis = Double((i * 37) % 900 + 49) / 100
+                result.append(Offer(
+                    marketId: "\(chain.lowercased())-01219-1",
+                    market: chain,
+                    // Die Nummer macht jeden Titel eindeutig — zwei gleiche
+                    // Titel zum selben Preis fielen dem Dedupe zum Opfer, und
+                    // die Liste wäre stillschweigend kürzer als bestellt.
+                    product: "\(marke) \(wort) \(i + 1)",
+                    price: preis,
+                    regularPrice: preis * 1.3,
+                    unit: "je 1 Stück",
+                    category: Categories.all[(i + chainIndex) % Categories.all.count],
+                    emoji: nil,
+                    validFrom: from,
+                    validUntil: until,
+                    basePrice: preis,
+                    baseUnit: "1 Stück",
+                    nationwide: false,
+                    matchKey: [wort.lowercased()]
+                ))
+            }
+        }
+        return result
+    }
+
     /// Three recorded weeks for the first offer fixture — enough for the
     /// detail sheet's price history to show up in previews and UI tests.
     static let priceHistory: [PriceHistoryPoint] = [
@@ -299,8 +357,7 @@ enum MockFixtures {
 struct MockOfferRepository: OfferRepositoryProtocol {
     /// Beide Wochen, wie die echte Abfrage: `select=*` kennt keine Datumsgrenze.
     /// Getrennt werden sie erst im `OfferStore`.
-    var fixtures: [Offer] = MockFixtures.offers + MockFixtures.nextWeekOffers
-        + MockFixtures.thirdChainOffers
+    var fixtures: [Offer] = MockFixtures.standard
 
     func offers(branchIds: [String]) async throws -> [Offer] {
         // Nationwide rows belong to every branch of their chain.
