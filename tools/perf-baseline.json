@@ -1,0 +1,41 @@
+{
+  "bulkProKette": 400,
+  "hinweis": "Gemessen mit tools/perf.sh --record. Nur gegen Werte derselben Maschine und desselben Simulators vergleichbar.",
+  "werte": {
+    "testAngeboteScrolling": {
+      "Absolute Memory Physical (lechariot), kB": 88491.302,
+      "CPU Cycles (lechariot), kC": 2773821.591,
+      "CPU Instructions Retired (lechariot), kI": 4353705.604,
+      "CPU Time (lechariot), s": 1.233,
+      "Duration (Scroll_Deceleration), s": 2.43,
+      "Memory Peak Physical (lechariot), kB": 89005.76,
+      "Memory Physical (lechariot), kB": 1654.784
+    },
+    "testListeScrolling": {
+      "Absolute Memory Physical (lechariot), kB": 84575.718,
+      "CPU Cycles (lechariot), kC": 2186376.343,
+      "CPU Instructions Retired (lechariot), kI": 3476924.62,
+      "CPU Time (lechariot), s": 0.863,
+      "Duration (Scroll_Deceleration), s": 1.213,
+      "Memory Peak Physical (lechariot), kB": 85185.203,
+      "Memory Physical (lechariot), kB": 0.0
+    },
+    "testRundgangStepping": {
+      "Absolute Memory Physical (lechariot), kB": 86954.483,
+      "CPU Cycles (lechariot), kC": 8316427.11,
+      "CPU Instructions Retired (lechariot), kI": 21355109.265,
+      "CPU Time (lechariot), s": 3.236,
+      "Memory Peak Physical (lechariot), kB": 97145.382,
+      "Memory Physical (lechariot), kB": 992.87
+    },
+    "testVorschauScrolling": {
+      "Absolute Memory Physical (lechariot), kB": 91899.238,
+      "CPU Cycles (lechariot), kC": 2838535.383,
+      "CPU Instructions Retired (lechariot), kI": 4416594.131,
+      "CPU Time (lechariot), s": 1.307,
+      "Duration (Scroll_Deceleration), s": 2.433,
+      "Memory Peak Physical (lechariot), kB": 92453.018,
+      "Memory Physical (lechariot), kB": 534.118
+    }
+  }
+}

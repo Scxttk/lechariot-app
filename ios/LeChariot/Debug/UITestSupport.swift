@@ -104,6 +104,20 @@ enum UITestSupport {
 
     static let seededPLZ = "01219"
 
+    /// `-uiTestingBulkOffers <n>`: `n` Zeilen **je Kette** für die laufende
+    /// Woche, halb so viele für die Vorschau.
+    ///
+    /// Nur das Messgeschirr setzt das. Ohne die Zahl im Argument stünde die
+    /// Größe des Prospekts im App-Quelltext statt im Test, der sie braucht —
+    /// und ein Messstand, dessen Vorrat man nicht drehen kann, misst genau
+    /// einen Fall.
+    static var bulkOfferCount: Int? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-uiTestingBulkOffers"),
+              i + 1 < args.count, let n = Int(args[i + 1]), n > 0 else { return nil }
+        return n
+    }
+
     /// Eine, zwei oder drei Filialen — je nachdem, was der Lauf braucht. Die
     /// Reihenfolge ist die von `seededBranches`, damit ein Lauf mit zwei
     /// Filialen genau den Zustand bekommt, den er vor dem 2026-08-02 hatte.

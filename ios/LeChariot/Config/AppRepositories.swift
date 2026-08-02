@@ -62,7 +62,18 @@ enum AppRepositories {
     }
 
     static let offers: OfferRepositoryProtocol = {
-        guard let client else { return MockOfferRepository() }
+        guard let client else {
+            #if DEBUG
+            // Der Messlauf braucht einen Prospekt in echter Größe — sieben
+            // Zeilen ruckeln nicht. Siehe `MockFixtures.bulk`.
+            if let count = UITestSupport.bulkOfferCount {
+                return MockOfferRepository(fixtures:
+                    MockFixtures.bulk(perChain: count)
+                    + MockFixtures.bulk(perChain: count / 2, weeksAhead: 1))
+            }
+            #endif
+            return MockOfferRepository()
+        }
         return LiveOfferRepository(client: client)
     }()
 
