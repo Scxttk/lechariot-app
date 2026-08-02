@@ -165,10 +165,15 @@ final class PickerDirectoryTests: XCTestCase {
             find("17389", anklam, [pennyAnklam, nettoDucherow, edekaLassan]),
         ])
 
-        let candidate = try! XCTUnwrap(plan.areaCandidates.first)
-        XCTAssertEqual(plan.areaCandidates.count, 1)
-        XCTAssertEqual(candidate.plz, "17389")
-        XCTAssertEqual(candidate.anchor.marketId, "561536", "der Penny vor Ort ist der Anker")
+        // Bewusst ohne `try! XCTUnwrap`: Gegen den Stand vor dem Fix ist die
+        // Liste leer, und ein `try!` reißt dort den ganzen Lauf mit — eine
+        // Gegenprobe, die den Prüfstand abschießt, ist keine.
+        XCTAssertEqual(plan.areaCandidates.count, 1, "Anklam muss angefordert werden")
+        XCTAssertEqual(plan.areaCandidates.first?.plz, "17389")
+        XCTAssertEqual(
+            plan.areaCandidates.first?.anchor.marketId, "561536",
+            "der Penny vor Ort ist der Anker"
+        )
         // Und die drei bleiben natürlich wählbar — angefordert wird zusätzlich,
         // nicht statt.
         XCTAssertEqual(plan.entries.count, 3)
