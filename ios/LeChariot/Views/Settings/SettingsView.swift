@@ -22,6 +22,7 @@ struct SettingsView: View {
     /// Übersetzt die PLZ in den Ort, an dem man wirklich steht — siehe
     /// `PlaceNameStore`.
     @Environment(PlaceNameStore.self) private var placeNames
+    @Environment(DiagnosticsGate.self) private var diagnostics
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
@@ -338,7 +339,28 @@ struct SettingsView: View {
 
     private var appSection: some View {
         Section {
-            LabeledContent("Version", value: Self.appVersion)
+            // **Der Weg zum Messwerkzeug** (02.08. entschieden, Geste am
+            // 03.08. festgelegt, weil Scott nicht antworten konnte): langer
+            // Druck auf die Version. Ein Tester, der die Geste nicht kennt,
+            // bekommt hier nie etwas zu sehen — und ein langer Druck auf eine
+            // Zeile ohne Knopf tut sonst nichts.
+            // Eine Zeile aus zwei Texten statt `LabeledContent`: Die Geste
+            // braucht eine Fläche, die sie ganz abdeckt, und der Test einen
+            // Griff, den es wirklich gibt.
+            HStack {
+                Text("Version")
+                Spacer()
+                Text(Self.appVersion).foregroundStyle(Theme.secondaryText)
+            }
+            .contentShape(Rectangle())
+            .onLongPressGesture(minimumDuration: 1.0) { diagnostics.reveal() }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("settings.version")
+
+            if diagnostics.isRevealed {
+                NavigationLink("Diagnose") { DiagnosticsView() }
+                    .accessibilityIdentifier("settings.diagnostics")
+            }
             // Endmarke für den Kontrast-Audit, der ans Ende der Liste scrollen
             // muss, bevor er misst. Ein Bezeichner und kein Text: Die Marke war
             // zweimal deutsche Prosa und ist zweimal gebrochen, als die Prosa
