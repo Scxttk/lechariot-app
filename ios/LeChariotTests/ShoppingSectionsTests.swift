@@ -40,6 +40,53 @@ final class ShoppingSectionsTests: XCTestCase {
         XCTAssertNil(ShoppingSections.category(forMatches: matches("   ")))
     }
 
+    // MARK: Die Kategorien aus dem Plan
+
+    /// **Der Preis, den der erste Entwurf gekostet hat, steht als Test da.**
+    /// Die Kategorie kommt aus dem Plan-Lauf, nicht aus einem zweiten Durchgang
+    /// über alle Angebote — gemessen war das die doppelte Scroll-Ausrollzeit.
+    func testCategoriesComeFromThePlanThatIsComputedAnyway() {
+        let ranks = [
+            rank("Netto", items: [("Butter", "Molkerei & Eier"), ("Äpfel", "Obst & Gemüse")]),
+        ]
+        let byQuery = ShoppingSections.categories(from: ranks)
+        XCTAssertEqual(byQuery["Butter"], "Molkerei & Eier")
+        XCTAssertEqual(byQuery["Äpfel"], "Obst & Gemüse")
+    }
+
+    /// Die erste Kette gewinnt: `ranks` ist nach Abdeckung sortiert, und der
+    /// Artikel steht in der Liste unter der Kategorie, die die empfohlene
+    /// Filiale ihm gibt.
+    func testTheFirstRankWins() {
+        let ranks = [
+            rank("Netto", items: [("Butter", "Molkerei & Eier")]),
+            rank("Lidl", items: [("Butter", "Sonstiges")]),
+        ]
+        XCTAssertEqual(ShoppingSections.categories(from: ranks)["Butter"], "Molkerei & Eier")
+    }
+
+    /// Eine leere Kategorie aus dem Import zählt nicht — sonst stünde über
+    /// einem Abschnitt gar nichts.
+    func testAnEmptyCategoryInThePlanIsIgnored() {
+        let ranks = [rank("Netto", items: [("Butter", "  ")])]
+        XCTAssertNil(ShoppingSections.categories(from: ranks)["Butter"])
+    }
+
+    private func rank(_ chain: String, items: [(String, String)]) -> MarketListRank {
+        MarketListRank(
+            chain: chain,
+            matchedItems: items.map { name, category in
+                RankedItemMatch(
+                    item: name,
+                    match: OfferMatch(offer: offer(name, category: category), kind: .direct),
+                    isPinned: false
+                )
+            },
+            missingItems: [],
+            total: nil
+        )
+    }
+
     // MARK: Die Abschnitte
 
     func testSectionsFollowTheFixedCategoryOrderNotTheTypingOrder() {
