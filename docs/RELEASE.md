@@ -1,5 +1,24 @@
 # Shipping a TestFlight build
 
+## Erst nachsehen, dann raten
+
+```bash
+tools/asc-builds.sh    # nur lesend: Builds + Zertifikate aus App Store Connect
+```
+
+**Der Satz „ob der Build die Verarbeitung übersteht, ist von hier aus nicht
+prüfbar" stand seit dem 31.07. in jedem Rundenbericht — und er war falsch.**
+Derselbe API-Schlüssel, der zum Hochladen nicht reicht, darf lesen. Am 03.08.
+hat der erste Aufruf in einem Zug bestätigt, dass **alle zehn** bis dahin
+unbestätigten Builds `VALID` sind, `2026.0803.1440` eingeschlossen.
+
+Der zweite Abschnitt sagt, woran der Upload hängt. Am 03.08.: **kein einziges
+Vertriebszertifikat im Konto** — zwei Entwicklungs- und ein Developer-ID-Zertifikat,
+sonst nichts. Das ist kein verlorenes Zertifikat, sondern ein nie ausgestelltes;
+deshalb ist der Haken *„Zugriff auf cloud-verwaltete Vertriebszertifikate"* beim
+Schlüssel der eigentliche Weg und keine Abkürzung.
+
+
 `tools/release.sh` builds a distribution-signed `.ipa`. Everything below it in
 this file is the part Apple insists a human does.
 
