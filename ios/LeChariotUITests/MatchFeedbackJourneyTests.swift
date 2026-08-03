@@ -84,7 +84,7 @@ final class MatchFeedbackJourneyTests: XCTestCase {
     private func openMatchesFor(_ item: String) {
         let input = app.textFields["list.input"]
         XCTAssertTrue(input.waitForExistence(timeout: 15))
-        input.tap()
+        input.tapAndAwaitKeyboard(in: app)
         input.typeText(item + "\n")
         dismissQuantitySheet()
 

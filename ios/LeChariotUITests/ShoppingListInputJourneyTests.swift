@@ -33,7 +33,7 @@ final class ShoppingListInputJourneyTests: XCTestCase {
             "Vor dem ersten Artikel ist die Frage die Aufforderung"
         )
 
-        feld.tap()
+        feld.tapAndAwaitKeyboard(in: app)
         feld.typeText("Butter")
         app.buttons["Artikel hinzufügen"].tap()
 

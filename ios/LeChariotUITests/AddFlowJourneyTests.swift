@@ -114,6 +114,10 @@ final class AddFlowJourneyTests: XCTestCase {
         startTyping()
         app.typeText("Butter\n")
 
+        // Erst warten, dann tippen: Die Schicht zieht auf, und ein `tap` ohne
+        // `waitForExistence` prüft nur, wie schnell der Rechner gerade ist.
+        XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10),
+                      "Die Angaben-Schicht steht nach dem Anlegen nicht da")
         app.buttons["list.detailPanel.more"].tap()
 
         XCTAssertTrue(app.buttons["itemDetail.done"].waitForExistence(timeout: 10),
@@ -125,10 +129,19 @@ final class AddFlowJourneyTests: XCTestCase {
 
     /// Einmal ins Feld tippen — danach schreibt jede Zeile über `app.typeText`,
     /// und das ist Absicht. Siehe die Überschrift dieser Datei.
+    ///
+    /// **Und dann auf die Tastatur warten.** Ohne das war diese Suite bei jedem
+    /// Lauf anders rot: `feld.tap()` kommt zurück, bevor der Fokus liegt, und
+    /// das erste `app.typeText` fiel mit „Neither element nor any descendant has
+    /// keyboard focus". Nachgemessen am 03.08.: Wer nach dem Tipp eine Sekunde
+    /// wartet, tippt sechs Wörter hintereinander durch, und die Schicht steht
+    /// bei **jeder** Messung im 100-ms-Raster. Die Wackelei lag im Testlauf,
+    /// nicht in der App — genau der Unterschied, den ein Test behaupten können
+    /// muss.
     private func startTyping() {
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15),
                       "Der Start hinter dem Assistenten landet nicht in der Liste")
-        feld.tap()
+        feld.tapAndAwaitKeyboard(in: app)
     }
 }

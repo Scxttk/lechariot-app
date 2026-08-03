@@ -63,7 +63,7 @@ final class SuggestionSurfaceJourneyTests: XCTestCase {
         XCTAssertTrue(app.buttons["Milch hinzufügen"].waitForExistence(timeout: 10),
                       "Vor dem ersten Artikel steht die Fläche offen")
 
-        feld.tap()
+        feld.tapAndAwaitKeyboard(in: app)
         feld.typeText("Vollmilch\n")
         dismissQuantitySheet()
         XCTAssertTrue(app.buttons["Vollmilch"].waitForExistence(timeout: 10),
