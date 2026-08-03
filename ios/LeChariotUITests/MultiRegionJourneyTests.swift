@@ -123,7 +123,7 @@ final class MultiRegionJourneyTests: XCTestCase {
         XCTAssertTrue(add.waitForExistence(timeout: 15))
         add.tap()
 
-        let field = app.textFields["Postleitzahl"]
+        let field = app.textFields["region.input"]
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         field.tap()
         field.typeText(plz)

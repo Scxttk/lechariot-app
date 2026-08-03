@@ -58,6 +58,16 @@ final class PlaceNameStore {
         cache[plz] = name
     }
 
+    /// Einen Namen eintragen, der schon bekannt ist.
+    ///
+    /// Wer eine Region über ihren **Namen** angelegt hat, hat ihn Apple gerade
+    /// abgefragt — `resolve(plz:)` würde denselben Geocoder ein zweites Mal
+    /// nach etwas fragen, das schon dasteht.
+    func remember(name: String, forPLZ plz: String) {
+        guard name != plz, !name.isEmpty else { return }
+        cache[plz] = name
+    }
+
     /// Der Name des Punktes, an dem das Gerät gerade steht — Straßenebene,
     /// wenn Apple sie hergibt. Nicht zwischengespeichert: Ein Standort ist
     /// kein Nachschlagewerk, er ändert sich beim Gehen.

@@ -36,7 +36,7 @@ final class LocatedPLZJourneyTests: XCTestCase {
         app.buttons["onboarding.primary"].tap()   // Willkommen
         app.buttons["onboarding.skip"].tap()      // Name
 
-        let feld = app.textFields["Postleitzahl"]
+        let feld = app.textFields["region.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15))
 
         app.buttons["Standort verwenden"].tap()
@@ -62,7 +62,7 @@ final class LocatedPLZJourneyTests: XCTestCase {
         // 4. Weiter geht es, wenn der Mensch es sagt.
         app.buttons["onboarding.primary"].tap()
         XCTAssertFalse(
-            app.textFields["Postleitzahl"].waitForExistence(timeout: 10),
+            app.textFields["region.input"].waitForExistence(timeout: 10),
             "Nach „Weiter“ muss der Schritt wechseln"
         )
     }
@@ -73,7 +73,7 @@ final class LocatedPLZJourneyTests: XCTestCase {
         app.buttons["onboarding.primary"].tap()
         app.buttons["onboarding.skip"].tap()
 
-        let feld = app.textFields["Postleitzahl"]
+        let feld = app.textFields["region.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15))
         app.buttons["Standort verwenden"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["region.locatedHint"].exists)

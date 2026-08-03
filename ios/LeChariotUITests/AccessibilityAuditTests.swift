@@ -52,11 +52,11 @@ final class AccessibilityAuditTests: XCTestCase {
         // Erst die PLZ tippen: „Weiter" ist bis dahin deaktiviert, und ein
         // ausgegrauter Knopf ist von der Kontrastanforderung ausgenommen.
         // Ungetippt misst der Audit einen Zustand, den niemand benutzt.
-        let plz = app.textFields["Postleitzahl"]
+        let plz = app.textFields["region.input"]
         XCTAssertTrue(plz.waitForExistence(timeout: 15))
         plz.tap()
         plz.typeText("01219")
-        try audit("Postleitzahl")
+        try audit("Ort oder Postleitzahl")
         app.buttons["onboarding.primary"].tap()
         try audit("Haushalt")
         app.buttons["onboarding.skip"].tap()
@@ -353,6 +353,7 @@ final class AccessibilityAuditTests: XCTestCase {
         // Dieselbe Falle wie im dunklen Modus, siehe oben.
         waitUntilStill()
         let blurred = translucentBarRegions()
+        let keyboard = softwareKeyboardRegion()
         try app.performAccessibilityAudit(for: Self.geprüfteArten) { issue in
             let element = issue.element?.description ?? "kein benanntes Element"
             // Der Rahmen gehört ins Protokoll, nicht nur der Text: Ob ein
@@ -368,9 +369,13 @@ final class AccessibilityAuditTests: XCTestCase {
             // Plan-Karte, und außerhalb des sichtbaren Ausschnitts.
             let notWhereItLooks = issue.auditType == .contrast
                 && issue.element.map { e in blurred.contains { $0.intersects(e.frame) } } == true
+            // Apples Tastatur ist nicht unsere Fläche — weder ihre Tasten noch
+            // das, was sie verdeckt.
+            let onApplesKeyboard = issue.element.map { keyboard.intersects($0.frame) } == true
             let handledElsewhere = Self.knownSystemDrawn.contains { element.contains($0) }
                 || (issue.auditType == .contrast && issue.element == nil)
                 || notWhereItLooks
+                || onApplesKeyboard
             // Nur harte Durchfaller. „nearly passed" trifft flächendeckend die
             // sekundäre Systemfarbe (gemessen 3,15:1 auf der Creme, 3,93:1 auf
             // den Karten) — ein bekannter, im Backlog stehender Umbau, kein
@@ -435,6 +440,34 @@ final class AccessibilityAuditTests: XCTestCase {
         let gradient = bar.height + (window.maxY - bar.maxY)
         let top = bar.minY - gradient
         return CGRect(x: window.minX, y: top, width: window.width, height: window.maxY - top)
+    }
+
+    /// **Die Tastatur samt ihrer Vorschlagsleiste — Apples Fläche, nicht unsere.**
+    ///
+    /// Aufgetaucht am 2026-08-03, als das Regionsfeld vom Ziffernblock auf die
+    /// volle Tastatur wechselte („Anklam" tippen dürfen). Der Ziffernblock hat
+    /// keine QuickType-Leiste, die Buchstabentastatur hat eine — und ihre drei
+    /// leeren Vorschlagsfelder tragen **keine Beschriftung**. Der Audit meldete
+    /// prompt dreimal „Element has no description".
+    ///
+    /// **Gemessen, nicht geschätzt** (iPhone 17 Pro, Fenster 402 × 874): Die
+    /// Tastatur steht bei (0, 583, 402, 233); die drei Felder liegen bei
+    /// y = 539 … 583, je 134 pt breit — zusammen exakt die Fensterbreite, und
+    /// mit ihrer Unterkante **bündig auf der Tastaturoberkante**.
+    ///
+    /// Die Leiste ist deshalb ein Streifen über der Tastatur, eine
+    /// Berührungsfläche hoch (44 pt — die gemessene Höhe **und** die
+    /// Mindestgröße, die iOS für Antippbares vorgibt; keine an diesen einen
+    /// Bildschirm gepasste Zahl).
+    ///
+    /// Ohne Tastatur ist die Fläche leer, und `CGRect.null` schneidet nichts.
+    private func softwareKeyboardRegion() -> CGRect {
+        let keyboard = app.keyboards.firstMatch
+        guard keyboard.exists else { return .null }
+        let bar = 44.0
+        let frame = keyboard.frame
+        return CGRect(x: frame.minX, y: frame.minY - bar,
+                      width: frame.width, height: frame.height + bar)
     }
 
     /// **Was gar nicht auf dem Bildschirm steht.**
@@ -756,7 +789,7 @@ final class AccessibilityAuditTests: XCTestCase {
 
 
     private func enterPLZ() {
-        let plz = app.textFields["Postleitzahl"]
+        let plz = app.textFields["region.input"]
         XCTAssertTrue(plz.waitForExistence(timeout: 15))
         plz.tap()
         plz.typeText("01219")
