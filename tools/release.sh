@@ -111,6 +111,59 @@ done
 
 command -v xcodegen >/dev/null || fail "xcodegen fehlt: brew install xcodegen"
 
+# **Kann dieser Lauf überhaupt signieren?** Vor dem Archiv gefragt, nicht danach.
+#
+# Am 03.08. hat das zwei volle Archive gekostet: Beide liefen sechs Minuten
+# durch bis `** ARCHIVE SUCCEEDED **` und starben dann im Export — einmal an
+# `Cloud signing permission error`, einmal an `Failed to Use Accounts`. Beides
+# stand vorher fest und war in je einer Zeile zu sehen:
+#
+#   - Im Schlüsselbund liegt kein „Apple Distribution"-Zertifikat.
+#   - `DVTDeveloperAccountManagerAppleIDLists` ist leer — in Xcode ist keine
+#     Apple-ID angemeldet, die eins ausstellen lassen könnte.
+#
+# Trifft beides zu, kann der Export nicht signieren, egal wie gut das Archiv
+# ist. Der Lauf bricht dann **vorher** ab und sagt, welcher der zwei Handgriffe
+# fehlt. Ein Abbruch nach sechs Minuten, der dasselbe sagt, ist kein besserer
+# Abbruch.
+#
+# **Nur eine Warnung ohne `--upload`:** Ein Archiv zu bauen ist auch ohne
+# Vertriebszertifikat sinnvoll (Größe ansehen, Bundle prüfen).
+check_signing_reachable() {
+	local has_dist has_account
+	has_dist=0
+	security find-identity -v -p codesigning 2>/dev/null \
+		| grep -q "Apple Distribution" && has_dist=1
+	has_account=0
+	defaults read com.apple.dt.Xcode DVTDeveloperAccountManagerAppleIDLists 2>/dev/null \
+		| grep -q "identifier" && has_account=1
+
+	[ "$has_dist" -eq 1 ] && return 0
+	[ "$has_account" -eq 1 ] && return 0
+
+	local satz="Kein „Apple Distribution\"-Zertifikat im Schlüsselbund UND keine
+  Apple-ID in Xcode angemeldet. Der Export kann damit nicht signieren.
+
+  Zwei Wege, beide brauchen einen Menschen:
+
+  1. Dauerhaft — in App Store Connect beim API-Schlüssel
+     „Zugriff auf cloud-verwaltete Vertriebszertifikate\" anhaken.
+     Danach trägt tools/release.sh --upload allein.
+  2. Für jetzt — Xcode → Einstellungen → Accounts anmelden, dann
+     env -u ASC_KEY_ID -u ASC_ISSUER_ID ASC_KEY_PATH=skip tools/release.sh --upload
+
+  Was das Konto gerade hat, sagt tools/asc-builds.sh (rein lesend)."
+
+	if [ "$upload" -eq 1 ]; then
+		fail "$satz"
+	fi
+	echo "⚠ $satz" >&2
+	echo >&2
+}
+
+check_signing_reachable
+
+
 BUILD_NUMBER="$(date -u +%Y.%m%d.%H%M)"
 VERSION="$(grep -m1 'MARKETING_VERSION:' "$IOS/project.yml" | awk '{print $2}')"
 echo "▸ Le Chariot $VERSION (Build $BUILD_NUMBER) — $(git rev-parse --short HEAD)"
