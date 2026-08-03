@@ -32,6 +32,10 @@ struct ShoppingListView: View {
     /// Was der Nutzer in dieser Sitzung zuletzt mit der Vorschlagsfläche getan
     /// hat — siehe `SuggestionSurface`. Bewusst `@State` und nicht persistiert.
     @State private var suggestionChoice: Bool?
+    /// Die Wertung, die hinter „Passende Artikel im Angebot" liegt — gesetzt
+    /// beim Antippen, damit das Blatt genau den Lauf zeigt, dessen Zahlen in
+    /// der Zeile standen. Siehe `OfferHitsView`.
+    @State private var hitsRanks: [MarketListRank]?
 
     private var chains: [String] {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
@@ -199,6 +203,13 @@ struct ShoppingListView: View {
                 list.setDetail(detail, note: note, for: item)
             }
         }
+        .sheet(item: Binding(
+            get: { hitsRanks.map(RankBundle.init) },
+            set: { hitsRanks = $0?.ranks }
+        )) { bundle in
+            OfferHitsView(ranks: bundle.ranks, favoriteMarkets: favoriteMarkets)
+                .environment(list)
+        }
     }
 
     // MARK: List
@@ -239,7 +250,11 @@ struct ShoppingListView: View {
             let hits = OfferHitSummary(ranks: plan)
             if !hits.isEmpty {
                 Section {
-                    OfferHitsRow(summary: hits, onOpen: onShowOffers)
+                    // **Die Zeile führt zu den Treffern, nicht in den
+                    // Angebote-Tab** (Scott, 03.08.: „wirkt tot"). Die Zahl in
+                    // der Zeile verspricht *diese* fünfzehn; der Tab zeigte
+                    // alle Angebote der Woche und wechselte damit die Frage.
+                    OfferHitsRow(summary: hits, onOpen: { hitsRanks = plan })
                         .listRowInsets(EdgeInsets(
                             top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
                             bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
@@ -968,6 +983,12 @@ struct ShoppingListView: View {
             }
         }
     }
+}
+
+/// `.sheet(item:)` will etwas Identifizierbares — eine Wertung ist ein Array.
+private struct RankBundle: Identifiable {
+    let ranks: [MarketListRank]
+    var id: String { ranks.map(\.chain).joined(separator: "|") }
 }
 
 /// Der Leerzustand an der Stelle der Plan-Karte: **ehrlich statt versteckt.**

@@ -35,6 +35,7 @@
 		27C5E96CA4D8189001A3AF1D /* NextWeekJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC4B4509ACDB2467DC9E422A /* NextWeekJourneyTests.swift */; };
 		2AB61ED05906633F3FDBC9B8 /* ConsentStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6EF1D05EA99835E5E2E073C /* ConsentStepView.swift */; };
 		2BD32204C1D8F38E13C7A148 /* OfferAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4476F864C2C670C5B5A60F08 /* OfferAnalytics.swift */; };
+		2C74CA040FBFDFBD1F7D6100 /* OfferHitsJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6382CDC2B664DD13CFB697 /* OfferHitsJourneyTests.swift */; };
 		2D0BD158D68A1C89C715C2D1 /* ShoppingListInputJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BBC2A3B643BBE2A473B57F2 /* ShoppingListInputJourneyTests.swift */; };
 		2DD0C1C37ACA76883C2991F4 /* WeekBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A313B5563AF1C120A49DE1C6 /* WeekBoundaryTests.swift */; };
 		2E6CCA6B7C7B1A256D14EF1A /* OnboardingJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077E32320821AEDD589009C3 /* OnboardingJourneyTests.swift */; };
@@ -150,6 +151,7 @@
 		C09751F253E651B713832B95 /* OfferDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE1AC8F6716C11C294CBCE9 /* OfferDetailView.swift */; };
 		C14A6FF77070CDD5D26E1853 /* FeatureFlagsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590239F50C6AEE0E180227F6 /* FeatureFlagsTests.swift */; };
 		C33952407C5C9B4B9DFB147B /* SpotlightRingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9476B754D24CEEA148265365 /* SpotlightRingTests.swift */; };
+		C83883ECE849FE43B83F12A6 /* OfferHitsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF3CB16A66C72764086C7938 /* OfferHitsView.swift */; };
 		CCAA533E7672482404F17545 /* OfferStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F76269277934B796DC60F20 /* OfferStore.swift */; };
 		CDFF19AE2AEA4E426691CE6A /* WeekBoundaryFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D3BD57793F6559B36F3CC2 /* WeekBoundaryFixtureTests.swift */; };
 		CF069A07BD1A761E11E3A48F /* ItemDetailVocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62BDE33263A95B533A0BEF91 /* ItemDetailVocabulary.swift */; };
@@ -350,6 +352,7 @@
 		C549F3693733C383160479E6 /* BranchRequestStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BranchRequestStoreTests.swift; sourceTree = "<group>"; };
 		C65C082DFAF1965855277219 /* AddFlowState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFlowState.swift; sourceTree = "<group>"; };
 		C73A32383487821E94E8F8DE /* TutorialAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialAnchor.swift; sourceTree = "<group>"; };
+		CA6382CDC2B664DD13CFB697 /* OfferHitsJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferHitsJourneyTests.swift; sourceTree = "<group>"; };
 		CAF47EE77E57764F3E5BB539 /* AppGlyphTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGlyphTests.swift; sourceTree = "<group>"; };
 		CC182E2BA10360E3AC0DB17D /* MetricsCollector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsCollector.swift; sourceTree = "<group>"; };
 		CCCC4BEAD980A1C0DFEED95D /* NextWeekView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextWeekView.swift; sourceTree = "<group>"; };
@@ -396,6 +399,7 @@
 		F826415F9A5019BBEFB36748 /* OffersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OffersView.swift; sourceTree = "<group>"; };
 		FA9B35559D902F7671AF19A9 /* UITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestSupport.swift; sourceTree = "<group>"; };
 		FB397CCE47739B6A4074B621 /* NoOffersReasonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoOffersReasonTests.swift; sourceTree = "<group>"; };
+		FF3CB16A66C72764086C7938 /* OfferHitsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferHitsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -521,6 +525,7 @@
 				DC4B4509ACDB2467DC9E422A /* NextWeekJourneyTests.swift */,
 				7DDF96A167E5090688897757 /* OfferDetailJourneyTests.swift */,
 				A131D7DCE51C328D0986C625 /* OfferFilterJourneyTests.swift */,
+				CA6382CDC2B664DD13CFB697 /* OfferHitsJourneyTests.swift */,
 				077E32320821AEDD589009C3 /* OnboardingJourneyTests.swift */,
 				B918C4A1DCC565F70D5BCD0B /* PerformanceJourneyTests.swift */,
 				F765F4539B77A6B82F7F6482 /* PinnedOfferJourneyTests.swift */,
@@ -571,6 +576,7 @@
 				C3E42237292FFC9E49CCBCFF /* ItemDetailSheet.swift */,
 				D2556F0A712FE98A27DDA2FC /* MatchDetailView.swift */,
 				F7B675EC7E24557CBF30B708 /* OfferHitsRow.swift */,
+				FF3CB16A66C72764086C7938 /* OfferHitsView.swift */,
 				647A543C891A626804D53C84 /* RejectionFeedbackSheet.swift */,
 				151682DC435E28945377F0E7 /* ShoppingListRowView.swift */,
 				E0A2231CEBE6ABCF4457246B /* ShoppingListView.swift */,
@@ -1012,6 +1018,7 @@
 				83D0EA5DD7381880BEEC6817 /* OfferCoverage.swift in Sources */,
 				C09751F253E651B713832B95 /* OfferDetailView.swift in Sources */,
 				177C4AA4DB82B955D6657D5B /* OfferHitsRow.swift in Sources */,
+				C83883ECE849FE43B83F12A6 /* OfferHitsView.swift in Sources */,
 				068610CB2096633DF7F4EE88 /* OfferMatcher.swift in Sources */,
 				AA33F8E50EBAEF95B1E642AE /* OfferProvenance.swift in Sources */,
 				394D1967FF955B0C864A9333 /* OfferRowView.swift in Sources */,
@@ -1082,6 +1089,7 @@
 				27C5E96CA4D8189001A3AF1D /* NextWeekJourneyTests.swift in Sources */,
 				D69EE657C6AF3AC882F6ECC2 /* OfferDetailJourneyTests.swift in Sources */,
 				9E44FA5D03C8440EBA47C047 /* OfferFilterJourneyTests.swift in Sources */,
+				2C74CA040FBFDFBD1F7D6100 /* OfferHitsJourneyTests.swift in Sources */,
 				2E6CCA6B7C7B1A256D14EF1A /* OnboardingJourneyTests.swift in Sources */,
 				209625BD408799A34B87F9EB /* PerformanceJourneyTests.swift in Sources */,
 				F023EF16AEEC30F73866749D /* PinnedOfferJourneyTests.swift in Sources */,
