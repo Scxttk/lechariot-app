@@ -67,10 +67,45 @@ struct NextWeekView: View {
     /// hat, keine ohne Vorschau. Der Abschnitt beantwortet die Frage „warum
     /// steht mein Kaufland nicht da", und die hängt nicht am Suchfeld.
     private var chainsWithoutRows: [String] {
-        let covered = Set(store.upcomingOffers.map(\.market))
-        return Set(favoriteMarkets.map(\.chain))
-            .subtracting(covered)
+        Set(favoriteMarkets.map(\.chain))
+            .subtracting(chainsWithRows)
             .sorted()
+    }
+
+    private var chainsWithRows: Set<String> {
+        Set(store.upcomingOffers.map(\.market))
+    }
+
+    /// **Dieselben Reiter wie in den Angeboten** — Scotts Punkt 6.
+    ///
+    /// Bis Build `2026.0803.1440` waren es die Ketten mit **Vorschau-Zeilen**,
+    /// und die Leiste erscheint erst ab zweien. In den Fixtures fällt das nicht
+    /// auf; in Anklam veröffentlicht in aller Regel höchstens eine Kette im
+    /// Voraus — also stand dort **gar keine** Leiste, während der Angebote-Tab
+    /// eine hatte. Geteilt war das Bauteil längst; zu eng war die Bedingung,
+    /// genau wie Scott vermutet hat.
+    ///
+    /// **Die Umkehr einer Entscheidung vom 02.08., und sie gehört benannt:**
+    /// Damals bekam eine Kette ohne Vorschau-Zeilen bewusst *keinen* Chip, weil
+    /// er in die Sackgasse „Nichts für diesen Filter" führte. Der Einwand war
+    /// richtig — die Antwort war es nicht. Ein Reiter, der fehlt, beantwortet
+    /// die Frage „wo ist mein Aldi" gar nicht; ein Reiter, der den **Grund**
+    /// zeigt, beantwortet sie. Deshalb gibt es beides: den Chip und, dahinter,
+    /// denselben ehrlichen Satz, der sonst unten im Abschnitt „Ohne Vorschau"
+    /// steht.
+    ///
+    /// Die Wochengrenze rührt das nicht an: Chips sind **Namen**. Die Zeilen
+    /// kommen weiter ausschließlich aus `store.upcomingOffers`.
+    private var chipChains: [String] {
+        Set(favoriteMarkets.map(\.chain))
+            .union(chainsWithRows)
+            .sorted()
+    }
+
+    /// Gefiltert auf eine Kette, die im Voraus nichts veröffentlicht.
+    private var filteredChainWithoutPreview: String? {
+        guard let chain = browser.market, !chainsWithRows.contains(chain) else { return nil }
+        return chain
     }
 
     var body: some View {
@@ -121,7 +156,7 @@ struct NextWeekView: View {
         } else {
             VStack(spacing: 0) {
                 MarketChipBar(
-                    chains: browser.chipChains(in: store.upcomingOffers),
+                    chains: chipChains,
                     selection: $browser.market,
                     identifier: "nextWeek.marketChips"
                 )
@@ -133,7 +168,15 @@ struct NextWeekView: View {
     private var list: some View {
         List {
             explainer
-            if visible.isEmpty {
+            if let chain = filteredChainWithoutPreview {
+                // **Der Grund statt der Sackgasse.** „Nichts für diesen Filter"
+                // wäre hier eine Halbwahrheit: Es liegt nicht am Filter,
+                // sondern daran, dass diese Kette im Voraus nichts
+                // veröffentlicht — derselbe Satz, der unten im Abschnitt „Ohne
+                // Vorschau" steht, nur an der Stelle, an der die Frage gerade
+                // gestellt wird.
+                noPreviewForChain(chain)
+            } else if visible.isEmpty {
                 OfferEmptyResultView(
                     browser: browser,
                     scope: .upcoming,
@@ -208,6 +251,21 @@ struct NextWeekView: View {
         parts.append("bei \(offer.market)")
         parts.append("gilt ab \(DateFormatter.offerDayLong.string(from: offer.validFrom))")
         return parts.joined(separator: ", ")
+    }
+
+    /// Der Reiter steht, die Kette hat nichts — und hier steht, warum.
+    private func noPreviewForChain(_ chain: String) -> some View {
+        ContentUnavailableView {
+            Label("Nichts von \(chain)", systemImage: "calendar")
+        } description: {
+            Text(Self.reason(for: chain))
+        } actions: {
+            Button("Alle Märkte zeigen") { browser.market = nil }
+                .buttonStyle(.borderedProminent)
+                .foregroundStyle(Theme.onAccent)
+        }
+        .listRowBackground(Theme.background)
+        .accessibilityIdentifier("nextWeek.chainWithoutPreview")
     }
 
     /// Der Grund je Kette — siehe `reason(for:)`.

@@ -171,11 +171,22 @@ final class NextWeekJourneyTests: XCTestCase {
         XCTAssertTrue(leiste.waitForExistence(timeout: 10),
                       "die Markt-Leiste fehlt in der Vorschau:\n\(app.debugDescription)")
 
-        // Aldi hat keine Zeilen der Folgewoche — also auch keinen Chip. Ein
-        // Chip in die Sackgasse „Nichts für diesen Filter" wäre schlimmer als
-        // keiner.
-        XCTAssertFalse(leiste.buttons["Aldi"].exists,
-                       "ein Chip für eine Kette ohne Vorschau führt ins Leere")
+        // **Aldi hat keine Zeilen der Folgewoche und bekommt trotzdem einen
+        // Chip** — die Umkehr der Entscheidung vom 02.08.
+        //
+        // Damals bekam eine solche Kette bewusst keinen, weil er in die
+        // Sackgasse „Nichts für diesen Filter" führte. Der Einwand war richtig,
+        // die Antwort nicht: Ein fehlender Reiter beantwortet die Frage „wo ist
+        // mein Aldi" gar nicht. Jetzt steht dahinter der Grund. Scotts Punkt 6
+        // vom 03.08.: In seiner Gegend veröffentlicht meist höchstens eine
+        // Kette im Voraus — und die Leiste erscheint erst ab zwei Chips, also
+        // stand dort gar keine.
+        XCTAssertTrue(leiste.buttons["Aldi"].exists,
+                      "die Vorschau zeigt dieselben Reiter wie die Angebote")
+        leiste.buttons["Aldi"].tap()
+        XCTAssertTrue(app.staticTexts["Nichts von Aldi"].waitForExistence(timeout: 10),
+                      "hinter dem Reiter muss der Grund stehen, nicht „Nichts für diesen Filter“")
+        leiste.buttons["Alle Märkte"].tap()
 
         leiste.buttons["Netto"].tap()
         XCTAssertTrue(app.staticTexts[nextWeekOnlyNetto].waitForExistence(timeout: 10))
@@ -184,6 +195,26 @@ final class NextWeekJourneyTests: XCTestCase {
         // Und was gefiltert wird, sind Zeilen der Folgewoche, keine heutigen.
         XCTAssertFalse(app.staticTexts["Deutsche Erdbeeren"].exists,
                        "Nettos laufende Zeile ist durch den Filter der Vorschau gerutscht")
+    }
+
+    /// **Scotts Fall vom 03.08.: nur eine Kette veröffentlicht im Voraus.**
+    ///
+    /// Genau die Lage in Anklam — und genau die, in der die Leiste bis Build
+    /// `2026.0803.1440` **gar nicht** erschien: Chips gab es nur für Ketten mit
+    /// Vorschau-Zeilen, und `MarketChipBar` zeigt sich erst ab zweien. Der
+    /// Angebote-Tab hatte eine Leiste, die Vorschau keine — bei geteiltem
+    /// Bauteil.
+    ///
+    /// `-uiTestingOnboardedAllBranches` gibt Lidl und Aldi; nur Lidl hat Zeilen
+    /// der Folgewoche.
+    func testThePreviewShowsMarketTabsEvenWhenOnlyOneChainPublishesAhead() {
+        openPreview()
+
+        let leiste = app.descendants(matching: .any)["nextWeek.marketChips"]
+        XCTAssertTrue(leiste.waitForExistence(timeout: 10),
+                      "die Markt-Leiste fehlt, obwohl zwei Filialen gewählt sind:\n\(app.debugDescription)")
+        XCTAssertTrue(leiste.buttons["Lidl"].exists)
+        XCTAssertTrue(leiste.buttons["Aldi"].exists)
     }
 
     /// **Der ehrliche Grund bleibt stehen, auch wenn gefiltert ist.**
