@@ -46,6 +46,35 @@ enum ShoppingSections {
         return category
     }
 
+    /// **Die Kategorien aus dem Plan, der ohnehin gerechnet ist** — Artikeltext
+    /// → Kategorie.
+    ///
+    /// **Gemessen, und der erste Entwurf ist daran gescheitert:** Zuerst holte
+    /// die Ansicht für *jeden* Artikel die volle `ItemSuggestion`, um an seine
+    /// Kategorie zu kommen. Das sah billig aus, weil die Zeile dieselbe Auskunft
+    /// ohnehin braucht — ist es aber nicht: Eine `List` baut nur die sichtbaren
+    /// Zeilen, also zahlte vorher **nur der sichtbare Teil** für das Matching.
+    /// Ein Abschnitt muss dagegen jeden Artikel kennen, auch den, der weit unten
+    /// steht.
+    ///
+    /// Am Messgeschirr kostete das die Liste **das Doppelte an Scroll-Ausrollzeit
+    /// (0,9 s → 1,8 s)** und rund ein Fünftel mehr Instruktionen — zweimal
+    /// gemessen, gegen `a21779d` in derselben Sitzung.
+    ///
+    /// Deshalb kommt die Kategorie jetzt aus `ranks`: Dieser Lauf geht ohnehin
+    /// über alle Artikel und alle Ketten, für die Plan-Karte. **Ein zweiter
+    /// Durchgang über denselben Vorrat ist der Preis, den niemand bemerkt hätte.**
+    static func categories(from ranks: [MarketListRank]) -> [String: String] {
+        var byQuery: [String: String] = [:]
+        for rank in ranks {
+            for matched in rank.matchedItems where byQuery[matched.item] == nil {
+                let category = matched.offer.category.trimmingCharacters(in: .whitespaces)
+                if !category.isEmpty { byQuery[matched.item] = category }
+            }
+        }
+        return byQuery
+    }
+
     /// Die Abschnitte, in der Reihenfolge von `Categories.all`, Rest zuletzt.
     ///
     /// Innerhalb eines Abschnitts bleibt die Reihenfolge der Liste — wer seine

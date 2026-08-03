@@ -54,17 +54,6 @@ struct ShoppingListView: View {
         favoriteMarkets.map(\.marketId).sorted()
     }
 
-    /// Einmal je Artikel, nicht zweimal: Der Abschnitt eines Eintrags und die
-    /// Zeile darin fragen dasselbe, und `suggestion(for:plan:)` läuft über den
-    /// ganzen Angebotsvorrat.
-    private func suggestionsByItem(plan: [MarketListRank]) -> [UUID: ItemSuggestion] {
-        var byItem: [UUID: ItemSuggestion] = [:]
-        for item in list.uncheckedItems {
-            byItem[item.id] = suggestion(for: item, plan: plan)
-        }
-        return byItem
-    }
-
     /// Matches are recomputed on the fly; only rejections are persisted.
     ///
     /// The suggestion follows the market the card recommends, not the cheapest
@@ -261,17 +250,15 @@ struct ShoppingListView: View {
 
             // **Kategorie-Abschnitte wie bei Bring!** — einsortiert wird über
             // den Treffer, den die Zeile ohnehin zeigt.
-            let byItem = suggestionsByItem(plan: plan)
-            let sections = ShoppingSections.build(items: list.uncheckedItems) { item in
-                ShoppingSections.category(forMatches: byItem[item.id]?.positions.map(\.match) ?? [])
-            }
+            let byQuery = ShoppingSections.categories(from: plan)
+            let sections = ShoppingSections.build(items: list.uncheckedItems) { byQuery[$0.query] }
             let showsHeaders = ShoppingSections.needsHeaders(sections)
             let firstOpenItem = list.uncheckedItems.first?.id
 
             ForEach(sections) { section in
                 Section {
                     ForEach(Array(section.items.enumerated()), id: \.element.id) { index, item in
-                        let itemSuggestion = byItem[item.id] ?? ItemSuggestion()
+                        let itemSuggestion = suggestion(for: item, plan: plan)
                         ShoppingListRowView(
                             item: item,
                             suggestion: itemSuggestion,
