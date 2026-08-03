@@ -91,4 +91,60 @@ final class SpotlightTransitionTests: XCTestCase {
             .init(rect: neu, animated: true)
         )
     }
+
+    // MARK: Der Nachzügler (03.08.)
+
+    /// **Der zweite Sprung im Wechsel 7→8, in drei Aufrufen nachgestellt.**
+    ///
+    /// Der Rahmen der Einstellungen hebt zwei Ziele zugleich hervor
+    /// (`.union(.settingsMarkets, .settingsHelp)`). Die beiden Anker kommen
+    /// nicht zwingend im selben Layout-Durchgang — beim Tab-Wechsel schon gar
+    /// nicht. Der erste löst den Flug aus, `shownIndex` steht danach auf dem
+    /// neuen Schritt; der zweite fällt damit in den Zweig „dasselbe Ziel
+    /// verschiebt sich" und **sprang**. Das Loch wuchs schlagartig von den
+    /// Filialen auf Filialen-plus-Hilfe: das gemeldete Blinzeln, nur eben
+    /// hinter dem Tab-Wechsel und deshalb bisher ihm zugeschrieben.
+    func testALateSecondAnchorOfTheSameFrameIsStillFlown() {
+        let teil = CGRect(x: 10, y: 300, width: 200, height: 40)
+        let ganz = teil.union(CGRect(x: 10, y: 360, width: 200, height: 40))
+
+        let ersterAnker = SpotlightTransition.move(
+            shown: alt, shownIndex: 6, resolved: teil, index: 7, settling: true
+        )
+        XCTAssertEqual(ersterAnker, .init(rect: teil, animated: true))
+
+        let nachzuegler = SpotlightTransition.move(
+            shown: teil, shownIndex: 7, resolved: ganz, index: 7, settling: true
+        )
+        XCTAssertEqual(
+            nachzuegler, .init(rect: ganz, animated: true),
+            "Der zweite Anker desselben Rahmens gehört noch zum Wechsel"
+        )
+    }
+
+    /// **Die Gegenrichtung, und sie ist die eigentliche Sperre.** Nach dem
+    /// Einschwing-Fenster gilt die alte Regel unverändert: Tastatur, Scrollen
+    /// und Umbauten unter dem Loch werden sofort mitgenommen, nicht geflogen —
+    /// sonst schwimmt das Loch dem Finger hinterher. Das ist genau der Zustand,
+    /// den `testTheSameTargetMovingIsFollowedInstantly` seit dem 31.07. hält;
+    /// hier steht er noch einmal ausdrücklich mit dem neuen Schalter.
+    func testOnceSettledTheSameTargetStillFollowsInstantly() {
+        XCTAssertEqual(
+            SpotlightTransition.move(
+                shown: alt, shownIndex: 2, resolved: neu, index: 2, settling: false
+            ),
+            .init(rect: neu, animated: false)
+        )
+    }
+
+    /// Der Standardwert ist der ruhige Fall. Ein Aufrufer, der das Fenster
+    /// nicht kennt, darf nicht versehentlich alles fliegen lassen.
+    func testTheQuietCaseIsTheDefault() {
+        XCTAssertEqual(
+            SpotlightTransition.move(shown: alt, shownIndex: 2, resolved: neu, index: 2),
+            SpotlightTransition.move(
+                shown: alt, shownIndex: 2, resolved: neu, index: 2, settling: false
+            )
+        )
+    }
 }

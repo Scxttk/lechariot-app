@@ -30,6 +30,10 @@ struct ContentView: View {
     /// Die Filialauswahl über der Liste. Erreichbar aus dem Leerzustand der
     /// Liste und aus der Frage am Ende des Rundgangs.
     @State private var showsMarketPicker = false
+    /// Deckkraft der Überblendung beim Tab-Wechsel des Rundgangs — siehe
+    /// `TourTabTransition`. 0, solange nicht gewechselt wird.
+    @State private var tourVeil: Double = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Tab {
         case liste, angebote, einstellungen
@@ -85,6 +89,16 @@ struct ContentView: View {
             .tag(Tab.liste)
 
             offersTab
+                // Nullhöhen-Marker auf der Oberkante der sicheren Fläche —
+                // also der Unterkante der Navigationsleiste. „Nächste Woche"
+                // ist ein `ToolbarItem` und liegt außerhalb des Baums, aus dem
+                // die Anker kommen; siehe `TutorialOverlay.navBarBand`.
+                .overlay(alignment: .top) {
+                    Color.clear
+                        .frame(height: 0)
+                        .allowsHitTesting(false)
+                        .tutorialAnchor(.navBarBottom)
+                }
                 .tabItem {
                     Label("Angebote", systemImage: "tag")
                 }
@@ -129,16 +143,32 @@ struct ContentView: View {
                 .transition(.opacity)
             }
         }
+        // Die Überblendung des Rundgangs, über allem — auch über der
+        // Abdunklung, die sie kurz auf volles Schwarz zieht. Siehe
+        // `TourTabTransition`.
+        .overlay {
+            if tourVeil > 0 {
+                Color.black
+                    .opacity(tourVeil)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
         // Der Rundgang spielt auf einem bestimmten Tab; der letzte Rahmen zeigt
         // die Einstellungen. Ohne das zeigte das Loch auf ein Bedienelement,
         // das gerade auf einem anderen Bildschirm liegt.
         .onChange(of: tutorial.index) { _, _ in
-            selectedTab = tab(for: tutorial.step.tab)
+            switchTourTab(to: tutorial.step.tab)
         }
         .onChange(of: tutorial.isRunning) { _, running in
             if running {
+                // Der Start blendet nicht über: Das Overlay zieht ohnehin
+                // gerade auf, und zwei Überblendungen übereinander sind eine
+                // zu viel.
                 selectedTab = tab(for: tutorial.step.tab)
             } else {
+                tourVeil = 0
                 // Jeder Ausgang läuft hier durch — „Fertig“ wie „Tour beenden“.
                 // Deshalb steht das Aufräumen hier und nicht an einem Knopf.
                 tutorial.removeDemoItems(from: shoppingList)
@@ -205,6 +235,43 @@ struct ContentView: View {
     private func tab(for tutorialTab: TutorialTab) -> Tab {
         switch tutorialTab {
         case .liste: return .liste
+        case .angebote: return .angebote
+        case .einstellungen: return .einstellungen
+        }
+    }
+
+    /// Der Tab-Wechsel des Rundgangs — **hinter der Abdunklung, nicht davor.**
+    ///
+    /// Gemeldet am 03.08.: „Beim Wechsel von Tab zu Tab springt es hart um."
+    /// Eine `TabView` blendet ihren Inhalt nicht über, sie tauscht ihn aus; das
+    /// Warum und das Warum-nicht-`matchedGeometryEffect` steht in
+    /// `TourTabTransition`.
+    ///
+    /// Der Zustandswechsel selbst passiert weiterhin sofort — nur eben in dem
+    /// Moment, in dem niemand hinsieht.
+    private func switchTourTab(to tutorialTab: TutorialTab) {
+        let target = tab(for: tutorialTab)
+        guard let plan = TourTabTransition.plan(
+            from: tourTab(of: selectedTab), to: tutorialTab, reduceMotion: reduceMotion
+        ) else {
+            selectedTab = target
+            return
+        }
+        withAnimation(.linear(duration: plan.fadeIn)) { tourVeil = 1 }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(plan.fadeIn))
+            selectedTab = target
+            try? await Task.sleep(for: .seconds(plan.hold))
+            withAnimation(.linear(duration: plan.fadeOut)) { tourVeil = 0 }
+        }
+    }
+
+    /// Die Rückrichtung von `tab(for:)`. Der Rundgang kennt die Angebote und
+    /// die Einstellungen als eigene Ziele; alles andere ist die Liste.
+    private func tourTab(of tab: Tab) -> TutorialTab {
+        switch tab {
+        case .liste: return .liste
+        case .angebote: return .angebote
         case .einstellungen: return .einstellungen
         }
     }

@@ -251,17 +251,90 @@ final class TutorialStoreTests: XCTestCase {
         let withMarkets = TutorialStep.tour(hasMarkets: true)
         let without = TutorialStep.tour(hasMarkets: false)
 
-        XCTAssertEqual(withMarkets.map(\.id), without.map(\.id),
-                       "die Rahmen selbst sind dieselben, nur zwei Texte ändern sich")
+        // Seit dem 03.08. ändert `hasMarkets` auch **einen Rahmen**: Ohne
+        // Filiale steht im Angebote-Tab kein Bildschirm, sondern der Hinweis
+        // „Keine Filiale gewählt" — der Knopf „Nächste Woche" existiert dort
+        // gar nicht, der Rahmen liefe ins Leere.
+        XCTAssertEqual(
+            Set(withMarkets.map(\.id)).subtracting(without.map(\.id)), ["nextWeek"],
+            "ohne Filiale fällt genau der Vorschau-Rahmen weg"
+        )
+        let gemeinsam = without.map(\.id)
+        XCTAssertEqual(
+            withMarkets.map(\.id).filter(gemeinsam.contains), gemeinsam,
+            "und die übrigen behalten ihre Reihenfolge"
+        )
 
-        let changed = zip(withMarkets, without)
-            .filter { $0.text != $1.text }
-            .map(\.0.id)
+        let mitId = Dictionary(uniqueKeysWithValues: withMarkets.map { ($0.id, $0.text) })
+        let changed = without.filter { $0.text != mitId[$0.id] }.map(\.id)
         XCTAssertEqual(changed, ["plan", "match"])
 
         let match = without.first { $0.id == "match" }!
         XCTAssertFalse(match.text.contains("Tipp es an"),
                        "ohne Filiale gibt es dort nichts anzutippen")
+    }
+
+    // MARK: Was der Rundgang erklären muss (03.08.)
+
+    /// **„Der Rundgang hinkt der App hinterher"** (Scott, 03.08.). Er ist über
+    /// einer App gebaut worden, die es so nicht mehr gibt: Seitdem kamen die
+    /// Angaben-Schicht, die Vorschau „Nächste Woche", der Preisverlauf, das
+    /// Anheften mehrerer Wahlen und der Freitext dazu — und keins davon kam
+    /// darin vor.
+    ///
+    /// Gegen den Stand vom 02.08. fällt **jede** Zeile dieses Tests.
+    func testTheTourCoversWhatTheAppLearnedSinceItWasBuilt() {
+        let tour = TutorialStep.tour(hasMarkets: true)
+        let ids = tour.map(\.id)
+
+        XCTAssertTrue(ids.contains("details"),
+                      "Die Angaben-Schicht findet man ohne Hinweis nicht")
+        XCTAssertTrue(ids.contains("nextWeek"),
+                      "Die Vorschau liegt hinter einem Knopf oben links")
+
+        // Die drei kleineren Zugaben bekommen keinen eigenen Rahmen, sondern
+        // einen Halbsatz dort, wo sie hingehören — ein Rundgang wird nicht
+        // besser, wenn er alles einzeln aufzählt.
+        let alles = tour.map { "\($0.title) \($0.text)" }.joined(separator: " ")
+        for wort in ["Preisverlauf", "anheften", "Notiz", "weitertippen"] {
+            XCTAssertTrue(alles.contains(wort),
+                          "Der Rundgang erwähnt \u{201E}\(wort)\u{201C} nirgends")
+        }
+    }
+
+    /// **Und er bleibt kurz.** Der Auftrag lautete „die Lücken schließen, ohne
+    /// ihn aufzublähen" — ein Rundgang, den man wegklickt, erklärt nichts.
+    func testTheTourStaysShort() {
+        XCTAssertLessThanOrEqual(
+            TutorialStep.tour(hasMarkets: true).count, 9,
+            "Mehr als neun Rahmen liest niemand zu Ende"
+        )
+    }
+
+    /// Der Angaben-Rahmen bringt sein Ziel selbst mit. Sonst hinge er daran,
+    /// dass der Tester im Rahmen davor wirklich getippt hat — und wer nur
+    /// „Weiter" drückt, bekäme einen Rahmen ohne Loch, der sich nach der
+    /// Schonfrist selbst überspringt.
+    func testTheDetailsFrameBringsItsOwnTargetAlong() {
+        let tour = TutorialStep.tour(hasMarkets: true)
+        let details = tour.first { $0.id == "details" }!
+
+        XCTAssertTrue(details.showsDetailPanel)
+        XCTAssertTrue(details.seedsDemoItems)
+        XCTAssertEqual(details.spotlight, .anchor(.detailPanel))
+        XCTAssertEqual(tour.filter(\.seedsDemoItems).count, 1,
+                       "Zweimal legen heißt zweimal aufräumen")
+    }
+
+    /// Die beiden Rahmen, für die der Rundgang den Tab wechselt — und sonst
+    /// keiner. Jeder weitere Wechsel ist eine Überblendung mehr, die niemand
+    /// bestellt hat.
+    func testOnlyTwoFramesLeaveTheListTab() {
+        let tour = TutorialStep.tour(hasMarkets: true)
+        let auswaerts = tour.filter { $0.tab != .liste }.map { ($0.id, $0.tab) }
+
+        XCTAssertEqual(auswaerts.map(\.0), ["nextWeek", "settings"])
+        XCTAssertEqual(auswaerts.map(\.1), [.angebote, .einstellungen])
     }
 
     /// Der Store friert die Fassung beim Start ein — die Filialauswahl liegt

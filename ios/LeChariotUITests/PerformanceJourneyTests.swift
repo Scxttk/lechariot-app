@@ -191,11 +191,21 @@ final class PerformanceJourneyTests: XCTestCase {
     private func seedList(with items: [String]) {
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 20), "kein Eingabefeld:\n\(app.debugDescription)")
+        // **Seit dem 03.08. gibt es hier nichts mehr wegzuklicken.** Das
+        // Mengen-Menü ist kein Blatt mehr, sondern eine Schicht über der
+        // Eingabezeile: Der Fokus bleibt im Feld, das nächste Wort ersetzt sie
+        // einfach. Der Messlauf tippt deshalb in einem Zug durch — genau das
+        // ist die Strecke, um die es geht.
+        feld.tap()
         for item in items {
-            feld.tap()
             feld.typeText(item + "\n")
-            let abbrechen = app.buttons["itemDetail.cancel"]
-            if abbrechen.waitForExistence(timeout: 8) { abbrechen.tap() }
+        }
+        // Am Ende einmal die Schicht schließen, damit der eigentliche Messlauf
+        // dieselbe Liste vor sich hat wie vorher.
+        let panel = app.buttons["list.detailPanel.more"]
+        if panel.waitForExistence(timeout: 3) {
+            app.swipeUp()
+            _ = panel.waitForNonExistence(timeout: 3)
         }
     }
 }

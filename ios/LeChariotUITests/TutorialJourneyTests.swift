@@ -239,6 +239,8 @@ final class TutorialJourneyTests: XCTestCase {
         startTour()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
+        next.tap()                                   // → details
+        Thread.sleep(forTimeInterval: 0.5)
         next.tap()                                   // → chips
         Thread.sleep(forTimeInterval: 0.5)
         next.tap()                                   // → plan
@@ -256,6 +258,29 @@ final class TutorialJourneyTests: XCTestCase {
             "Der Treffer-Rahmen hat kein Ziel und hat sich übersprungen: "
             + app.staticTexts["tutorial.card"].label
         )
+    }
+
+    /// **Der neue Rahmen bringt sein Ziel selbst mit** (03.08.).
+    ///
+    /// Er erklärt die Angaben-Schicht — die man ohne Hinweis nicht findet, weil
+    /// sie nur nach dem Anlegen dasteht. Er darf deshalb nicht davon abhängen,
+    /// dass der Tester im Rahmen davor wirklich getippt hat. Geprüft wie oben
+    /// **über die Schonfrist hinaus**: Ein Rahmen ohne Ziel wäre nach 1,2 s
+    /// weitergesprungen.
+    func testTheDetailsFrameStandsEvenWhenNobodyTypedAnything() {
+        startTour()
+        XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
+
+        next.tap()                                   // → details
+        Thread.sleep(forTimeInterval: 2.5)
+
+        XCTAssertTrue(
+            app.staticTexts["tutorial.card"].label.contains("Menge, Größe, Sorte"),
+            "Der Angaben-Rahmen hat sich übersprungen: "
+            + app.staticTexts["tutorial.card"].label
+        )
+        XCTAssertTrue(app.buttons["list.detailPanel.more"].exists,
+                      "Die Schicht, die der Rahmen erklärt, steht gar nicht da")
     }
 
     // MARK: Die Frage am Ende
@@ -330,6 +355,41 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertFalse(app.alerts["Märkte jetzt auswählen?"].waitForExistence(timeout: 5),
                        "aus den Einstellungen wird nicht gefragt")
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+    }
+
+    /// **Der neue Vorschau-Rahmen — und der Tab-Wechsel, den er auslöst.**
+    ///
+    /// Zwei Dinge auf einmal, weil sie zusammengehören: Der Rahmen gibt es nur
+    /// mit Filialen (ohne sie steht im Angebote-Tab kein Bildschirm), und sein
+    /// Ziel ist die Navigationsleiste — die UIKit zeichnet und die deshalb
+    /// keinen Anker trägt. Beides kann still schiefgehen: Ein Rahmen ohne
+    /// aufgelöstes Ziel überspringt sich nach 1,2 s selbst, und niemand merkt
+    /// es. Deshalb wird **über die Schonfrist hinaus** gewartet, bevor gelesen
+    /// wird.
+    func testThePreviewFrameStandsOnTheOffersTab() {
+        app.launchArguments = ["-uiTesting", "-uiTestingTutorial", "-uiTestingOnboarded"]
+        app.launch()
+
+        openTab("Einstellungen")
+        let restart = app.buttons["settings.tutorial"]
+        XCTAssertTrue(restart.waitForExistence(timeout: 15))
+        restart.tap()
+        XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
+
+        // input → details → chips → plan → match → check → tabs → nextWeek
+        for _ in 0..<7 {
+            next.tap()
+            Thread.sleep(forTimeInterval: 0.9)
+        }
+        Thread.sleep(forTimeInterval: 2.5)
+
+        XCTAssertTrue(
+            app.staticTexts["tutorial.card"].label.contains("Was ab Montag billiger wird"),
+            "Der Vorschau-Rahmen hat kein Ziel und hat sich übersprungen: "
+            + app.staticTexts["tutorial.card"].label
+        )
+        XCTAssertTrue(app.buttons["offers.nextWeek"].exists,
+                      "Der Rundgang steht nicht auf dem Angebote-Tab")
     }
 
     func testTheTourCanBeStartedAgainFromTheSettings() {

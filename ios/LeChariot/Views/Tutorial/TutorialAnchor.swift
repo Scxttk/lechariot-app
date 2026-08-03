@@ -8,12 +8,19 @@ import SwiftUI
 enum TutorialTarget: String, CaseIterable, Hashable {
     case inputBar
     case suggestions
+    /// Die Angaben-Schicht über der Eingabezeile — siehe `ItemDetailPanel`.
+    case detailPanel
     case planCard
     /// Angebotskachel der ersten offenen Zeile.
     case rowMatch
     /// Abhak-Kreis derselben Zeile.
     case rowCheck
     case tabBarTop
+    /// Nullhöhen-Marker auf der **Ober**kante der sicheren Fläche des
+    /// Angebote-Tabs — also genau die Unterkante der Navigationsleiste. Wie
+    /// `tabBarTop` der einzige Griff, den SwiftUI auf eine von UIKit
+    /// gezeichnete Leiste hergibt.
+    case navBarBottom
     case settingsMarkets
     case settingsHelp
 }
