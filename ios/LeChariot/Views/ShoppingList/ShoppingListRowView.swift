@@ -207,15 +207,24 @@ struct ShoppingListRowView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
 
-        if let onShowMatches {
-            Button(action: onShowMatches) { text }
-                .buttonStyle(TactileButtonStyle())
-                .accessibilityIdentifier("list.matches.empty")
-                .accessibilityLabel(lines.joined(separator: ". "))
-                .accessibilityHint("Zeigt, als was Le Chariot dein Wort verstanden hat")
-        } else {
-            text.accessibilityIdentifier("list.matches.empty")
+        // **Auch diese Zeile trägt den Anker** — derselbe Grund wie im Zweig
+        // ohne Filialen darüber, nur teurer bezahlt: Ohne ihn hatte der Rahmen
+        // „Das günstigste Angebot" kein Ziel, sobald der **erste offene**
+        // Artikel diese Woche nirgends im Angebot war, und übersprang sich nach
+        // 1,2 s selbst. Am 03.08. gemessen — ein Wort ohne Treffer genügt, und
+        // auf einer echten Liste steht selten nur Gefundenes.
+        Group {
+            if let onShowMatches {
+                Button(action: onShowMatches) { text }
+                    .buttonStyle(TactileButtonStyle())
+                    .accessibilityIdentifier("list.matches.empty")
+                    .accessibilityLabel(lines.joined(separator: ". "))
+                    .accessibilityHint("Zeigt, als was Le Chariot dein Wort verstanden hat")
+            } else {
+                text.accessibilityIdentifier("list.matches.empty")
+            }
         }
+        .tutorialAnchor(.rowMatch, when: carriesTutorialAnchors)
     }
 
     /// Eine Kachel je Position. Den Rundgang-Anker trägt nur die erste — ein
