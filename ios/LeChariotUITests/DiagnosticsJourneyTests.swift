@@ -57,6 +57,35 @@ final class DiagnosticsJourneyTests: XCTestCase {
         )
     }
 
+    /// **Scotts Punkt 3 vom 03.08.: „Ich finde das Werkzeug nicht."**
+    ///
+    /// Die Geste feuerte — aber erst nach einer vollen Sekunde. Am 03.08. mit
+    /// gestuften Druckdauern nachgemessen: 0,6 s nichts, 0,8 s nichts, 1,0 s
+    /// auf. Wer bei 0,8 s loslässt, bekommt **keinerlei** Rückmeldung und
+    /// schließt daraus, dass es die Geste nicht gibt. Genau das ist passiert.
+    ///
+    /// Diese Journey hält die neue Untergrenze fest. Gegen `2ad621d` fällt sie.
+    func testAShorterPressIsEnough() {
+        scrollToVersion()
+        versionRow.press(forDuration: 0.7)
+
+        XCTAssertTrue(
+            app.buttons["settings.diagnostics"].waitForExistence(timeout: 5),
+            "0,7 s müssen reichen — eine Sekunde trifft nur, wer die Zahl kennt\n"
+            + app.debugDescription
+        )
+    }
+
+    /// Die Gegenrichtung: Ein Tipp ist keine Geste. Ohne diesen Fall wäre die
+    /// Lockerung oben der Weg zu einer Diagnose, die jeder aus Versehen findet.
+    func testAPlainTapStillRevealsNothing() {
+        scrollToVersion()
+        versionRow.tap()
+
+        XCTAssertFalse(app.buttons["settings.diagnostics"].waitForExistence(timeout: 3),
+                       "ein Tipp darf das Werkzeug nicht aufmachen")
+    }
+
     func testALongPressOnTheVersionOpensTheTool() {
         scrollToVersion()
         versionRow.press(forDuration: 1.5)
@@ -83,7 +112,16 @@ final class DiagnosticsJourneyTests: XCTestCase {
         app.buttons["settings.diagnostics"].tap()
         XCTAssertTrue(app.navigationBars["Diagnose"].waitForExistence(timeout: 10))
 
-        app.buttons["diagnostics.hide"].tap()
+        // Der Bildercache-Abschnitt schiebt „Verstecken" unter die Kante —
+        // erst hinscrollen, dann tippen.
+        let verstecken = app.buttons["diagnostics.hide"]
+        var versuche = 0
+        while !verstecken.isHittable && versuche < 6 {
+            app.swipeUp()
+            versuche += 1
+        }
+        XCTAssertTrue(verstecken.waitForExistence(timeout: 5))
+        verstecken.tap()
         scrollToVersion()
         XCTAssertFalse(
             app.buttons["settings.diagnostics"].exists,

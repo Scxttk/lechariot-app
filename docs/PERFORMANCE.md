@@ -15,6 +15,16 @@ Die Strecken liegen in `ios/LeChariotUITests/PerformanceJourneyTests.swift` und
 laufen mit der UI-Suite mit. **Nicht in CI** — Simulator-Zeiten auf geteilten
 Runnern sind Rauschen.
 
+## Der Weg zum Werkzeug am Gerät
+
+**Langer Druck (0,6 s) auf die Zeile „Version" in den Einstellungen** — die
+Zeile dunkelt dabei ab, ein Klopfen bestätigt, danach steht dort „Diagnose".
+Ausgeschaltet läuft nichts; „Diagnose verstecken" nimmt beides wieder weg.
+(Bis zum 03.08. war die Frist 1,0 s **ohne jede Rückmeldung**: gemessen ging
+sie bei 0,6 s und 0,8 s gar nicht auf, und wer früher losließ, hielt die Geste
+für nicht vorhanden.) Unter „Produktbilder" stehen dort auch die Zähler des
+Bildercaches — Speicher, Platte, Netz.
+
 ## Was die Zahlen sind, und was nicht
 
 Absolutwerte vom Simulator sagen nichts über ein iPhone. Sie taugen für genau
