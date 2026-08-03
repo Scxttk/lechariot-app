@@ -295,6 +295,19 @@ struct OffersView: View {
         )
     }
 
+    /// Die Bilder der obersten Zeilen im Voraus holen.
+    ///
+    /// **40 und nicht alle:** Ein Prospekt trägt über tausend Zeilen, und ein
+    /// Vorauslauf über alle wäre ein Denial of Service gegen sechs fremde CDNs
+    /// — am 03.08. gemessen zwischen 266 und 2 751 ms je Bild, 30 bis 480 kB.
+    /// Vierzig deckt mehrere Bildschirmhöhen ab; was danach kommt, lädt beim
+    /// Scrollen und liegt dann im Speicher.
+    private var prefetchURLs: [URL] {
+        browser.visible(in: store.offers)
+            .prefix(40)
+            .compactMap { $0.imageUrl.flatMap(URL.init(string:)) }
+    }
+
     private var offerList: some View {
         List {
             if store.isStale {
@@ -334,6 +347,12 @@ struct OffersView: View {
             }
         }
         .refreshable { await store.refresh() }
+        // Der Vorauslauf hängt an dem, was gerade sichtbar wäre — also auch an
+        // Suche und Filter. Wer nach „Butter" sucht, bekommt Butter-Bilder
+        // geholt und nicht die der Zeilen darüber.
+        .task(id: prefetchURLs.map(\.absoluteString)) {
+            OfferImageLoader.shared.prefetch(prefetchURLs)
+        }
     }
 
     /// A row whose whole width opens the detail sheet.

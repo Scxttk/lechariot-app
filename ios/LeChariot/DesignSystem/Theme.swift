@@ -457,23 +457,42 @@ struct OfferImageContent: View {
         return .fallback
     }
 
+    /// Das geladene Bild. Beim ersten `body` schon gesetzt, wenn es im
+    /// Speicher liegt — sonst blitzte bei jedem Zurückscrollen der Rückfall
+    /// auf, obwohl das Foto längst da war.
+    @State private var loaded: UIImage?
+
     var body: some View {
         if let url = imageUrl.flatMap(URL.init(string:)) {
-            AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
-                switch Self.layer(for: phase) {
-                case .photo:
-                    if case .success(let image) = phase {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: contentMode)
-                            // Das Foto blendet auf — auf die Kachelfläche,
-                            // nicht auf das Emoji. Siehe `fallback`.
-                            .transition(.opacity)
+            content(for: url)
+                // `.task(id:)`, damit eine wiederverwendete Listenzeile mit
+                // neuer Adresse auch wirklich neu lädt.
+                .task(id: url) {
+                    if let sofort = OfferImageLoader.shared.cached(url) {
+                        loaded = sofort
+                        return
                     }
-                case .fallback:
-                    fallback
+                    loaded = nil
+                    let bild = await OfferImageLoader.shared.image(for: url)
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.easeOut(duration: 0.2)) { loaded = bild }
                 }
-            }
+        } else {
+            fallback
+        }
+    }
+
+    /// **Der Wechsel Foto/Rückfall bleibt die eine Entscheidung, die ein Test
+    /// ansehen kann** — siehe `Layer`. Sie hängt jetzt an `loaded` statt an
+    /// `AsyncImagePhase`; die Regel ist dieselbe (laden und Fehlschlag zeigen
+    /// beide den Rückfall).
+    @ViewBuilder
+    private func content(for url: URL) -> some View {
+        if let loaded {
+            Image(uiImage: loaded)
+                .resizable()
+                .aspectRatio(contentMode: contentMode)
+                .transition(.opacity)
         } else {
             fallback
         }

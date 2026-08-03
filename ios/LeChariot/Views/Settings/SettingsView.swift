@@ -28,6 +28,8 @@ struct SettingsView: View {
     let marketRepository: MarketRepositoryProtocol
 
     @State private var showResetConfirmation = false
+    /// Ob gerade auf der Zeile „Version" gedrückt wird — siehe `appSection`.
+    @State private var isPressingVersion = false
     @State private var installIdCopied = false
     @State private var showForgetConfirmation = false
     @State private var showDeleteConfirmation = false
@@ -353,7 +355,29 @@ struct SettingsView: View {
                 Text(Self.appVersion).foregroundStyle(Theme.secondaryText)
             }
             .contentShape(Rectangle())
-            .onLongPressGesture(minimumDuration: 1.0) { diagnostics.reveal() }
+            // Die Zeile sagt, dass sie gedrückt wird. **Das ist der eigentliche
+            // Fix**, nicht die kürzere Frist: Wer eine Sekunde drücken soll und
+            // dabei nichts sieht, lässt nach einer halben los und schließt
+            // daraus, dass es die Geste nicht gibt.
+            .opacity(isPressingVersion ? 0.45 : 1)
+            .animation(.easeOut(duration: 0.15), value: isPressingVersion)
+            // **0,6 s statt 1,0 — gemessen, nicht geschätzt** (03.08.): Bei
+            // 0,6 s und 0,8 s passierte nichts, erst bei 1,0 s ging sie auf.
+            // Eine Geste, die genau an ihrer Untergrenze sitzt, trifft nur, wer
+            // die Zahl kennt. 0,6 s ist immer noch das Dreifache eines Tipps.
+            //
+            // `maximumDistance` großzügig: Ein ruhender Finger wandert, und die
+            // Vorgabe von 10 pt bricht die Geste dabei ab.
+            .onLongPressGesture(minimumDuration: 0.6, maximumDistance: 40) {
+                isPressingVersion = false
+                // Rückmeldung an den Finger, bevor das Auge die neue Zeile
+                // findet — die steht eine Zeile tiefer und ist leicht zu
+                // übersehen.
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                diagnostics.reveal()
+            } onPressingChanged: { pressing in
+                isPressingVersion = pressing
+            }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("settings.version")
 

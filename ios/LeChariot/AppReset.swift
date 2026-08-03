@@ -67,5 +67,6 @@ enum AppReset {
         AppDefaults.shared.removeObject(forKey: Theme.appearanceKey)
         try? OfferCache.shared?.deleteAll()
         URLCache.shared.removeAllCachedResponses()
+        OfferImageLoader.shared.reset()
     }
 }

@@ -10,6 +10,7 @@ struct DiagnosticsView: View {
     @Environment(DiagnosticsGate.self) private var gate
     @Environment(\.dismiss) private var dismiss
     @Environment(MetricsCollector.self) private var metrics
+    private var images: OfferImageLoader { .shared }
 
     var body: some View {
         @Bindable var gate = gate
@@ -43,6 +44,26 @@ struct DiagnosticsView: View {
                 Text("Tagesberichte (\(metrics.entries.count))")
             } footer: {
                 Text("Hitch-Rate, Hänger, Startzeit, CPU und Akku — von diesem Gerät. Sie bleiben hier, bis du sie teilst; hochgeladen wird nichts.")
+            }
+
+            // **Was der Bildercache wirklich tut** — Scotts Punkt 4 vom 03.08.
+            // („manche Bilder sofort da, manche verzögert"). „Fühlt sich
+            // schneller an" ist genau die Sorte Aussage, die diese Runde nicht
+            // mehr durchgehen lässt; hier stehen die drei Zahlen, aus denen
+            // sich das ableiten lässt.
+            Section {
+                LabeledContent("Aus dem Speicher", value: "\(images.memoryHits)")
+                    .accessibilityIdentifier("diagnostics.img.memory")
+                LabeledContent("Von der Platte", value: "\(images.diskHits)")
+                    .accessibilityIdentifier("diagnostics.img.disk")
+                LabeledContent("Aus dem Netz", value: "\(images.networkLoads)")
+                    .accessibilityIdentifier("diagnostics.img.network")
+                LabeledContent("Fehlgeschlagen", value: "\(images.failures)")
+                    .accessibilityIdentifier("diagnostics.img.failed")
+            } header: {
+                Text("Produktbilder")
+            } footer: {
+                Text("Die Bilder liegen bei sechs fremden CDNs, nicht bei uns — am 03.08. gemessen zwischen 266 und 2 751 ms je Bild. „Von der Platte“ heißt: über App-Starts hinweg behalten, auch wenn der Server das nicht erlaubt hätte.")
             }
 
             Section {
