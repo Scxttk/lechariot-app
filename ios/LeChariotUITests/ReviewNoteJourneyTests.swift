@@ -43,7 +43,7 @@ final class ReviewNoteJourneyTests: XCTestCase {
         app.buttons["onboarding.primary"].tap()
 
         // Der Weg der abgelehnten Standortfreigabe: die PLZ von Hand.
-        let plz = app.textFields["Postleitzahl"]
+        let plz = app.textFields["region.input"]
         XCTAssertTrue(plz.waitForExistence(timeout: 15), "Schritt 1: keine PLZ-Eingabe")
         XCTAssertTrue(app.buttons["Standort verwenden"].exists,
                       "Die Anmerkung warnt vor diesem Knopf — er muss auch da sein")

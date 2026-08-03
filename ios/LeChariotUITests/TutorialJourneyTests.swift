@@ -478,7 +478,7 @@ final class TutorialJourneyTests: XCTestCase {
     private func completeOnboarding() {
         tapPrimary()               // Willkommen
         tapSkip()                  // „Ohne Namen weiter"
-        let plz = app.textFields["Postleitzahl"]
+        let plz = app.textFields["region.input"]
         XCTAssertTrue(plz.waitForExistence(timeout: 15))
         plz.tap()
         plz.typeText("01219")

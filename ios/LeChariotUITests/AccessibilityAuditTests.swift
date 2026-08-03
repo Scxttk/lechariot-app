@@ -52,11 +52,11 @@ final class AccessibilityAuditTests: XCTestCase {
         // Erst die PLZ tippen: „Weiter" ist bis dahin deaktiviert, und ein
         // ausgegrauter Knopf ist von der Kontrastanforderung ausgenommen.
         // Ungetippt misst der Audit einen Zustand, den niemand benutzt.
-        let plz = app.textFields["Postleitzahl"]
+        let plz = app.textFields["region.input"]
         XCTAssertTrue(plz.waitForExistence(timeout: 15))
         plz.tap()
         plz.typeText("01219")
-        try audit("Postleitzahl")
+        try audit("Ort oder Postleitzahl")
         app.buttons["onboarding.primary"].tap()
         try audit("Haushalt")
         app.buttons["onboarding.skip"].tap()
@@ -756,7 +756,7 @@ final class AccessibilityAuditTests: XCTestCase {
 
 
     private func enterPLZ() {
-        let plz = app.textFields["Postleitzahl"]
+        let plz = app.textFields["region.input"]
         XCTAssertTrue(plz.waitForExistence(timeout: 15))
         plz.tap()
         plz.typeText("01219")

@@ -12,8 +12,19 @@ struct RegionSetupView: View {
     /// Called once the region check/registration has been kicked off.
     var onPLZSubmitted: (String) -> Void
 
+    @Environment(PlaceNameStore.self) private var placeNames
+
     @State private var locator = PLZLocator()
+    /// Was im Feld steht — **PLZ oder Ortsname**. Welches von beidem,
+    /// entscheidet `RegionQuery`, nicht diese Ansicht.
     @State private var manualPLZ = ""
+    /// Der Ort, den Apple aus dem Namen gemacht hat. Steht so lange da, bis
+    /// jemand weitertippt — dieselbe Regel wie bei `locatedPLZ`: Eine
+    /// Ableitung gilt nur zu der Eingabe, aus der sie stammt.
+    @State private var resolvedPlace: PlaceCandidate?
+    /// „Meintest du …" — mehrere Orte desselben Namens.
+    @State private var candidates: [PlaceCandidate] = []
+    @State private var isSearching = false
     /// Die zuletzt **erkannte** PLZ — nur damit die Zeile darunter sagen kann,
     /// woher die Zahl im Feld stammt. Wer sie überschreibt, bekommt die Zeile
     /// nicht mehr zu sehen: Dann ist es wieder seine eigene Eingabe.
@@ -27,8 +38,39 @@ struct RegionSetupView: View {
     @State private var isChecking = false
     @State private var errorMessage: String?
 
-    private var isBusy: Bool { isLocating || isChecking }
-    private var canSubmit: Bool { PLZValidator.isValid(manualPLZ) && !isBusy }
+    private var isBusy: Bool { isLocating || isChecking || isSearching }
+    private var query: RegionQuery { RegionQuery.classify(manualPLZ) }
+
+    /// **Der Name ist noch keine Region.** Solange nur ein Ortsname dasteht,
+    /// führt der Knopf zu Apple, nicht in die App — erst der bestätigte Ort
+    /// hat die PLZ, mit der intern weitergerechnet wird.
+    private var needsLookup: Bool {
+        if case .ortsname = query { return resolvedPlace == nil }
+        return false
+    }
+
+    private var canSubmit: Bool {
+        guard !isBusy else { return false }
+        if case .postleitzahl = query { return true }
+        return resolvedPlace != nil
+    }
+
+    private var isPrimaryEnabled: Bool { canSubmit || (needsLookup && !isBusy) }
+
+    private var primaryTitle: String {
+        if isChecking { return "Wird geprüft …" }
+        if isSearching { return "Ort wird gesucht …" }
+        return needsLookup ? "Ort suchen" : "Weiter"
+    }
+
+    private func primaryAction() {
+        if needsLookup { lookUpCity() } else { submit(submittablePLZ) }
+    }
+
+    private var submittablePLZ: String {
+        if case .postleitzahl(let plz) = query { return plz }
+        return resolvedPlace?.plz ?? ""
+    }
 
     var body: some View {
         if let step {
@@ -36,10 +78,10 @@ struct RegionSetupView: View {
                 step: step,
                 totalSteps: OnboardingStep.total,
                 title: "Wo kaufst du ein?",
-                subtitle: "Angebote sind regional. Mit deiner Postleitzahl finden wir die Märkte in deiner Nähe.",
-                primaryTitle: isChecking ? "Wird geprüft …" : "Weiter",
-                isPrimaryEnabled: canSubmit,
-                onPrimary: { submit(manualPLZ) }
+                subtitle: "Angebote sind regional. Mit deinem Ort oder deiner Postleitzahl finden wir die Märkte in deiner Nähe.",
+                primaryTitle: primaryTitle,
+                isPrimaryEnabled: isPrimaryEnabled,
+                onPrimary: { primaryAction() }
             ) {
                 fields
             }
@@ -47,11 +89,11 @@ struct RegionSetupView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                     fields
-                    Button("Weiter") { submit(manualPLZ) }
+                    Button(primaryTitle) { primaryAction() }
                         .buttonStyle(.borderedProminent)
                         .foregroundStyle(Theme.onAccent)
                         .tint(Theme.accent)
-                        .disabled(!canSubmit)
+                        .disabled(!isPrimaryEnabled)
                         .frame(maxWidth: .infinity)
                 }
                 .padding(Theme.Spacing.xl)
@@ -71,10 +113,19 @@ struct RegionSetupView: View {
 
     private var fields: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-            TextField("PLZ, z. B. 01219", text: $manualPLZ)
-                .keyboardType(.numberPad)
-                .textContentType(.postalCode)
-                .font(.title3.monospacedDigit())
+            // **Die volle Tastatur, nicht mehr der Ziffernblock** — und das
+            // kostet den PLZ-Weg einen Tipp auf „123". Bewusst so: Ein Feld,
+            // das Buchstaben annehmen soll, kann keine Tastatur ohne
+            // Buchstaben anbieten, und zwei Felder (oder ein Umschalter)
+            // kosten jeden Menschen einen Tipp statt nur den, der Ziffern
+            // tippt. `.default` statt `.numbersAndPunctuation`, weil letztere
+            // keine Umlaute kennt — „München" wäre nicht tippbar.
+            TextField("Ort oder PLZ, z. B. Anklam", text: $manualPLZ)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .submitLabel(needsLookup ? .search : .done)
+                .onSubmit { if isPrimaryEnabled { primaryAction() } }
+                .font(.title3)
                 .padding(.horizontal, Theme.Spacing.md)
                 .frame(height: 52)
                 .background(
@@ -85,7 +136,15 @@ struct RegionSetupView: View {
                     RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                         .strokeBorder(Theme.stroke)
                 )
-                .accessibilityLabel("Postleitzahl")
+                .accessibilityLabel("Ort oder Postleitzahl")
+                .accessibilityIdentifier("region.input")
+                .onChange(of: manualPLZ) {
+                    // Ein bestätigter Ort gilt nur zu der Eingabe, aus der er
+                    // stammt. Wer weitertippt, hat ihn widerrufen.
+                    resolvedPlace = nil
+                    candidates = []
+                    errorMessage = nil
+                }
 
             Button {
                 useLocation()
@@ -116,10 +175,67 @@ struct RegionSetupView: View {
                 .accessibilityIdentifier("region.locatedHint")
             }
 
-            // The number pad has no return key and "Weiter" is simply grey until
-            // the PLZ is complete, so a half-typed code left the user with two
-            // dead controls and no idea why.
-            if !manualPLZ.isEmpty && !PLZValidator.isValid(manualPLZ) {
+            // **Was Apple aus dem Namen gemacht hat, steht da, bevor es
+            // gespeichert wird.** Dieselbe Absicherung wie bei der Ortung, und
+            // aus demselben Grund: Auf „Neustadt" antwortet der Geocoder mit
+            // Wolgast. Eine Ableitung, die niemand zu sehen bekommt, kann
+            // niemand korrigieren.
+            if let resolvedPlace {
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    Label("Verstanden als \(resolvedPlace.label)", systemImage: "mappin.circle")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("region.resolvedPlace")
+
+                    Button("Anderer Ort …") { showAlternatives() }
+                        .font(.footnote.weight(.medium))
+                        .tint(Theme.accent)
+                        .disabled(isBusy)
+                        .accessibilityIdentifier("region.otherPlace")
+                }
+            }
+
+            // „Meintest du …" — die Liste gibt es nur, weil der Länder-Fächer
+            // sie erzeugt; Apple selbst nennt immer genau einen Ort.
+            if !candidates.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    Text("Meintest du …")
+                        .font(.subheadline.weight(.semibold))
+                        .accessibilityIdentifier("region.candidatesTitle")
+
+                    ForEach(candidates) { candidate in
+                        Button {
+                            choose(candidate)
+                        } label: {
+                            HStack {
+                                Text(candidate.label)
+                                    .font(.subheadline)
+                                    .multilineTextAlignment(.leading)
+                                Spacer(minLength: Theme.Spacing.sm)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(Theme.secondaryText)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(Theme.Spacing.md)
+                            .background(
+                                Theme.surface,
+                                in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("region.candidate.\(candidate.plz)")
+                    }
+                }
+            }
+
+            // A half-typed code left the user with two dead controls and no
+            // idea why. Der Satz gilt weiter nur für Ziffern — bei „Ank" wäre
+            // er falsch: Ein Ortsname hat keine fünf Ziffern und soll auch
+            // keine haben.
+            if case .zuKurz = query, !manualPLZ.isEmpty,
+               manualPLZ.contains(where: { $0.isNumber }), !manualPLZ.contains(where: { $0.isLetter }) {
                 Text("Eine Postleitzahl hat fünf Ziffern.")
                     .font(.footnote)
                     .foregroundStyle(Theme.secondaryText)
@@ -171,6 +287,52 @@ struct RegionSetupView: View {
         }
     }
 
+    /// **Der Name geht an Apple, die PLZ bleibt bei uns.**
+    ///
+    /// Scotts Wunsch vom 02.08.: „Anklam" tippen dürfen. Intern ändert sich
+    /// nichts — gespeichert wird weiter die PLZ, gesucht wird weiter mit ihr.
+    private func lookUpCity() {
+        guard case .ortsname(let name) = query else { return }
+        errorMessage = nil
+        candidates = []
+        isSearching = true
+        Task {
+            let result = await CityLookup.look(up: name)
+            isSearching = false
+            switch result {
+            case .verstanden(let place):
+                resolvedPlace = place
+            case .meintestDu(let list):
+                candidates = list
+            case .unbekannt:
+                errorMessage = "„\(name)\u{201C} kennt Apple nicht als Ort. Prüf die Schreibweise oder gib die Postleitzahl ein."
+            }
+        }
+    }
+
+    /// Der Länder-Fächer auf Zuruf — für den Fall, dass die erste Antwort zwar
+    /// so hieß wie gefragt, aber der falsche Ort dieses Namens war.
+    private func showAlternatives() {
+        guard case .ortsname(let name) = query else { return }
+        errorMessage = nil
+        isSearching = true
+        Task {
+            let found = await CityLookup.alternatives(for: name)
+            isSearching = false
+            if found.isEmpty {
+                errorMessage = "Mehr Orte namens „\(name)\u{201C} findet Apple nicht."
+            } else {
+                candidates = found
+                resolvedPlace = nil
+            }
+        }
+    }
+
+    private func choose(_ candidate: PlaceCandidate) {
+        resolvedPlace = candidate
+        candidates = []
+    }
+
     private func submit(_ rawPLZ: String) {
         guard let plz = PLZValidator.normalized(rawPLZ) else { return }
         // `addRegion` quietly does nothing once the limit is reached. Without
@@ -182,6 +344,12 @@ struct RegionSetupView: View {
         }
         errorMessage = nil
         isChecking = true
+        // Den Namen, den Apple gerade genannt hat, gleich behalten — sonst
+        // fragt `PlaceNameStore.resolve` denselben Geocoder ein zweites Mal
+        // nach etwas, das wir schon wissen.
+        if let resolvedPlace, resolvedPlace.plz == plz {
+            placeNames.remember(name: resolvedPlace.ort, forPLZ: plz)
+        }
         Task {
             await store.addRegion(plz)
             isChecking = false
@@ -203,11 +371,13 @@ struct AddRegionScreen: View {
 #Preview("Onboarding") {
     RegionSetupView(step: 3, onPLZSubmitted: { _ in })
         .environment(RegionStore())
+        .environment(PlaceNameStore())
 }
 
 #Preview("Aus den Einstellungen") {
     NavigationStack {
         RegionSetupView(onPLZSubmitted: { _ in })
             .environment(RegionStore())
+            .environment(PlaceNameStore())
     }
 }

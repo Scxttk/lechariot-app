@@ -303,7 +303,7 @@ final class OnboardingJourneyTests: XCTestCase {
     }
 
     private func enterPLZAndContinue() {
-        let field = app.textFields["Postleitzahl"]
+        let field = app.textFields["region.input"]
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         field.tap()
         field.typeText("01219")
