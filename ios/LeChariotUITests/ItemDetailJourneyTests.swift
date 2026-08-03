@@ -55,31 +55,74 @@ final class ItemDetailJourneyTests: XCTestCase {
                        "Abgebrochen ist abgebrochen")
     }
 
-    /// **Das Mengen-Menü kommt von selbst** ([UI-8], Scott 01.08.).
+    /// **Das Mengen-Menü kommt von selbst** ([UI-8], Scott 01.08.) — **seit dem
+    /// 03.08. als Schicht statt als Blatt** (Scott, nach dem Bring!-Video).
     ///
-    /// Der Moment nach dem Anlegen ist der einzige, in dem jemand noch weiß,
-    /// welche Größe er meint. Gegen den alten Stand fällt dieser Test durch:
-    /// Dort öffnete sich nichts, bis jemand den Namen antippte.
-    func testTheQuantityMenuOpensByItselfWhenAnItemIsCreated() {
+    /// Der Moment nach dem Anlegen bleibt der einzige, in dem jemand noch weiß,
+    /// welche Größe er meint; was sich geändert hat, ist der Preis dafür. Die
+    /// drei Wortschatz-Gruppen stehen weiter da — nur eben ohne „Fertig", ohne
+    /// Modalität und ohne dem Eingabefeld den Fokus zu nehmen.
+    ///
+    /// Die drei Fälle, die hier bis zum 03.08. standen, sind nicht verloren,
+    /// sondern umgezogen: Was das Blatt konnte, prüft jetzt
+    /// `AddFlowJourneyTests` am Fluss.
+    func testTheQuantityPanelOpensByItselfWhenAnItemIsCreated() {
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15))
         feld.tap()
         feld.typeText("Butter\n")
 
-        XCTAssertTrue(app.buttons["itemDetail.done"].waitForExistence(timeout: 10),
-                      "Nach dem Anlegen muss das Mengen-Menü offen stehen")
+        XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10),
+                      "Nach dem Anlegen muss die Angaben-Schicht dastehen")
         XCTAssertTrue(app.staticTexts["Menge"].exists)
         XCTAssertTrue(app.staticTexts["Größe"].exists)
-        XCTAssertTrue(app.staticTexts["Art"].exists)
-        XCTAssertTrue(app.staticTexts["Notiz"].exists, "Der Freitext ist neu und muss dastehen")
+        XCTAssertFalse(app.buttons["itemDetail.done"].exists,
+                       "Es gibt nichts zu bestätigen — jeder Chip schreibt sofort durch")
     }
 
-    /// Der Freitext landet unter dem Artikel — und nirgends sonst.
+    /// **Der eigentliche Unterschied ist nicht die Höhe, sondern die
+    /// Bedienbarkeit.**
+    ///
+    /// Das halbe Blatt vom 02.08. ließ die Liste *sehen* und war trotzdem
+    /// modal: Ein Tipp auf die Zeile dahinter kam nirgends an. Die Schicht
+    /// nimmt weniger Platz **und** lässt darunter alles zu — gemessen an
+    /// `isHittable`, nicht an `exists`, weil nur das den Unterschied trifft.
+    ///
+    /// Die Zahl daneben ist die Untergrenze: Ein knappes Drittel Bildschirm
+    /// bleibt der Liste, auch mit stehender Tastatur.
+    func testTheListStaysLiveUnderneathThePanel() {
+        let feld = app.textFields["list.input"]
+        XCTAssertTrue(feld.waitForExistence(timeout: 15))
+        feld.tap()
+        feld.typeText("Butter\n")
+
+        let kachel = app.buttons["Angaben zu Butter"]
+        XCTAssertTrue(kachel.waitForExistence(timeout: 10))
+
+        let zeile = app.buttons["list.item.detail"].firstMatch
+        XCTAssertTrue(zeile.exists && zeile.isHittable,
+                      "Die Liste unter der Schicht muss bedienbar bleiben\n"
+                      + app.debugDescription)
+
+        let screen = app.windows.firstMatch.frame
+        XCTAssertGreaterThan(
+            kachel.frame.minY, screen.height * 0.3,
+            "Die Angaben-Schicht frisst die Liste — Oberkante bei "
+            + "\(kachel.frame.minY) von \(screen.height)"
+        )
+    }
+
+    /// Der Freitext landet unter dem Artikel — und nirgends sonst. Er liegt
+    /// seit dem 03.08. in der vollen Fassung hinter „Notiz …", weil ein
+    /// Textfeld in der Schicht genau den Fokus nähme, den sie schützt.
     func testTheFreeTextNoteEndsUpUnderTheItem() {
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15))
         feld.tap()
         feld.typeText("Butter\n")
+
+        XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10))
+        app.buttons["list.detailPanel.more"].tap()
 
         let notiz = app.textViews["itemDetail.note"].exists
             ? app.textViews["itemDetail.note"]
@@ -95,57 +138,6 @@ final class ItemDetailJourneyTests: XCTestCase {
             ).firstMatch.waitForExistence(timeout: 10),
             "Die Notiz steht nicht unter dem Artikel"
         )
-    }
-
-    /// **Das Menü füllt nur die halbe Höhe** (Scott, 02.08., „wie bei Bring!").
-    ///
-    /// Gemessen, nicht angesehen: Die Werkzeugleiste des Blattes muss unterhalb
-    /// der Bildschirmmitte anfangen. Gegen den Stand vorher fällt das — dort
-    /// stand „Fertig" oben am Bildschirmrand, weil das Blatt die ganze Höhe
-    /// nahm.
-    func testTheQuantityMenuOnlyCoversHalfTheScreen() {
-        let feld = app.textFields["list.input"]
-        XCTAssertTrue(feld.waitForExistence(timeout: 15))
-        feld.tap()
-        feld.typeText("Butter\n")
-
-        let fertig = app.buttons["itemDetail.done"]
-        XCTAssertTrue(fertig.waitForExistence(timeout: 10))
-
-        let screen = app.windows.firstMatch.frame
-        XCTAssertGreaterThan(
-            fertig.frame.minY, screen.height * 0.4,
-            "Das Mengen-Menü darf höchstens die untere Hälfte belegen — "
-            + "Blattkante bei \(fertig.frame.minY) von \(screen.height)"
-        )
-    }
-
-    /// **Zwei Einträge hintereinander, ohne etwas Ganzseitiges wegzuräumen.**
-    ///
-    /// Das ist der Grund für das halbe Blatt: Wer eine Einkaufsliste tippt,
-    /// tippt selten genau eine Zeile. Der erste Eintrag muss sichtbar bleiben,
-    /// während der zweite entsteht.
-    func testTwoItemsInARowWithTheListStillVisible() {
-        let feld = app.textFields["list.input"]
-        XCTAssertTrue(feld.waitForExistence(timeout: 15))
-        feld.tap()
-        feld.typeText("Butter\n")
-
-        XCTAssertTrue(app.buttons["itemDetail.done"].waitForExistence(timeout: 10))
-        // Die Zeile, die gerade entstanden ist, steht hinter dem Blatt — bei
-        // einem ganzseitigen Blatt gibt es sie auf dem Schirm nicht.
-        XCTAssertTrue(app.buttons["Butter"].exists,
-                      "Der eben angelegte Artikel muss neben dem Menü sichtbar bleiben")
-        app.buttons["itemDetail.done"].tap()
-
-        feld.tap()
-        feld.typeText("Milch\n")
-        XCTAssertTrue(app.buttons["itemDetail.done"].waitForExistence(timeout: 10),
-                      "Auch der zweite Eintrag bekommt sein Mengen-Menü")
-        app.buttons["itemDetail.done"].tap()
-
-        XCTAssertTrue(app.buttons["Butter"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Milch"].waitForExistence(timeout: 10))
     }
 
     // MARK: Helfer
@@ -175,12 +167,19 @@ final class ItemDetailJourneyTests: XCTestCase {
         chip.tap()
     }
 
-    /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst
-    /// aufgeht. Die Journeys oben testen nicht das Menü, sondern was danach
-    /// kommt — für sie ist es ein Zwischenschritt.
+    /// Beendet den Tipp-Fluss, der seit [UI-8] beim Anlegen von selbst aufgeht.
+    /// Die Journeys oben testen nicht ihn, sondern was danach kommt.
+    ///
+    /// **Seit dem 03.08. gibt es nichts mehr wegzuklicken:** Das Menü ist kein
+    /// Blatt, sondern eine Schicht über der Eingabezeile, und sie geht mit dem
+    /// Fokus. Ein Wisch über die Liste tut das (`scrollDismissesKeyboard`).
     private func dismissQuantitySheet() {
         let abbrechen = app.buttons["itemDetail.cancel"]
-        if abbrechen.waitForExistence(timeout: 5) { abbrechen.tap() }
+        if abbrechen.exists { abbrechen.tap(); return }
+        let panel = app.buttons["list.detailPanel.more"]
+        guard panel.waitForExistence(timeout: 3) else { return }
+        app.swipeUp()
+        _ = panel.waitForNonExistence(timeout: 3)
     }
 
 

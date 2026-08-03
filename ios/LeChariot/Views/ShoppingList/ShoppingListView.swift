@@ -23,6 +23,9 @@ struct ShoppingListView: View {
     @State private var editingItem: ShoppingItem?
     @State private var newItemText = ""
     @FocusState private var inputFocused: Bool
+    /// Der laufende Tipp-Fluss — siehe `AddFlowState` und `ItemDetailPanel`.
+    /// Bewusst `@State` und nicht persistiert: Er endet mit der Tastatur.
+    @State private var addFlow = AddFlowState()
     /// Was der Nutzer in dieser Sitzung zuletzt mit der Vorschlagsfläche getan
     /// hat — siehe `SuggestionSurface`. Bewusst `@State` und nicht persistiert.
     @State private var suggestionChoice: Bool?
@@ -154,6 +157,28 @@ struct ShoppingListView: View {
         .task(id: branchIds) {
             await offerStore.load(branchIds: branchIds, chains: chains)
         }
+        // **Der Fluss endet mit der Tastatur.** Bei Bring! tut „Abbrechen"
+        // genau das: Es beendet das Tippen insgesamt, nicht die Angaben zu
+        // einem Artikel. Wer das Feld verlässt, ist fertig mit Aufschreiben —
+        // und ein Panel, das darüber hinaus stehen bliebe, wäre wieder ein
+        // Ding, das man wegräumen muss.
+        //
+        // **Mit Bedenkzeit, und die ist nicht Geschmack:** Zwischen dem
+        // Absenden und dem wiedergeholten Fokus (`keepTyping`) liegt genau ein
+        // Durchgang ohne Fokus. Ohne die Pause räumte der Fluss sich bei jedem
+        // Artikel selbst ab — am Simulator gemessen, bevor diese Zeilen so
+        // aussahen.
+        .task(id: inputFocused) {
+            guard !inputFocused else { return }
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled, !inputFocused else { return }
+            withAnimation(.snappy) { addFlow.end() }
+        }
+        // Gelöschte Artikel dürfen im Fluss nicht weiterleben — sonst zeigt das
+        // Panel Chips zu einer Zeile, die es nicht mehr gibt.
+        .onChange(of: list.items.map(\.id)) { _, ids in
+            addFlow.keepOnly(Set(ids))
+        }
         .sheet(item: $detailItem) { item in
             MatchDetailView(
                 item: item,
@@ -263,6 +288,11 @@ struct ShoppingListView: View {
             }
 
         }
+        // **Wer die Liste anfasst, ist mit dem Aufschreiben fertig.** Der
+        // zweite Ausgang aus dem Tipp-Fluss neben „Tastatur weg": Ohne ihn
+        // bliebe die Angaben-Schicht stehen, während man schon durch die Liste
+        // scrollt — und nähme ihr genau dort Platz weg, wo man gerade hinsieht.
+        .scrollDismissesKeyboard(.immediately)
     }
 
     /// Abhaken heißt „gekauft" — und nur das wird gezählt.
@@ -374,6 +404,7 @@ struct ShoppingListView: View {
     private var bottomBar: some View {
         VStack(spacing: 0) {
             suggestionSurface
+            detailPanel
             inputBar
         }
         // Eine Fläche für beides. Vorher trug die Eingabezeile den Hintergrund
@@ -413,10 +444,27 @@ struct ShoppingListView: View {
         }
     }
 
+    /// **Der Vorschlagsstreifen weicht dem Angaben-Panel — mit zwei Ausnahmen.**
+    ///
+    /// Beides gleichzeitig stehen zu lassen wäre der bequeme Weg gewesen und
+    /// hätte den Block unten auf über 300 Punkte gebracht; von der Liste, in
+    /// die man gerade etwas einträgt, bliebe neben der Tastatur kaum etwas
+    /// übrig. Also weicht der Streifen — aber **nicht** stillschweigend: Der
+    /// Winkel-Knopf links im Feld holt ihn zurück, und genau dafür gibt es ihn.
+    ///
+    /// Die zweite Ausnahme ist der Rundgang. Sein Rahmen „Oder nimm einen
+    /// Vorschlag" hängt am Anker der Kacheln; ein Tester, der im Rahmen davor
+    /// wirklich etwas tippt, hätte den Rahmen sonst übersprungen bekommen —
+    /// und zwar genau dann, wenn er der Aufforderung gefolgt ist.
+    private var showsStapleSurface: Bool {
+        guard surfaceIsExpanded else { return false }
+        return !detailPanelIsUp || suggestionChoice == true || tutorial?.isRunning == true
+    }
+
     @ViewBuilder
     private var stapleSurface: some View {
         let remaining = suggestions
-        if !remaining.isEmpty && surfaceIsExpanded {
+        if !remaining.isEmpty && showsStapleSurface {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 Text("Häufig gekauft")
                     .font(.caption.weight(.semibold))
@@ -491,7 +539,7 @@ struct ShoppingListView: View {
                     // Nur bei Erfolg: Bei einem Duplikat legt `add` nichts an,
                     // und `lastAdded` wäre dann ein fremder Eintrag.
                     let angelegt = withAnimation { list.add(term) }
-                    if angelegt { editingItem = list.lastAdded }
+                    if angelegt { beginFlow(with: list.lastAdded) }
                 } label: {
                     Text(term)
                         .font(.subheadline.weight(.medium))
@@ -534,7 +582,7 @@ struct ShoppingListView: View {
                     suggestionChoice = true
                     // Nur bei Erfolg — siehe die Vorschlagskacheln oben.
                     let angelegt = withAnimation { list.add(staple) }
-                    if angelegt { editingItem = list.lastAdded }
+                    if angelegt { beginFlow(with: list.lastAdded) }
                 } label: {
                     Text(staple)
                         .font(.subheadline.weight(.medium))
@@ -557,6 +605,81 @@ struct ShoppingListView: View {
         // Leerzustand und als Listenabschnitt, und welches der beiden der
         // Rundgang ausleuchtete, entschied der Preference-Merge.
         .tutorialAnchor(.suggestions)
+    }
+
+    // MARK: Angaben
+
+    /// Der Artikel, dessen Angaben unten stehen — **frisch aus dem Speicher**.
+    ///
+    /// `AddFlowState` hält nur die Identität. Eine Kopie hier wüsste nichts von
+    /// den Chips, die man ihr gerade gibt, und das Panel bliebe grau, während
+    /// die Liste die Angabe schon trägt.
+    private var activeFlowItem: ShoppingItem? {
+        // **Während des Rundgangs zeigt das Panel genau dort, wo sein Rahmen es
+        // erklärt — und sonst nirgends.** Der erste Rahmen lädt zum Tippen ein
+        // („Probier es gleich aus"); wer das tut, hätte die Schicht sonst über
+        // den ganzen Rundgang stehen und nähme damit den datenabhängigen
+        // Rahmen darunter (Plan-Karte, Treffer-Zeile) ihren Platz — die
+        // überspringen sich dann selbst, und zwar ausgerechnet bei dem, der
+        // der Aufforderung gefolgt ist.
+        if tutorial?.isRunning == true { return tourPanelItem }
+        guard let id = addFlow.activeID else { return nil }
+        return list.items.first { $0.id == id }
+    }
+
+    /// Was der Rundgang zeigen will. Sein Rahmen zu den Angaben darf nicht
+    /// davon abhängen, dass der Tester im Rahmen davor wirklich getippt hat —
+    /// dann steht dort der zuletzt angelegte Artikel, sonst der letzte
+    /// Beispiel-Artikel.
+    private var tourPanelItem: ShoppingItem? {
+        guard tutorial?.isRunning == true, tutorial?.step.showsDetailPanel == true else {
+            return nil
+        }
+        if let id = addFlow.activeID, let item = list.items.first(where: { $0.id == id }) {
+            return item
+        }
+        return list.uncheckedItems.last
+    }
+
+    /// **Ein Blatt schlägt das Panel.** Beide zeigen denselben Wortschatz; wer
+    /// die volle Fassung geöffnet hat, will sie und nicht ihren Schatten
+    /// darunter — und zwei Sätze gleich beschrifteter Chips auf einem
+    /// Bildschirm sind für eine Journey nicht auseinanderzuhalten.
+    private var detailPanelIsUp: Bool {
+        activeFlowItem != nil && editingItem == nil && detailItem == nil
+    }
+
+    @ViewBuilder
+    private var detailPanel: some View {
+        if let item = activeFlowItem, editingItem == nil, detailItem == nil {
+            ItemDetailPanel(
+                item: item,
+                recent: recentFlowItems(active: item),
+                onFocus: { addFlow.focus($0.id) },
+                onToggleChip: { word in
+                    // **Sofort durchgeschrieben, ohne „Fertig".** Das ist der
+                    // ganze Unterschied zum Blatt: Es gibt nichts zu
+                    // bestätigen, also auch nichts zu verlieren, wenn man
+                    // stattdessen weitertippt.
+                    withAnimation(.snappy) {
+                        list.setDetail(
+                            ItemDetailVocabulary.toggling(word, in: item.detail ?? []),
+                            for: item
+                        )
+                    }
+                },
+                onOpenFull: { editingItem = item }
+            )
+            .tutorialAnchor(.detailPanel)
+        }
+    }
+
+    /// Die Kachelzeile über dem Panel. Der aktive Artikel ist immer dabei —
+    /// auch dann, wenn der Rundgang ihn gesetzt hat und der Fluss leer ist.
+    private func recentFlowItems(active: ShoppingItem) -> [ShoppingItem] {
+        let ids = addFlow.recent
+        let known = ids.compactMap { id in list.items.first { $0.id == id } }
+        return known.contains(where: { $0.id == active.id }) ? known : known + [active]
     }
 
     // MARK: Input
@@ -611,7 +734,12 @@ struct ShoppingListView: View {
                 // des Einstellungs-Audits zweimal gerissen.)
                 .accessibilityIdentifier("list.input")
                 .focused($inputFocused)
-                .submitLabel(.done)
+                // „Weiter", nicht „Fertig": Die Rückgabetaste legt seit dem
+                // 03.08. wirklich den nächsten Artikel an, statt das Feld zu
+                // schließen. Eine Beschriftung, die etwas anderes verspricht
+                // als die Taste tut, ist die kleinste mögliche Lüge — und die
+                // erste, die jemand ausprobiert.
+                .submitLabel(.next)
                 .onSubmit(addItem)
                 .padding(.horizontal, Theme.Spacing.md)
                 .frame(height: 44)
@@ -644,15 +772,39 @@ struct ShoppingListView: View {
     private func addItem() {
         guard list.add(newItemText) else { return }
         newItemText = ""
-        inputFocused = true
+        keepTyping()
         // **Das Mengen-Menü kommt von selbst** ([UI-8], Scott 01.08.) — der
         // Moment nach dem Anlegen ist der einzige, in dem jemand noch weiß,
-        // welche Größe er meint. Nur hier und bei den Kacheln, nicht beim
-        // Antippen eines vorhandenen Eintrags.
-        editingItem = list.lastAdded
+        // welche Größe er meint. Seit dem 03.08. als Schicht statt als Blatt:
+        // Der Fokus bleibt im Feld, das nächste Wort ersetzt das Panel
+        // einfach. Siehe `ItemDetailPanel`.
+        beginFlow(with: list.lastAdded)
         // Wer tippt, weiß was er braucht — die Fläche gibt der Liste ihren
         // Platz zurück. Die Gegenrichtung steht bei den Kacheln.
         withAnimation(.snappy) { suggestionChoice = false }
+    }
+
+    /// **Der Fokus bleibt im Feld — und das kostet einen Umweg.**
+    ///
+    /// `inputFocused = true` **im** `onSubmit` verpufft: SwiftUI gibt den Fokus
+    /// nach dem Absenden selbst ab, und zwar nach dem Aufruf. Am Simulator
+    /// gemessen (03.08.): Nach „Butter⏎" stand `app.keyboards.count` auf 0,
+    /// obwohl genau diese Zeile seit dem 31.07. im Code steht und ein Kommentar
+    /// daneben „die Tastatur bleibt stehen" behauptete. **Die Zusage war nie
+    /// eingelöst** — sie ist nur nicht aufgefallen, weil danach ohnehin ein
+    /// Blatt aufging und den Fokus mitnahm.
+    ///
+    /// Im nächsten Durchgang hält es. Das ist ein Wimpernschlag ohne Fokus, und
+    /// deshalb wartet `endFlowIfTypingStopped` einen Moment, bevor es den Fluss
+    /// beendet.
+    private func keepTyping() {
+        Task { @MainActor in inputFocused = true }
+    }
+
+    /// Ein Artikel ist entstanden — der Fluss nimmt ihn auf.
+    private func beginFlow(with item: ShoppingItem?) {
+        guard let item else { return }
+        withAnimation(.snappy) { addFlow.added(item.id) }
     }
 
     // MARK: Toolbar

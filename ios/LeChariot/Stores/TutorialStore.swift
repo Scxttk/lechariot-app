@@ -7,7 +7,7 @@ import UIKit
 /// Which tab a frame plays on. The overlay lives above the `TabView`, so the
 /// tour has to say where it wants to be — `ContentView` owns the actual tab.
 enum TutorialTab {
-    case liste, einstellungen
+    case liste, angebote, einstellungen
 }
 
 /// One frame of the tour: what is highlighted, what is said, and how it ends.
@@ -21,6 +21,11 @@ struct TutorialStep: Identifiable, Equatable {
         /// Die Tab-Leiste zeichnet UIKit; sie trägt keinen Anker und wird aus
         /// der sicheren Fläche hergeleitet. Siehe `TutorialOverlay.tabBarBand`.
         case tabBar
+        /// Die Navigationsleiste, aus derselben Not wie `tabBar` — der Knopf
+        /// „Nächste Woche" ist ein `ToolbarItem` und liegt damit außerhalb des
+        /// SwiftUI-Baums, aus dem die Anker kommen. Siehe
+        /// `TutorialOverlay.navBarBand`.
+        case navBar
     }
 
     let id: String
@@ -43,72 +48,119 @@ struct TutorialStep: Identifiable, Equatable {
     /// die Karte und die Zeilen nichts zu zeigen — und genau die erklären,
     /// wofür die App da ist.
     var seedsDemoItems = false
+    /// Hält die Angaben-Schicht offen, solange dieser Rahmen läuft.
+    ///
+    /// Ohne das hinge der Rahmen daran, dass der Tester im Rahmen davor
+    /// wirklich etwas getippt hat — und wer nur „Weiter" drückt, bekäme einen
+    /// Rahmen ohne Ziel, der sich nach der Schonfrist selbst überspringt.
+    var showsDetailPanel = false
 
     /// Der Rundgang. Reihenfolge so gewählt, dass nie gescrollt werden muss:
-    /// Die ersten beiden Rahmen spielen auf dem leeren Bildschirm, wo
-    /// Eingabezeile und Vorschläge gleichzeitig sichtbar sind; danach stehen
+    /// Der erste Rahmen spielt auf dem leeren Bildschirm, der zweite legt die
+    /// Beispiel-Artikel und zeigt daran die Angaben-Schicht; danach stehen
     /// Artikel auf der Liste und die Karte steht oben.
     ///
-    /// **`hasMarkets` ändert zwei Texte, keinen Rahmen.** Seit dem 2026-07-31
+    /// **`hasMarkets` ändert zwei Texte und einen Rahmen.** Seit dem 2026-07-31
     /// endet das Onboarding in der Liste statt in der Filialauswahl — der
     /// Rundgang läuft also im Normalfall über einer Liste **ohne** gewählte
     /// Filiale. An der Plan-Karte und an der Treffer-Zeile steht dann der
     /// Leerzustand, der genau das sagt; die beiden Rahmen darüber müssen
     /// dieselbe Zeitform sprechen. „Tipp es an, um alle Treffer zu sehen" über
     /// einer Zeile, in der nichts anzutippen ist, ist eine kleine Lüge — und
-    /// die erste, die ein Tester zu sehen bekommt.
-    static func tour(hasMarkets: Bool) -> [TutorialStep] { [
-        TutorialStep(
-            id: "input",
-            title: "Schreib auf, was du brauchst",
-            text: "Tipp hier ein, was du einkaufen willst — ein Artikel pro Zeile. Probier es gleich aus.",
-            spotlight: .anchor(.inputBar),
-            allowsInteraction: true
-        ),
-        TutorialStep(
-            id: "chips",
-            title: "Oder nimm einen Vorschlag",
-            text: "Häufig Gekauftes liegt schon bereit. Ein Tipp, und es steht auf der Liste.",
-            spotlight: .anchor(.suggestions),
-            allowsInteraction: true
-        ),
-        TutorialStep(
-            id: "plan",
-            title: "Ein Einkauf, ein Markt",
-            text: hasMarkets
-                ? "Diese Karte ist der Kern: Sie sagt dir, welche deiner Filialen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet."
-                : "Diese Karte ist der Kern: Sobald du Filialen gewählt hast, sagt sie dir, welche von ihnen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet.",
-            spotlight: .anchor(.planCard),
-            seedsDemoItems: true
-        ),
-        TutorialStep(
-            id: "match",
-            title: "Das günstigste Angebot",
-            text: hasMarkets
-                ? "Unter jedem Artikel steht das beste Angebot mit Preis und Markt. Tipp es an, um alle Treffer zu sehen — oder einen falschen wegzulegen."
-                : "Unter jedem Artikel steht dann das beste Angebot mit Preis und Markt. Antippen zeigt alle Treffer — oder legt einen falschen weg.",
-            spotlight: .anchor(.rowMatch)
-        ),
-        TutorialStep(
-            id: "check",
-            title: "Abhaken beim Einkaufen",
-            text: "Im Laden tippst du den Kreis an, dann wandert der Artikel nach unten zu „Erledigt“. Zum Löschen wischst du die Zeile nach links.",
-            spotlight: .anchor(.rowCheck)
-        ),
-        TutorialStep(
-            id: "tabs",
-            title: "Angebote und Einstellungen",
-            text: "Unter „Angebote“ siehst du alles, was diese Woche günstig ist. Unter „Einstellungen“ änderst du deine Filialen.",
-            spotlight: .tabBar
-        ),
-        TutorialStep(
+    /// die erste, die ein Tester zu sehen bekommt. Den Rahmen zur Vorschau gibt
+    /// es ohne Filiale gar nicht — dazu unten mehr.
+    ///
+    /// **Der Rundgang hinkte der App hinterher** (Scott, 03.08.). Gebaut wurde
+    /// er über einer App, die es so nicht mehr gibt: Seitdem kamen die
+    /// Angaben-Schicht, die Vorschau „Nächste Woche", der Preisverlauf, das
+    /// Anheften mehrerer Wahlen und der Freitext dazu, und keins davon kam
+    /// darin vor.
+    ///
+    /// **Geschlossen mit zwei Rahmen, nicht mit fünf.** Ein Rundgang wird nicht
+    /// dadurch besser, dass er alles erwähnt — die drei kleineren Zugaben
+    /// (Preisverlauf, mehrere Heftungen, Freitext) stehen als Halbsatz in dem
+    /// Rahmen, der ohnehin von ihrer Stelle handelt. Eigene Rahmen bekommen nur
+    /// die zwei, die man sonst nicht findet: die Angaben-Schicht und die
+    /// Vorschau hinter dem Knopf oben links.
+    static func tour(hasMarkets: Bool) -> [TutorialStep] {
+        var steps: [TutorialStep] = [
+            TutorialStep(
+                id: "input",
+                title: "Schreib auf, was du brauchst",
+                text: "Tipp hier ein, was du einkaufen willst — ein Artikel pro Zeile. Die Tastatur bleibt danach stehen, du kannst einfach weitertippen. Probier es gleich aus.",
+                spotlight: .anchor(.inputBar),
+                allowsInteraction: true
+            ),
+            TutorialStep(
+                id: "details",
+                title: "Menge, Größe, Sorte — wenn du magst",
+                text: "Zu jedem neuen Artikel liegen hier seine Angaben. Das ist ein Angebot, keine Frage: Wer weitertippt, überspringt sie einfach. Hinter „Notiz …“ ist Platz für eigene Worte.",
+                spotlight: .anchor(.detailPanel),
+                seedsDemoItems: true,
+                showsDetailPanel: true
+            ),
+            TutorialStep(
+                id: "chips",
+                title: "Oder nimm einen Vorschlag",
+                text: "Häufig Gekauftes liegt schon bereit. Ein Tipp, und es steht auf der Liste.",
+                spotlight: .anchor(.suggestions),
+                allowsInteraction: true
+            ),
+            TutorialStep(
+                id: "plan",
+                title: "Ein Einkauf, ein Markt",
+                text: hasMarkets
+                    ? "Diese Karte ist der Kern: Sie sagt dir, welche deiner Filialen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet."
+                    : "Diese Karte ist der Kern: Sobald du Filialen gewählt hast, sagt sie dir, welche von ihnen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet.",
+                spotlight: .anchor(.planCard)
+            ),
+            TutorialStep(
+                id: "match",
+                title: "Das günstigste Angebot",
+                text: hasMarkets
+                    ? "Unter jedem Artikel steht das beste Angebot mit Preis und Markt. Tipp es an: Dort stehen alle Treffer samt Preisverlauf, und du kannst dir eine — oder mehrere — Wahlen fest anheften."
+                    : "Unter jedem Artikel steht dann das beste Angebot mit Preis und Markt. Antippen zeigt alle Treffer samt Preisverlauf und lässt dich deine Wahl fest anheften.",
+                spotlight: .anchor(.rowMatch)
+            ),
+            TutorialStep(
+                id: "check",
+                title: "Abhaken beim Einkaufen",
+                text: "Im Laden tippst du den Kreis an, dann wandert der Artikel nach unten zu „Erledigt“. Zum Löschen wischst du die Zeile nach links.",
+                spotlight: .anchor(.rowCheck)
+            ),
+            TutorialStep(
+                id: "tabs",
+                title: "Angebote und Einstellungen",
+                text: "Unter „Angebote“ siehst du alles, was diese Woche günstig ist. Unter „Einstellungen“ änderst du deine Filialen.",
+                spotlight: .tabBar
+            ),
+        ]
+
+        // **Nur mit Filialen.** Ohne sie steht im Angebote-Tab kein
+        // Bildschirm, sondern der Hinweis „Keine Filiale gewählt" — der Knopf
+        // „Nächste Woche" existiert dort gar nicht. Der Rahmen liefe also ins
+        // Leere, überspränge sich nach der Schonfrist selbst und hinterließe
+        // dabei genau das Blinzeln, das diese Runde abschaffen soll. Der
+        // Normalfall direkt nach dem Onboarding ist **ohne** Filiale.
+        if hasMarkets {
+            steps.append(TutorialStep(
+                id: "nextWeek",
+                title: "Was ab Montag billiger wird",
+                text: "Oben links führt „Nächste Woche“ in die Vorschau. Sie beantwortet die Frage, die es sonst nicht gibt: Was kaufe ich heute bewusst nicht, weil es nächste Woche günstiger ist?",
+                spotlight: .navBar,
+                tab: .angebote
+            ))
+        }
+
+        steps.append(TutorialStep(
             id: "settings",
             title: "Hier stellst du alles um",
             text: "Deine Filialen änderst du hier — und diesen Rundgang kannst du jederzeit noch einmal starten.",
             spotlight: .union(.settingsMarkets, .settingsHelp),
             tab: .einstellungen
-        ),
-    ] }
+        ))
+        return steps
+    }
 }
 
 // MARK: - Store

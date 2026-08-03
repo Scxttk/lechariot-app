@@ -55,6 +55,15 @@ struct TutorialOverlay: View {
     /// „kein Ziel“ heißen: Rahmen überspringen.
     private static let anchorGrace = Duration.milliseconds(1200)
 
+    /// Wie lange nach einem Schrittwechsel ein nachrückender Anker noch zum
+    /// Wechsel gehört — siehe `SpotlightTransition.move(settling:)`. Muss über
+    /// `TourTabTransition.standard.total` liegen, denn der Tab-Wechsel bringt
+    /// seine Anker erst hinter der Überblendung mit.
+    private static let settleWindow = Duration.milliseconds(700)
+
+    /// Der Schrittwechsel liegt noch im Einschwing-Fenster.
+    @State private var settling = false
+
     private var step: TutorialStep { tutorial.step }
 
     var body: some View {
@@ -88,7 +97,11 @@ struct TutorialOverlay: View {
         .onChange(of: resolvedHole) { _, _ in moveHoleIfNeeded() }
         .task(id: tutorial.index) {
             let index = tutorial.index
-            try? await Task.sleep(for: Self.anchorGrace)
+            settling = true
+            try? await Task.sleep(for: Self.settleWindow)
+            guard !Task.isCancelled else { return }
+            settling = false
+            try? await Task.sleep(for: Self.anchorGrace - Self.settleWindow)
             guard !Task.isCancelled else { return }
             graceExpiredFor = index
         }
@@ -122,7 +135,8 @@ struct TutorialOverlay: View {
     private func moveHoleIfNeeded() {
         guard let move = SpotlightTransition.move(
             shown: shownHole, shownIndex: shownIndex,
-            resolved: resolvedHole, index: tutorial.index
+            resolved: resolvedHole, index: tutorial.index,
+            settling: settling
         ) else { return }
         shownIndex = tutorial.index
         guard move.animated, !reduceMotion else {
@@ -229,6 +243,8 @@ struct TutorialOverlay: View {
             }
         case .tabBar:
             return tabBarBand
+        case .navBar:
+            return navBarBand
         }
     }
 
@@ -265,6 +281,32 @@ struct TutorialOverlay: View {
             y: top - Theme.Spacing.xs,
             width: width,
             height: height + Theme.Spacing.xs
+        )
+    }
+
+    /// Band vom oberen Bildschirmrand bis zur Unterkante der Navigationsleiste.
+    ///
+    /// Dieselbe Not wie bei `tabBarBand`: „Nächste Woche" ist ein `ToolbarItem`
+    /// und liegt damit außerhalb des SwiftUI-Baums, aus dem die Anker kommen.
+    /// Der Nullhöhen-Marker auf der **Ober**kante der sicheren Fläche des Tabs
+    /// ist der einzige Griff darauf.
+    ///
+    /// **Das Band ist absichtlich die ganze Leiste und nicht der Knopf.** Es
+    /// deckt damit Titel und Suchfeld mit ab — genauer geht es von hier aus
+    /// nicht, und ein Loch, das nur ungefähr auf dem Knopf säße, wäre nicht
+    /// ehrlicher, sondern nur schmaler. Der Kartentext sagt „oben links".
+    private var navBarBand: CGRect? {
+        guard let anchor = anchors[.navBarBottom] else { return nil }
+        let bottom = proxy[anchor].maxY
+        // Plausibilitätsgrenze wie unten: Darunter ist das keine Leiste,
+        // sondern ein Messfehler. Mit Suchfeld wird sie hoch, deshalb 220.
+        guard bottom > 40, bottom < 220 else { return nil }
+        let width = proxy.size.width - 2 * Theme.Spacing.md
+        return CGRect(
+            x: Theme.Spacing.md,
+            y: 0,
+            width: width,
+            height: bottom + Theme.Spacing.xs
         )
     }
 

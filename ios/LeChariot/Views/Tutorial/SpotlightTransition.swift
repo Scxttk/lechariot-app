@@ -27,15 +27,33 @@ enum SpotlightTransition {
         let animated: Bool
     }
 
+    /// - Parameter settling: Der Schrittwechsel liegt noch im Einschwing-
+    ///   Fenster; die Anker treffen gerade erst ein. Siehe unten.
     /// - Returns: `nil`, wenn nichts zu tun ist — insbesondere, solange für
     ///   den neuen Schritt noch **kein** Anker gemeldet ist. Das alte Loch
     ///   bleibt dann stehen. Ein Loch, das einen Wimpernschlag zu lange auf
     ///   dem vorigen Ziel liegt, ist besser als eins, das in die Ecke fliegt.
+    ///
+    /// **Der zweite Ruckler, gefunden am 03.08. beim Nachlesen dieser Datei.**
+    /// Ein Rahmen mit `.union` bekommt seine zwei Anker nicht zwingend im
+    /// selben Layout-Durchgang. Der erste kommt an, während der Index frisch
+    /// ist — also ein Flug, `shownIndex` steht danach auf dem neuen Schritt.
+    /// Der zweite kommt einen Durchgang später, und jetzt gilt `index ==
+    /// shownIndex`: Das Loch **springt** von „nur die Filialen" auf „Filialen
+    /// und Hilfe". Genau der Rahmen, über den der Rundgang in die Einstellungen
+    /// wechselt — und genau das gemeldete Blinzeln.
+    ///
+    /// Die Regel „dasselbe Ziel, das sich verschiebt, springt sofort mit"
+    /// bleibt richtig; sie ist nur zu früh angewandt worden. `settling`
+    /// unterscheidet die beiden Fälle: Ein Nachzügler kurz nach dem
+    /// Schrittwechsel gehört noch zum Wechsel, ein Ruck zwei Sekunden später
+    /// ist die Tastatur oder das Scrollen.
     static func move(
         shown: CGRect,
         shownIndex: Int,
         resolved: CGRect?,
-        index: Int
+        index: Int,
+        settling: Bool = false
     ) -> Move? {
         guard let resolved else { return nil }
         if index != shownIndex {
@@ -46,6 +64,6 @@ enum SpotlightTransition {
             return Move(rect: resolved, animated: shownIndex >= 0)
         }
         guard resolved != shown else { return nil }
-        return Move(rect: resolved, animated: false)
+        return Move(rect: resolved, animated: settling)
     }
 }

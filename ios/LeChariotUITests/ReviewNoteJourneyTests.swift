@@ -102,7 +102,14 @@ final class ReviewNoteJourneyTests: XCTestCase {
     /// aufgeht.
     private func dismissQuantitySheet() {
         let abbrechen = app.buttons["itemDetail.cancel"]
-        if abbrechen.waitForExistence(timeout: 5) { abbrechen.tap() }
+        if abbrechen.exists { abbrechen.tap(); return }
+        // Seit dem 03.08. ist das Mengen-Menue kein Blatt mehr, sondern eine
+        // Schicht ueber der Eingabezeile — sie geht mit dem Fokus, nicht mit
+        // einem Knopf. Ein Wisch ueber die Liste tut das.
+        let panel = app.buttons["list.detailPanel.more"]
+        guard panel.waitForExistence(timeout: 3) else { return }
+        app.swipeUp()
+        _ = panel.waitForNonExistence(timeout: 3)
     }
 
 }
