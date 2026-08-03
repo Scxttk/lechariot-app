@@ -8,6 +8,10 @@ struct LeChariotApp: App {
     @State private var branchRequests: BranchRequestStore
     @State private var history = PurchaseHistoryStore()
     @State private var placeNames = PlaceNameStore()
+    /// Der versteckte Schalter und Apples Tagesberichte. **Der Sammler läuft
+    /// immer** (er kostet nichts), das Tor ist zu, bis jemand die Geste kennt.
+    @State private var diagnostics = DiagnosticsGate()
+    @State private var metrics = MetricsCollector()
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     @Environment(\.scenePhase) private var scenePhase
@@ -43,12 +47,22 @@ struct LeChariotApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(marketRepository: marketRepository)
+                // **Vor** den Umgebungswerten, nicht danach: Die Anzeige liest
+                // `DiagnosticsGate` selbst. Hinter `.environment(...)` gehängt
+                // steht sie außerhalb genau der Umgebung, die sie braucht —
+                // die App fiel beim Start mit SIGTRAP um.
+                .performanceHUD()
                 .environment(store)
                 .environment(profile)
                 .environment(areaRequests)
                 .environment(branchRequests)
                 .environment(history)
                 .environment(placeNames)
+                .environment(diagnostics)
+                .environment(metrics)
+                // Einmal beim Start anmelden. Danach ruft Apple von sich aus
+                // an — es gibt keine Schleife und keinen Zeitgeber.
+                .task { metrics.start() }
                 // Beim Start und bei jeder Rückkehr prüfen, ob ein
                 // angefordertes Gebiet inzwischen fertig ist. Der Lauf dauert
                 // ~3 Minuten und überlebt die App — ohne diese Frage erführe
