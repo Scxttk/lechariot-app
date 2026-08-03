@@ -70,7 +70,8 @@ struct ContentView: View {
                 ShoppingListView(
                     favoriteMarkets: markets,
                     offerStore: offerStore,
-                    onChooseMarkets: { showsMarketPicker = true }
+                    onChooseMarkets: { showsMarketPicker = true },
+                    onShowOffers: { selectedTab = .angebote }
                 )
             }
             // Nullhoher Marker auf der Unterkante der sicheren Fläche dieses

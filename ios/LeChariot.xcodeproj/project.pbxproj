@@ -90,10 +90,12 @@
 		7B35C65332AD54503F8D51AD /* TermSuggestionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B387BAAF541440742AD6E14E /* TermSuggestionsTests.swift */; };
 		7C48E7DAAA0BB9433D476802 /* RegionSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6448F0AE82476CEEC4230DB4 /* RegionSetupView.swift */; };
 		7CE8E52F408DFD9EC6252AEA /* PlaceNameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36BE45EEDE2FF2D29E31D1B3 /* PlaceNameTests.swift */; };
+		96ECAC98780AB9905BA09459 /* ShoppingSectionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1095BD0B2878EE6701CC4B41 /* ShoppingSectionsTests.swift */; };
 		626F95A77FADBF243FA46C2C /* DiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FAF10B29CB1CB88ECBD1EAD /* DiagnosticsTests.swift */; };
 		3834B4A4E1483291BA6BBCE1 /* RegionQueryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27E92AE4956874297F93E609 /* RegionQueryTests.swift */; };
 		816577DE856214745264DFE3 /* TermSuggestions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3146C6EE31E38698CB48DECD /* TermSuggestions.swift */; };
 		81EE8A4DF06EE1589DEF42F5 /* LocatedPLZJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D54CA2F7CD6F69B202434E /* LocatedPLZJourneyTests.swift */; };
+		5514E253E3A147C6485D4364 /* BringSectionsJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA36EE40B48485C0D2385F0C /* BringSectionsJourneyTests.swift */; };
 		1F59332BC9C66C796A02728D /* DiagnosticsJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B061D11AE38CA6D15A4C549 /* DiagnosticsJourneyTests.swift */; };
 		E2CC6D3C8EB965BAD6D0C801 /* CityNameJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8C6CE74495E80582A986A5 /* CityNameJourneyTests.swift */; };
 		829997B558A3AD68DA70B8E2 /* ProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE3205064BB98F72C1F6EFF8 /* ProfileStore.swift */; };
@@ -165,12 +167,14 @@
 		E1E8AEE2F8877334EA6D7042 /* APIKeys.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2F149DE2ABC4BC50F8B39768 /* APIKeys.plist */; };
 		E4593E07217F7ECE00674010 /* NextWeekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCCC4BEAD980A1C0DFEED95D /* NextWeekView.swift */; };
 		E6C8A812A387262EA664E436 /* PlaceName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 130E8863B15408EA3E4BFDDD /* PlaceName.swift */; };
+		FC531B2894BC92C88790D78D /* ShoppingSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90E045D0B4DB38239C0967E /* ShoppingSections.swift */; };
 		75356F60E6E74AB49AF585B5 /* HitchMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFBE288FF5833D36BCBAEFB /* HitchMeter.swift */; };
 		9DD374857D848E048BB92B52 /* RegionQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ABB70E11232657D0A1C7BFA /* RegionQuery.swift */; };
 		E782CE5D24F823A65F8586D3 /* ProfileBranchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFD79D23352D6B4C5F51D7DF /* ProfileBranchTests.swift */; };
 		E8158E83EA5475B08787DBC4 /* BranchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B875EDDDF20D595E1294EECB /* BranchTests.swift */; };
 		EE52664F6850E48B193908AF /* RegionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10C611EA5EB22F226401A2F2 /* RegionStore.swift */; };
 		EFB32FA0E78A33020C1C94EC /* ShoppingListRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151682DC435E28945377F0E7 /* ShoppingListRowView.swift */; };
+		1BE9FBDD03DE6E37891C837F /* OfferHitsRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7DF09AC62C55ECD7E43B52D /* OfferHitsRow.swift */; };
 		EFB9DDD16B5BE4ED4AF98B4C /* ReviewNoteJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A478DEC8B0C1385464269E61 /* ReviewNoteJourneyTests.swift */; };
 		F023EF16AEEC30F73866749D /* PinnedOfferJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F765F4539B77A6B82F7F6482 /* PinnedOfferJourneyTests.swift */; };
 		F19EFA0F2F075C8F0C2525BF /* OfferQueryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 123BD74C4362845AC370D5F3 /* OfferQueryTests.swift */; };
@@ -218,9 +222,11 @@
 		1295E37A49DB45382482897B /* ProfileStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileStoreTests.swift; sourceTree = "<group>"; };
 		12F8D70A89A245C75C6851F4 /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
 		130E8863B15408EA3E4BFDDD /* PlaceName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceName.swift; sourceTree = "<group>"; };
+		D90E045D0B4DB38239C0967E /* ShoppingSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingSections.swift; sourceTree = "<group>"; };
 		FAFBE288FF5833D36BCBAEFB /* HitchMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HitchMeter.swift; sourceTree = "<group>"; };
 		8ABB70E11232657D0A1C7BFA /* RegionQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionQuery.swift; sourceTree = "<group>"; };
 		151682DC435E28945377F0E7 /* ShoppingListRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingListRowView.swift; sourceTree = "<group>"; };
+		C7DF09AC62C55ECD7E43B52D /* OfferHitsRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferHitsRow.swift; sourceTree = "<group>"; };
 		17D228E1A7E8711A671162D9 /* TutorialOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialOverlay.swift; sourceTree = "<group>"; };
 		18877441406193EA39D30FF1 /* OfferBrowserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferBrowserTests.swift; sourceTree = "<group>"; };
 		18B32DC5EC11F088F4EDE80E /* PinnedOffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedOffer.swift; sourceTree = "<group>"; };
@@ -241,6 +247,7 @@
 		31D8064CB703BCA72D155151 /* MatchRejectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchRejectionStore.swift; sourceTree = "<group>"; };
 		339624315CBF239B010721F4 /* AppearanceWindowBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceWindowBridgeTests.swift; sourceTree = "<group>"; };
 		36BE45EEDE2FF2D29E31D1B3 /* PlaceNameTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceNameTests.swift; sourceTree = "<group>"; };
+		1095BD0B2878EE6701CC4B41 /* ShoppingSectionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingSectionsTests.swift; sourceTree = "<group>"; };
 		6FAF10B29CB1CB88ECBD1EAD /* DiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsTests.swift; sourceTree = "<group>"; };
 		27E92AE4956874297F93E609 /* RegionQueryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionQueryTests.swift; sourceTree = "<group>"; };
 		36D0C8BCFE5868C58C95C50A /* QueryUnderstandingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryUnderstandingTests.swift; sourceTree = "<group>"; };
@@ -314,6 +321,7 @@
 		A131D7DCE51C328D0986C625 /* OfferFilterJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferFilterJourneyTests.swift; sourceTree = "<group>"; };
 		A2442ECD347A27BB39A66696 /* InstallIdJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallIdJourneyTests.swift; sourceTree = "<group>"; };
 		A2D54CA2F7CD6F69B202434E /* LocatedPLZJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocatedPLZJourneyTests.swift; sourceTree = "<group>"; };
+		FA36EE40B48485C0D2385F0C /* BringSectionsJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BringSectionsJourneyTests.swift; sourceTree = "<group>"; };
 		9B061D11AE38CA6D15A4C549 /* DiagnosticsJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsJourneyTests.swift; sourceTree = "<group>"; };
 		9F8C6CE74495E80582A986A5 /* CityNameJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityNameJourneyTests.swift; sourceTree = "<group>"; };
 		A313B5563AF1C120A49DE1C6 /* WeekBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekBoundaryTests.swift; sourceTree = "<group>"; };
@@ -422,6 +430,7 @@
 				BA7F5DBF51DD8C16CBD07DBE /* PickerDirectoryTests.swift */,
 				7948AA3463F56A046E38057C /* PinnedOfferTests.swift */,
 				36BE45EEDE2FF2D29E31D1B3 /* PlaceNameTests.swift */,
+				1095BD0B2878EE6701CC4B41 /* ShoppingSectionsTests.swift */,
 				6FAF10B29CB1CB88ECBD1EAD /* DiagnosticsTests.swift */,
 				27E92AE4956874297F93E609 /* RegionQueryTests.swift */,
 				39A6790E54550782540DD2EA /* PriceHistoryTests.swift */,
@@ -496,6 +505,7 @@
 				F2AA8BB9D5D18F2F1B08421B /* ItemDetailJourneyTests.swift */,
 				5AEBC07E09EFF6A6DFA5FFFE /* KeyboardBackgroundJourneyTests.swift */,
 				A2D54CA2F7CD6F69B202434E /* LocatedPLZJourneyTests.swift */,
+				FA36EE40B48485C0D2385F0C /* BringSectionsJourneyTests.swift */,
 				9B061D11AE38CA6D15A4C549 /* DiagnosticsJourneyTests.swift */,
 				9F8C6CE74495E80582A986A5 /* CityNameJourneyTests.swift */,
 				7A9D8435B451C3CC5B59F2F3 /* MatchFeedbackJourneyTests.swift */,
@@ -553,6 +563,7 @@
 				D2556F0A712FE98A27DDA2FC /* MatchDetailView.swift */,
 				647A543C891A626804D53C84 /* RejectionFeedbackSheet.swift */,
 				151682DC435E28945377F0E7 /* ShoppingListRowView.swift */,
+				C7DF09AC62C55ECD7E43B52D /* OfferHitsRow.swift */,
 				E0A2231CEBE6ABCF4457246B /* ShoppingListView.swift */,
 				AA0FF5B17E073D9F1D1CD226 /* ShoppingPlanCard.swift */,
 				A7BB877ECEA7A4D686EBCB4E /* SuggestionSurface.swift */,
@@ -690,6 +701,7 @@
 				D96A99B7A7B3D8F094213CF8 /* PickerDirectory.swift */,
 				18B32DC5EC11F088F4EDE80E /* PinnedOffer.swift */,
 				130E8863B15408EA3E4BFDDD /* PlaceName.swift */,
+				D90E045D0B4DB38239C0967E /* ShoppingSections.swift */,
 				FAFBE288FF5833D36BCBAEFB /* HitchMeter.swift */,
 				8ABB70E11232657D0A1C7BFA /* RegionQuery.swift */,
 				9DE35F9DB7EA75080DC933FE /* PriceHistoryPoint.swift */,
@@ -915,6 +927,7 @@
 				FFBC41FB8493D0333C34C133 /* PickerDirectoryTests.swift in Sources */,
 				2EC6F44F805A7B6C88E491DF /* PinnedOfferTests.swift in Sources */,
 				7CE8E52F408DFD9EC6252AEA /* PlaceNameTests.swift in Sources */,
+				96ECAC98780AB9905BA09459 /* ShoppingSectionsTests.swift in Sources */,
 				626F95A77FADBF243FA46C2C /* DiagnosticsTests.swift in Sources */,
 				3834B4A4E1483291BA6BBCE1 /* RegionQueryTests.swift in Sources */,
 				0E4565A94351B610A3642124 /* PriceHistoryTests.swift in Sources */,
@@ -996,6 +1009,7 @@
 				BA498F940E305DA55CACDAE1 /* PickerDirectory.swift in Sources */,
 				318D4DD0D92B7770F536F993 /* PinnedOffer.swift in Sources */,
 				E6C8A812A387262EA664E436 /* PlaceName.swift in Sources */,
+				FC531B2894BC92C88790D78D /* ShoppingSections.swift in Sources */,
 				75356F60E6E74AB49AF585B5 /* HitchMeter.swift in Sources */,
 				9DD374857D848E048BB92B52 /* RegionQuery.swift in Sources */,
 				0CB112D0D6ABB65CB4AFB597 /* PlaceNameStore.swift in Sources */,
@@ -1018,6 +1032,7 @@
 				BE7057A2F8E1C00A306774F3 /* ShoppingItem.swift in Sources */,
 				B483A300B8ED0DC1AFFFA080 /* ShoppingListRanking.swift in Sources */,
 				EFB32FA0E78A33020C1C94EC /* ShoppingListRowView.swift in Sources */,
+				1BE9FBDD03DE6E37891C837F /* OfferHitsRow.swift in Sources */,
 				1148F5958E64FBE2788BE134 /* ShoppingListStore.swift in Sources */,
 				B5639BF05F6F5CB60D326AF4 /* ShoppingListView.swift in Sources */,
 				A5DFF8517D0A39F7BCC035D0 /* ShoppingPlanCard.swift in Sources */,
@@ -1048,6 +1063,7 @@
 				1D7DDB33025FB9054ECF7E3F /* ItemDetailJourneyTests.swift in Sources */,
 				FB6F4D5012F3B86E32ABD4E8 /* KeyboardBackgroundJourneyTests.swift in Sources */,
 				81EE8A4DF06EE1589DEF42F5 /* LocatedPLZJourneyTests.swift in Sources */,
+				5514E253E3A147C6485D4364 /* BringSectionsJourneyTests.swift in Sources */,
 				1F59332BC9C66C796A02728D /* DiagnosticsJourneyTests.swift in Sources */,
 				E2CC6D3C8EB965BAD6D0C801 /* CityNameJourneyTests.swift in Sources */,
 				3D129061277F9F5EC5A41C76 /* MatchFeedbackJourneyTests.swift in Sources */,

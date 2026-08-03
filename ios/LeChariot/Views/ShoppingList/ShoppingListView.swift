@@ -11,6 +11,9 @@ struct ShoppingListView: View {
     /// Öffnet die Filialauswahl. Liegt in `ContentView`, weil der Picker über
     /// den Tabs erscheint und nicht in der Liste.
     var onChooseMarkets: () -> Void = {}
+    /// Führt in den Angebote-Tab — die Zeile „Passende Artikel im Angebot"
+    /// zeigt die Zahlen, die Angebote selbst stehen dort.
+    var onShowOffers: () -> Void = {}
     @Environment(MatchRejectionStore.self) private var rejections
     @Environment(ProfileStore.self) private var profile
     /// Zählt beim Abhaken mit — siehe `PurchaseHistoryStore`.
@@ -49,6 +52,17 @@ struct ShoppingListView: View {
     /// since the backend keys offers by branch (migration v13).
     private var branchIds: [String] {
         favoriteMarkets.map(\.marketId).sorted()
+    }
+
+    /// Einmal je Artikel, nicht zweimal: Der Abschnitt eines Eintrags und die
+    /// Zeile darin fragen dasselbe, und `suggestion(for:plan:)` läuft über den
+    /// ganzen Angebotsvorrat.
+    private func suggestionsByItem(plan: [MarketListRank]) -> [UUID: ItemSuggestion] {
+        var byItem: [UUID: ItemSuggestion] = [:]
+        for item in list.uncheckedItems {
+            byItem[item.id] = suggestion(for: item, plan: plan)
+        }
+        return byItem
     }
 
     /// Matches are recomputed on the fly; only rejections are persisted.
@@ -231,33 +245,66 @@ struct ShoppingListView: View {
                 .listRowBackground(Color.clear)
             }
 
-            Section {
-                ForEach(Array(list.uncheckedItems.enumerated()), id: \.element.id) { index, item in
-                    let itemSuggestion = suggestion(for: item, plan: plan)
-                    ShoppingListRowView(
-                        item: item,
-                        suggestion: itemSuggestion,
-                        hasMarkets: hasMarkets,
-                        // Nur die erste offene Zeile trägt die Anker des
-                        // Rundgangs — sonst zeigt das Loch auf sechs Stellen.
-                        carriesTutorialAnchors: index == 0,
-                        unknownWordNote: unknownWordNote(for: item, suggestion: itemSuggestion),
-                        onToggle: { check(item) },
-                        onShowMatches: { detailItem = item },
-                        onEditDetail: { editingItem = item }
-                    )
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            list.remove(item)
-                        } label: {
-                            Label("Löschen", systemImage: "trash")
+            // **Die Zeile aus dem Video, in der Liste statt im Angebote-Tab.**
+            // Sie rechnet nichts nach: Die Zähler stehen schon in `plan`.
+            let hits = OfferHitSummary(ranks: plan)
+            if !hits.isEmpty {
+                Section {
+                    OfferHitsRow(summary: hits, onOpen: onShowOffers)
+                        .listRowInsets(EdgeInsets(
+                            top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
+                            bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
+                        ))
+                }
+                .listRowBackground(Color.clear)
+            }
+
+            // **Kategorie-Abschnitte wie bei Bring!** — einsortiert wird über
+            // den Treffer, den die Zeile ohnehin zeigt.
+            let byItem = suggestionsByItem(plan: plan)
+            let sections = ShoppingSections.build(items: list.uncheckedItems) { item in
+                ShoppingSections.category(forMatches: byItem[item.id]?.positions.map(\.match) ?? [])
+            }
+            let showsHeaders = ShoppingSections.needsHeaders(sections)
+            let firstOpenItem = list.uncheckedItems.first?.id
+
+            ForEach(sections) { section in
+                Section {
+                    ForEach(Array(section.items.enumerated()), id: \.element.id) { index, item in
+                        let itemSuggestion = byItem[item.id] ?? ItemSuggestion()
+                        ShoppingListRowView(
+                            item: item,
+                            suggestion: itemSuggestion,
+                            hasMarkets: hasMarkets,
+                            // Nur die erste offene Zeile trägt die Anker des
+                            // Rundgangs — sonst zeigt das Loch auf sechs
+                            // Stellen. Mit Abschnitten ist das nicht mehr
+                            // „Index 0", sondern der erste Artikel der Liste.
+                            carriesTutorialAnchors: item.id == firstOpenItem,
+                            unknownWordNote: unknownWordNote(for: item, suggestion: itemSuggestion),
+                            onToggle: { check(item) },
+                            onShowMatches: { detailItem = item },
+                            onEditDetail: { editingItem = item }
+                        )
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                list.remove(item)
+                            } label: {
+                                Label("Löschen", systemImage: "trash")
+                            }
                         }
+                        // Pro Zeile statt pro Abschnitt: Diese Zeilen wischen,
+                        // und ein flacher Hintergrund zeigt dabei eine eckige
+                        // Kante. Die Rundung gilt jetzt je Abschnitt.
+                        .groupedRowBackground(
+                            GroupedRowPosition(index: index, count: section.items.count)
+                        )
                     }
-                    // Pro Zeile statt pro Abschnitt: Diese Zeilen wischen, und
-                    // ein flacher Hintergrund zeigt dabei eine eckige Kante.
-                    .groupedRowBackground(
-                        GroupedRowPosition(index: index, count: list.uncheckedItems.count)
-                    )
+                } header: {
+                    if showsHeaders {
+                        Text(section.category)
+                            .accessibilityIdentifier("list.section.\(section.category)")
+                    }
                 }
             }
 
