@@ -59,8 +59,12 @@ final class BringSectionsJourneyTests: XCTestCase {
     }
 
     /// **Die Zeile aus dem Video, in der Liste statt im Angebote-Tab** — mit
-    /// Ketten-Zählern, und sie führt zu den Angeboten.
-    func testTheOfferHitsRowStandsInTheListAndLeadsToTheOffers() {
+    /// Ketten-Zählern, und sie führt zu **den Treffern dieser Liste**.
+    ///
+    /// Bis zum 03.08. abends führte sie in den Angebote-Tab, also in *alle*
+    /// Angebote der Woche. Scott: „wirkt tot — nur ein Link." Die Zahl in der
+    /// Zeile verspricht diese Treffer, nicht alle; siehe `OfferHitsView`.
+    func testTheOfferHitsRowStandsInTheListAndLeadsToTheMatches() {
         startTyping()
         app.typeText("Vollmilch\n")
         app.typeText("\n")
@@ -79,8 +83,8 @@ final class BringSectionsJourneyTests: XCTestCase {
 
         zeile.tap()
         XCTAssertTrue(
-            app.navigationBars["Angebote"].waitForExistence(timeout: 10),
-            "die Zeile muss in die Angebote führen\n" + app.debugDescription
+            app.navigationBars["Passende Artikel"].waitForExistence(timeout: 10),
+            "die Zeile muss zu den Treffern dieser Liste führen\n" + app.debugDescription
         )
     }
 
