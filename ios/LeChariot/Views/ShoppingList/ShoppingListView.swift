@@ -327,6 +327,16 @@ struct ShoppingListView: View {
         // bliebe die Angaben-Schicht stehen, während man schon durch die Liste
         // scrollt — und nähme ihr genau dort Platz weg, wo man gerade hinsieht.
         .scrollDismissesKeyboard(.immediately)
+        // **Und der Ausgang gilt auch ohne Tastatur.** `scrollDismissesKeyboard`
+        // räumt eine Tastatur weg; wo nie eine stand (der Weg über „Häufig
+        // gekauft"), räumte es nichts, und die Schicht blieb über der Liste
+        // stehen — am 03.08. gemessen: 482 pt von 874, auch nach dem Scrollen.
+        // Der Zug an der Liste ist das Signal, nicht der Fokus.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 12).onChanged { _ in
+                if addFlow.isActive { endFlow() }
+            }
+        )
     }
 
     /// Abhaken heißt „gekauft" — und nur das wird gezählt.
@@ -503,19 +513,39 @@ struct ShoppingListView: View {
                 Text("Häufig gekauft")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Theme.secondaryText)
-                suggestionChips(remaining)
+                // **Neben der Angaben-Schicht schrumpft der Streifen auf eine
+                // Reihe.** Gemessen am 03.08.: Beides in voller Größe brachte
+                // den Block unten auf 482 pt von 874 — 55 % des Bildschirms für
+                // das Anlegen eines Artikels, und die Liste, in die man ihn
+                // gerade einträgt, war auf eine Zeile geschrumpft.
+                //
+                // Nicht weggelassen, sondern gekürzt: Der zweite Vorschlag muss
+                // **einen Tipp** weit weg bleiben. Genau das war am 26.07. schon
+                // einmal kaputt, als die Fläche beim ersten Artikel zuschlug.
+                if detailPanelIsUp {
+                    suggestionRow(remaining)
+                } else {
+                    suggestionChips(remaining)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Theme.Spacing.lg)
             .padding(.top, Theme.Spacing.sm)
             .readableWidth()
-            // Aufziehen von unten, verschwinden ohne Bewegung: Beim Zuklappen
-            // rutscht die Liste ohnehin nach unten nach, und zwei Bewegungen
-            // gegeneinander sehen aus wie ein Ruckler.
-            .transition(.asymmetric(
-                insertion: .move(edge: .bottom).combined(with: .opacity),
-                removal: .opacity
-            ))
+            // **Auf- und zuziehen, beides von unten.**
+            //
+            // Vorher stand hier ein reines Ausblenden, mit der Begründung, zwei
+            // Bewegungen gegeneinander sähen aus wie ein Ruckler. Am Simulator
+            // Bild für Bild nachgesehen (03.08., Scotts Punkt 7) ist es
+            // schlimmer: Der Block klappt in **einem** Bild zusammen, die
+            // Eingabezeile sitzt sofort unten — und die Kacheln bleiben als
+            // durchsichtige Geister über der Liste hängen, außerhalb der
+            // Fläche, zu der sie gehören. Das ist kein Übergang, das ist ein
+            // Rest.
+            //
+            // Mit derselben Bewegung in beide Richtungen fahren sie unter die
+            // Eingabezeile, statt im Nichts zu verblassen.
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
 
@@ -569,7 +599,14 @@ struct ShoppingListView: View {
                     // getippten Anfang. Genau dafür ist das Raster da: Was
                     // hier steht, versteht der Matcher.
                     newItemText = ""
+                    // **Zweimal, und das ist derselbe Fund wie in `addItem`:**
+                    // Der Tipp auf eine Kachel nimmt dem Feld den Fokus, und
+                    // zwar **nach** dieser Zeile. Ohne den Durchgang Geduld
+                    // stand `inputFocused` einen Wimpernschlag später auf
+                    // `false`, der Fluss beendete sich selbst — und die
+                    // Angaben-Schicht war weg, bevor jemand sie gesehen hat.
                     inputFocused = true
+                    keepTyping()
                     // Nur bei Erfolg: Bei einem Duplikat legt `add` nichts an,
                     // und `lastAdded` wäre dann ein fremder Eintrag.
                     let angelegt = withAnimation { list.add(term) }
@@ -595,6 +632,44 @@ struct ShoppingListView: View {
                 }
             }
         }
+    }
+
+    /// Dieselben Vorschläge, nur als eine seitlich scrollende Reihe — die
+    /// Fassung neben der Angaben-Schicht. 44 pt statt 148, und der nächste
+    /// Vorschlag bleibt einen Tipp weit weg.
+    private func suggestionRow(_ staples: [String]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Spacing.sm) {
+                ForEach(staples, id: \.self) { staple in
+                    Button {
+                        suggestionChoice = true
+                        let angelegt = withAnimation { list.add(staple) }
+                        if angelegt { beginFlow(with: list.lastAdded) }
+                    } label: {
+                        Text(staple)
+                            .font(.subheadline.weight(.medium))
+                            .lineLimit(1)
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .frame(minWidth: 96)
+                            .frame(height: 44)
+                            .background(
+                                Theme.surface,
+                                in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                                    .strokeBorder(Theme.stroke)
+                            )
+                    }
+                    .buttonStyle(TactileButtonStyle())
+                    .accessibilityLabel("\(staple) hinzufügen")
+                }
+            }
+        }
+        // Der Rundgang-Anker gehört auf die Fassung, die er ausleuchtet — und
+        // während des Rundgangs steht immer die volle. Hier also keiner: zwei
+        // Anker desselben Ziels entscheidet der Preference-Merge, siehe L-2.
+        .frame(height: 44)
     }
 
     private func suggestionChips(_ staples: [String]) -> some View {
@@ -702,7 +777,8 @@ struct ShoppingListView: View {
                         )
                     }
                 },
-                onOpenFull: { editingItem = item }
+                onOpenFull: { editingItem = item },
+                onDismiss: { endFlow() }
             )
             .tutorialAnchor(.detailPanel)
         }
@@ -832,13 +908,37 @@ struct ShoppingListView: View {
     /// deshalb wartet `endFlowIfTypingStopped` einen Moment, bevor es den Fluss
     /// beendet.
     private func keepTyping() {
-        Task { @MainActor in inputFocused = true }
+        Task { @MainActor in
+            inputFocused = true
+            // **Und ein zweites Mal.** Ein Durchgang reicht meistens, aber
+            // nicht immer: Wer zwei Wörter ohne Pause absendet, verlor am
+            // 03.08. reproduzierbar den Fokus zwischen ihnen — im Testlauf zwei
+            // bis vier von sechs Journeys, jedes Mal eine andere. Mit einer
+            // Pause von einer Zehntelsekunde dazwischen lief es sechsmal
+            // hintereinander durch. Das Nachfassen kostet nichts und macht die
+            // Zusage unabhängig davon, welcher Durchgang zuerst dran war.
+            try? await Task.sleep(for: .milliseconds(60))
+            guard !Task.isCancelled, addFlow.isActive else { return }
+            inputFocused = true
+        }
     }
 
     /// Ein Artikel ist entstanden — der Fluss nimmt ihn auf.
     private func beginFlow(with item: ShoppingItem?) {
         guard let item else { return }
         withAnimation(.snappy) { addFlow.added(item.id) }
+    }
+
+    /// **Der Ausgang, der keine Tastatur braucht.**
+    ///
+    /// Bis zum 03.08. gab es nur einen: „die Tastatur ist unten". Auf dem Weg
+    /// über „Häufig gekauft" stand aber nie eine — und damit war die Schicht
+    /// dort nicht verlassbar (Scotts Punkt 9). Der Fokus wird trotzdem
+    /// mitgenommen, wo einer liegt: Sonst zöge `keepTyping` die Schicht im
+    /// nächsten Durchgang wieder auf.
+    private func endFlow() {
+        inputFocused = false
+        withAnimation(.snappy) { addFlow.end() }
     }
 
     // MARK: Toolbar

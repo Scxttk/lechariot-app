@@ -69,7 +69,7 @@ final class ItemDetailJourneyTests: XCTestCase {
     func testTheQuantityPanelOpensByItselfWhenAnItemIsCreated() {
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15))
-        feld.tap()
+        feld.tapAndAwaitKeyboard(in: app)
         feld.typeText("Butter\n")
 
         XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10),
@@ -93,7 +93,7 @@ final class ItemDetailJourneyTests: XCTestCase {
     func testTheListStaysLiveUnderneathThePanel() {
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15))
-        feld.tap()
+        feld.tapAndAwaitKeyboard(in: app)
         feld.typeText("Butter\n")
 
         let kachel = app.buttons["Angaben zu Butter"]
@@ -118,7 +118,7 @@ final class ItemDetailJourneyTests: XCTestCase {
     func testTheFreeTextNoteEndsUpUnderTheItem() {
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15))
-        feld.tap()
+        feld.tapAndAwaitKeyboard(in: app)
         feld.typeText("Butter\n")
 
         XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10))
@@ -145,7 +145,7 @@ final class ItemDetailJourneyTests: XCTestCase {
     private func addItem(_ text: String) {
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15))
-        feld.tap()
+        feld.tapAndAwaitKeyboard(in: app)
         feld.typeText(text + "\n")
         dismissQuantitySheet()
         XCTAssertTrue(app.buttons[text].waitForExistence(timeout: 10))

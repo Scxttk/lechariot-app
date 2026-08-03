@@ -80,7 +80,7 @@ final class QueryUnderstandingJourneyTests: XCTestCase {
                       "Der Start hinter dem Assistenten landet nicht in der Liste")
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15), "Keine Eingabezeile")
-        feld.tap()
+        feld.tapAndAwaitKeyboard(in: app)
         feld.typeText(text)
         app.buttons["Artikel hinzufügen"].tap()
         dismissQuantitySheet()
