@@ -18,6 +18,12 @@ sonst nichts. Das ist kein verlorenes Zertifikat, sondern ein nie ausgestelltes;
 deshalb ist der Haken *„Zugriff auf cloud-verwaltete Vertriebszertifikate"* beim
 Schlüssel der eigentliche Weg und keine Abkürzung.
 
+Nachtrag vom selben Abend: Der App-Manager-Schlüssel `3764RZD764` kam an das
+Cloud-Signing nicht heran und ließ sich auch nicht auf Admin heben. Gelöst hat
+es ein **neuer Schlüssel mit Admin-Rolle** (`W6UX6J9QTG`) — der trug den Upload
+von `2026.0803.2008` um 22:33 allein, ohne lokales Zertifikat und ohne
+Xcode-Anmeldung.
+
 
 `tools/release.sh` builds a distribution-signed `.ipa`. Everything below it in
 this file is the part Apple insists a human does.
@@ -43,9 +49,12 @@ up without a prompt, and again on 2026-08-01.
 
 **How it authenticates:** the script uses the three `ASC_*` variables if all of
 them are set, and otherwise falls back to the Apple ID signed into Xcode,
-printing `Kein API-Schlüssel gesetzt` when it does. There is no `.p8` on this Mac
-today, so the fallback *is* the live path. An API key is only needed where nobody
-is signed in — that is, CI.
+printing `Kein API-Schlüssel gesetzt` when it does. This paragraph used to say
+there was no `.p8` on this Mac and the fallback was the live path; since
+2026-08-03 there is an **Admin** key (`AuthKey_W6UX6J9QTG.p8`), and it carries
+the whole run by itself — cloud-managed signing needs no local certificate and
+no Xcode account, proven by build `2026.0803.2008`. The Apple ID is now the
+fallback, not the main road.
 
 If an upload ever does fail, the signed `.ipa` is already in `build/export/` and
 goes out through Xcode → Organizer → Distribute App. That is a failed upload, not
@@ -108,7 +117,11 @@ None of this is in the repo, because none of it can be.
    updates, and `--upload` then never asks who is logged in.
 
    App Store Connect → Users and Access → Integrations → App Store Connect API
-   → Team Keys → **+**, name it (`Le Chariot Upload`), role **App Manager**.
+   → Team Keys → **+**, name it (`Le Chariot Upload`), role **Admin** — not App
+   Manager: cloud-managed signing is an Admin privilege, and an App Manager key
+   passes every preflight only to die in the export with `Cloud signing
+   permission error` (learned twice on 2026-08-03, and a role cannot be raised
+   afterwards — it takes a new key).
    Copy the **Issuer ID** shown above the key list — it is not in the file and
    cannot be derived. **The `.p8` downloads exactly once**, so put it away
    before closing the tab:
