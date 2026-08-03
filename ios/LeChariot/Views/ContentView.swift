@@ -89,17 +89,10 @@ struct ContentView: View {
             }
             .tag(Tab.liste)
 
+            // Der Marker für `.navBarBottom` sitzt **in** `OffersView`, also
+            // innerhalb ihres `NavigationStack` — von hier aus läge er über der
+            // Leiste statt darunter. Siehe dort.
             offersTab
-                // Nullhöhen-Marker auf der Oberkante der sicheren Fläche —
-                // also der Unterkante der Navigationsleiste. „Nächste Woche"
-                // ist ein `ToolbarItem` und liegt außerhalb des Baums, aus dem
-                // die Anker kommen; siehe `TutorialOverlay.navBarBand`.
-                .overlay(alignment: .top) {
-                    Color.clear
-                        .frame(height: 0)
-                        .allowsHitTesting(false)
-                        .tutorialAnchor(.navBarBottom)
-                }
                 .tabItem {
                     Label("Angebote", systemImage: "tag")
                 }
@@ -118,16 +111,50 @@ struct ContentView: View {
         // herausspaziert: Sie zeichnet UIKit **über** dem Overlay, die
         // Sperrflächen darunter erreichen sie nicht. Am Simulator nachgestellt —
         // ein Tipp auf „Angebote" wechselte mitten in der Führung den Tab.
-        // `disabled` greift dort, wo eine Ansicht darüber nicht hinkommt; die
-        // Tab-Wechsel des Rundgangs selbst laufen über `selectedTab` und sind
-        // davon unberührt.
-        .disabled(tutorial.isRunning)
+        //
+        // **Aber nicht auf den Rahmen, die zum Anfassen einladen** — und das
+        // ist der Fund vom 03.08.: `disabled` auf der `TabView` sperrt den
+        // ganzen Baum darunter, also auch das Eingabefeld. Der erste Rahmen
+        // sagt „Probier es gleich aus", und im Testlauf meldete XCUITest genau
+        // dort `TextField … Disabled`. Die Zusage war seit dem Bau des
+        // Rundgangs nicht einlösbar. Außerhalb des Lochs sperren weiter die
+        // Sperrflächen des Overlays; für die Tab-Leiste steht der Riegel unten.
+        .disabled(tutorial.isRunning && !tutorial.step.allowsInteraction)
+        // Der Riegel für die Tab-Leiste auf den Mitmach-Rahmen: Wer sie dort
+        // antippt, steht sofort wieder auf dem Tab des Rundgangs.
+        .onChange(of: selectedTab) { _, chosen in
+            guard tutorial.isRunning else { return }
+            let belongs = tab(for: tutorial.step.tab)
+            if chosen != belongs { selectedTab = belongs }
+        }
         .tint(Theme.accent)
         // Über den Tabs, nicht in einem davon: Der Lauf ist minuten- bis
         // tagelang her, der Nutzer kann überall stehen.
         .safeAreaInset(edge: .top) {
             if areaRequests.areaJustCompleted {
                 areaCompletedNotice
+            }
+        }
+        // **Die Überblendung liegt über der App und unter dem Rundgang.**
+        //
+        // Bis zum 03.08. lag sie über allem, auch über der Karte — und damit
+        // war der Wechsel vom vorletzten zum letzten Rahmen für eine knappe
+        // halbe Sekunde ein **vollständig schwarzer Bildschirm**, Karte und
+        // Statusleiste eingeschlossen. Am Simulator Bild für Bild belegt
+        // (0,12 s nach dem Tipp: nichts als Schwarz). Scott am 03.08.:
+        // „visuell desaströs".
+        //
+        // Was gewechselt werden muss, ist der Inhalt darunter; die Karte, die
+        // man gerade liest, ist genau der Halt, den das Auge dabei braucht.
+        // Sie bleibt jetzt stehen, hinter ihr tauscht der Tab. Siehe
+        // `TourTabTransition`.
+        .overlay {
+            if tourVeil > 0 {
+                Color.black
+                    .opacity(tourVeil)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
         }
         .overlayPreferenceValue(TutorialAnchorKey.self) { anchors in
@@ -142,18 +169,6 @@ struct ContentView: View {
                 }
                 .ignoresSafeArea()
                 .transition(.opacity)
-            }
-        }
-        // Die Überblendung des Rundgangs, über allem — auch über der
-        // Abdunklung, die sie kurz auf volles Schwarz zieht. Siehe
-        // `TourTabTransition`.
-        .overlay {
-            if tourVeil > 0 {
-                Color.black
-                    .opacity(tourVeil)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
             }
         }
         // Der Rundgang spielt auf einem bestimmten Tab; der letzte Rahmen zeigt

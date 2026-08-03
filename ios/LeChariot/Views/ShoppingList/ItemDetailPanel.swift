@@ -53,12 +53,13 @@ struct ItemDetailPanel: View {
         // trug danach `list.detailPanel` statt `list.detailPanel.more` und war
         // für keine Journey mehr auffindbar. Dieselbe Falle steht seit dem
         // 30.07. in `TutorialOverlay` beschrieben.
-        // Aufziehen von unten wie die Vorschlagsfläche, verschwinden ohne
-        // Bewegung: Beim Schließen rückt die Liste ohnehin nach.
-        .transition(.asymmetric(
-            insertion: .move(edge: .bottom).combined(with: .opacity),
-            removal: .opacity
-        ))
+        // **Ein- und ausblenden, nicht schieben — und das ist keine
+        // Geschmacksfrage.** `.move(edge: .bottom)` verschiebt die Schicht in
+        // ihren Platz hinein, und der Rundgang-Anker nimmt diese Verschiebung
+        // mit: Am 03.08. gemessen lag sein Loch danach dauerhaft 186 pt tiefer
+        // als die Schicht, die der Rahmen erklärt — der Anker wird nach der
+        // Bewegung nicht noch einmal gemeldet. Ohne Versatz kein falsches Loch.
+        .transition(.opacity)
     }
 
     // MARK: Kachelzeile

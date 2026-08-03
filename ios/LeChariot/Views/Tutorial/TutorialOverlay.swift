@@ -70,6 +70,7 @@ struct TutorialOverlay: View {
         ZStack(alignment: .topLeading) {
             scrim
             blockers
+            holeProbe
             cardLayer
         }
         .frame(width: proxy.size.width, height: proxy.size.height)
@@ -215,6 +216,33 @@ struct TutorialOverlay: View {
             .accessibilityHidden(true)
     }
 
+    /// **Das Loch als messbares Element** — nur im Testlauf.
+    ///
+    /// Ein Loch ist ein Stück *nicht* gezeichnete Abdunklung; kein Testwerkzeug
+    /// kann es sehen, und „sieht falsch aus" ist keine Zahl. Diese durchsichtige
+    /// Fläche liegt genau darauf und macht daraus einen Rahmen, den eine Journey
+    /// gegen den Rahmen ihres Ziels halten kann. Ohne Berührung, ohne Farbe,
+    /// außerhalb des Testlaufs gar nicht erst gebaut.
+    @ViewBuilder
+    private var holeProbe: some View {
+        #if DEBUG
+        if UITestSupport.isActive {
+            Rectangle()
+                // Nicht `Color.clear`: SwiftUI wirft eine Fläche ohne Inhalt
+                // aus dem Barrierefreiheits-Baum, und dann misst die Journey
+                // nichts. Ein Tausendstel Deckkraft ist unsichtbar und da.
+                .fill(Color.black.opacity(0.001))
+                .frame(width: max(0, visualHole.width), height: max(0, visualHole.height))
+                .offset(x: visualHole.minX, y: visualHole.minY)
+                .allowsHitTesting(false)
+                .accessibilityElement()
+                .accessibilityAddTraits(.isImage)
+                .accessibilityLabel("Rundgang-Loch")
+                .accessibilityIdentifier("tutorial.hole")
+        }
+        #endif
+    }
+
     /// Was gezeichnet wird — nicht was gerade aufgelöst ist. Der Unterschied
     /// ist der gemeldete Ruckler: siehe `SpotlightTransition`.
     private var visualHole: CGRect { shownHole }
@@ -299,8 +327,10 @@ struct TutorialOverlay: View {
         guard let anchor = anchors[.navBarBottom] else { return nil }
         let bottom = proxy[anchor].maxY
         // Plausibilitätsgrenze wie unten: Darunter ist das keine Leiste,
-        // sondern ein Messfehler. Mit Suchfeld wird sie hoch, deshalb 220.
-        guard bottom > 40, bottom < 220 else { return nil }
+        // sondern ein Messfehler. Mit großem Titel **und** Suchfeld wird sie
+        // hoch — am 03.08. gemessen, seit der Marker wirklich unter der Leiste
+        // sitzt und nicht mehr über ihr.
+        guard bottom > 40, bottom < 320 else { return nil }
         let width = proxy.size.width - 2 * Theme.Spacing.md
         return CGRect(
             x: Theme.Spacing.md,
