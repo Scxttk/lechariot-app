@@ -97,8 +97,8 @@ final class RestartJourneyTests: XCTestCase {
         plz.tap()
         plz.typeText("01219")
         app.buttons["onboarding.primary"].tap()
-        app.buttons["onboarding.skip"].tap()
-        app.buttons["onboarding.skip"].tap()
+        app.buttons["onboarding.skip"].tap()      // Ketten: „Später"
+        app.buttons["onboarding.primary"].tap()   // Belohnung
         app.buttons["onboarding.primary"].tap()   // Einwilligung
     }
 }

@@ -83,16 +83,67 @@ final class OnboardingJourneyTests: XCTestCase {
                        "und der Hinweis hat sich erledigt")
     }
 
-    /// Every profile question is optional — a user who answers nothing still has
+    /// Every question is optional — a user who answers nothing still has
     /// to arrive in the app.
     func testOnboardingCanBeCompletedWithoutAnsweringAnything() {
         tapPrimary()               // welcome
         tapSkip()                  // "Ohne Namen weiter"
         enterPLZAndContinue()
-        tapSkip()                  // household: "Überspringen"
-        tapSkip()                  // diet: "Trifft nichts zu"
+        tapSkip()                  // Ketten: "Später"
+        tapPrimary()               // Belohnung
         tapPrimary()               // consent: "Fertig"
 
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+    }
+
+    /// **Ketten statt Fragen** (2026-08-05): Nach dem Ort kommt „Welche Märkte
+    /// magst du?" — die Ketten der Gegend als antippbare Chips, keine
+    /// Filialsuche. Die Fragen zu Haushalt und Ernährung stehen nicht mehr im
+    /// Assistenten.
+    func testAfterTheRegionComeTheLocalChainsNotTheProfileQuestions() {
+        tapPrimary()               // welcome
+        tapSkip()                  // name
+        enterPLZAndContinue()
+
+        // Die Fixture-Gegend (Dresden) hat vier Ketten im Verzeichnis.
+        let lidl = app.buttons["Lidl"]
+        XCTAssertTrue(lidl.waitForExistence(timeout: 15),
+                      "nach dem Ort gehören die Ketten der Gegend auf den Bildschirm")
+        XCTAssertTrue(app.buttons["Netto"].exists)
+        XCTAssertTrue(app.buttons["REWE"].exists)
+        XCTAssertFalse(app.staticTexts["Wie kaufst du ein?"].exists,
+                       "die Haushaltsfrage ist aus dem Assistenten raus")
+
+        lidl.tap()
+        XCTAssertTrue(lidl.isSelected, "ein Tipp merkt die Kette")
+        lidl.tap()
+        XCTAssertFalse(lidl.isSelected, "…und der zweite nimmt sie wieder raus")
+    }
+
+    /// **Der Belohnungsschritt zeigt echte Zahlen.** Ort und Ketten sollen
+    /// sichtbar etwas gebracht haben — die Fixture-Gegend hat 4 Ketten mit 5
+    /// Filialen im Verzeichnis, und genau die stehen da.
+    func testThePayoffScreenShowsTheRealNumbersOfTheArea() {
+        tapPrimary()               // welcome
+        tapSkip()                  // name
+        enterPLZAndContinue()
+        XCTAssertTrue(app.buttons["Lidl"].waitForExistence(timeout: 15))
+        app.buttons["Lidl"].tap()  // eine Kette merken
+        tapPrimary()               // Ketten → Belohnung
+
+        XCTAssertTrue(
+            app.staticTexts["4 Ketten, 5 Filialen in deiner Nähe."].waitForExistence(timeout: 15),
+            "die Belohnung muss die Zahlen der Gegend nennen, nicht irgendeinen Werbesatz"
+        )
+        // Die Zeile ist ein zusammengefasstes Element (Symbol + Satz), daher
+        // über das Label statt über `staticTexts` gesucht.
+        let liked = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "1 Kette hast du dir gemerkt."))
+            .firstMatch
+        XCTAssertTrue(liked.exists, "…und die getroffene Auswahl sichtbar machen")
+
+        tapPrimary()               // Belohnung → Einwilligung
+        tapPrimary()               // consent
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
     }
 
@@ -362,8 +413,8 @@ final class OnboardingJourneyTests: XCTestCase {
         nameField.typeText(name)
         tapPrimary()                       // name
         enterPLZAndContinue()
-        tapPrimary()                       // household
-        tapPrimary()                       // diet
+        tapPrimary()                       // Ketten („Welche Märkte magst du?")
+        tapPrimary()                       // Belohnung
         tapPrimary()                       // consent
     }
 

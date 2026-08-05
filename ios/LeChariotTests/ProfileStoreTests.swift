@@ -122,6 +122,44 @@ final class ProfileStoreTests: XCTestCase {
         XCTAssertFalse(store.profile.dietTags.contains(.vegan))
     }
 
+    // MARK: Gelikte Ketten (Onboarding „Welche Märkte magst du?")
+
+    func testLikedChainsToggleAndSurviveRecreation() {
+        let store = ProfileStore(defaults: defaults)
+        store.toggleLikedChain("Lidl")
+        store.toggleLikedChain("EDEKA")
+        store.toggleLikedChain("Lidl")   // wieder ab
+        XCTAssertEqual(store.likedChains, ["EDEKA"])
+        XCTAssertTrue(store.isLikedChain("EDEKA"))
+        XCTAssertFalse(store.isLikedChain("Lidl"))
+
+        let reopened = ProfileStore(defaults: defaults)
+        XCTAssertEqual(reopened.likedChains, ["EDEKA"],
+                       "die gemerkten Ketten liegen nur auf dem Gerät — dann müssen sie dort auch liegen bleiben")
+    }
+
+    /// Die Liste bleibt auf dem Gerät: `SyncedProfile` — das Einzige, was den
+    /// Server je erreicht — darf sie nicht tragen. Das Sync-Schema wird in
+    /// diesem Arbeitspaket bewusst nicht erweitert.
+    func testLikedChainsNeverLeaveTheDevice() throws {
+        let store = ProfileStore(defaults: defaults)
+        store.toggleLikedChain("Kaufland")
+
+        let json = try JSONEncoder().encode(SyncedProfile(profile: store.profile, plz: "01219"))
+        let text = try XCTUnwrap(String(data: json, encoding: .utf8))
+        XCTAssertFalse(text.contains("Kaufland"))
+        XCTAssertFalse(text.lowercased().contains("chain"))
+    }
+
+    func testResetClearsTheLikedChains() {
+        let store = ProfileStore(defaults: defaults)
+        store.toggleLikedChain("Penny")
+        store.resetAllData()
+        XCTAssertTrue(store.likedChains.isEmpty)
+        XCTAssertTrue(ProfileStore(defaults: defaults).likedChains.isEmpty,
+                      "auch auf der Platte — sonst erbt der nächste Anlauf eine fremde Auswahl")
+    }
+
     // MARK: Consent gate
 
     func testWithoutConsentNothingIsUploaded() async {

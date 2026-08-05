@@ -86,6 +86,15 @@ final class TutorialJourneyTests: XCTestCase {
                       "nach der Einwilligung muss der Rundgang angeboten werden")
         XCTAssertFalse(app.navigationBars["Einkaufsliste"].exists,
                        "das Angebot kommt vor der App, nicht über ihr")
+        // Seit dem 2026-08-05 mit **eigenem** Fortschrittspunkt: Vorher
+        // teilten sich Einwilligung und Angebot den sechsten, und die Leiste
+        // behauptete einen Bildschirm weniger, als der Weg hatte.
+        XCTAssertTrue(
+            app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label == %@", "Schritt 7 von 7"))
+                .firstMatch.exists,
+            "das Rundgang-Angebot trägt seinen eigenen, letzten Punkt"
+        )
     }
 
     /// „Später" ist kein Umweg: Es führt direkt in die Liste, und der Rundgang
@@ -483,8 +492,8 @@ final class TutorialJourneyTests: XCTestCase {
         plz.tap()
         plz.typeText("01219")
         tapPrimary()
-        tapSkip()                  // Haushalt
-        tapSkip()                  // Ernährung
+        tapSkip()                  // Ketten: „Später"
+        tapPrimary()               // Belohnung
         tapPrimary()               // Einwilligung
     }
 

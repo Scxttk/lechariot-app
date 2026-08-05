@@ -13,6 +13,9 @@ struct LocalDataExport: Codable, Equatable {
     let tripsPerWeek: Int
     let weeklyBudget: Int?
     let dietTags: [String]
+    /// Ketten aus „Welche Märkte magst du?" — liegen nur auf dem Gerät,
+    /// gehören aber genau deshalb in diese Zusage.
+    let likedChains: [String]
     let hasConsentedToSync: Bool
     let regions: [String]
     let branches: [Branch]
@@ -60,6 +63,7 @@ extension LocalDataExport {
             tripsPerWeek: profile.profile.rhythm.rawValue,
             weeklyBudget: profile.profile.budget?.rawValue,
             dietTags: profile.profile.dietTags.map(\.rawValue).sorted(),
+            likedChains: profile.likedChains,
             hasConsentedToSync: profile.profile.hasConsentedToSync,
             regions: regions.regions,
             branches: regions.favoriteMarkets.map {
