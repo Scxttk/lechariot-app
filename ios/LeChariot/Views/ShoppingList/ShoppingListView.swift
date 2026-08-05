@@ -511,13 +511,14 @@ struct ShoppingListView: View {
     /// übrig. Also weicht der Streifen — aber **nicht** stillschweigend: Der
     /// Winkel-Knopf links im Feld holt ihn zurück, und genau dafür gibt es ihn.
     ///
-    /// Die zweite Ausnahme ist der Rundgang. Sein Rahmen „Oder nimm einen
-    /// Vorschlag" hängt am Anker der Kacheln; ein Tester, der im Rahmen davor
-    /// wirklich etwas tippt, hätte den Rahmen sonst übersprungen bekommen —
-    /// und zwar genau dann, wenn er der Aufforderung gefolgt ist.
+    /// Die zweite Ausnahme war der Rundgang: Sein Vorschlags-Rahmen hing am
+    /// Anker der Kacheln. Den Rahmen gibt es seit der Kürzung vom 05.08.
+    /// nicht mehr, und die Angaben-Schicht bleibt während des Rundgangs
+    /// ohnehin zu (`activeFlowItem`) — die Bedingung hier braucht ihn also
+    /// nicht mehr zu kennen.
     private var showsStapleSurface: Bool {
         guard surfaceIsExpanded else { return false }
-        return !detailPanelIsUp || suggestionChoice == true || tutorial?.isRunning == true
+        return !detailPanelIsUp || suggestionChoice == true
     }
 
     @ViewBuilder
@@ -739,30 +740,17 @@ struct ShoppingListView: View {
     /// den Chips, die man ihr gerade gibt, und das Panel bliebe grau, während
     /// die Liste die Angabe schon trägt.
     private var activeFlowItem: ShoppingItem? {
-        // **Während des Rundgangs zeigt das Panel genau dort, wo sein Rahmen es
-        // erklärt — und sonst nirgends.** Der erste Rahmen lädt zum Tippen ein
-        // („Probier es gleich aus"); wer das tut, hätte die Schicht sonst über
-        // den ganzen Rundgang stehen und nähme damit den datenabhängigen
-        // Rahmen darunter (Plan-Karte, Treffer-Zeile) ihren Platz — die
-        // überspringen sich dann selbst, und zwar ausgerechnet bei dem, der
-        // der Aufforderung gefolgt ist.
-        if tutorial?.isRunning == true { return tourPanelItem }
+        // **Während des Rundgangs bleibt die Angaben-Schicht zu.** Der erste
+        // Rahmen lädt zum Tippen ein („Probier es gleich aus"); wer das tut,
+        // hätte die Schicht sonst über den ganzen Rundgang stehen und nähme
+        // damit dem Plan-Rahmen darunter seinen Platz — der überspringt sich
+        // dann selbst, und zwar ausgerechnet bei dem, der der Aufforderung
+        // gefolgt ist. Ihren eigenen Rahmen hatte die Schicht bis zum 05.08.;
+        // seit der Kürzung auf den Kern-Loop erklärt sie ein Einmal-Tipp an
+        // Ort und Stelle (TipKit, eigenes Arbeitspaket).
+        if tutorial?.isRunning == true { return nil }
         guard let id = addFlow.activeID else { return nil }
         return list.items.first { $0.id == id }
-    }
-
-    /// Was der Rundgang zeigen will. Sein Rahmen zu den Angaben darf nicht
-    /// davon abhängen, dass der Tester im Rahmen davor wirklich getippt hat —
-    /// dann steht dort der zuletzt angelegte Artikel, sonst der letzte
-    /// Beispiel-Artikel.
-    private var tourPanelItem: ShoppingItem? {
-        guard tutorial?.isRunning == true, tutorial?.step.showsDetailPanel == true else {
-            return nil
-        }
-        if let id = addFlow.activeID, let item = list.items.first(where: { $0.id == id }) {
-            return item
-        }
-        return list.uncheckedItems.last
     }
 
     /// **Ein Blatt schlägt das Panel.** Beide zeigen denselben Wortschatz; wer

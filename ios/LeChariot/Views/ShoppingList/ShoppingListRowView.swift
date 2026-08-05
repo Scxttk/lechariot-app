@@ -208,11 +208,12 @@ struct ShoppingListRowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
 
         // **Auch diese Zeile trägt den Anker** — derselbe Grund wie im Zweig
-        // ohne Filialen darüber, nur teurer bezahlt: Ohne ihn hatte der Rahmen
-        // „Das günstigste Angebot" kein Ziel, sobald der **erste offene**
-        // Artikel diese Woche nirgends im Angebot war, und übersprang sich nach
-        // 1,2 s selbst. Am 03.08. gemessen — ein Wort ohne Treffer genügt, und
-        // auf einer echten Liste steht selten nur Gefundenes.
+        // ohne Filialen darüber, nur teurer bezahlt: Ohne ihn hatte der
+        // Treffer-Rahmen des Rundgangs kein Ziel, sobald der **erste offene**
+        // Artikel diese Woche nirgends im Angebot war, und übersprang sich
+        // nach 1,2 s selbst. Am 03.08. gemessen. Der Rahmen selbst ist seit
+        // der Kürzung vom 05.08. im Plan-Rahmen aufgegangen; der Anker bleibt
+        // für die Kontext-Tipps liegen, die seine Inhalte übernehmen.
         Group {
             if let onShowMatches {
                 Button(action: onShowMatches) { text }

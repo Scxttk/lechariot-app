@@ -85,7 +85,9 @@ struct OnboardingFlowView: View {
                 tutorial.start(origin: .onboarding, hasMarkets: store.hasFavorites)
                 finishOnboarding()
             } onSkip: {
-                tutorial.decline()
+                // Auch „Später" führt zur Markt-Frage, wenn Filialen fehlen —
+                // Überspringer sahen sie vorher nie (05.08.).
+                tutorial.decline(hasMarkets: store.hasFavorites)
                 finishOnboarding()
             }
         }

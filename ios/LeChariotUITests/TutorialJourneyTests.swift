@@ -48,6 +48,7 @@ final class TutorialJourneyTests: XCTestCase {
         completeOnboarding()
         XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15))
         app.buttons["onboarding.skip"].tap()          // gesehen: „Später" zählt
+        answerMarketPrompt(choose: false)             // und auch das Markt-Sheet zählt
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
 
         app.terminate()
@@ -88,14 +89,18 @@ final class TutorialJourneyTests: XCTestCase {
                        "das Angebot kommt vor der App, nicht über ihr")
     }
 
-    /// „Später" ist kein Umweg: Es führt direkt in die Liste, und der Rundgang
-    /// wird nicht noch einmal angeboten.
-    func testLaterGoesStraightToTheListAndIsNotAskedAgain() {
+    /// **„Später" führt seit dem 05.08. zur Markt-Frage** — vorher sahen
+    /// Überspringer sie nie: Sie hing nur am Ende des Rundgangs, und den
+    /// hatten sie gerade abgelehnt. Das Sheet kommt einmal, ist wegwischbar,
+    /// und danach steht die Liste da; der Rundgang wird nicht noch einmal
+    /// angeboten, das Sheet auch nicht.
+    func testLaterShowsTheMarketSheetOnceAndThenTheList() {
         launch(withTour: true)
         completeOnboarding()
         XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15))
         app.buttons["onboarding.skip"].tap()
 
+        answerMarketPrompt(choose: false)
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
         XCTAssertFalse(tourCard.waitForExistence(timeout: 3),
                        "abgelehnt heißt abgelehnt")
@@ -104,6 +109,8 @@ final class TutorialJourneyTests: XCTestCase {
         launch(withTour: true, keepState: true)
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
         XCTAssertFalse(tourCard.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["marketPrompt.title"].waitForExistence(timeout: 3),
+                       "einmal beantwortet — das Sheet darf den Neustart nicht überleben")
     }
 
     // MARK: Der Rundgang
@@ -167,7 +174,7 @@ final class TutorialJourneyTests: XCTestCase {
         tapThrough()
 
         XCTAssertFalse(tourCard.exists, "der Rundgang muss von allein zum Ende kommen")
-        answerMarketQuestion("Nein")
+        answerMarketPrompt(choose: false)
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
                       "danach steht der Nutzer wieder in der Liste")
     }
@@ -178,7 +185,7 @@ final class TutorialJourneyTests: XCTestCase {
         startTour()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
         app.buttons["tutorial.skip"].tap()
-        answerMarketQuestion("Nein")
+        answerMarketPrompt(choose: false)
 
         let field = app.textFields["list.input"]
         XCTAssertTrue(field.waitForExistence(timeout: 15))
@@ -214,7 +221,7 @@ final class TutorialJourneyTests: XCTestCase {
         tapThrough()
 
         XCTAssertFalse(tourCard.exists, "der Rundgang muss zu Ende sein, bevor gezählt wird")
-        answerMarketQuestion("Nein")
+        answerMarketPrompt(choose: false)
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
         // Ebenfalls `buttons` — siehe oben, sonst prüft die Schleife nichts.
         for demo in ["Milch", "Butter", "Kaffee"] {
@@ -224,25 +231,23 @@ final class TutorialJourneyTests: XCTestCase {
         }
     }
 
-    /// **Der Befund, mit dem diese Runde angefangen hat.**
+    /// **Der Befund, mit dem die Rundgang-Runde vom 03.08. angefangen hat —
+    /// auf den gekürzten Rundgang übertragen.**
     ///
-    /// Über einer Liste ohne Filialen hatten die Rahmen „plan" und „match"
-    /// kein Ziel: Die Plan-Karte wurde gar nicht gebaut, und die Treffer-Zeile
-    /// war ein grauer Satz ohne Anker. Beide überspringen sich dann über die
-    /// Schonfrist von 1,2 s — rund sechs Sekunden Abdunklung über Bedienelemente,
-    /// die nicht auf dem Bildschirm sind, zwischendurch zwei Karten übereinander.
+    /// Über einer Liste ohne Filialen hatte der Plan-Rahmen einst kein Ziel:
+    /// Die Plan-Karte wurde gar nicht gebaut, der Rahmen übersprang sich nach
+    /// der Schonfrist von 1,2 s selbst. Heute steht an ihrer Stelle die
+    /// `NoMarketsCard` mit demselben Anker — und der Rahmen legt seine
+    /// Beispiel-Artikel selbst, darf also auch nicht daran hängen, dass der
+    /// Tester im ersten Rahmen wirklich getippt hat (niemand tippt hier).
     ///
-    /// Gewartet wird hier **länger als die Schonfrist**, bevor gelesen wird:
+    /// Gewartet wird **länger als die Schonfrist**, bevor gelesen wird:
     /// Ein Rahmen mit Ziel bleibt beliebig lange stehen, ein Rahmen ohne wäre
     /// nach 1,2 s weitergesprungen. Genau dieser Unterschied ist die Prüfung.
-    func testTheFramesAboutOffersHaveATargetEvenWithoutBranches() {
+    func testThePlanFrameStandsEvenWithoutBranchesAndWithoutTyping() {
         startTour()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
-        next.tap()                                   // → details
-        Thread.sleep(forTimeInterval: 0.5)
-        next.tap()                                   // → chips
-        Thread.sleep(forTimeInterval: 0.5)
         next.tap()                                   // → plan
         Thread.sleep(forTimeInterval: 2.5)           // über die Schonfrist hinaus
         XCTAssertTrue(
@@ -250,45 +255,20 @@ final class TutorialJourneyTests: XCTestCase {
             "Der Plan-Rahmen hat kein Ziel und hat sich übersprungen: "
             + app.staticTexts["tutorial.card"].label
         )
-
-        next.tap()                                   // → match
-        Thread.sleep(forTimeInterval: 2.5)
-        XCTAssertTrue(
-            app.staticTexts["tutorial.card"].label.contains("Das günstigste Angebot"),
-            "Der Treffer-Rahmen hat kein Ziel und hat sich übersprungen: "
-            + app.staticTexts["tutorial.card"].label
-        )
+        XCTAssertTrue(app.staticTexts["Noch keine Filiale gewählt"].exists,
+                      "Das Ziel des Rahmens ist ohne Filialen die NoMarketsCard — und die fehlt")
     }
 
-    /// **Der neue Rahmen bringt sein Ziel selbst mit** (03.08.).
-    ///
-    /// Er erklärt die Angaben-Schicht — die man ohne Hinweis nicht findet, weil
-    /// sie nur nach dem Anlegen dasteht. Er darf deshalb nicht davon abhängen,
-    /// dass der Tester im Rahmen davor wirklich getippt hat. Geprüft wie oben
-    /// **über die Schonfrist hinaus**: Ein Rahmen ohne Ziel wäre nach 1,2 s
-    /// weitergesprungen.
-    func testTheDetailsFrameStandsEvenWhenNobodyTypedAnything() {
-        startTour()
-        XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
-
-        next.tap()                                   // → details
-        Thread.sleep(forTimeInterval: 2.5)
-
-        XCTAssertTrue(
-            app.staticTexts["tutorial.card"].label.contains("Menge, Größe, Sorte"),
-            "Der Angaben-Rahmen hat sich übersprungen: "
-            + app.staticTexts["tutorial.card"].label
-        )
-        XCTAssertTrue(app.buttons["list.detailPanel.more"].exists,
-                      "Die Schicht, die der Rahmen erklärt, steht gar nicht da")
-    }
-
-    // MARK: Die Frage am Ende
+    // MARK: Das Markt-Sheet am Ende
 
     /// **Der Ablauf, für den der ganze Umbau da ist** (Scotts Entscheidung vom
-    /// 2026-07-31): Der Assistent endet in der Liste, der Rundgang zeigt sie,
-    /// und erst am Ende steht die Filialauswahl — als Frage, nicht als Pflicht.
-    func testTheQuestionAtTheEndLeadsToTheBranchPicker() {
+    /// 2026-07-31, seit dem 05.08. als gestaltetes Sheet statt als
+    /// System-Alert): Der Assistent endet in der Liste, der Rundgang zeigt
+    /// sie, und erst am Ende steht die Filialauswahl — als Angebot, nicht als
+    /// Pflicht. „Märkte wählen" führt in die Filialauswahl **im selben
+    /// Sheet**; erst schließen und dann neu öffnen wäre der Zwei-Sheets-Tanz,
+    /// der in SwiftUI regelmäßig den zweiten verliert.
+    func testTheMarketSheetAtTheEndLeadsToTheBranchPicker() {
         startTour()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
         XCTAssertTrue(
@@ -297,12 +277,12 @@ final class TutorialJourneyTests: XCTestCase {
         )
 
         tapThrough()
-        answerMarketQuestion("Ja")
+        answerMarketPrompt(choose: true)
 
         // Seit dem 2026-08-01 liegen die Filialen hinter der Kettenzeile.
         let chain = app.buttons["picker.chain.Lidl"]
         XCTAssertTrue(chain.waitForExistence(timeout: 15),
-                      "„Ja“ muss in der Filialauswahl landen")
+                      "„Märkte wählen“ muss in der Filialauswahl landen")
         chain.tap()
         let branch = app.buttons[fixtureBranch]
         XCTAssertTrue(branch.waitForExistence(timeout: 15))
@@ -316,20 +296,20 @@ final class TutorialJourneyTests: XCTestCase {
                        "mit einer Filiale hat der Leerzustand nichts mehr zu melden")
     }
 
-    /// „Nein" ist eine vollwertige Antwort: zurück in die Liste, ohne Umweg und
-    /// ohne dass die Frage wiederkommt.
-    func testAnsweringNoGoesBackToTheListAndStaysAnswered() {
+    /// „Später" ist eine vollwertige Antwort: zurück in die Liste, ohne Umweg
+    /// und ohne dass das Sheet wiederkommt.
+    func testLaterGoesBackToTheListAndStaysAnswered() {
         startTour()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
         tapThrough()
-        answerMarketQuestion("Nein")
+        answerMarketPrompt(choose: false)
 
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
-        XCTAssertFalse(app.alerts["Märkte jetzt auswählen?"].exists,
+        XCTAssertFalse(app.staticTexts["marketPrompt.title"].exists,
                        "eine beantwortete Frage darf nicht wiederkommen")
         // Und der Weg bleibt offen — im Leerzustand der Liste, wo er hingehört.
         XCTAssertTrue(app.buttons["list.chooseMarkets"].exists,
-                      "„Nein“ darf keine Sackgasse sein")
+                      "„Später“ darf keine Sackgasse sein")
     }
 
     // MARK: Aus den Einstellungen
@@ -337,11 +317,18 @@ final class TutorialJourneyTests: XCTestCase {
     /// **Die Bedingung, die bestehende Installationen schützt.** Wer den
     /// Rundgang aus den Einstellungen noch einmal ansieht, wird am Ende nicht
     /// nach Filialen gefragt — für ihn ändert sich durch den Umbau nichts.
+    ///
+    /// Seit dem 05.08. schützen hier zwei Regeln zugleich: der Ursprung
+    /// (Einstellungen fragen nie) und der Einmal-Merker (das „Später" nach dem
+    /// Angebot hat die Frage schon verbraucht). Die Journey prüft das
+    /// Zusammenspiel Ende-zu-Ende; die Ursprungs-Regel allein steht präzise in
+    /// `TutorialStoreTests.testATourFromTheSettingsNeverAsks`.
     func testATourFromTheSettingsNeverAsksForMarkets() {
         launch(withTour: true)
         completeOnboarding()
         XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15))
         app.buttons["onboarding.skip"].tap()
+        answerMarketPrompt(choose: false)
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
 
         openTab("Einstellungen")
@@ -352,21 +339,21 @@ final class TutorialJourneyTests: XCTestCase {
 
         tapThrough()
 
-        XCTAssertFalse(app.alerts["Märkte jetzt auswählen?"].waitForExistence(timeout: 5),
+        XCTAssertFalse(app.staticTexts["marketPrompt.title"].waitForExistence(timeout: 5),
                        "aus den Einstellungen wird nicht gefragt")
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
     }
 
-    /// **Der neue Vorschau-Rahmen — und der Tab-Wechsel, den er auslöst.**
+    /// **Der Rahmen, für den der Rundgang den Tab wechselt.**
     ///
-    /// Zwei Dinge auf einmal, weil sie zusammengehören: Der Rahmen gibt es nur
-    /// mit Filialen (ohne sie steht im Angebote-Tab kein Bildschirm), und sein
-    /// Ziel ist die Navigationsleiste — die UIKit zeichnet und die deshalb
-    /// keinen Anker trägt. Beides kann still schiefgehen: Ein Rahmen ohne
-    /// aufgelöstes Ziel überspringt sich nach 1,2 s selbst, und niemand merkt
-    /// es. Deshalb wird **über die Schonfrist hinaus** gewartet, bevor gelesen
-    /// wird.
-    func testThePreviewFrameStandsOnTheOffersTab() {
+    /// Der letzte Rahmen spielt in den Einstellungen; sein Ziel ist die
+    /// Vereinigung aus Filial-Zeile und Rundgang-Knopf. Der Wechsel kann
+    /// still schiefgehen: Ein Rahmen, dessen Ziel nach dem Tab-Wechsel nicht
+    /// auftaucht, überspringt sich nach 1,2 s selbst, und niemand merkt es.
+    /// Deshalb wird **über die Schonfrist hinaus** gewartet, bevor gelesen
+    /// wird. (Bis zum 05.08. prüfte das der Vorschau-Rahmen auf dem
+    /// Angebote-Tab — der ist mit der Kürzung in die Kontext-Tipps gezogen.)
+    func testTheSettingsFrameStandsOnTheSettingsTab() {
         app.launchArguments = ["-uiTesting", "-uiTestingTutorial", "-uiTestingOnboarded"]
         app.launch()
 
@@ -376,20 +363,20 @@ final class TutorialJourneyTests: XCTestCase {
         restart.tap()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
-        // input → details → chips → plan → match → check → tabs → nextWeek
-        for _ in 0..<7 {
+        // input → plan → angebote → settings
+        for _ in 0..<3 {
             next.tap()
             Thread.sleep(forTimeInterval: 0.9)
         }
         Thread.sleep(forTimeInterval: 2.5)
 
         XCTAssertTrue(
-            app.staticTexts["tutorial.card"].label.contains("Was ab Montag billiger wird"),
-            "Der Vorschau-Rahmen hat kein Ziel und hat sich übersprungen: "
+            app.staticTexts["tutorial.card"].label.contains("Hier stellst du alles um"),
+            "Der Einstellungs-Rahmen hat kein Ziel und hat sich übersprungen: "
             + app.staticTexts["tutorial.card"].label
         )
-        XCTAssertTrue(app.buttons["offers.nextWeek"].exists,
-                      "Der Rundgang steht nicht auf dem Angebote-Tab")
+        XCTAssertTrue(app.buttons["settings.tutorial"].exists,
+                      "Der Rundgang steht nicht auf dem Einstellungen-Tab")
     }
 
     func testTheTourCanBeStartedAgainFromTheSettings() {
@@ -397,6 +384,10 @@ final class TutorialJourneyTests: XCTestCase {
         completeOnboarding()
         XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15))
         app.buttons["onboarding.skip"].tap()
+        // „Später" ohne Filialen führt seit dem 05.08. ins Markt-Sheet — es
+        // liegt über der Tab-Leiste, und ohne Antwort käme dieser Test gar
+        // nicht erst in die Einstellungen.
+        answerMarketPrompt(choose: false)
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
 
         openTab("Einstellungen")
@@ -404,8 +395,6 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(restart.waitForExistence(timeout: 15))
         restart.tap()
 
-        Thread.sleep(forTimeInterval: 3)
-        print("HIERARCHY-START\n\(app.debugDescription)\nHIERARCHY-END")
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
         app.buttons["tutorial.skip"].tap()
         // Der Rundgang spielt auf der Liste, also muss er den Tab mitnehmen —
@@ -488,15 +477,16 @@ final class TutorialJourneyTests: XCTestCase {
         tapPrimary()               // Einwilligung
     }
 
-    /// Die Frage am Ende des Rundgangs. Sie steht auf jedem Weg aus einem
-    /// Rundgang heraus, der aus dem Onboarding kam — „Fertig" wie
-    /// „Tour beenden" —, und muss beantwortet werden, bevor die Liste wieder
-    /// anfassbar ist.
-    private func answerMarketQuestion(_ answer: String) {
-        let question = app.alerts["Märkte jetzt auswählen?"]
-        XCTAssertTrue(question.waitForExistence(timeout: 10),
-                      "Nach dem Rundgang aus dem Onboarding muss nach Filialen gefragt werden")
-        question.buttons[answer].tap()
+    /// Das Markt-Sheet nach dem Onboarding. Es steht auf jedem Weg ohne
+    /// Filialen — nach dem Rundgang („Fertig" wie „Tour beenden") und nach
+    /// dem abgelehnten Angebot — und muss beantwortet werden, bevor die Liste
+    /// wieder anfassbar ist. Seit dem 05.08. ein gestaltetes Sheet, kein
+    /// System-Alert mehr.
+    private func answerMarketPrompt(choose: Bool) {
+        let title = app.staticTexts["marketPrompt.title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10),
+                      "Ohne Filialen muss das Markt-Sheet stehen")
+        app.buttons[choose ? "marketPrompt.choose" : "marketPrompt.later"].tap()
     }
 
     /// Die Tab-Leiste ist auf aktuellem iOS ein schwebendes Steuerelement —

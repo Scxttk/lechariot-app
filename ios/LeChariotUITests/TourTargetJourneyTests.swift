@@ -80,20 +80,26 @@ final class TourTargetJourneyTests: XCTestCase {
 
     // MARK: Der Anfang
 
-    /// **Der Rahmen zu den Angaben leuchtete die Eingabezeile aus.**
+    /// **Der Plan-Rahmen muss die Karte ausleuchten, von der er redet.**
     ///
-    /// Gemessen am 03.08. gegen den Stand `fb8699b`: Das Loch stand auf
-    /// `(-16, 723, 418, 186)`, die Schicht, die der Rahmen erklärt, auf
-    /// `(311, 569, 75, 32)` — **volle 186 pt daneben**, exakt eine Panelhöhe
-    /// tiefer. Ursache war `.move(edge: .bottom)` an der Schicht: Der Anker
-    /// nimmt den Versatz der Einblendung mit und wird danach nicht noch einmal
-    /// gemeldet. Was Scott sah, war ein Loch, das beim Weiterschalten von allein
-    /// nach unten wanderte statt auf sein Ziel.
-    func testTheDetailsFrameHighlightsThePanelAndNotTheInputBar() {
+    /// Der Vorfahre dieses Tests fing den Fund vom 03.08.: Ein Loch, das um
+    /// eine ganze Panelhöhe neben seinem Ziel stand, weil der Anker den
+    /// Versatz einer Einblendung mitgenommen hatte. Der Angaben-Rahmen ist mit
+    /// der Kürzung vom 05.08. in die Kontext-Tipps gezogen; die Rechnung
+    /// „Loch deckt Ziel" wird jetzt am Plan-Rahmen geführt — dem Rahmen mit
+    /// dem Kernversprechen, dessen Karte er selbst erst herbeisät.
+    func testThePlanFrameHighlightsThePlanCard() {
         startTourFromSettings()
-        advance(to: "Menge, Größe, Sorte")
+        advance(to: "Ein Einkauf, ein Markt")
         settle()
-        assertHoleCovers(app.buttons["list.detailPanel.more"], "die Angaben-Schicht")
+        // Die Kopfzeile der Karte ist das messbare Element — die Karte selbst
+        // trägt keinen Bezeichner, ihre Zusammenfassung schon (siehe
+        // `AccessibilityAuditTests.testThePlanCardIsReadAsAWhole`).
+        let summary = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@ OR label BEGINSWITH %@",
+                                  "Am besten zu", "Kein Markt hat diese Woche"))
+            .firstMatch
+        assertHoleCovers(summary, "die Plan-Karte")
     }
 
     /// Die Gegenrichtung, damit der Fix nicht einfach „alles ist ein großes
@@ -104,35 +110,41 @@ final class TourTargetJourneyTests: XCTestCase {
         assertHoleCovers(app.textFields["list.input"], "die Eingabezeile")
     }
 
-    // MARK: Der vorletzte Rahmen
+    // MARK: Die beiden Band-Rahmen
 
-    /// **Der Rahmen zur Vorschau leuchtete die Uhr aus.**
-    ///
-    /// Sein Ziel ist der Knopf „Nächste Woche" oben links. Gemessen gegen
-    /// `fb8699b`: Loch `(12, 0, 378, 66)` — die Statusleiste. Der Marker für
-    /// `navBarBottom` lag außerhalb des `NavigationStack` und meldete damit die
-    /// Kante **über** der Leiste statt darunter. Jetzt: `(12, 0, 378, 230)`.
-    func testThePreviewFrameHighlightsTheNextWeekButton() {
+    /// Der Angebote-Rahmen zeigt auf die Tab-Leiste — die UIKit zeichnet und
+    /// die deshalb keinen Anker trägt, sondern ein aus der sicheren Fläche
+    /// hergeleitetes Band (`TutorialOverlay.tabBarBand`). Genau solche
+    /// Herleitungen sind schon zweimal danebengegangen (Statusleiste statt
+    /// Navigationsleiste, 03.08.); deshalb wird gerechnet statt geglaubt.
+    func testTheOffersFrameHighlightsTheTabBar() {
         startTourFromSettings()
-        advance(to: "Was ab Montag billiger wird")
+        advance(to: "Was diese Woche günstig ist")
         settle()
-        assertHoleCovers(app.buttons["offers.nextWeek"], "der Knopf „Nächste Woche“")
+        assertHoleCovers(app.buttons["Angebote"].firstMatch, "der Angebote-Tab")
+    }
+
+    /// Und der letzte Rahmen: die Vereinigung aus Filial-Zeile und
+    /// Rundgang-Knopf in den Einstellungen — nach einem Tab-Wechsel, dessen
+    /// Anker erst hinter der Überblendung eintreffen.
+    func testTheSettingsFrameHighlightsBothItsTargets() {
+        startTourFromSettings()
+        advance(to: "Hier stellst du alles um")
+        settle()
+        assertHoleCovers(app.buttons["settings.tutorial"], "der Rundgang-Knopf")
     }
 
     // MARK: Der Rahmen, der sich selbst übersprang
 
-    /// **Ein Wort ohne Treffer genügte, und der Rundgang schaltete allein weiter.**
+    /// **Ein Wort ohne Treffer durfte den Rundgang nie weiterschalten.**
     ///
-    /// Der Rahmen „Das günstigste Angebot" hängt am Anker der Treffer-Kachel.
-    /// Hat der **erste offene** Artikel diese Woche nirgends ein Angebot, gab es
-    /// die Kachel nicht — nur den grauen Satz „Diese Woche nirgends im
-    /// Angebot", und der trug keinen Anker. Ohne Ziel überspringt sich ein
-    /// Rahmen nach 1,2 s selbst. Auf einer echten Einkaufsliste steht selten
-    /// nur Gefundenes.
-    ///
-    /// Geprüft wird **über die Schonfrist hinaus**: Genau dieser Unterschied
-    /// ist die Behauptung.
-    func testTheMatchFrameStandsWhenTheFirstItemHasNoOffer() {
+    /// Der alte Treffer-Rahmen hing am Anker der Treffer-Kachel; hatte der
+    /// erste offene Artikel kein Angebot, übersprang er sich nach 1,2 s
+    /// selbst. Sein Inhalt steckt jetzt im Plan-Rahmen, und der hängt an der
+    /// Plan-Karte — die er über seine Beispiel-Artikel selbst herbeisät. Ob
+    /// diese Rettung trägt, prüft genau dieser Fall: erster Artikel ohne
+    /// Treffer, **über die Schonfrist hinaus** gewartet.
+    func testThePlanFrameStandsWhenTheFirstItemHasNoOffer() {
         app.launchArguments = ["-uiTesting", "-uiTestingOnboarded",
                                "-uiTestingOnboardedThreeChains", "-uiTestingTutorial"]
         app.launch()
@@ -151,10 +163,10 @@ final class TourTargetJourneyTests: XCTestCase {
         restart.tap()
         XCTAssertTrue(card.waitForExistence(timeout: 20))
 
-        advance(to: "Das günstigste Angebot")
+        advance(to: "Ein Einkauf, ein Markt")
         settle()
         XCTAssertTrue(
-            card.label.contains("Das günstigste Angebot"),
+            card.label.contains("Ein Einkauf, ein Markt"),
             "Der Rahmen hat sich selbst übersprungen: \(card.label)"
         )
     }
@@ -195,17 +207,32 @@ final class TourTargetJourneyTests: XCTestCase {
     /// Gemessen wird die mittlere Helligkeit **in der Fläche der Karte**,
     /// unmittelbar nach dem Tipp. Die Karte ist hell (Sandton); gegen
     /// `fb8699b` liegt der Wert bei nahezu 0.
+    ///
+    /// **Gemessen wird die Fläche, in der die Karte danach steht — nicht die
+    /// davor.** Die Karte wandert mit dem Loch: Der Angebote-Rahmen leuchtet
+    /// die Tab-Leiste unten aus, die Karte steht darüber; der
+    /// Einstellungs-Rahmen leuchtet zwei Zeilen in der Bildmitte aus, die
+    /// Karte rutscht darunter. Ein vor dem Tipp gemerkter Ausschnitt liegt
+    /// nach dem Wechsel über abgedunkeltem Hintergrund und klagte die
+    /// Abdunklung an, wo die Karte nur umgezogen ist (05.08. gemessen: alte
+    /// Fläche 0,19 — neue Fläche im selben Bild 0,88). Der Bildschirmabzug
+    /// entsteht mitten in der Überblendung, der Ausschnitt wird danach
+    /// erfragt; die Karte steht zu diesem Zeitpunkt bereits an ihrem Platz.
     func testTheCardSurvivesTheChangeToTheLastFrame() {
         startTourFromSettings()
-        advance(to: "Was ab Montag billiger wird")
+        advance(to: "Was diese Woche günstig ist")
         settle()
 
-        let cardArea = card.frame
         next.tap()
         // Mitten in der Überblendung: 0,15 s abblenden, 0,10 s halten,
         // 0,20 s aufblenden — siehe `TourTabTransition.standard`.
         Thread.sleep(forTimeInterval: 0.18)
-        let helligkeit = meanLuminance(of: XCUIScreen.main.screenshot(), in: cardArea)
+        let shot = XCUIScreen.main.screenshot()
+
+        settle()
+        XCTAssertTrue(card.label.contains("Hier stellst du alles um"),
+                      "Der Wechsel ist gar nicht angekommen: \(card.label)")
+        let helligkeit = meanLuminance(of: shot, in: card.frame)
 
         XCTAssertGreaterThan(
             helligkeit, 0.35,
