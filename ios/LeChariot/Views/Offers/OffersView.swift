@@ -82,6 +82,12 @@ struct OffersView: View {
     @State private var browser = OfferBrowser()
     @State private var selectedOffer: Offer?
 
+    /// Die Einmal-Tipps und die Ernährungsfrage — optional, damit Previews
+    /// ohne sie auskommen. Siehe `ContextTipStore`.
+    @Environment(ContextTipStore.self) private var tips: ContextTipStore?
+    /// Nur für die Ernährungsfrage — ebenfalls optional, aus demselben Grund.
+    @Environment(ProfileStore.self) private var profile: ProfileStore?
+
     private var chains: [String] {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
     }
@@ -129,6 +135,16 @@ struct OffersView: View {
                         offer: offer,
                         favoriteMarkets: favoriteMarkets,
                         historyRepository: priceHistoryRepository
+                    )
+                }
+                // Jeder Tab-Wechsel hierher ruft das erneut; einmal je Sitzung
+                // zählen ist Sache des Stores. `nextWeekAvailable` ist Schalter
+                // **und** Filialen: Ohne Filialen steht dieser Bildschirm gar
+                // nicht (siehe `ContentView.allRegionScoped`), aber die Fassung
+                // ohne Flag hat schlicht keinen Knopf „Nächste Woche".
+                .onAppear {
+                    tips?.offersAppeared(
+                        nextWeekAvailable: FeatureFlags.nextWeekPreview
                     )
                 }
         }
@@ -313,6 +329,17 @@ struct OffersView: View {
             if store.isStale {
                 staleBanner
             }
+            // Der Vorschau-Tipp steht oben, direkt unter dem Knopf, den er
+            // erklärt — siehe `ContextTipCard`.
+            Section {
+                ContextTipCard(store: tips, screen: .offers)
+                    .listRowInsets(EdgeInsets(
+                        top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
+                        bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
+                    ))
+            }
+            .listRowBackground(Color.clear)
+            dietPrompt
             let visible = browser.visible(in: store.offers)
             if visible.isEmpty {
                 // Die drei Sackgassen stehen seit dem 2026-08-02 in
@@ -352,6 +379,26 @@ struct OffersView: View {
         // geholt und nicht die der Zeilen darüber.
         .task(id: prefetchURLs.map(\.absoluteString)) {
             OfferImageLoader.shared.prefetch(prefetchURLs)
+        }
+    }
+
+    /// Die Ernährungsfrage — nur über einer geladenen Liste, nur nach dem
+    /// zweiten Besuch, nur bis zur ersten Antwort. Regeln und Begründung:
+    /// `ContextTipRules.showsDietPrompt` und `DietPromptCard`.
+    @ViewBuilder
+    private var dietPrompt: some View {
+        if let profile, let tips,
+           tips.showsDietPrompt(dietAnswered: !profile.profile.dietTags.isEmpty) {
+            Section {
+                DietPromptCard(profile: profile) {
+                    withAnimation(.snappy) { tips.dismissDietPrompt() }
+                }
+                .listRowInsets(EdgeInsets(
+                    top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
+                    bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
+                ))
+            }
+            .listRowBackground(Color.clear)
         }
     }
 

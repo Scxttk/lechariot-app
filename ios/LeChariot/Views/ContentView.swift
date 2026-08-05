@@ -27,6 +27,9 @@ struct ContentView: View {
     /// Der Rundgang. Lebt hier, weil ihn beide Hälften brauchen: Das Onboarding
     /// bietet ihn an, die Tabs zeigen ihn.
     @State private var tutorial = TutorialStore()
+    /// Die Einmal-Tipps nach dem Rundgang. Lebt hier, weil beide Inhalts-Tabs
+    /// ihm Momente melden und die Einstellungen ihn zurücksetzen.
+    @State private var tips = ContextTipStore()
     /// Die zwei ersten Male (Artikel, Treffer) und die Einrichtungs-Checkliste.
     /// Hier statt in der Liste, weil auch die Einstellungen ihn brauchen
     /// (`AppReset`).
@@ -61,6 +64,7 @@ struct ContentView: View {
         }
         .stateAnimation(.screen, value: store.isOnboardingComplete)
         .environment(tutorial)
+        .environment(tips)
     }
 
     private var mainTabs: some View {
@@ -184,6 +188,9 @@ struct ContentView: View {
             switchTourTab(to: tutorial.step.tab)
         }
         .onChange(of: tutorial.isRunning) { _, running in
+            // Während des Rundgangs spricht genau einer: der Rundgang. Die
+            // Tipps zählen und feuern erst wieder, wenn er vorbei ist.
+            tips.tourIsRunning = running
             if running {
                 // Der Start blendet nicht über: Das Overlay zieht ohnehin
                 // gerade auf, und zwei Überblendungen übereinander sind eine

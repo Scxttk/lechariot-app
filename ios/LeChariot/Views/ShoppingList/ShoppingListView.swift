@@ -20,6 +20,9 @@ struct ShoppingListView: View {
     @Environment(PurchaseHistoryStore.self) private var history
     /// Optional, damit Previews ohne Rundgang auskommen.
     @Environment(TutorialStore.self) private var tutorial: TutorialStore?
+    /// Die Einmal-Tipps — optional aus demselben Grund. Die Liste meldet ihm
+    /// nur Momente; entschieden wird in `ContextTipRules`.
+    @Environment(ContextTipStore.self) private var tips: ContextTipStore?
     /// Die zwei ersten Male (Artikel, Treffer) und die Checkliste dazu.
     @Environment(SetupProgressStore.self) private var setup
     @State private var detailItem: ShoppingItem?
@@ -157,6 +160,35 @@ struct ShoppingListView: View {
         ) { rejections.isRejected(itemText: $0, offer: $1) }
     }
 
+    /// Was die Einmal-Tipps über die Liste wissen müssen — als Wert, damit
+    /// `.task(id:)` genau dann neu läuft, wenn sich daran etwas ändert.
+    private struct ListTipMoment: Equatable {
+        var flowActive: Bool
+        var matchVisible: Bool
+        var openCount: Int
+    }
+
+    private var listTipMoment: ListTipMoment {
+        ListTipMoment(
+            flowActive: addFlow.isActive,
+            matchVisible: firstOpenHasMatch,
+            openCount: list.uncheckedItems.count
+        )
+    }
+
+    /// Ob die erste offene Zeile eine Angebotskachel trägt — die Zeile, an der
+    /// der Treffer-Tipp hängt. Bewusst der billige Weg über `cheapestMatch` statt der
+    /// vollen `suggestion(for:plan:)`: Die rechnete hier den ganzen Plan ein
+    /// zweites Mal je Durchlauf. In den Randfällen, in denen beide auseinander
+    /// liegen (schlafende Heftung), verschiebt sich der Tipp höchstens auf
+    /// eine spätere Sitzung — er verschwindet nicht.
+    private var firstOpenHasMatch: Bool {
+        guard hasMarkets, let first = list.uncheckedItems.first else { return false }
+        return ShoppingListMatcher.cheapestMatch(for: first.query, in: offerStore.offers) {
+            rejections.isRejected(itemText: first.query, offer: $0)
+        } != nil
+    }
+
     // MARK: Führung (geführter erster Artikel, Checkliste)
 
     /// Welche Führungsfläche gerade dran ist — die Vorfahrtsregel steht
@@ -276,6 +308,26 @@ struct ShoppingListView: View {
         .onChange(of: list.items.map(\.id)) { _, ids in
             addFlow.keepOnly(Set(ids))
         }
+        // **Eine** Stelle statt drei Aufrufstellen (Feld, Wörterbuch-Kacheln,
+        // Vorschlags-Kacheln): Jeder Weg, der wirklich etwas anlegt, wächst
+        // hier durch. Die Beispiel-Artikel des Rundgangs laufen auch durch —
+        // der Store sortiert sie über `tourIsRunning` aus.
+        .onChange(of: list.items.count) { old, new in
+            if new > old { tips?.itemAdded() }
+        }
+        // **Der Moment der Tipps ist die ruhende Liste.** Solange der
+        // Tipp-Fluss läuft, tippt jemand — eine Sprechblase dazwischen wäre
+        // genau das Aufdringliche, das Einmal-Tipps vermeiden sollen. Die
+        // Bedingung steckt mit im `id`, damit auch das Ende des Flusses den
+        // Lauf auslöst, nicht nur ein Wechsel der Zahlen.
+        .task(id: listTipMoment) {
+            let moment = listTipMoment
+            guard !moment.flowActive else { return }
+            tips?.listSettled(
+                matchVisible: moment.matchVisible,
+                hasOpenItems: moment.openCount > 0
+            )
+        }
         .sheet(item: $detailItem) { item in
             MatchDetailView(
                 item: item,
@@ -337,6 +389,18 @@ struct ShoppingListView: View {
                 .listRowBackground(Color.clear)
             }
 
+            // Der Tipp der Liste steht oben, über dem, was er erklärt — und
+            // nur einer, den der Store für aktiv erklärt. Siehe
+            // `ContextTipCard`.
+            Section {
+                ContextTipCard(store: tips, screen: .list)
+                    .listRowInsets(EdgeInsets(
+                        top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
+                        bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
+                    ))
+            }
+            .listRowBackground(Color.clear)
+
             // Die Checkliste ersetzt die Filialen-Karte, solange sie sichtbar
             // ist — sie enthält deren Weg („Markt wählen") selbst. Siehe die
             // Vorfahrtsregel in `ListGuidance`.
@@ -393,7 +457,10 @@ struct ShoppingListView: View {
                             unknownWordNote: unknownWordNote(for: item, suggestion: itemSuggestion),
                             onToggle: { check(item) },
                             onShowMatches: { detailItem = item },
-                            onEditDetail: { editingItem = item }
+                            onEditDetail: {
+                                editingItem = item
+                                tips?.detailsUsed()
+                            }
                         )
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
@@ -427,7 +494,10 @@ struct ShoppingListView: View {
                             // nächsten Mal genauso, und wer im Laden merkt,
                             // dass es die große Packung sein muss, notiert es
                             // dort — nicht zu Hause davor.
-                            onEditDetail: { editingItem = item }
+                            onEditDetail: {
+                                editingItem = item
+                                tips?.detailsUsed()
+                            }
                         )
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
@@ -469,7 +539,15 @@ struct ShoppingListView: View {
     private func check(_ item: ShoppingItem) {
         let wasChecked = item.isChecked
         withAnimation { list.toggle(item) }
-        if !wasChecked { history.record(item.query) }
+        if !wasChecked {
+            history.record(item.query)
+            // Der erste Haken ist der Moment für den Wisch-Tipp — die Werte
+            // beschreiben die Liste **nach** dem Haken. Siehe `ContextTipStore`.
+            tips?.checkedOff(
+                matchVisible: firstOpenHasMatch,
+                hasOpenItems: !list.uncheckedItems.isEmpty
+            )
+        }
     }
 
     // MARK: Empty state
@@ -953,8 +1031,14 @@ struct ShoppingListView: View {
                             for: item
                         )
                     }
+                    // Wer einen Chip antippt, hat die Angaben gefunden — der
+                    // Tipp dazu erübrigt sich für immer.
+                    tips?.detailsUsed()
                 },
-                onOpenFull: { editingItem = item },
+                onOpenFull: {
+                    editingItem = item
+                    tips?.detailsUsed()
+                },
                 onDismiss: { endFlow() }
             )
             .tutorialAnchor(.detailPanel)

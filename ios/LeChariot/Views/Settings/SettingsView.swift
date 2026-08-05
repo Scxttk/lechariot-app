@@ -16,6 +16,7 @@ struct SettingsView: View {
     @Environment(MatchRejectionStore.self) private var rejections
     @Environment(MatchFeedbackStore.self) private var feedback
     @Environment(TutorialStore.self) private var tutorial
+    @Environment(ContextTipStore.self) private var tips
     @Environment(SetupProgressStore.self) private var setup
     @Environment(AreaRequestStore.self) private var areaRequests
     @Environment(BranchRequestStore.self) private var branchRequests
@@ -169,6 +170,7 @@ struct SettingsView: View {
                         rejections: rejections,
                         feedback: feedback,
                         tutorial: tutorial,
+                        tips: tips,
                         setup: setup,
                         areaRequests: areaRequests,
                         branchRequests: branchRequests,
