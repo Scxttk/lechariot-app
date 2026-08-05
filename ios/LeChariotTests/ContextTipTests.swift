@@ -43,7 +43,7 @@ final class ContextTipRulesTests: XCTestCase {
         ledger.itemsAdded = ContextTipTuning.itemsBeforeDetailsTip
         ledger.checkedOff = true
         XCTAssertEqual(
-            ContextTipRules.tipOnList(ledger, matchVisible: true, hasOpenItems: true, moment: calm),
+            ContextTipRules.tipOnList(ledger, matchVisible: true, hasOpenItems: true, guidanceVisible: false, moment: calm),
             .matchLine
         )
     }
@@ -53,7 +53,7 @@ final class ContextTipRulesTests: XCTestCase {
         ledger.itemsAdded = ContextTipTuning.itemsBeforeDetailsTip
         ledger.checkedOff = true
         XCTAssertEqual(
-            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, moment: calm),
+            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, guidanceVisible: false, moment: calm),
             .itemDetails
         )
     }
@@ -64,7 +64,7 @@ final class ContextTipRulesTests: XCTestCase {
         var ledger = ContextTipLedger()
         ledger.itemsAdded = ContextTipTuning.itemsBeforeDetailsTip - 1
         XCTAssertNil(
-            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, moment: calm),
+            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, guidanceVisible: false, moment: calm),
             "Vor der Schwelle ist der Tipp nicht verdient"
         )
     }
@@ -74,7 +74,7 @@ final class ContextTipRulesTests: XCTestCase {
         ledger.itemsAdded = 99
         ledger.usedDetails = true
         XCTAssertNil(
-            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, moment: calm)
+            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, guidanceVisible: false, moment: calm)
         )
     }
 
@@ -84,7 +84,7 @@ final class ContextTipRulesTests: XCTestCase {
         var ledger = ContextTipLedger()
         ledger.checkedOff = true
         XCTAssertEqual(
-            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, moment: calm),
+            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, guidanceVisible: false, moment: calm),
             .checkOff
         )
     }
@@ -93,11 +93,11 @@ final class ContextTipRulesTests: XCTestCase {
         var ledger = ContextTipLedger()
         ledger.listSessionsWithoutCheckOff = ContextTipTuning.listSessionsBeforeCheckOffTip - 1
         XCTAssertNil(
-            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, moment: calm)
+            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, guidanceVisible: false, moment: calm)
         )
         ledger.listSessionsWithoutCheckOff = ContextTipTuning.listSessionsBeforeCheckOffTip
         XCTAssertEqual(
-            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, moment: calm),
+            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: true, guidanceVisible: false, moment: calm),
             .checkOff
         )
     }
@@ -107,7 +107,7 @@ final class ContextTipRulesTests: XCTestCase {
         ledger.checkedOff = true
         ledger.itemsAdded = 99
         XCTAssertNil(
-            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: false, moment: calm),
+            ContextTipRules.tipOnList(ledger, matchVisible: false, hasOpenItems: false, guidanceVisible: false, moment: calm),
             "Ohne offene Zeile gibt es keinen Anker — der Tipp zeigte ins Leere"
         )
     }
@@ -119,7 +119,7 @@ final class ContextTipRulesTests: XCTestCase {
         ledger.checkedOff = true
         let touring = ContextTipRules.Moment(tourIsRunning: true, activationsThisSession: 0)
         XCTAssertNil(ContextTipRules.tipOnOffers(ledger, nextWeekAvailable: true, moment: touring))
-        XCTAssertNil(ContextTipRules.tipOnList(ledger, matchVisible: true, hasOpenItems: true, moment: touring))
+        XCTAssertNil(ContextTipRules.tipOnList(ledger, matchVisible: true, hasOpenItems: true, guidanceVisible: false, moment: touring))
     }
 
     func testTheSessionCapSilencesTheSecondTip() {
@@ -128,7 +128,24 @@ final class ContextTipRulesTests: XCTestCase {
             activationsThisSession: ContextTipTuning.tipsPerSession
         )
         XCTAssertNil(
-            ContextTipRules.tipOnList(ContextTipLedger(), matchVisible: true, hasOpenItems: true, moment: spent)
+            ContextTipRules.tipOnList(ContextTipLedger(), matchVisible: true, hasOpenItems: true, guidanceVisible: false, moment: spent)
+        )
+    }
+
+    /// **Eine Führungsfläche zugleich** — solange Checkliste oder
+    /// Filialen-Karte führen (`ListGuidance`), feuert kein Listen-Tipp. Er
+    /// ist nicht verloren: Ohne Aktivierung fällt kein Gezeigt-Merker, der
+    /// Moment kommt in einer freien Sitzung wieder.
+    func testNoListTipWhileAnotherGuidanceSurfaceLeads() {
+        var ledger = ContextTipLedger()
+        ledger.checkedOff = true
+        XCTAssertNil(
+            ContextTipRules.tipOnList(ledger, matchVisible: true, hasOpenItems: true, guidanceVisible: true, moment: calm),
+            "Neben der Checkliste wäre der Tipp die zweite Karte im Gedränge"
+        )
+        XCTAssertFalse(
+            ledger.shown.contains(.matchLine),
+            "Ein zurückgehaltener Tipp darf nicht als gezeigt gelten"
         )
     }
 
@@ -208,12 +225,12 @@ final class ContextTipStoreTests: XCTestCase {
         XCTAssertEqual(store.active, .nextWeekPreview)
 
         // Der Treffer-Moment kommt in derselben Sitzung — er muss warten.
-        store.listSettled(matchVisible: true, hasOpenItems: true)
+        store.listSettled(matchVisible: true, hasOpenItems: true, guidanceVisible: false)
         XCTAssertEqual(store.active, .nextWeekPreview)
 
         // Nächste Sitzung: Der Moment wiederholt sich, jetzt ist er dran.
         let nextSession = makeStore()
-        nextSession.listSettled(matchVisible: true, hasOpenItems: true)
+        nextSession.listSettled(matchVisible: true, hasOpenItems: true, guidanceVisible: false)
         XCTAssertEqual(nextSession.active, .matchLine)
     }
 
@@ -245,8 +262,8 @@ final class ContextTipStoreTests: XCTestCase {
 
     func testSessionsWithoutACheckOffAreCountedOncePerSession() {
         let store = makeStore()
-        store.listSettled(matchVisible: false, hasOpenItems: true)
-        store.listSettled(matchVisible: false, hasOpenItems: true)
+        store.listSettled(matchVisible: false, hasOpenItems: true, guidanceVisible: false)
+        store.listSettled(matchVisible: false, hasOpenItems: true, guidanceVisible: false)
         XCTAssertEqual(store.ledger.listSessionsWithoutCheckOff, 1)
     }
 
@@ -257,7 +274,7 @@ final class ContextTipStoreTests: XCTestCase {
         store.itemAdded()
         store.itemAdded()
         store.offersAppeared(nextWeekAvailable: true)
-        store.listSettled(matchVisible: true, hasOpenItems: true)
+        store.listSettled(matchVisible: true, hasOpenItems: true, guidanceVisible: false)
         XCTAssertEqual(store.ledger.itemsAdded, 0)
         XCTAssertEqual(store.ledger.offersVisits, 0)
         XCTAssertNil(store.active)
@@ -265,7 +282,7 @@ final class ContextTipStoreTests: XCTestCase {
 
     func testTheFirstCheckOffActivatesTheSwipeTip() {
         let store = makeStore()
-        store.checkedOff(matchVisible: false, hasOpenItems: true)
+        store.checkedOff(matchVisible: false, hasOpenItems: true, guidanceVisible: false)
         XCTAssertEqual(store.active, .checkOff)
         XCTAssertTrue(store.ledger.checkedOff)
     }

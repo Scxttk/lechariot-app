@@ -125,14 +125,16 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: true, hasMarkets: false, firstItemAdded: false,
-                checklistVisible: true, tourIsRunning: true
+                checklistVisible: true, tourIsRunning: true,
+                flowActive: false, tipActive: false
             ),
             .noMarkets
         )
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: false, hasMarkets: true, firstItemAdded: false,
-                checklistVisible: true, tourIsRunning: true
+                checklistVisible: true, tourIsRunning: true,
+                flowActive: false, tipActive: false
             ),
             .none
         )
@@ -145,7 +147,8 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: true, hasMarkets: false, firstItemAdded: false,
-                checklistVisible: true, tourIsRunning: false
+                checklistVisible: true, tourIsRunning: false,
+                flowActive: false, tipActive: false
             ),
             .noMarkets
         )
@@ -156,7 +159,8 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: true, hasMarkets: true, firstItemAdded: false,
-                checklistVisible: true, tourIsRunning: false
+                checklistVisible: true, tourIsRunning: false,
+                flowActive: false, tipActive: false
             ),
             .firstItem
         )
@@ -168,7 +172,8 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: false, hasMarkets: false, firstItemAdded: true,
-                checklistVisible: true, tourIsRunning: false
+                checklistVisible: true, tourIsRunning: false,
+                flowActive: false, tipActive: false
             ),
             .checklist
         )
@@ -180,9 +185,50 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: false, hasMarkets: false, firstItemAdded: true,
-                checklistVisible: false, tourIsRunning: false
+                checklistVisible: false, tourIsRunning: false,
+                flowActive: false, tipActive: false
             ),
             .noMarkets
+        )
+    }
+
+    /// **Während des Tipp-Flusses führt niemand.** Mit stehender Tastatur
+    /// bleiben der Liste rund 180 pt (gemessen 05.08.: Angaben-Schicht ab
+    /// y = 341 von 852) — eine Checkliste darüber schöbe genau die Zeile
+    /// hinter die Tastatur, deren Treffer-Kachel der Aha-Moment ist. Ohne
+    /// Filialen bleibt die Karte am Platz der Plan-Karte stehen: Ein Platz,
+    /// der beim Tippen auf- und zuginge, wäre ein springender Bildschirm.
+    func testDuringTheAddFlowTheRowsKeepTheScreen() {
+        XCTAssertEqual(
+            ListGuidance.surface(
+                listIsEmpty: false, hasMarkets: true, firstItemAdded: true,
+                checklistVisible: true, tourIsRunning: false,
+                flowActive: true, tipActive: true
+            ),
+            .none
+        )
+        XCTAssertEqual(
+            ListGuidance.surface(
+                listIsEmpty: false, hasMarkets: false, firstItemAdded: true,
+                checklistVisible: true, tourIsRunning: false,
+                flowActive: true, tipActive: false
+            ),
+            .noMarkets
+        )
+    }
+
+    /// **Ein aktiver Einmal-Tipp schlägt die Checkliste** — sein Merker ist
+    /// beim Aktivieren schon gefallen, ihn zu verstecken hieße ihn
+    /// verbrennen. Dass beide gleichzeitig wollen, verhindert die
+    /// Aktivierung (`ContextTipRules.tipOnList`, `guidanceVisible`).
+    func testAnActiveTipOutranksTheChecklist() {
+        XCTAssertEqual(
+            ListGuidance.surface(
+                listIsEmpty: false, hasMarkets: true, firstItemAdded: true,
+                checklistVisible: true, tourIsRunning: false,
+                flowActive: false, tipActive: true
+            ),
+            .tip
         )
     }
 
@@ -192,7 +238,8 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: false, hasMarkets: true, firstItemAdded: true,
-                checklistVisible: false, tourIsRunning: false
+                checklistVisible: false, tourIsRunning: false,
+                flowActive: false, tipActive: false
             ),
             .none
         )

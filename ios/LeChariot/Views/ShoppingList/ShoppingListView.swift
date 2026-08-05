@@ -162,17 +162,22 @@ struct ShoppingListView: View {
 
     /// Was die Einmal-Tipps über die Liste wissen müssen — als Wert, damit
     /// `.task(id:)` genau dann neu läuft, wenn sich daran etwas ändert.
+    /// `guidanceVisible` gehört dazu: Auch das Verschwinden der Checkliste
+    /// (versiegelt nach dem ersten Treffer) ist ein Moment, an dem ein
+    /// wartender Tipp drankommen darf.
     private struct ListTipMoment: Equatable {
         var flowActive: Bool
         var matchVisible: Bool
         var openCount: Int
+        var guidanceVisible: Bool
     }
 
     private var listTipMoment: ListTipMoment {
         ListTipMoment(
             flowActive: addFlow.isActive,
             matchVisible: firstOpenHasMatch,
-            openCount: list.uncheckedItems.count
+            openCount: list.uncheckedItems.count,
+            guidanceVisible: guidanceBlocksTips
         )
     }
 
@@ -192,15 +197,41 @@ struct ShoppingListView: View {
     // MARK: Führung (geführter erster Artikel, Checkliste)
 
     /// Welche Führungsfläche gerade dran ist — die Vorfahrtsregel steht
-    /// in `ListGuidance`, hier stehen nur die fünf Eingaben.
+    /// in `ListGuidance`, hier stehen nur die sieben Eingaben.
     private var guidance: ListGuidance {
         ListGuidance.surface(
             listIsEmpty: list.items.isEmpty,
             hasMarkets: hasMarkets,
             firstItemAdded: setup.firstItemAdded,
             checklistVisible: setup.checklistIsVisible(hasMarkets: hasMarkets),
-            tourIsRunning: tutorial?.isRunning == true
+            tourIsRunning: tutorial?.isRunning == true,
+            flowActive: addFlow.isActive,
+            tipActive: activeListTip != nil
         )
+    }
+
+    /// Der aktive Einmal-Tipp, sofern er zu **diesem** Bildschirm gehört —
+    /// der Vorschau-Tipp des Angebote-Tabs zählt hier nicht.
+    private var activeListTip: ContextTip? {
+        guard let tip = tips?.active, ContextTipCard.Screen.list.owns(tip) else { return nil }
+        return tip
+    }
+
+    /// Ob eine Führungsfläche den Bildschirm hätte, wenn kein Tipp aktiv wäre
+    /// — die Eingabe für die Tipp-Aktivierung (`ContextTipRules.tipOnList`):
+    /// Ein Tipp feuert nur auf die freie Liste, eine Fläche nach der anderen.
+    /// Ohne Tipp und ohne Fluss gerechnet, denn gefragt ist der Zustand, in
+    /// dem der Tipp **stünde**, nicht der Moment des Fragens.
+    private var guidanceBlocksTips: Bool {
+        ListGuidance.surface(
+            listIsEmpty: list.items.isEmpty,
+            hasMarkets: hasMarkets,
+            firstItemAdded: setup.firstItemAdded,
+            checklistVisible: setup.checklistIsVisible(hasMarkets: hasMarkets),
+            tourIsRunning: tutorial?.isRunning == true,
+            flowActive: false,
+            tipActive: false
+        ) != .none
     }
 
     /// Die Beispiel-Angebote der leeren Liste. Leer ohne Filialen — dann
@@ -325,7 +356,8 @@ struct ShoppingListView: View {
             guard !moment.flowActive else { return }
             tips?.listSettled(
                 matchVisible: moment.matchVisible,
-                hasOpenItems: moment.openCount > 0
+                hasOpenItems: moment.openCount > 0,
+                guidanceVisible: moment.guidanceVisible
             )
         }
         .sheet(item: $detailItem) { item in
@@ -391,15 +423,21 @@ struct ShoppingListView: View {
 
             // Der Tipp der Liste steht oben, über dem, was er erklärt — und
             // nur einer, den der Store für aktiv erklärt. Siehe
-            // `ContextTipCard`.
-            Section {
-                ContextTipCard(store: tips, screen: .list)
-                    .listRowInsets(EdgeInsets(
-                        top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
-                        bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
-                    ))
+            // `ContextTipCard`. **Nur als Führungsfläche, nie zusätzlich:**
+            // Der Squash-Merge vom 05.08. hatte Tipp-Abschnitt (#82) und
+            // Checkliste (#80) übereinandergestapelt — zwei Karten, die beide
+            // „hilf mir" sagen, genau das Gedränge, gegen das `ListGuidance`
+            // gebaut ist. Jetzt entscheidet dieselbe Vorfahrtsregel auch hier.
+            if guidance == .tip {
+                Section {
+                    ContextTipCard(store: tips, screen: .list)
+                        .listRowInsets(EdgeInsets(
+                            top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
+                            bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
+                        ))
+                }
+                .listRowBackground(Color.clear)
             }
-            .listRowBackground(Color.clear)
 
             // Die Checkliste ersetzt die Filialen-Karte, solange sie sichtbar
             // ist — sie enthält deren Weg („Markt wählen") selbst. Siehe die
@@ -545,7 +583,8 @@ struct ShoppingListView: View {
             // beschreiben die Liste **nach** dem Haken. Siehe `ContextTipStore`.
             tips?.checkedOff(
                 matchVisible: firstOpenHasMatch,
-                hasOpenItems: !list.uncheckedItems.isEmpty
+                hasOpenItems: !list.uncheckedItems.isEmpty,
+                guidanceVisible: guidanceBlocksTips
             )
         }
     }
@@ -625,7 +664,11 @@ struct ShoppingListView: View {
                     // Beispiel-Artikel hin, spielt also nie über diesem
                     // Zustand.
                     NoMarketsCard(action: onChooseMarkets)
-                case .none:
+                case .tip, .none:
+                    // `.tip` auf der leeren Liste kommt nur vor, wenn jemand
+                    // nach einem aktiven Tipp alles löscht — die Tipps
+                    // erklären Zeilen, und ohne Zeilen gibt es nichts zu
+                    // erklären.
                     EmptyView()
                 }
             }
@@ -641,7 +684,7 @@ struct ShoppingListView: View {
         switch guidance {
         case .firstItem: return firstItemExamples.isEmpty
         case .noMarkets: return true
-        case .checklist, .none: return false
+        case .tip, .checklist, .none: return false
         }
     }
 

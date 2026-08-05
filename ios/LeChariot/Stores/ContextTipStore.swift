@@ -96,13 +96,22 @@ enum ContextTipRules {
     /// aus dem es die App gibt), dann die Angaben-Schicht, zuletzt das
     /// Abhaken. Es feuert höchstens einer — `tipsPerSession` sorgt dafür,
     /// dass die anderen in späteren Sitzungen an ihrem Moment drankommen.
+    ///
+    /// `guidanceVisible` heißt: Auf der Liste führt gerade eine andere Fläche
+    /// (Checkliste, Filialen-Karte — die Vorfahrt steht in `ListGuidance`).
+    /// Dann feuert kein Tipp — **eine** Führungsfläche zugleich, dieselbe
+    /// Regel, die die Ernährungsfrage schon einhält (`showsDietPrompt`,
+    /// `tipVisibleHere`), nur in die andere Richtung. Der Tipp ist damit nicht
+    /// verloren: Sein Moment kommt wieder, sobald die Fläche frei ist —
+    /// dasselbe Versprechen wie bei `tipsPerSession`.
     static func tipOnList(
         _ ledger: ContextTipLedger,
         matchVisible: Bool,
         hasOpenItems: Bool,
+        guidanceVisible: Bool,
         moment: Moment
     ) -> ContextTip? {
-        guard mayActivate(moment) else { return nil }
+        guard mayActivate(moment), !guidanceVisible else { return nil }
         if matchVisible, !ledger.shown.contains(.matchLine) {
             return .matchLine
         }
@@ -227,7 +236,11 @@ final class ContextTipStore {
 
     /// Die Liste steht ruhig da — Tipp-Fluss zu, nichts tippt. Zählt die
     /// Sitzung fürs Abhaken mit und entscheidet dann über die Regeln.
-    func listSettled(matchVisible: Bool, hasOpenItems: Bool) {
+    ///
+    /// `guidanceVisible` kommt aus `ListGuidance` (ohne den Tipp selbst
+    /// gerechnet): Führt gerade eine andere Fläche, wartet der Tipp — die
+    /// Sitzung zählt trotzdem, denn gezählt wird Verhalten, nicht Platz.
+    func listSettled(matchVisible: Bool, hasOpenItems: Bool, guidanceVisible: Bool) {
         guard isEnabled, !tourIsRunning else { return }
         if !listSessionCounted, hasOpenItems, !ledger.checkedOff {
             listSessionCounted = true
@@ -236,7 +249,7 @@ final class ContextTipStore {
         }
         activate(ContextTipRules.tipOnList(
             ledger, matchVisible: matchVisible, hasOpenItems: hasOpenItems,
-            moment: moment
+            guidanceVisible: guidanceVisible, moment: moment
         ))
     }
 
@@ -260,7 +273,7 @@ final class ContextTipStore {
     /// Der erste Haken ist der Moment, in dem der Wisch zum Löschen die
     /// eine unsichtbare Sache an der Zeile ist — deshalb wird hier nicht nur
     /// gezählt, sondern auch gleich entschieden.
-    func checkedOff(matchVisible: Bool, hasOpenItems: Bool) {
+    func checkedOff(matchVisible: Bool, hasOpenItems: Bool, guidanceVisible: Bool) {
         guard isEnabled else { return }
         if !ledger.checkedOff {
             ledger.checkedOff = true
@@ -269,7 +282,7 @@ final class ContextTipStore {
         guard !tourIsRunning else { return }
         activate(ContextTipRules.tipOnList(
             ledger, matchVisible: matchVisible, hasOpenItems: hasOpenItems,
-            moment: moment
+            guidanceVisible: guidanceVisible, moment: moment
         ))
     }
 
