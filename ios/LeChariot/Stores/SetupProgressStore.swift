@@ -24,10 +24,26 @@ import Observation
 ///    diesen Bildschirm fest, und sie behalten recht. Die Einladung zum
 ///    ersten Artikel trägt dann die Ansprache darüber (`FirstItemPrompt`),
 ///    nicht eine zweite Karte.
-/// 3. **Danach führt die Checkliste**, bis sie fertig oder weggewischt ist.
+/// 3. **Während des Tipp-Flusses führt niemand.** Die Angaben-Schicht steht
+///    schon, und mit stehender Tastatur bleiben der Liste rund 180 pt — am
+///    05.08. auf dem Simulator gemessen: Schicht ab y = 341 von 852, und die
+///    Checkliste (227 pt) schob die eben angelegte Zeile samt Treffer-Kachel
+///    hinter die Tastatur. Genau diese Zeile ist aber der Aha-Moment, für den
+///    der geführte erste Artikel gebaut ist. Die Führung kommt wieder, sobald
+///    die Tastatur weg ist; nur die Filialen-Karte bleibt (sie besetzt den
+///    Platz der Plan-Karte, und ein Platz, der beim Tippen auf- und zuginge,
+///    wäre ein springender Bildschirm).
+/// 4. **Ein aktiver Einmal-Tipp schlägt die Checkliste.** Nicht, weil er
+///    wichtiger wäre, sondern weil sein Merker beim **Aktivieren** fällt
+///    (siehe `ContextTipStore.activate`): Ein aktiver Tipp ist schon
+///    verbraucht, ihn zu verstecken hieße ihn verbrennen. Dass beide
+///    gleichzeitig wollen, verhindert die Aktivierung selbst — ein Tipp
+///    feuert nur, wenn keine andere Führungsfläche steht
+///    (`ContextTipRules.tipOnList`).
+/// 5. **Danach führt die Checkliste**, bis sie fertig oder weggewischt ist.
 ///    Sie enthält den Weg zur Filialauswahl selbst, deshalb ersetzt sie die
 ///    Filialen-Karte, statt neben ihr zu stehen.
-/// 4. **Zuletzt die Filialen-Karte** — der Stand von vor diesem Umbau, für
+/// 6. **Zuletzt die Filialen-Karte** — der Stand von vor diesem Umbau, für
 ///    alle, die die Checkliste weggewischt haben und trotzdem ohne Filiale
 ///    dastehen. Eine Sackgasse darf daraus nie werden.
 ///
@@ -37,6 +53,8 @@ enum ListGuidance: Equatable {
     /// Beispiel-Angebote als erste Artikel — nur auf der leeren Liste, nur
     /// solange noch nie ein Artikel angelegt wurde.
     case firstItem
+    /// Der aktive Einmal-Tipp dieses Bildschirms (`ContextTipCard`).
+    case tip
     /// Die Einrichtungs-Checkliste.
     case checklist
     /// Die Filialen-Karte, unverändert die von vor diesem Umbau.
@@ -48,10 +66,14 @@ enum ListGuidance: Equatable {
         hasMarkets: Bool,
         firstItemAdded: Bool,
         checklistVisible: Bool,
-        tourIsRunning: Bool
+        tourIsRunning: Bool,
+        flowActive: Bool,
+        tipActive: Bool
     ) -> ListGuidance {
         if tourIsRunning { return hasMarkets ? .none : .noMarkets }
         if listIsEmpty && !firstItemAdded { return hasMarkets ? .firstItem : .noMarkets }
+        if flowActive { return hasMarkets ? .none : .noMarkets }
+        if tipActive { return .tip }
         if checklistVisible { return .checklist }
         if !hasMarkets { return .noMarkets }
         return .none
