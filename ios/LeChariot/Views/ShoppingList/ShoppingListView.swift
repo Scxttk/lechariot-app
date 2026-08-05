@@ -20,6 +20,8 @@ struct ShoppingListView: View {
     @Environment(PurchaseHistoryStore.self) private var history
     /// Optional, damit Previews ohne Rundgang auskommen.
     @Environment(TutorialStore.self) private var tutorial: TutorialStore?
+    /// Die zwei ersten Male (Artikel, Treffer) und die Checkliste dazu.
+    @Environment(SetupProgressStore.self) private var setup
     @State private var detailItem: ShoppingItem?
     /// Der Artikel, dessen Angaben gerade bearbeitet werden — nicht zu
     /// verwechseln mit `detailItem`, das die **Angebote** zum Artikel zeigt.
@@ -36,6 +38,14 @@ struct ShoppingListView: View {
     /// beim Antippen, damit das Blatt genau den Lauf zeigt, dessen Zahlen in
     /// der Zeile standen. Siehe `OfferHitsView`.
     @State private var hitsRanks: [MarketListRank]?
+    /// Weggewischte Beispiel-Angebote der leeren Liste. Bewusst `@State` und
+    /// nicht persistiert: Die Fläche existiert nur bis zum ersten Artikel,
+    /// und ein Nein zu einem Wochenangebot ist keins für immer.
+    @State private var dismissedExamples: Set<String> = []
+    /// Die Zeile, deren Treffer-Kachel gerade einmalig aufleuchtet — der
+    /// Aha-Moment beim allerersten Treffer. Siehe die Aufgabe an
+    /// `firstMatchArrived`.
+    @State private var glowItemID: UUID?
 
     private var chains: [String] {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
@@ -147,6 +157,54 @@ struct ShoppingListView: View {
         ) { rejections.isRejected(itemText: $0, offer: $1) }
     }
 
+    // MARK: Führung (geführter erster Artikel, Checkliste)
+
+    /// Welche Führungsfläche gerade dran ist — die Vorfahrtsregel steht
+    /// in `ListGuidance`, hier stehen nur die fünf Eingaben.
+    private var guidance: ListGuidance {
+        ListGuidance.surface(
+            listIsEmpty: list.items.isEmpty,
+            hasMarkets: hasMarkets,
+            firstItemAdded: setup.firstItemAdded,
+            checklistVisible: setup.checklistIsVisible(hasMarkets: hasMarkets),
+            tourIsRunning: tutorial?.isRunning == true
+        )
+    }
+
+    /// Die Beispiel-Angebote der leeren Liste. Leer ohne Filialen — dann
+    /// trägt `FirstItemPrompt` die Einladung (siehe `FirstItemSuggestions`).
+    private var firstItemExamples: [FirstItemExample] {
+        FirstItemSuggestions.examples(from: offerStore.offers, excluding: dismissedExamples)
+    }
+
+    /// Ob gerade der **allererste** Treffer auf dem Bildschirm steht.
+    ///
+    /// Kurzgeschlossen über den persistierten Merker: Nach dem ersten Mal
+    /// kostet die Frage nichts mehr. Der Rundgang zählt nicht — seine
+    /// Beispiel-Artikel sind nicht die eigenen Daten, und genau dort soll der
+    /// Moment passieren.
+    private var firstMatchArrived: Bool {
+        guard !setup.firstMatchSeen,
+              tutorial?.isRunning != true,
+              !list.items.isEmpty else { return false }
+        return !OfferHitSummary(ranks: ranks).isEmpty
+    }
+
+    /// Ein Artikel ist auf einem Bedienweg entstanden — nicht durch den
+    /// Rundgang, dessen Beispiel-Artikel bewusst nicht zählen.
+    private func recordUserAdd() {
+        setup.recordItemAdded()
+    }
+
+    /// Der geführte erste Artikel: anlegen, merken — und **ohne** die
+    /// Angaben-Schicht. Der Blick soll auf die Zeile mit ihrer Treffer-Kachel
+    /// fallen (das ist der Aha-Moment), nicht auf ein Panel darüber.
+    private func addGuidedItem(_ word: String) {
+        let angelegt = withAnimation(.snappy) { list.add(word) }
+        guard angelegt else { return }
+        recordUserAdd()
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -163,6 +221,38 @@ struct ShoppingListView: View {
         }
         .task(id: branchIds) {
             await offerStore.load(branchIds: branchIds, chains: chains)
+        }
+        // Bestehende Installationen: Wer schon Artikel auf der Liste hat, hat
+        // seinen ersten längst hinzugefügt — nur der Merker ist jünger als die
+        // Liste. Ohne den Nachtrag stünde in der Checkliste ein offener Punkt
+        // über einer vollen Liste. Liegengebliebene Rundgang-Artikel (App-Tod
+        // mitten in der Tour) zählen nicht; die räumt `ContentView` ohnehin ab.
+        .task {
+            if !list.items.isEmpty, tutorial?.seededItems.isEmpty ?? true {
+                setup.recordItemAdded()
+            }
+        }
+        // **Der Aha-Moment.** Sobald der erste Treffer dasteht, wird er
+        // festgehalten — und die Kachel der Zeile leuchtet genau einmal kurz
+        // auf. Kein Konfetti: Die Treffer-Kachel selbst ist die Botschaft, das
+        // Glühen lenkt nur den Blick. Ohne Filialen passiert hier nichts; der
+        // Moment feuert dann nach, sobald Filialen gewählt sind und der erste
+        // Treffer wirklich erscheint.
+        .task(id: firstMatchArrived) {
+            guard firstMatchArrived, setup.recordFirstMatch() else { return }
+            let matched = Set(ranks.flatMap { $0.matchedItems.map(\.item) })
+            guard let hit = list.uncheckedItems.first(where: { matched.contains($0.query) }) else {
+                return
+            }
+            withAnimation(.snappy) { glowItemID = hit.id }
+            try? await Task.sleep(for: .seconds(2.5))
+            withAnimation(.easeOut(duration: 0.6)) { glowItemID = nil }
+        }
+        // Versiegelt die Checkliste, sobald alle vier Punkte gleichzeitig
+        // erfüllt waren — danach kommt sie nie wieder, auch wenn später die
+        // letzte Filiale abgewählt wird.
+        .task(id: "\(hasMarkets)|\(setup.firstItemAdded)|\(setup.firstMatchSeen)") {
+            setup.sealIfComplete(hasMarkets: hasMarkets)
         }
         // **Der Fluss endet mit der Tastatur.** Bei Bring! tut „Abbrechen"
         // genau das: Es beendet das Tippen insgesamt, nicht die Angaben zu
@@ -227,16 +317,32 @@ struct ShoppingListView: View {
                         ))
                 }
                 .listRowBackground(Color.clear)
-            } else if !hasMarkets {
+            } else if guidance == .noMarkets {
                 // Der Platz der Plan-Karte bleibt besetzt, statt leer zu
                 // bleiben: Was hier fehlt, ist die Antwort, für die es die App
                 // gibt — und dass sie fehlt, ist das Argument, Filialen zu
                 // wählen. Der Anker sitzt hier und **nur** hier; die Fassung im
                 // Leerzustand trägt ihn bewusst nicht (zwei Anker desselben
-                // Ziels entscheidet der Preference-Merge, siehe L-2).
+                // Ziels entscheidet der Preference-Merge, siehe L-2). Ob die
+                // Karte oder die Checkliste dransteht, sagt `ListGuidance` —
+                // während des Rundgangs immer die Karte, seines Ankers wegen.
                 Section {
                     NoMarketsCard(action: onChooseMarkets)
                         .tutorialAnchor(.planCard)
+                        .listRowInsets(EdgeInsets(
+                            top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
+                            bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
+                        ))
+                }
+                .listRowBackground(Color.clear)
+            }
+
+            // Die Checkliste ersetzt die Filialen-Karte, solange sie sichtbar
+            // ist — sie enthält deren Weg („Markt wählen") selbst. Siehe die
+            // Vorfahrtsregel in `ListGuidance`.
+            if guidance == .checklist {
+                Section {
+                    checklistCard
                         .listRowInsets(EdgeInsets(
                             top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
                             bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
@@ -283,6 +389,7 @@ struct ShoppingListView: View {
                             // Stellen. Mit Abschnitten ist das nicht mehr
                             // „Index 0", sondern der erste Artikel der Liste.
                             carriesTutorialAnchors: item.id == firstOpenItem,
+                            highlightsFirstMatch: item.id == glowItemID,
                             unknownWordNote: unknownWordNote(for: item, suggestion: itemSuggestion),
                             onToggle: { check(item) },
                             onShowMatches: { detailItem = item },
@@ -399,19 +506,77 @@ struct ShoppingListView: View {
                             .foregroundStyle(Theme.secondaryText)
                             .multilineTextAlignment(.center)
                     }
+
+                    // **Der geführte erste Artikel als ein Satz** — Teil der
+                    // Ansprache, keine zweite Karte (siehe `ListGuidance`).
+                    // Er steht genau dann, wenn es noch nie einen Artikel gab
+                    // und keine Beispiel-Angebote da sind, die die Einladung
+                    // besser tragen: direkt nach dem Onboarding also über der
+                    // Filialen-Karte — der Aha-Moment passiert in den eigenen
+                    // Daten, deshalb kommt der Artikel vor der Filiale.
+                    if showsFirstItemPrompt {
+                        FirstItemPrompt(
+                            word: FirstItemSuggestions.prompt(excluding: dismissedExamples),
+                            onAdd: addGuidedItem
+                        )
+                        .padding(.top, Theme.Spacing.sm)
+                    }
                 }
 
-                // Wer den Rundgang am Ende des Onboardings ablehnt, sieht die
-                // Frage nach den Filialen nie — und stünde ohne das hier vor
-                // einem Bildschirm, der nichts davon erwähnt. **Ohne Anker:**
-                // Der Rundgang legt für den Plan-Rahmen Beispiel-Artikel hin,
-                // spielt also nie über diesem Zustand.
-                if !hasMarkets {
+                switch guidance {
+                case .firstItem:
+                    // Echte Wochenangebote als Beispiel-Artikel. Wer eines
+                    // antippt, sieht seinen ersten Artikel sofort mit
+                    // Treffer-Kachel — der eingebaute Aha-Moment.
+                    if !firstItemExamples.isEmpty {
+                        FirstItemCard(
+                            examples: firstItemExamples,
+                            onAdd: addGuidedItem,
+                            onDismiss: { word in
+                                withAnimation(.snappy) { _ = dismissedExamples.insert(word) }
+                            }
+                        )
+                    }
+                case .checklist:
+                    checklistCard
+                case .noMarkets:
+                    // Wer den Rundgang am Ende des Onboardings ablehnt, sieht
+                    // die Frage nach den Filialen nie — und stünde ohne das
+                    // hier vor einem Bildschirm, der nichts davon erwähnt.
+                    // **Ohne Anker:** Der Rundgang legt für den Plan-Rahmen
+                    // Beispiel-Artikel hin, spielt also nie über diesem
+                    // Zustand.
                     NoMarketsCard(action: onChooseMarkets)
+                case .none:
+                    EmptyView()
                 }
             }
             .padding(Theme.Spacing.xl)
         }
+    }
+
+    /// Ob die Ansprache die Einladung „Füg mal ‚Milch‘ hinzu" trägt. Nur vor
+    /// dem allerersten Artikel, nie während des Rundgangs — und nicht, wenn
+    /// die Beispiel-Angebote sie schon tragen.
+    private var showsFirstItemPrompt: Bool {
+        guard !setup.firstItemAdded, tutorial?.isRunning != true else { return false }
+        switch guidance {
+        case .firstItem: return firstItemExamples.isEmpty
+        case .noMarkets: return true
+        case .checklist, .none: return false
+        }
+    }
+
+    /// Eine Fassung für beide Bildschirme (Leerzustand und Liste).
+    private var checklistCard: some View {
+        SetupChecklistCard(
+            hasMarkets: hasMarkets,
+            firstItemAdded: setup.firstItemAdded,
+            firstMatchSeen: setup.firstMatchSeen,
+            onChooseMarkets: onChooseMarkets,
+            onAddItem: { inputFocused = true },
+            onDismiss: { withAnimation(.snappy) { setup.dismissChecklist() } }
+        )
     }
 
     // MARK: Suggestions
@@ -626,7 +791,10 @@ struct ShoppingListView: View {
                     // Nur bei Erfolg: Bei einem Duplikat legt `add` nichts an,
                     // und `lastAdded` wäre dann ein fremder Eintrag.
                     let angelegt = withAnimation { list.add(term) }
-                    if angelegt { beginFlow(with: list.lastAdded) }
+                    if angelegt {
+                        recordUserAdd()
+                        beginFlow(with: list.lastAdded)
+                    }
                 } label: {
                     Text(term)
                         .font(.subheadline.weight(.medium))
@@ -660,7 +828,10 @@ struct ShoppingListView: View {
                     Button {
                         suggestionChoice = true
                         let angelegt = withAnimation { list.add(staple) }
-                        if angelegt { beginFlow(with: list.lastAdded) }
+                        if angelegt {
+                            recordUserAdd()
+                            beginFlow(with: list.lastAdded)
+                        }
                     } label: {
                         Text(staple)
                             .font(.subheadline.weight(.medium))
@@ -707,7 +878,10 @@ struct ShoppingListView: View {
                     suggestionChoice = true
                     // Nur bei Erfolg — siehe die Vorschlagskacheln oben.
                     let angelegt = withAnimation { list.add(staple) }
-                    if angelegt { beginFlow(with: list.lastAdded) }
+                    if angelegt {
+                        recordUserAdd()
+                        beginFlow(with: list.lastAdded)
+                    }
                 } label: {
                     Text(staple)
                         .font(.subheadline.weight(.medium))
@@ -884,6 +1058,7 @@ struct ShoppingListView: View {
 
     private func addItem() {
         guard list.add(newItemText) else { return }
+        recordUserAdd()
         newItemText = ""
         keepTyping()
         // **Das Mengen-Menü kommt von selbst** ([UI-8], Scott 01.08.) — der
@@ -1029,6 +1204,7 @@ struct NoMarketsCard: View {
     .environment(MatchRejectionStore())
     .environment(ProfileStore())
     .environment(PurchaseHistoryStore())
+    .environment(SetupProgressStore())
 }
 
 #Preview("Ohne Filialen") {
@@ -1040,4 +1216,5 @@ struct NoMarketsCard: View {
     .environment(MatchRejectionStore())
     .environment(ProfileStore())
     .environment(PurchaseHistoryStore())
+    .environment(SetupProgressStore())
 }

@@ -27,6 +27,10 @@ struct ContentView: View {
     /// Der Rundgang. Lebt hier, weil ihn beide Hälften brauchen: Das Onboarding
     /// bietet ihn an, die Tabs zeigen ihn.
     @State private var tutorial = TutorialStore()
+    /// Die zwei ersten Male (Artikel, Treffer) und die Einrichtungs-Checkliste.
+    /// Hier statt in der Liste, weil auch die Einstellungen ihn brauchen
+    /// (`AppReset`).
+    @State private var setup = SetupProgressStore()
     /// Die Filialauswahl über der Liste. Erreichbar aus dem Leerzustand der
     /// Liste; die Markt-Frage nach dem Onboarding bringt ihre eigene Fassung
     /// mit (`MarketPromptSheet`).
@@ -108,6 +112,7 @@ struct ContentView: View {
         .environment(shoppingList)
         .environment(rejections)
         .environment(feedback)
+        .environment(setup)
         // Die Tab-Leiste ist die eine Stelle, an der man aus dem Rundgang
         // herausspaziert: Sie zeichnet UIKit **über** dem Overlay, die
         // Sperrflächen darunter erreichen sie nicht. Am Simulator nachgestellt —

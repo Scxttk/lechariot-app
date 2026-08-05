@@ -15,6 +15,11 @@ struct ShoppingListRowView: View {
     /// Trägt die Anker für den Rundgang. Nur die erste offene Zeile setzt das —
     /// siehe `ShoppingListView.itemList`.
     var carriesTutorialAnchors = false
+    /// Einmaliges Aufleuchten der Treffer-Kachel beim **allerersten** Treffer
+    /// überhaupt — der Aha-Moment des geführten ersten Artikels. Gesetzt und
+    /// nach ein paar Sekunden wieder abgeräumt von `ShoppingListView`; hier
+    /// nur ein kräftigerer Rand, kein Konfetti.
+    var highlightsFirstMatch = false
     /// Der Satz zu Suchwörtern, die das Wörterbuch nicht kennt — siehe
     /// `QueryUnderstanding.unknownNote`.
     ///
@@ -242,7 +247,12 @@ struct ShoppingListRowView: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                        .strokeBorder(position.isPinned ? Theme.accent.opacity(0.45) : Theme.stroke)
+                        .strokeBorder(
+                            highlightsFirstMatch
+                                ? Theme.accent
+                                : position.isPinned ? Theme.accent.opacity(0.45) : Theme.stroke,
+                            lineWidth: highlightsFirstMatch ? 2 : 1
+                        )
                 )
         }
         .buttonStyle(TactileButtonStyle())
