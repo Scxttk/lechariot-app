@@ -394,47 +394,113 @@ struct MockBranchRepository: BranchRepositoryProtocol {
 
 /// Records requests instead of sending them, and can be told which stores the
 /// backend already has — so tests can drive the wait state without a network.
+///
+/// **Mit Schloss — und das `@unchecked Sendable` ist damit zum ersten Mal
+/// wahr.** Die `async`-Methoden des Protokolls laufen nicht auf dem
+/// Main-Actor, und beim Start ruft die App `checkPendingBranches` doppelt
+/// (das `.task` und der `scenePhase`-Wechsel auf `.active` feuern beide):
+/// zwei Threads in `requested.append` — Heap-Schaden. Auf dem Simulator als
+/// Startabsturz etwa jeder dreißigste Lauf, `EXC_BAD_ACCESS` in
+/// `Array.append` unter `requestBranch(marketId:)`, sechs .ips-Berichte vom
+/// 05./06.08. mit identischem Stack (und einer vom 03.08. — der Riss ist
+/// älter als jeder Verdächtige aus dem Merge). In Journeys sah das aus wie
+/// „die App startet nicht": kein Rahmen, keine Leiste, 15 s Warten umsonst —
+/// und beim nächsten Start ging alles, weshalb der Verdacht reihum wanderte.
 final class MockBranchRequestRepository: BranchRequestRepositoryProtocol, @unchecked Sendable {
+    private let lock = NSLock()
+    private var readyStorage: Set<String> = []
+    private var pendingStorage: Set<String> = []
+    private var requestedStorage: [String] = []
+
     /// Stores that already carry a `last_synced`.
-    var ready: Set<String> = []
+    var ready: Set<String> {
+        get { lock.withLock { readyStorage } }
+        set { lock.withLock { readyStorage = newValue } }
+    }
+
     /// Stores whose row exists but is still pending.
-    var pending: Set<String> = []
-    private(set) var requested: [String] = []
+    var pending: Set<String> {
+        get { lock.withLock { pendingStorage } }
+        set { lock.withLock { pendingStorage = newValue } }
+    }
+
+    var requested: [String] { lock.withLock { requestedStorage } }
 
     func request(marketId: String) async throws -> BranchRequest? {
-        if ready.contains(marketId) {
-            return BranchRequest(marketId: marketId, lastSynced: "2026-07-25T16:56:48Z", active: true)
+        lock.withLock {
+            if readyStorage.contains(marketId) {
+                return BranchRequest(marketId: marketId, lastSynced: "2026-07-25T16:56:48Z", active: true)
+            }
+            if pendingStorage.contains(marketId) || requestedStorage.contains(marketId) {
+                return BranchRequest(marketId: marketId, lastSynced: nil, active: true)
+            }
+            return nil
         }
-        if pending.contains(marketId) || requested.contains(marketId) {
-            return BranchRequest(marketId: marketId, lastSynced: nil, active: true)
-        }
-        return nil
     }
 
     func requestBranch(marketId: String) async throws {
-        requested.append(marketId)
+        lock.withLock { requestedStorage.append(marketId) }
     }
 }
 
 /// Same shape as `MockBranchRequestRepository`, one level up: the area, not
-/// the single store.
+/// the single store — **und mit demselben Schloss, aus demselben Grund**:
+/// `checkPendingArea` läuft beim Start und beim `scenePhase`-Wechsel
+/// nebeneinander, und der .ips-Bericht vom 03.08. zeigt denselben Riss auf
+/// diesem Pfad.
 final class MockAreaRequestRepository: AreaRequestRepositoryProtocol, @unchecked Sendable {
+    private let lock = NSLock()
+    private var readyStorage: Set<String> = []
+    private var pendingStorage: Set<String> = []
+    private var requestedStorage: [String] = []
+    private var coordinatesStorage: [String: (lat: Double, lon: Double)] = [:]
+    private var requestedCoordinatesStorage: [String: (lat: Double?, lon: Double?)] = [:]
+    private var areaKeysStorage: [String: String] = [:]
+
     /// Anchors whose area run has finished.
-    var ready: Set<String> = []
+    var ready: Set<String> {
+        get { lock.withLock { readyStorage } }
+        set { lock.withLock { readyStorage = newValue } }
+    }
+
     /// Anchors whose row exists but whose run is still going.
-    var pending: Set<String> = []
-    private(set) var requested: [String] = []
+    var pending: Set<String> {
+        get { lock.withLock { pendingStorage } }
+        set { lock.withLock { pendingStorage = newValue } }
+    }
+
+    var requested: [String] { lock.withLock { requestedStorage } }
 
     /// Koordinaten, die eine schon vorhandene Zeile trägt — damit Tests die
     /// Übernahmeregel („nicht die Zeile einer anderen Stadt kapern") prüfen
     /// können.
-    var coordinates: [String: (lat: Double, lon: Double)] = [:]
+    var coordinates: [String: (lat: Double, lon: Double)] {
+        get { lock.withLock { coordinatesStorage } }
+        set { lock.withLock { coordinatesStorage = newValue } }
+    }
+
     /// Was die App tatsächlich mitgeschickt hat.
-    private(set) var requestedCoordinates: [String: (lat: Double?, lon: Double?)] = [:]
+    var requestedCoordinates: [String: (lat: Double?, lon: Double?)] {
+        lock.withLock { requestedCoordinatesStorage }
+    }
+
+    /// Zuordnung Gebietsschlüssel -> Filiale. Wird beim Anfordern automatisch
+    /// gefüllt; Tests können sie für schon vorhandene Zeilen vorbelegen.
+    var areaKeys: [String: String] {
+        get { lock.withLock { areaKeysStorage } }
+        set { lock.withLock { areaKeysStorage = newValue } }
+    }
 
     func request(marketId: String) async throws -> AreaRequest? {
-        let point = coordinates[marketId]
-        if ready.contains(marketId) {
+        lock.withLock { row(for: marketId) }
+    }
+
+    /// Nur unter gehaltenem Schloss aufrufen — die eine Stelle, an der die
+    /// Zeile gebaut wird, damit `request(areaKey:)` nicht durch einen zweiten
+    /// Griff zum selben Schloss muss (NSLock kennt kein Wiedereintreten).
+    private func row(for marketId: String) -> AreaRequest? {
+        let point = coordinatesStorage[marketId]
+        if readyStorage.contains(marketId) {
             return AreaRequest(
                 marketId: marketId, plz: "04639",
                 lastSynced: "2026-07-26T08:36:50Z", active: true,
@@ -442,7 +508,7 @@ final class MockAreaRequestRepository: AreaRequestRepositoryProtocol, @unchecked
                 lat: point?.lat, lon: point?.lon
             )
         }
-        if pending.contains(marketId) || requested.contains(marketId) {
+        if pendingStorage.contains(marketId) || requestedStorage.contains(marketId) {
             return AreaRequest(
                 marketId: marketId, plz: "04639", lastSynced: nil, active: true,
                 areaKey: point.map { AreaRequestStore.areaKey(lat: $0.lat, lon: $0.lon) },
@@ -452,28 +518,29 @@ final class MockAreaRequestRepository: AreaRequestRepositoryProtocol, @unchecked
         return nil
     }
 
-    /// Zuordnung Gebietsschlüssel -> Filiale. Wird beim Anfordern automatisch
-    /// gefüllt; Tests können sie für schon vorhandene Zeilen vorbelegen.
-    var areaKeys: [String: String] = [:]
-
     func request(areaKey: String) async throws -> AreaRequest? {
-        if let marketId = areaKeys[areaKey] {
-            return try await request(marketId: marketId)
+        lock.withLock {
+            if let marketId = areaKeysStorage[areaKey] {
+                return row(for: marketId)
+            }
+            // Sonst die Zeile, deren Koordinaten in dieser Zelle liegen — so
+            // muss ein Test nur `coordinates` setzen und nicht zusätzlich den
+            // Schlüssel.
+            for (marketId, point) in coordinatesStorage
+            where AreaRequestStore.areaKey(lat: point.lat, lon: point.lon) == areaKey {
+                return row(for: marketId)
+            }
+            return nil
         }
-        // Sonst die Zeile, deren Koordinaten in dieser Zelle liegen — so muss
-        // ein Test nur `coordinates` setzen und nicht zusätzlich den Schlüssel.
-        for (marketId, point) in coordinates
-        where AreaRequestStore.areaKey(lat: point.lat, lon: point.lon) == areaKey {
-            return try await request(marketId: marketId)
-        }
-        return nil
     }
 
     func requestArea(marketId: String, lat: Double?, lon: Double?) async throws {
-        requested.append(marketId)
-        requestedCoordinates[marketId] = (lat, lon)
-        if let lat, let lon {
-            areaKeys[AreaRequestStore.areaKey(lat: lat, lon: lon)] = marketId
+        lock.withLock {
+            requestedStorage.append(marketId)
+            requestedCoordinatesStorage[marketId] = (lat, lon)
+            if let lat, let lon {
+                areaKeysStorage[AreaRequestStore.areaKey(lat: lat, lon: lon)] = marketId
+            }
         }
     }
 }
