@@ -7,8 +7,8 @@ import SwiftUI
 /// the app after onboarding did not know where to start, and a tour that leaves
 /// the whole screen live is just a tooltip they can tap past by accident.
 ///
-/// Two frames are hands-on: the hole passes touches so the tester can actually
-/// type and tap. They still wait for "Weiter" like every other frame — see
+/// The first frame is hands-on: the hole passes touches so the tester can
+/// actually type. It still waits for "Weiter" like every other frame — see
 /// `TutorialStep.allowsInteraction`. The rest only explain.
 struct TutorialOverlay: View {
     let anchors: [TutorialTarget: Anchor<CGRect>]
@@ -276,9 +276,26 @@ struct TutorialOverlay: View {
         }
     }
 
+    /// Wie viel Luft ein Ziel um sich bekommt.
+    ///
+    /// **Listenzeilen brauchen mehr.** Der Anker sitzt auf dem *Inhalt* der
+    /// Zeile; die Zeile selbst legt ihre eigene Polsterung noch einmal
+    /// ringsherum — bei den Einstellungen genau die 16 Punkte, die eine
+    /// eingerückte Gruppe vorgibt. Mit acht Punkten Luft schnitt das Loch der
+    /// Zeile diesen Rand ab: sichtbar am Rundgang-Knopf, dessen antippbare
+    /// Fläche unten und an den Seiten aus der Hervorhebung herausragte
+    /// (05.08. gemessen, `testTheSettingsFrameHighlightsBothItsTargets`).
+    private func halo(for target: TutorialTarget) -> CGFloat {
+        switch target {
+        case .settingsMarkets, .settingsHelp: Theme.Spacing.lg
+        default: Theme.Spacing.sm
+        }
+    }
+
     private func rect(for target: TutorialTarget) -> CGRect? {
         guard let anchor = anchors[target] else { return nil }
-        let frame = proxy[anchor].insetBy(dx: -Theme.Spacing.sm, dy: -Theme.Spacing.sm)
+        let luft = halo(for: target)
+        let frame = proxy[anchor].insetBy(dx: -luft, dy: -luft)
         guard frame.width > 0, frame.height > 0 else { return nil }
         // Eine Listenzeile, die knapp aus dem Bild geschoben wurde, meldet ihren
         // Rahmen weiter — nur eben außerhalb. Das ist kein Ziel.
