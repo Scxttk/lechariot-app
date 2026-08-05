@@ -52,6 +52,17 @@ enum UITestSupport {
     static let showsTutorial =
         ProcessInfo.processInfo.arguments.contains("-uiTestingTutorial")
 
+    /// Launched with `-uiTestingTips`: die Einmal-Tipps und die
+    /// Ernährungsfrage anschalten.
+    ///
+    /// Unter `-uiTesting` bleiben sie sonst aus — dieselbe Abwägung wie beim
+    /// Rundgang eine Zeile höher: Eine Sprechblase über der Liste oder eine
+    /// Karte im Angebote-Tab bliebe in jeder bestehenden Journey hängen, ohne
+    /// dass an ihr etwas kaputt wäre. Wer die Tipps prüfen will, schaltet sie
+    /// ein.
+    static let showsContextTips =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingTips")
+
     /// Launched with `-uiTestingOnboarded`: start **behind** the onboarding,
     /// with PLZ 01219 ready and the fixture Lidl chosen.
     ///

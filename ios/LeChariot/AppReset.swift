@@ -33,6 +33,7 @@ enum AppReset {
         rejections: MatchRejectionStore,
         feedback: MatchFeedbackStore,
         tutorial: TutorialStore,
+        tips: ContextTipStore,
         areaRequests: AreaRequestStore,
         branchRequests: BranchRequestStore,
         history: PurchaseHistoryStore,
@@ -44,6 +45,10 @@ enum AppReset {
         rejections.resetAllData()
         feedback.resetAllData()
         tutorial.resetAllData()
+        // Die Einmal-Tipps und die Ernährungsfrage. Ohne dies wüsste eine
+        // „neue" Installation noch, was der alten schon gezeigt wurde — und
+        // der Reset wäre nicht mehr exakt.
+        tips.resetAllData()
         // Ohne dies überlebt die Liste der bereits angekündigten Gebiete den
         // Reset, und ein erneutes Onboarding fordert dasselbe Gebiet nie
         // wieder an — der Reset wäre nicht mehr exakt.
