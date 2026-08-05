@@ -58,10 +58,19 @@ final class AccessibilityAuditTests: XCTestCase {
         plz.typeText("01219")
         try audit("Ort oder Postleitzahl")
         app.buttons["onboarding.primary"].tap()
-        try audit("Haushalt")
+        // Erst eine Kette antippen, dann messen — dieselbe Regel wie oben:
+        // Der gewählte Zustand (Akzent auf Akzentfläche) ist der, den Nutzer
+        // sehen; ungewählt misst der Audit nur die halbe Palette. Auf den
+        // Chip warten, nicht blind tippen: Die Ketten stehen erst nach der
+        // Verzeichnis-Antwort da (im Mock-Lauf sofort, aber nicht in null
+        // Bildern).
+        let chip = app.buttons["Lidl"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 15), "Ketten-Chips nicht geladen")
+        chip.tap()
+        try audit("Welche Märkte magst du")
         app.buttons["onboarding.skip"].tap()
-        try audit("Ernährung")
-        app.buttons["onboarding.skip"].tap()
+        try audit("Belohnung")
+        app.buttons["onboarding.primary"].tap()
         try audit("Einwilligung")
 
         // Der Assistent endet seit dem 2026-07-31 in der Liste — **ohne
@@ -258,8 +267,8 @@ final class AccessibilityAuditTests: XCTestCase {
         app.buttons["onboarding.primary"].tap()
         app.buttons["onboarding.skip"].tap()
         enterPLZ()
-        app.buttons["onboarding.skip"].tap()
-        app.buttons["onboarding.skip"].tap()
+        app.buttons["onboarding.skip"].tap()      // Ketten: „Später"
+        app.buttons["onboarding.primary"].tap()   // Belohnung
         app.buttons["onboarding.primary"].tap()   // Einwilligung
 
         XCTAssertTrue(app.staticTexts["Alles bereit. Einmal kurz zeigen?"]

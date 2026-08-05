@@ -30,9 +30,9 @@ final class TourTabTransitionTests: XCTestCase {
         }
     }
 
-    /// **Sieben von neun Rahmen bleiben, wo sie sind** — nur `nextWeek` und
-    /// `settings` verlassen die Liste, siehe `testOnlyTwoFramesLeaveTheListTab`.
-    /// Für sie darf es keinen
+    /// **Drei von vier Rahmen bleiben, wo sie sind** — nur `settings`
+    /// verlässt die Liste, siehe `testOnlyTheLastFrameLeavesTheListTab`.
+    /// Für die anderen darf es keinen
     /// Plan geben: Eine Abdunklung, die auf demselben Bildschirm zu- und
     /// wieder aufgeht, ist kein Übergang, sondern ein Blinzeln — genau das
     /// Wort aus der Meldung.

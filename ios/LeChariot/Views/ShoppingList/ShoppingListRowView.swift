@@ -15,6 +15,11 @@ struct ShoppingListRowView: View {
     /// Trägt die Anker für den Rundgang. Nur die erste offene Zeile setzt das —
     /// siehe `ShoppingListView.itemList`.
     var carriesTutorialAnchors = false
+    /// Einmaliges Aufleuchten der Treffer-Kachel beim **allerersten** Treffer
+    /// überhaupt — der Aha-Moment des geführten ersten Artikels. Gesetzt und
+    /// nach ein paar Sekunden wieder abgeräumt von `ShoppingListView`; hier
+    /// nur ein kräftigerer Rand, kein Konfetti.
+    var highlightsFirstMatch = false
     /// Der Satz zu Suchwörtern, die das Wörterbuch nicht kennt — siehe
     /// `QueryUnderstanding.unknownNote`.
     ///
@@ -208,11 +213,12 @@ struct ShoppingListRowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
 
         // **Auch diese Zeile trägt den Anker** — derselbe Grund wie im Zweig
-        // ohne Filialen darüber, nur teurer bezahlt: Ohne ihn hatte der Rahmen
-        // „Das günstigste Angebot" kein Ziel, sobald der **erste offene**
-        // Artikel diese Woche nirgends im Angebot war, und übersprang sich nach
-        // 1,2 s selbst. Am 03.08. gemessen — ein Wort ohne Treffer genügt, und
-        // auf einer echten Liste steht selten nur Gefundenes.
+        // ohne Filialen darüber, nur teurer bezahlt: Ohne ihn hatte der
+        // Treffer-Rahmen des Rundgangs kein Ziel, sobald der **erste offene**
+        // Artikel diese Woche nirgends im Angebot war, und übersprang sich
+        // nach 1,2 s selbst. Am 03.08. gemessen. Der Rahmen selbst ist seit
+        // der Kürzung vom 05.08. im Plan-Rahmen aufgegangen; der Anker bleibt
+        // für die Kontext-Tipps liegen, die seine Inhalte übernehmen.
         Group {
             if let onShowMatches {
                 Button(action: onShowMatches) { text }
@@ -241,7 +247,12 @@ struct ShoppingListRowView: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                        .strokeBorder(position.isPinned ? Theme.accent.opacity(0.45) : Theme.stroke)
+                        .strokeBorder(
+                            highlightsFirstMatch
+                                ? Theme.accent
+                                : position.isPinned ? Theme.accent.opacity(0.45) : Theme.stroke,
+                            lineWidth: highlightsFirstMatch ? 2 : 1
+                        )
                 )
         }
         .buttonStyle(TactileButtonStyle())

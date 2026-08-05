@@ -14,13 +14,26 @@ import Observation
 final class ProfileStore {
     private(set) var profile: UserProfile
 
+    /// Ketten, die der Nutzer im Onboarding gelikt hat ("Welche Märkte magst
+    /// du?"), in Antipp-Reihenfolge. Werte sind die Kettennamen der
+    /// `branches`-Tabelle ("EDEKA", "ALDI Nord", …).
+    ///
+    /// **Nur auf dem Gerät.** Bewusst ein eigener UserDefaults-Schlüssel und
+    /// kein Feld auf `UserProfile`: Dessen gespeicherter JSON-Blob bestehender
+    /// Installationen bleibt so unberührt, und die Liste gehört auch nicht in
+    /// `SyncedProfile` — die Supabase-Tabelle kennt keine Spalte dafür, und
+    /// dieses Arbeitspaket erweitert das Sync-Schema absichtlich nicht.
+    private(set) var likedChains: [String]
+
     private let repository: ProfileRepositoryProtocol?
     private let defaults: UserDefaults
     private static let key = "profile.user"
+    private static let likedChainsKey = "profile.likedChains"
 
     init(repository: ProfileRepositoryProtocol? = nil, defaults: UserDefaults = AppDefaults.shared) {
         self.repository = repository
         self.defaults = defaults
+        self.likedChains = defaults.stringArray(forKey: Self.likedChainsKey) ?? []
         if let data = defaults.data(forKey: Self.key),
            let stored = try? JSONDecoder().decode(UserProfile.self, from: data) {
             self.profile = stored
@@ -79,6 +92,19 @@ final class ProfileStore {
         persist()
     }
 
+    func isLikedChain(_ chain: String) -> Bool {
+        likedChains.contains(chain)
+    }
+
+    func toggleLikedChain(_ chain: String) {
+        if let index = likedChains.firstIndex(of: chain) {
+            likedChains.remove(at: index)
+        } else {
+            likedChains.append(chain)
+        }
+        defaults.set(likedChains, forKey: Self.likedChainsKey)
+    }
+
     // MARK: Sync
 
     /// Sends the non-identifying answers to the backend. Silent no-op without
@@ -105,6 +131,8 @@ final class ProfileStore {
     /// the same `install_id` in Supabase and the rows are indistinguishable.
     func resetAllData() {
         defaults.removeObject(forKey: Self.key)
+        defaults.removeObject(forKey: Self.likedChainsKey)
+        likedChains = []
         profile = UserProfile()
         persist()
     }

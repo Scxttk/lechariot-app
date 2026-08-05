@@ -34,6 +34,7 @@ enum AppReset {
         feedback: MatchFeedbackStore,
         tutorial: TutorialStore,
         tips: ContextTipStore,
+        setup: SetupProgressStore,
         areaRequests: AreaRequestStore,
         branchRequests: BranchRequestStore,
         history: PurchaseHistoryStore,
@@ -49,6 +50,10 @@ enum AppReset {
         // „neue" Installation noch, was der alten schon gezeigt wurde — und
         // der Reset wäre nicht mehr exakt.
         tips.resetAllData()
+        // Auch die zwei ersten Male (Artikel, Treffer) und die Checkliste:
+        // Nach dem Reset ist die Installation eine neue, und eine neue wird
+        // wieder geführt.
+        setup.resetAllData()
         // Ohne dies überlebt die Liste der bereits angekündigten Gebiete den
         // Reset, und ein erneutes Onboarding fordert dasselbe Gebiet nie
         // wieder an — der Reset wäre nicht mehr exakt.
