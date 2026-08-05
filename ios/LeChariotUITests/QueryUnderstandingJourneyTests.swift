@@ -95,10 +95,14 @@ final class QueryUnderstandingJourneyTests: XCTestCase {
         if abbrechen.exists { abbrechen.tap(); return }
         // Seit dem 03.08. ist das Mengen-Menue kein Blatt mehr, sondern eine
         // Schicht ueber der Eingabezeile — sie geht mit dem Fokus, nicht mit
-        // einem Knopf. Ein Wisch ueber die Liste tut das.
+        // einem Knopf. Ein Zug ueber die **Liste** tut das; die
+        // Bildschirmmitte liegt mit voller Software-Tastatur auf der Schicht
+        // selbst, und der Tipp auf `list.matches.empty` landete dann auf dem
+        // Wortschatz statt auf der Zeile (Screenshot im Merge-PR). Siehe
+        // `dragTheListUp`.
         let panel = app.buttons["list.detailPanel.more"]
         guard panel.waitForExistence(timeout: 3) else { return }
-        app.swipeUp()
+        app.dragTheListUp()
         _ = panel.waitForNonExistence(timeout: 3)
     }
 
