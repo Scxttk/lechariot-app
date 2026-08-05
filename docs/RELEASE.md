@@ -180,7 +180,8 @@ eingeben - 01219 (Dresden). Ausserhalb Deutschlands findet die Standortsuche
 keine Filialen, und die App sieht dann leer aus.
 
 1. Onboarding: Vorname eingeben, dann PLZ 01219 tippen
-2. Die Fragen zu Haushalt und Ernaehrung koennen uebersprungen werden
+2. Die Frage "Welche Maerkte magst du?" kann uebersprungen werden ("Spaeter");
+   danach zeigt die App die Ketten und Filialen der Gegend
 3. Zum Schluss bietet die App einen kurzen Rundgang an - "Los geht's" fuehrt
    durch die Einkaufsliste, "Spaeter" geht direkt dorthin
 4. Auf der Einkaufsliste steht "Noch keine Filiale gewaehlt". Dort auf

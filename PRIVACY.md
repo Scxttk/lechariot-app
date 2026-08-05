@@ -21,6 +21,7 @@ Diese Daten werden ausschließlich lokal gespeichert und nie übertragen:
 
 - dein Vorname
 - deine Einkaufsliste
+- welche Märkte du magst (die Frage aus dem Onboarding)
 - welche Angebote du weggelegt hast
 - alle Einstellungen der App
 

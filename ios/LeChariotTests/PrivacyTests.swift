@@ -123,6 +123,7 @@ final class PrivacyStoreTests: XCTestCase {
             tripsPerWeek: 1,
             weeklyBudget: 60,
             dietTags: ["bio"],
+            likedChains: ["EDEKA"],
             hasConsentedToSync: true,
             regions: ["01219"],
             branches: [LocalDataExport.Branch(

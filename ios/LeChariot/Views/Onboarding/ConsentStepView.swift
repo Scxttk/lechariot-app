@@ -11,6 +11,8 @@ struct ConsentStepView: View {
 
     var body: some View {
         OnboardingStepView(
+            // Schritt 6 von 7 — das Rundgang-Angebot hat seit dem 2026-08-05
+            // seinen eigenen Punkt, vorher teilten sich beide den sechsten.
             step: 6,
             totalSteps: OnboardingStep.total,
             title: "Darf Le Chariot mitlernen?",
@@ -37,17 +39,21 @@ struct ConsentStepView: View {
                         .strokeBorder(Theme.stroke)
                 )
 
+                // Die Liste zählt auf, was wirklich geht — seit die Fragen zu
+                // Haushalt und Ernährung nicht mehr im Onboarding stehen,
+                // stehen sie hier als das, was sie sind: spätere, freiwillige
+                // Angaben in der App.
                 detail(
                     "checkmark.circle",
                     Theme.success,
                     "Übermittelt werden",
-                    "Haushaltsgröße, wie oft du einkaufst, dein Budget-Rahmen, deine Ernährungsangaben, deine Postleitzahl und die Filialen, die du wählst."
+                    "Deine Postleitzahl, die Filialen, die du wählst — und Angaben wie Ernährung oder Haushaltsgröße, falls die App dich später danach fragt und du antwortest."
                 )
                 detail(
                     "iphone",
                     Theme.accent,
                     "Bleibt auf dem Gerät",
-                    "Dein Vorname und deine Einkaufsliste."
+                    "Dein Vorname, deine Einkaufsliste und welche Märkte du magst."
                 )
                 detail(
                     "person.fill.questionmark",

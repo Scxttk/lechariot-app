@@ -51,14 +51,17 @@ final class ReviewNoteJourneyTests: XCTestCase {
         plz.typeText("01219")
         app.buttons["onboarding.primary"].tap()
 
-        // 2. Haushalt und Ernährung können übersprungen werden
+        // 2. Die Frage nach den Lieblingsmärkten kann übersprungen werden,
+        //    danach zeigt die App, was es in der Gegend gibt.
         let skip = app.buttons["onboarding.skip"]
         XCTAssertTrue(skip.waitForExistence(timeout: 15),
-                      "Schritt 2: der Haushalt lässt sich nicht überspringen")
+                      "Schritt 2: die Marktfrage lässt sich nicht überspringen")
         skip.tap()
-        XCTAssertTrue(skip.waitForExistence(timeout: 15),
-                      "Schritt 2: die Ernährung lässt sich nicht überspringen")
-        skip.tap()
+        XCTAssertTrue(
+            app.staticTexts["4 Ketten, 5 Filialen in deiner Nähe."].waitForExistence(timeout: 15),
+            "Schritt 2: nach der Marktfrage fehlt der Bildschirm mit den Zahlen der Gegend"
+        )
+        app.buttons["onboarding.primary"].tap()   // Belohnung
         app.buttons["onboarding.primary"].tap()   // Einwilligung
 
         // 3. Der Assistent endet in der Einkaufsliste — **ohne** Filialauswahl.
