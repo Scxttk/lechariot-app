@@ -30,6 +30,20 @@ struct OnboardingFlowView: View {
 
     private enum Phase: Equatable {
         case welcome, name, region, household, diet, consent, tour
+
+        /// Welcher Punkt leuchtet. Der Rundgang ist kein Schritt des
+        /// Assistenten mehr, sondern ein Angebot danach — er behält den
+        /// letzten Punkt, statt einen achten aufzumachen.
+        var step: Int {
+            switch self {
+            case .welcome: 1
+            case .name: 2
+            case .region: 3
+            case .household: 4
+            case .diet: 5
+            case .consent, .tour: 6
+            }
+        }
     }
 
     var body: some View {
@@ -39,11 +53,28 @@ struct OnboardingFlowView: View {
             // und trägt deshalb die Kurve. Ein `Group` täte es nicht — es
             // reicht Modifikatoren an seine Kinder durch, und die Kurve säße
             // dann an der Ansicht, die gerade verschwindet.
-            ZStack {
-                content
-                    .stateTransition(.screen)
+            VStack(spacing: 0) {
+                // **Das eine Stück Gerüst, das über die Schritte hinweg lebt.**
+                //
+                // Es steht bewusst **außerhalb** des Übergangs: Was hier liegt,
+                // verschwindet beim Schrittwechsel nicht und kann sich deshalb
+                // bewegen, statt neu zu erscheinen. Genau daran hing das
+                // Blinzeln — vorher verschwand der ganze Bildschirm, Punkte
+                // eingeschlossen, und es gab keinen einzigen ruhenden Halt für
+                // das Auge.
+                OnboardingProgressDots(step: phase.step, totalSteps: OnboardingStep.total)
+                    .padding(.horizontal, Theme.Spacing.xl)
+                    .padding(.top, Theme.Spacing.xl)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .readableWidth()
+
+                ZStack {
+                    content
+                        .stateTransition(.screen)
+                }
+                .stateAnimation(.screen, value: phase)
             }
-            .stateAnimation(.screen, value: phase)
+            .background { Theme.background.ignoresSafeArea() }
         }
         .onAppear(perform: resume)
     }
