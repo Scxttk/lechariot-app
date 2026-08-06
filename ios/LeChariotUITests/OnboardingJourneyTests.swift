@@ -132,12 +132,9 @@ final class OnboardingJourneyTests: XCTestCase {
     func testDoneStaysDisabledUntilABranchIsPicked() {
         completeOnboarding(name: "Scott")
 
-        let choose = app.buttons["list.chooseMarkets"]
-        XCTAssertTrue(choose.waitForExistence(timeout: 15))
-        choose.tap()
+        openBranchPicker()
 
         let done = app.buttons["markets.done"]
-        XCTAssertTrue(done.waitForExistence(timeout: 15))
         XCTAssertFalse(done.isEnabled, "no branch chosen yet")
         XCTAssertTrue(
             app.staticTexts["Wähle mindestens eine Filiale, um fortzufahren."].exists,
@@ -161,7 +158,7 @@ final class OnboardingJourneyTests: XCTestCase {
     /// und hinter der Kette muss sie zu finden sein.
     func testTheFirstScreenListsChainsAndTheBranchesLiveOneTapDeeper() {
         completeOnboarding(name: "Scott")
-        app.buttons["list.chooseMarkets"].tap()
+        openBranchPicker()
 
         let chain = app.buttons["picker.chain.\(fixtureChain)"]
         XCTAssertTrue(chain.waitForExistence(timeout: 15),
@@ -200,10 +197,14 @@ final class OnboardingJourneyTests: XCTestCase {
     /// Kettenzeilen — sonst wäre der Treffer hinter einer Seite versteckt.
     func testSearchingShowsBranchesRatherThanChains() {
         completeOnboarding(name: "Scott")
-        app.buttons["list.chooseMarkets"].tap()
+        openBranchPicker()
 
         let field = app.searchFields.firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 15))
+        if !field.waitForExistence(timeout: 10) {
+            app.swipeDown()
+        }
+        XCTAssertTrue(field.waitForExistence(timeout: 15),
+                      "Das Suchfeld des Filialwählers fehlt:\n" + app.debugDescription)
         field.tap()
         field.typeText("Reick")
 
@@ -319,6 +320,38 @@ final class OnboardingJourneyTests: XCTestCase {
     private var primary: XCUIElement { app.buttons["onboarding.primary"] }
     private var skip: XCUIElement { app.buttons["onboarding.skip"] }
 
+    /// **Den Filialwähler öffnen — und den Tipp wiederholen, wenn er ins Leere
+    /// ging.**
+    ///
+    /// Am 06.08. gemessen: Dieser Test fiel in etwa jedem dritten Lauf, und
+    /// zwar **nicht** am Suchfeld, wie die alte Zusicherung vermuten ließ.
+    /// Aufgeschlüsselt mit einem Halt auf `markets.done`: Wenn er fällt, geht
+    /// **das Blatt gar nicht auf**. Der Tipp landet, während der Leerzustand
+    /// der Liste noch einschwingt — die Karte mit dem Knopf wird in dem Moment
+    /// gerade eingeblendet, und ein Tipp auf etwas, das sich noch bewegt, wird
+    /// verschluckt.
+    ///
+    /// Deshalb erst warten, dann tippen, und wenn das Blatt nach zehn Sekunden
+    /// nicht steht, ein zweites Mal tippen. Ein Mensch macht genau das.
+    ///
+    /// **Merksatz: Ein Test, der mal fällt und mal nicht, misst die Maschine,
+    /// nicht die App — und die Zusicherung, an der er fällt, ist selten die,
+    /// die etwas weiß.**
+    private func openBranchPicker(_ file: StaticString = #filePath, _ line: UInt = #line) {
+        let opener = app.buttons["list.chooseMarkets"]
+        XCTAssertTrue(opener.waitForExistence(timeout: 20),
+                      "Der Knopf zum Filialwähler fehlt", file: file, line: line)
+        opener.tap()
+
+        let done = app.buttons["markets.done"]
+        if !done.waitForExistence(timeout: 10), opener.exists {
+            opener.tap()
+        }
+        XCTAssertTrue(done.waitForExistence(timeout: 20),
+                      "Der Filialwähler ist nicht aufgegangen:\n" + app.debugDescription,
+                      file: file, line: line)
+    }
+
     private func tapPrimary(_ file: StaticString = #filePath, _ line: UInt = #line) {
         XCTAssertTrue(primary.waitForExistence(timeout: 15), "primary button missing", file: file, line: line)
         XCTAssertTrue(primary.isEnabled, "primary button disabled: \(primary.label)", file: file, line: line)
@@ -342,10 +375,7 @@ final class OnboardingJourneyTests: XCTestCase {
     /// Fixture-Filiale. **Der Weg dorthin ist seit dem 2026-07-31 dieser** —
     /// im Assistenten kommt sie nicht mehr vor.
     private func pickFixtureBranchFromTheList() {
-        let choose = app.buttons["list.chooseMarkets"]
-        XCTAssertTrue(choose.waitForExistence(timeout: 15),
-                      "Ohne Filiale muss die Liste den Weg dorthin anbieten")
-        choose.tap()
+        openBranchPicker()
         openChain(fixtureChain)
         let branch = app.buttons[fixtureBranch]
         XCTAssertTrue(branch.waitForExistence(timeout: 15), "fixture branch missing")

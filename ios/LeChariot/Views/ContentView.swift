@@ -257,8 +257,8 @@ struct ContentView: View {
     /// zurückkommen, wo er losgegangen ist.
     @ViewBuilder
     private var marketPicker: some View {
-        if let plz = store.orderedReadyRegions.first ?? store.regions.first {
-            NavigationStack {
+        NavigationStack {
+            if let plz = store.orderedReadyRegions.first ?? store.regions.first {
                 MarketPickerView(
                     plz: plz,
                     marketRepository: marketRepository,
@@ -268,6 +268,48 @@ struct ContentView: View {
                 // Abbruch wäre der Bildschirm für jemanden, der es sich anders
                 // überlegt, eine Sackgasse. Im Onboarding war das richtig, hier
                 // ist es keine Pflichtstation mehr.
+                //
+                // **Am Bildschirm, nicht am `NavigationStack`:** Kurz am 06.08.
+                // nach oben gewandert, damit der leere Fall ihn erbt — aber
+                // dann gehört „Abbrechen" dem Stapel und nicht mehr der Wurzel,
+                // und nach einem Weg in eine Kette und zurück war es weg. Eine
+                // Journey hat es gemeldet. Beide Fälle tragen ihn jetzt selbst.
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Abbrechen") { showsMarketPicker = false }
+                    }
+                }
+            } else {
+                // **Ein Blatt, das nichts zeigt, ist schlimmer als keins.**
+                //
+                // Bis zum 06.08. stand hier `if let plz = …` **um das ganze
+                // Blatt**: Ohne Region baute der Zweig nichts, das Blatt fuhr
+                // trotzdem hoch, und man sah eine **weiße Fläche ohne einen
+                // einzigen Knopf** — nicht einmal „Abbrechen". Aus dem
+                // Leerzustand der Liste heraus war das eine Sackgasse, aus der
+                // nur die Wischgeste half.
+                //
+                // Gefunden über eine Journey, die genau hier hängenblieb, und
+                // sichtbar erst im Video des Testlaufs: Der Bildschirm war weiß,
+                // nicht creme — also gar kein Inhalt, keine Ansicht mit Fehler.
+                //
+                // **Merksatz: Ein `if let` um einen ganzen Bildschirm braucht
+                // immer ein `else`.** Was fehlt, muss die Ansicht sagen, sonst
+                // sagt sie nichts.
+                ContentUnavailableView {
+                    Label("Noch keine Region", systemImage: "mappin.slash")
+                } description: {
+                    Text("Ohne Postleitzahl weiß \(AppBrand.name) nicht, welche Filialen in Frage kommen. In den Einstellungen kannst du eine hinzufügen.")
+                } actions: {
+                    Button("Zu den Einstellungen") {
+                        showsMarketPicker = false
+                        selectedTab = .einstellungen
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .foregroundStyle(Theme.onAccent)
+                }
+                .themedScreen()
+                .accessibilityIdentifier("picker.noRegion")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Abbrechen") { showsMarketPicker = false }
