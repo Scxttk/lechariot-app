@@ -283,7 +283,7 @@ struct ShoppingListView: View {
 
             ForEach(groups) { section in
                 Section {
-                    ForEach(Array(section.items.enumerated()), id: \.element.id) { index, item in
+                    ForEach(section.items) { item in
                         let itemSuggestion = suggestion(for: item, plan: plan)
                         ShoppingListRowView(
                             item: item,
@@ -306,24 +306,46 @@ struct ShoppingListView: View {
                                 Label("Löschen", systemImage: "trash")
                             }
                         }
-                        // Pro Zeile statt pro Abschnitt: Diese Zeilen wischen,
-                        // und ein flacher Hintergrund zeigt dabei eine eckige
-                        // Kante. Die Rundung gilt jetzt je Abschnitt.
-                        .groupedRowBackground(
-                            GroupedRowPosition(index: index, count: section.items.count)
-                        )
+                        // **Linien statt Kästen** (06.08.). Die gerundete
+                        // Abschnittsfläche ist weg; was die Zeilen trennt, ist
+                        // eine Haarlinie, und was sie zusammenhält, ist der
+                        // gemeinsame Rand.
+                        //
+                        // Das **überstimmt** die Entscheidung vom 30.07. hinter
+                        // `groupedRowBackground` nicht, es **löst sie auf**: Sie
+                        // stand da, weil eine flache Farbe nicht weiß, dass sie
+                        // oben in einem gerundeten Abschnitt sitzt, und beim
+                        // Wischen eine harte Ecke im runden Rahmen erschien.
+                        // Ohne runden Rahmen gibt es keine Ecke, gegen die
+                        // etwas zeigen könnte.
+                        .listRowBackground(Color.clear)
+                        .listRowSeparatorTint(Theme.stroke)
+                        .listRowInsets(EdgeInsets(
+                            top: Theme.Spacing.xs, leading: Theme.Spacing.lg,
+                            bottom: Theme.Spacing.xs, trailing: Theme.Spacing.lg
+                        ))
                     }
                 } header: {
                     if showsHeaders {
-                        Text(section.category)
-                            .accessibilityIdentifier("list.section.\(section.category)")
+                        // **Das gezeichnete Zeichen trägt hier die Identität.**
+                        // `CategoryGlyphView` hatte in der ganzen App genau
+                        // eine Aufrufstelle — als Rückfall eines Rückfalls.
+                        // Fünfzehn von Hand gezeichnete Zeichen, und man bekam
+                        // sie praktisch nie zu sehen.
+                        HStack(spacing: Theme.Spacing.sm) {
+                            CategoryGlyphView(category: section.category, size: 15)
+                                .foregroundStyle(Theme.accent)
+                                .accessibilityHidden(true)
+                            Text(section.category)
+                        }
+                        .accessibilityIdentifier("list.section.\(section.category)")
                     }
                 }
             }
 
             if !list.checkedItems.isEmpty {
                 Section("Erledigt") {
-                    ForEach(Array(list.checkedItems.enumerated()), id: \.element.id) { index, item in
+                    ForEach(list.checkedItems) { item in
                         ShoppingListRowView(
                             item: item,
                             onToggle: { check(item) },
@@ -340,14 +362,25 @@ struct ShoppingListView: View {
                                 Label("Löschen", systemImage: "trash")
                             }
                         }
-                        .groupedRowBackground(
-                            GroupedRowPosition(index: index, count: list.checkedItems.count)
-                        )
+                        .listRowBackground(Color.clear)
+                        .listRowSeparatorTint(Theme.stroke)
+                        .listRowInsets(EdgeInsets(
+                            top: Theme.Spacing.xs, leading: Theme.Spacing.lg,
+                            bottom: Theme.Spacing.xs, trailing: Theme.Spacing.lg
+                        ))
                     }
                 }
             }
 
         }
+        // **`.plain`, und das ist der ganze Unterschied** (06.08.).
+        //
+        // Die App setzte **nirgends** ein `.listStyle`. Jede Liste war damit
+        // `insetGrouped`, die Vorgabe von iOS — die Hälfte des Kasten-Gefühls,
+        // über das Scott sich beschwert hat, kam gar nicht aus dem Theme,
+        // sondern aus dem System.
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         // **Der Abstand über der Plan-Karte war Luft, kein Aufbau.** Zwischen
         // der Titelleiste und der Karte lagen rund 50 pt Nichts — die
         // Standardluft, die eine gruppierte `List` über ihren ersten Abschnitt
