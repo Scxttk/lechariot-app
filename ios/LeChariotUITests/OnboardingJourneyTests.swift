@@ -392,7 +392,12 @@ final class OnboardingJourneyTests: XCTestCase {
         enterPLZAndContinue()
         tapPrimary()                       // household
         tapPrimary()                       // diet
-        tapPrimary()                       // consent
+        // **„Keine Angaben übermitteln"**, seit die Einwilligung am 06.08. mit
+        // zwei benannten Knöpfen fragt. Vorher hieß derselbe Weg „Fertig" bei
+        // ausgeschaltetem Schalter, also ebenfalls: nichts übermitteln. Diese
+        // Journeys handeln nicht von der Einwilligung; sie sollen den Weg
+        // nehmen, der nichts nebenbei anstößt.
+        tapSkip()                          // consent
     }
 
     /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst

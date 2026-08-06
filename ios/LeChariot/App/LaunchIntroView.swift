@@ -91,7 +91,22 @@ struct LaunchIntroView: View {
             // dieselbe Regel wie überall sonst in dieser App. Wer Bewegung
             // ausgeschaltet hat, sieht den statischen Startbildschirm und dann
             // die Liste.
-            guard !reduceMotion else { onFinish(); return }
+            //
+            // **Und im Testlauf gibt es ihn gar nicht.** Das ist keine
+            // Bequemlichkeit: Der Auftritt schiebt jeden Start um 1,15 s nach
+            // hinten, und Journeys, die ohne `waitForExistence` tippen, laufen
+            // dadurch ins Leere. Fünf fremde Journeys sind daran gefallen,
+            // bevor diese Zeile stand — sie einzeln laufen zu lassen war grün,
+            // im Rudel rot. **Merksatz: Was jeden Start verzögert, verzögert
+            // auch jeden Test, und der Fehler zeigt sich woanders.**
+            // `UITestSupport` gibt es nur im Debug-Bau — dieselbe Klammer wie
+            // in `AppRepositories.usesMockData`.
+            #if DEBUG
+            let imTestlauf = UITestSupport.isActive
+            #else
+            let imTestlauf = false
+            #endif
+            guard !reduceMotion, !imTestlauf else { onFinish(); return }
             started = true
             try? await Task.sleep(for: .milliseconds(1150))
             onFinish()

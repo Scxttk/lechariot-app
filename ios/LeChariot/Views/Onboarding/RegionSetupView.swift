@@ -15,6 +15,8 @@ struct RegionSetupView: View {
     @Environment(PlaceNameStore.self) private var placeNames
 
     @State private var locator = PLZLocator()
+    /// Vorschläge beim Tippen — siehe `AddressCompleter`.
+    @State private var completer = AddressCompleter()
     /// Was im Feld steht — **PLZ oder Ortsname**. Welches von beidem,
     /// entscheidet `RegionQuery`, nicht diese Ansicht.
     @State private var manualPLZ = ""
@@ -109,6 +111,58 @@ struct RegionSetupView: View {
         }
     }
 
+    /// **Die Vorschläge, die beim Tippen mitlaufen.**
+    ///
+    /// Antippen heißt: Der Text steht im Feld, und der Ort ist bestätigt —
+    /// derselbe Weg wie „Weiter", nur ohne den Umweg über das Tippen zu Ende.
+    /// Der Abgleich läuft trotzdem durch `CityLookup`; ein Vorschlag ist ein
+    /// Vorschlag, keine Postleitzahl.
+    @ViewBuilder
+    private var addressSuggestions: some View {
+        if !completer.suggestions.isEmpty, resolvedPlace == nil {
+            VStack(spacing: 0) {
+                ForEach(Array(completer.suggestions.enumerated()), id: \.element.id) { index, item in
+                    if index > 0 { Divider() }
+                    Button {
+                        manualPLZ = item.query
+                        completer.clear()
+                        lookUpCity()
+                    } label: {
+                        HStack(spacing: Theme.Spacing.md) {
+                            Image(systemName: "mappin.circle")
+                                .foregroundStyle(Theme.accent)
+                                .accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(Color.primary)
+                                if !item.subtitle.isEmpty {
+                                    Text(item.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.secondaryText)
+                                }
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(Theme.Spacing.md)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(TactileButtonStyle())
+                    .accessibilityIdentifier("region.suggestion")
+                }
+            }
+            .background(
+                Theme.surface,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                    .strokeBorder(Theme.stroke)
+            )
+            .accessibilityIdentifier("region.suggestions")
+        }
+    }
+
     // MARK: Fields
 
     private var fields: some View {
@@ -144,7 +198,16 @@ struct RegionSetupView: View {
                     resolvedPlace = nil
                     candidates = []
                     errorMessage = nil
+                    // **Eine PLZ braucht keine Vorschläge.** Fünf Ziffern sind
+                    // die Antwort selbst; Apple schlüge dazu Straßen vor, die
+                    // niemand gefragt hat.
+                    switch query {
+                    case .postleitzahl, .zuKurz: completer.clear()
+                    case .ortsname: completer.update(query: manualPLZ)
+                    }
                 }
+
+            addressSuggestions
 
             Button {
                 useLocation()
