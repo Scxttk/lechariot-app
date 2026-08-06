@@ -91,8 +91,36 @@ final class OnboardingJourneyTests: XCTestCase {
         enterPLZAndContinue()
         tapSkip()                  // household: "Überspringen"
         tapSkip()                  // diet: "Trifft nichts zu"
-        tapPrimary()               // consent: "Fertig"
+        // **Seit dem 06.08. sind es zwei Knöpfe statt Schalter plus „Fertig".**
+        // Wer nichts beantwortet, sagt hier ausdrücklich „Keine Angaben
+        // übermitteln" — vorher hing dieselbe Wirkung an einem Schalter, den
+        // man überklicken konnte, ohne etwas gesagt zu haben.
+        tapSkip()                  // consent: "Keine Angaben übermitteln"
 
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+    }
+
+    /// **Beide Antworten stehen als Knopf da, und beide führen in die App.**
+    ///
+    /// Scotts Befund vom 06.08.: „Darf Le Chariot mitlernen?" mit einem
+    /// Schalter darunter liest sich wie jede App, die alle Daten will — „und
+    /// deswegen klickt man bei der Seite einfach weiter." Wer durchklickte,
+    /// hatte nicht Nein gesagt, sondern gar nichts. Dieser Test hält fest, dass
+    /// die Frage nicht wieder in ein Bedienelement wandert, das man übersehen
+    /// kann.
+    func testTheConsentStepAsksWithTwoNamedButtons() {
+        tapPrimary()               // welcome
+        tapSkip()                  // Ohne Namen weiter
+        enterPLZAndContinue()
+        tapSkip()                  // household
+        tapSkip()                  // diet
+
+        XCTAssertTrue(primary.waitForExistence(timeout: 15))
+        XCTAssertEqual(primary.label, "Angaben übermitteln")
+        XCTAssertTrue(skip.exists, "die Gegenantwort fehlt")
+        XCTAssertEqual(skip.label, "Keine Angaben übermitteln")
+
+        primary.tap()
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
     }
 

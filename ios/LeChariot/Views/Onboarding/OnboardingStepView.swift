@@ -7,6 +7,7 @@ import SwiftUI
 /// Before this existed each step invented its own spacing and button placement,
 /// which made a five-screen flow feel like five unrelated screens.
 struct OnboardingStepView<Content: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let step: Int
     let totalSteps: Int
     let title: String
@@ -57,7 +58,22 @@ struct OnboardingStepView<Content: View>: View {
                 Capsule()
                     .fill(index <= step ? Theme.accent : Theme.accent.opacity(0.2))
                     .frame(width: index == step ? 20 : 6, height: 6)
-                    .animation(.easeOut(duration: 0.25), value: step)
+                    // **Feder, weil sich hier eine Breite ändert** (6 → 20 pt)
+                    // — Bewegung ist Federsache, Verblassen Kurvensache.
+                    //
+                    // ⚠️ Diese Animation läuft heute **nie**: `step` ist ein
+                    // `let`, und jeder Schritt baut eine neue
+                    // `OnboardingStepView`. Ein Wert, der sich auf einer
+                    // lebenden Ansicht nie ändert, animiert nichts. Sie wird
+                    // erst wach, wenn das Gerüst (Punkte + Fußleiste) aus dem
+                    // Übergang herausgehoben wird und über die Schritte hinweg
+                    // stehen bleibt — genau das ist der nächste Schritt am
+                    // Onboarding. Die Kurve steht schon richtig da, damit sie
+                    // beim Umbau nicht übersehen wird.
+                    .animation(
+                        reduceMotion ? nil : Theme.Motion.element.animation,
+                        value: step
+                    )
             }
         }
         .padding(.bottom, Theme.Spacing.xs)

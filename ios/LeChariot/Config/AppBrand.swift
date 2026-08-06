@@ -21,5 +21,10 @@ import Foundation
 /// Scotts iPhone. Beim nächsten Mal träfe das die Tester.
 enum AppBrand {
     /// Wie die App sich selbst nennt, wenn sie in einem Satz vorkommt.
-    static let name = "Le Chariot"
+    ///
+    /// **Mit geschütztem Leerzeichen** (06.08.): Scott sah „Le" und „Chariot"
+    /// auf zwei Zeilen — in einem zentrierten Leerzustand bricht der Name sonst
+    /// genau in der Mitte um. Ein Name, der umbricht, liest sich als zwei
+    /// Wörter, und „Le" allein am Zeilenende ist keins.
+    static let name = "Le\u{00A0}Chariot"
 }

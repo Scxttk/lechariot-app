@@ -185,15 +185,31 @@ extension Theme {
             reduceMotion ? nil : animation
         }
 
-        /// Der neue Bildschirm blendet **ein**, der alte ist sofort weg.
+        /// Der neue Bildschirm **kommt herein**, der alte ist sofort weg.
         ///
         /// Kein Überblenden: Zwei Ansichten auf demselben Platz hießen, dass
         /// der abgelöste Bildschirm 0,3 s lang bedienbar und im
         /// Barrierefreiheits-Baum bleibt. Der Audit fand so zwei Knöpfe
         /// `onboarding.skip` und tippte den gehenden.
         /// Siehe [[Le Chariot Entscheidungen]], „Bewegung".
+        ///
+        /// **Seit dem 06.08. bewegt sich der Neue dabei** (Scott: „I want a
+        /// better Animation between Onboarding Pages then a blink"). Der Grund
+        /// für das Blinzeln steckte in der Kombination: Der alte Bildschirm
+        /// stirbt in einem Bild, der neue blendet über 0,3 s auf — dazwischen
+        /// sieht man **die nackte Fläche**, auf der Text erscheint. Nichts geht,
+        /// nichts kommt, es blitzt. Und weil jeder Onboarding-Schritt dasselbe
+        /// Gerüst hat (Punkte, Titel, Inhalt, Fußleiste an derselben Stelle),
+        /// war der Textwechsel das einzige sichtbare Ereignis.
+        ///
+        /// Ein Ding, das **ankommt**, führt das Auge; ein Bild, das aufblendet,
+        /// lässt es warten. Die Falle mit dem doppelten Knopf bleibt dabei
+        /// geschlossen — am Weggehen ändert sich nichts.
         var transition: AnyTransition {
-            .asymmetric(insertion: .opacity, removal: .identity)
+            .asymmetric(
+                insertion: .move(edge: .trailing).combined(with: .opacity),
+                removal: .identity
+            )
         }
     }
 }
@@ -629,12 +645,25 @@ extension View {
 struct TactileButtonStyle: ButtonStyle {
     // Custom styles bypass the system's automatic disabled dimming.
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+            // **Feder statt Kurve** (06.08.). Eine dauerbasierte `easeOut` auf
+            // etwas, das sich *bewegt*, startet nach einer Unterbrechung wieder
+            // aus dem Stand — zweimal schnell tippen, und die Skalierung setzt
+            // sichtbar neu an. Eine Feder wird im Flug umgelenkt und behält
+            // dabei ihre Geschwindigkeit. Das ist der Unterschied, den man als
+            // „fühlt sich nicht wie Apple an" beschreibt, ohne ihn zu benennen.
+            //
+            // Verblassen bleibt Kurvensache — die Deckkraft läuft im selben
+            // Modifikator mit, und ein Fade darf hart enden.
+            .animation(
+                reduceMotion ? nil : .snappy(duration: 0.15, extraBounce: 0),
+                value: configuration.isPressed
+            )
             // Ohne das ist nur der gezeichnete Inhalt antippbar — bei einem
             // Icon in einem 44-pt-Rahmen also der Glyph, nicht der Rahmen.
             // Der Accessibility-Audit hat genau das am Weglegen-Knopf gemeldet;

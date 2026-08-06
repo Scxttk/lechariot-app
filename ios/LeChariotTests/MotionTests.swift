@@ -52,3 +52,36 @@ final class MotionTests: XCTestCase {
         }
     }
 }
+
+/// **Der Startbildschirm und die App-Fläche müssen dieselbe Farbe sein.**
+///
+/// Am 06.08. gefunden: `INFOPLIST_KEY_UILaunchScreen_Generation` allein erzeugt
+/// einen leeren `UILaunchScreen`, und der ist `systemBackground` — reinweiß im
+/// hellen, reinschwarz im dunklen Modus. Die App malt danach
+/// `Theme.background`. Jeder Kaltstart blitzte also weiß auf.
+///
+/// Das Farbset `LaunchBackground` trägt jetzt dieselben Werte. Dieser Test
+/// hält sie zusammen: Ohne ihn driften die zwei beim nächsten Farbdreh
+/// auseinander, und das Blitzen wäre zurück, ohne dass jemand es merkt.
+final class LaunchBackgroundTests: XCTestCase {
+    func testTheLaunchScreenMatchesTheAppBackground() throws {
+        let named = try XCTUnwrap(
+            UIColor(named: "LaunchBackground"),
+            "Farbset LaunchBackground fehlt — der Startbildschirm blitzt weiß auf"
+        )
+        for style in [UIUserInterfaceStyle.light, .dark] {
+            let traits = UITraitCollection(userInterfaceStyle: style)
+            let launch = named.resolvedColor(with: traits)
+            let app = UIColor(Theme.background).resolvedColor(with: traits)
+
+            var lr: CGFloat = 0, lg: CGFloat = 0, lb: CGFloat = 0, la: CGFloat = 0
+            var ar: CGFloat = 0, ag: CGFloat = 0, ab: CGFloat = 0, aa: CGFloat = 0
+            launch.getRed(&lr, green: &lg, blue: &lb, alpha: &la)
+            app.getRed(&ar, green: &ag, blue: &ab, alpha: &aa)
+
+            XCTAssertEqual(lr, ar, accuracy: 0.004, "Rot weicht ab (\(style))")
+            XCTAssertEqual(lg, ag, accuracy: 0.004, "Grün weicht ab (\(style))")
+            XCTAssertEqual(lb, ab, accuracy: 0.004, "Blau weicht ab (\(style))")
+        }
+    }
+}

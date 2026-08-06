@@ -23,6 +23,7 @@ struct SettingsView: View {
     /// `PlaceNameStore`.
     @Environment(PlaceNameStore.self) private var placeNames
     @Environment(DiagnosticsGate.self) private var diagnostics
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
@@ -105,7 +106,15 @@ struct SettingsView: View {
                 // Aus den Einstellungen: **keine** Frage nach den Filialen am
                 // Ende. Wer hier startet, hat seine Wahl längst getroffen oder
                 // sitzt eine Zeile über dem Weg dorthin.
-                tutorial.start(origin: .settings, hasMarkets: store.hasFavorites)
+                //
+                // In einer animierten Transaktion, damit das Overlay auch von
+                // dieser Tür aus **aufgeht** statt zu poppen. Aus dem Onboarding
+                // sah es weich aus, aber nur zufällig: Dort kippt im selben
+                // Durchgang `isOnboardingComplete`, und dessen `.stateAnimation`
+                // deckte den Baum mit ab. Hier gibt es nichts, was das täte.
+                withAnimation(Theme.Motion.screen.animation(reduceMotion: reduceMotion)) {
+                    tutorial.start(origin: .settings, hasMarkets: store.hasFavorites)
+                }
             } label: {
                 // Gezeichneter Wegweiser statt `sparkles` — siehe `AppGlyph`.
                 // Die zwei Glitzer-Glyphen versprachen Zauberei, wo eine

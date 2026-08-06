@@ -33,6 +33,10 @@ struct ContentView: View {
     /// Deckkraft der Überblendung beim Tab-Wechsel des Rundgangs — siehe
     /// `TourTabTransition`. 0, solange nicht gewechselt wird.
     @State private var tourVeil: Double = 0
+    /// Ob das Aufräumen nach dem Rundgang durch ist. Hält die Filialen-Frage so
+    /// lange zurück — sonst fährt der Alert über einen Bildschirm, der sich
+    /// gerade selbst umbaut. Siehe `marketQuestion`.
+    @State private var cleanupDone = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Tab {
@@ -183,12 +187,33 @@ struct ContentView: View {
                 // gerade auf, und zwei Überblendungen übereinander sind eine
                 // zu viel.
                 selectedTab = tab(for: tutorial.step.tab)
+                cleanupDone = false
             } else {
                 tourVeil = 0
-                // Jeder Ausgang läuft hier durch — „Fertig“ wie „Tour beenden“.
-                // Deshalb steht das Aufräumen hier und nicht an einem Knopf.
-                tutorial.removeDemoItems(from: shoppingList)
-                selectedTab = .liste
+                // **Erst den Vorhang, dann die Bühne** (06.08.).
+                //
+                // Bis dahin passierte im selben Bild dreierlei: Die Abdunklung
+                // verschwand, `removeDemoItems` nahm drei Zeilen aus der Liste
+                // (und kippte sie, wenn der Tester nichts getippt hatte, vom
+                // `itemList` auf den `emptyState` — ein vollständiger
+                // Bildschirmtausch ohne Übergang), und der Filialen-Alert fuhr
+                // darüber. Drei zusammenhanglose Bewegungen auf einmal, und
+                // zusammen waren sie Scotts „weird jump".
+                //
+                // Jeder Ausgang läuft hier durch — „Fertig" wie „Tour beenden".
+                // Deshalb steht das Aufräumen hier und nicht an einem Knopf; es
+                // wartet nur, bis der Ausgang zu Ende gespielt ist.
+                //
+                // Wiederholt aufrufen ist ungefährlich: `removeDemoItems`
+                // steigt bei leerer `seededItems` aus.
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(Theme.Motion.screen.duration))
+                    withAnimation(Theme.Motion.element.animation(reduceMotion: reduceMotion)) {
+                        tutorial.removeDemoItems(from: shoppingList)
+                    }
+                    selectedTab = .liste
+                    cleanupDone = true
+                }
             }
         }
         .task {
@@ -218,7 +243,11 @@ struct ContentView: View {
     /// Ansicht sie nicht ein zweites Mal formuliert.
     private var marketQuestion: Binding<Bool> {
         Binding(
-            get: { tutorial.asksForMarkets },
+            // `cleanupDone` hält die Frage zurück, bis der Rundgang zu Ende
+            // gespielt und die Liste umgebaut ist. Ohne das kam der Alert im
+            // selben Bild wie das Verschwinden der Abdunklung und das Abräumen
+            // der Beispiel-Artikel — drei Bewegungen übereinander.
+            get: { tutorial.asksForMarkets && cleanupDone },
             set: { if !$0 { tutorial.dismissMarketQuestion() } }
         )
     }
