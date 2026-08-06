@@ -123,10 +123,13 @@ final class MarketFilterTests: XCTestCase {
 
     // MARK: Kettenzeile des Wählers
 
-    func testTheChainLineCountsBranchesAndNamesTheNearest() {
+    /// **Die Entfernung führt, nicht die Zahl** (06.08.). Wer eine Kette
+    /// wählt, fragt „wie weit muss ich fahren" — die große Filialzahl vorn war
+    /// der Grund, warum Scott die Reichweite als zu groß empfand.
+    func testTheChainLineLeadsWithTheDistanceNotTheCount() {
         XCTAssertEqual(
             MarketFilter.chainSubtitle(branchCount: 14, selectedCount: 0, nearestKm: 1.24),
-            "14 Filialen · nächste 1,2 km"
+            "nächste 1,2 km · 14 Filialen"
         )
     }
 
