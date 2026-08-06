@@ -174,6 +174,7 @@
 		E04F424081BB6FA66ADFFE34 /* TutorialAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C73A32383487821E94E8F8DE /* TutorialAnchor.swift */; };
 		E1A69AAF3FF5AAD433283B3D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E60DEF00707CD54C6A897349 /* Theme.swift */; };
 		E1E8AEE2F8877334EA6D7042 /* APIKeys.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2F149DE2ABC4BC50F8B39768 /* APIKeys.plist */; };
+		E2AA12AC710D8B5F0AD9F126 /* CartMorph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27567E11DADD5D61E584D387 /* CartMorph.swift */; };
 		E4593E07217F7ECE00674010 /* NextWeekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCCC4BEAD980A1C0DFEED95D /* NextWeekView.swift */; };
 		E55CBFA76531348520A526F4 /* CityNameJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D78051BC5949971330C6E3 /* CityNameJourneyTests.swift */; };
 		E60CE599D00A801164892D54 /* DiagnosticsJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF64CDAC0DBA6DC149FEB94F /* DiagnosticsJourneyTests.swift */; };
@@ -249,6 +250,7 @@
 		235B5CB43B35A715D3C8B791 /* matching-woerterbuch.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "matching-woerterbuch.json"; sourceTree = "<group>"; };
 		244C38B58D3568542C50049C /* MatchShelfTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchShelfTests.swift; sourceTree = "<group>"; };
 		274CCDD6435C2FD2A0635A59 /* DataExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExport.swift; sourceTree = "<group>"; };
+		27567E11DADD5D61E584D387 /* CartMorph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartMorph.swift; sourceTree = "<group>"; };
 		27D78051BC5949971330C6E3 /* CityNameJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityNameJourneyTests.swift; sourceTree = "<group>"; };
 		29FBE60AF1BC146BCB1A8C98 /* OfferCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferCacheTests.swift; sourceTree = "<group>"; };
 		2E3E846E81ED657EC69B5B88 /* AppRepositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRepositories.swift; sourceTree = "<group>"; };
@@ -510,6 +512,7 @@
 				5B9CA56D34B5F4A05CC2112A /* ActionGlyphs.swift */,
 				9AFFABD363EDD868A5309B94 /* AppearanceWindowBridge.swift */,
 				60ECFAA678FC3A05BAB3D5C7 /* CartGlyph.swift */,
+				27567E11DADD5D61E584D387 /* CartMorph.swift */,
 				08D08088F485E8E4BEA5C4C5 /* CategoryGlyphs.swift */,
 				E60DEF00707CD54C6A897349 /* Theme.swift */,
 			);
@@ -1013,6 +1016,7 @@
 				8493FE1F7BB9993F94B3823E /* BranchRequestStore.swift in Sources */,
 				AFF0FC1E564CFD1A83D7F7F1 /* CachedOffer.swift in Sources */,
 				A36F9F9BE8B43115453427BA /* CartGlyph.swift in Sources */,
+				E2AA12AC710D8B5F0AD9F126 /* CartMorph.swift in Sources */,
 				378862DCFBC33DF6D3276BD6 /* Categories.swift in Sources */,
 				3F841B76CFBA0F14720D0D80 /* CategoryGlyphs.swift in Sources */,
 				A1909DA9D024DD0C7E56DF35 /* CityLookup.swift in Sources */,

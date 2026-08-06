@@ -155,7 +155,8 @@ struct OfferHitsView: View {
         return HStack(spacing: Theme.Spacing.sm) {
             OfferThumbnail(
                 imageUrl: offer.imageUrl, emoji: offer.emoji,
-                category: offer.category, title: offer.product, size: 40
+                category: offer.category, title: offer.product, size: 40,
+                framed: offer.imageUrl != nil
             )
             VStack(alignment: .leading, spacing: 2) {
                 // **Der Artikel führt, nicht das Produkt.** Dieser Bildschirm

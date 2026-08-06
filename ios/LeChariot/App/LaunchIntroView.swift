@@ -31,23 +31,30 @@ struct LaunchIntroView: View {
 
     @State private var started = false
 
-    /// Vier Takte. `leer` ist absichtlich der erste: Er ist das Bild, das der
+    /// Fünf Takte. `leer` ist absichtlich der erste: Er ist das Bild, das der
     /// statische Startbildschirm schon zeigt.
     private enum Beat: CaseIterable {
-        case leer, gezeichnet, gesetzt, weg
+        case leer, gezeichnet, gesetzt, gewandelt, weg
+
+        /// Wie weit der Wagen schon Liste ist. Siehe `CartToListShape`.
+        var morph: CGFloat {
+            switch self {
+            case .leer, .gezeichnet, .gesetzt: 0
+            case .gewandelt, .weg: 1
+            }
+        }
 
         var draw: CGFloat {
             switch self {
             case .leer: 0
-            case .gezeichnet, .gesetzt, .weg: 1
+            default: 1
             }
         }
 
         var scale: CGFloat {
             switch self {
-            case .leer: 0.94
-            case .gezeichnet: 0.94
-            case .gesetzt: 1
+            case .leer, .gezeichnet: 0.94
+            case .gesetzt, .gewandelt: 1
             case .weg: 1.04
             }
         }
@@ -65,7 +72,11 @@ struct LaunchIntroView: View {
             Theme.background.ignoresSafeArea()
 
             PhaseAnimator(Beat.allCases, trigger: started) { beat in
-                CartShape()
+                // **Zuerst zeichnen, dann wandeln.** Das Aufziehen erzählt
+                // „hier entsteht etwas", die Wandlung erzählt, **was** die App
+                // tut: Die Räder werden zu den Kästchen, zwei Streben zu den
+                // Zeilen. Siehe `CartToListShape`.
+                CartToListShape(progress: beat.morph)
                     .trim(from: 0, to: beat.draw)
                     .stroke(
                         Theme.accent,
@@ -81,6 +92,9 @@ struct LaunchIntroView: View {
                 // Ende zurückschwingen, und ein Strich schwingt nicht.
                 case .gezeichnet: .easeOut(duration: 0.55)
                 case .gesetzt: .snappy(duration: 0.28)
+                // Die Wandlung darf Zeit haben — sie ist der Satz, den der
+                // Auftritt erzählt, und sie ist in 0,2 s nicht zu lesen.
+                case .gewandelt: .snappy(duration: 0.5)
                 case .weg: Theme.Motion.screen.animation
                 }
             }
@@ -108,7 +122,7 @@ struct LaunchIntroView: View {
             #endif
             guard !reduceMotion, !imTestlauf else { onFinish(); return }
             started = true
-            try? await Task.sleep(for: .milliseconds(1150))
+            try? await Task.sleep(for: .milliseconds(1700))
             onFinish()
         }
     }

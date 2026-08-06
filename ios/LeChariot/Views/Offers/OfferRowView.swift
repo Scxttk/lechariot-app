@@ -21,7 +21,8 @@ struct OfferRowView: View {
                     HStack(spacing: Theme.Spacing.md) {
                         OfferThumbnail(
                             imageUrl: offer.imageUrl, emoji: offer.emoji,
-                            category: offer.category, title: offer.product
+                            category: offer.category, title: offer.product,
+                            framed: offer.imageUrl != nil
                         )
                         productInfo
                     }
@@ -31,8 +32,9 @@ struct OfferRowView: View {
                 HStack(alignment: .top, spacing: Theme.Spacing.md) {
                     OfferThumbnail(
                             imageUrl: offer.imageUrl, emoji: offer.emoji,
-                            category: offer.category, title: offer.product
-                        )
+                            category: offer.category, title: offer.product,
+                        framed: offer.imageUrl != nil
+                    )
                     productInfo
                     Spacer()
                     priceInfo(alignment: .trailing)
