@@ -159,7 +159,12 @@ struct RegionSetupView: View {
                 RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                     .strokeBorder(Theme.stroke)
             )
-            .accessibilityIdentifier("region.suggestions")
+            // **Kein Bezeichner am Behälter.** Er stand hier und hat die
+            // Bezeichner der Zeilen darunter **überschrieben**: Im Baum hießen
+            // beide Vorschlagszeilen `region.suggestions` statt
+            // `region.suggestion`, und zwei Journeys fielen daran, obwohl die
+            // Zeilen sichtbar dastanden. SwiftUI reicht einen Bezeichner an
+            // die Kinder durch, wenn er weiter außen sitzt.
         }
     }
 

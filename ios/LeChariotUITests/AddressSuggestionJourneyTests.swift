@@ -11,15 +11,18 @@ import XCTest
 /// demselben Grund wie `uiTestingCityLookup`: Ein Test am Netz wird rot, ohne
 /// dass etwas kaputt ist.
 ///
-/// **Was hier fehlt, und warum es fehlt statt rot zu sein:** Zwei Journeys
-/// sollten prüfen, dass die Vorschläge beim Tippen erscheinen und dass ein
-/// Tipp darauf den Ort bestätigt. Beide fanden die Vorschlagszeilen im
-/// Testlauf nicht — **am Simulator von Hand nachgestellt erscheinen sie
-/// zuverlässig** (06.08., „Karl" getippt, zwei Zeilen standen da). Die Ursache
-/// liegt also im Testlauf, nicht in der App, und ist noch nicht gefunden.
-/// Ein Test, der nicht misst, was er behauptet, ist schlimmer als keiner;
-/// deshalb steht hier die Lücke benannt statt zwei roter Läufe. Was der
-/// Vervollständiger selbst tut, prüft `AddressCompleterTests` ohne Netz.
+/// **Die zwei Journeys hier haben mich zweimal angelogen, und beide Male lag
+/// es an mir.** Sie fielen mit „keine Vorschläge", obwohl die Vorschläge am
+/// Gerät zuverlässig erschienen. Die Aufnahme des Testlaufs
+/// (`-resultBundlePath`, dann das `.mp4` aus dem Bündel) zeigte sie in **jedem
+/// Bild** auf dem Schirm — gesucht wurde nur falsch: `app.buttons[…]` findet
+/// diese Zeilen nicht, `app.descendants(matching: .any)[…]` schon. Dieselbe
+/// Schreibweise benutzt diese Suite an drei anderen Stellen; ich hatte sie
+/// hier nicht.
+///
+/// **Merksatz: Wenn ein Test etwas nicht findet, ist die erste Frage nicht
+/// „ist es da?", sondern „suche ich richtig?" — und die Aufnahme beantwortet
+/// beide in dreißig Sekunden.**
 final class AddressSuggestionJourneyTests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -48,6 +51,34 @@ final class AddressSuggestionJourneyTests: XCTestCase {
 
     private var field: XCUIElement { app.textFields["region.input"] }
 
+    /// **Der Kern: Es schlägt beim Tippen vor.**
+    func testTypingAPlaceOffersSuggestions() {
+        launchAtRegionStep()
+        field.tap()
+        field.typeText("Karl")
+
+        let vorschlag = app.descendants(matching: .any)["region.suggestion"].firstMatch
+        XCTAssertTrue(vorschlag.waitForExistence(timeout: 10),
+                      "Keine Vorschläge beim Tippen:\n" + app.debugDescription)
+    }
+
+    /// Ein Tipp auf einen Vorschlag setzt den Text **und** bestätigt den Ort —
+    /// man muss danach nicht noch „Ort suchen" drücken.
+    func testTakingASuggestionResolvesThePlace() {
+        launchAtRegionStep()
+        field.tap()
+        field.typeText("Karl")
+
+        let vorschlag = app.descendants(matching: .any)["region.suggestion"].firstMatch
+        XCTAssertTrue(vorschlag.waitForExistence(timeout: 10))
+        vorschlag.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["region.resolvedPlace"].waitForExistence(timeout: 20),
+            "Der Vorschlag hat den Ort nicht bestätigt:\n" + app.debugDescription
+        )
+    }
+
     /// **Fünf Ziffern brauchen keine Vorschläge.** Sie sind die Antwort selbst;
     /// Apple schlüge dazu Straßen vor, die niemand gefragt hat.
     func testAPostcodeGetsNoSuggestions() {
@@ -56,7 +87,7 @@ final class AddressSuggestionJourneyTests: XCTestCase {
         field.typeText("01219")
 
         XCTAssertFalse(
-            app.buttons["region.suggestion"].firstMatch.waitForExistence(timeout: 5),
+            app.descendants(matching: .any)["region.suggestion"].firstMatch.waitForExistence(timeout: 5),
             "Eine PLZ darf keine Adressvorschläge auslösen"
         )
     }
