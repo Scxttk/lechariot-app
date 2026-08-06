@@ -347,6 +347,16 @@ struct OfferThumbnail: View {
     var category: String? = nil
     var title: String? = nil
     var size: CGFloat = 48
+    /// **Ob das Bildchen eine eigene Fläche bekommt** — seit dem 06.08. nur
+    /// noch dort, wo es eine braucht.
+    ///
+    /// Ein **Foto** braucht sie: Freigestellte Produktbilder haben weiße Ränder
+    /// und laufen sonst in die Kartenfläche aus. Ein **gezeichnetes
+    /// Kategoriezeichen** braucht sie nicht — es ist ohnehin nur Strich, und die
+    /// Fläche darunter trug bis heute dieselbe Füllung wie die Kachel darum
+    /// (`Theme.background` in `Theme.background`), war also gar nicht zu sehen
+    /// außer an ihrem Haarstrich. Drei Rechtecke für ein Zeichen.
+    var framed = true
 
     var body: some View {
         OfferImageContent(
@@ -362,7 +372,7 @@ struct OfferThumbnail: View {
         // dropping a system gray onto the cream. Carries a cut-out product
         // photo too, now that the emoji no longer sits behind it.
         .background(
-            Theme.background,
+            framed ? Theme.background : .clear,
             in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
         )
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous))
@@ -370,7 +380,7 @@ struct OfferThumbnail: View {
         // neutral alpha, never brand-tinted.
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08))
+                .strokeBorder(framed ? Color.primary.opacity(0.08) : .clear)
         )
         .accessibilityHidden(true)
     }

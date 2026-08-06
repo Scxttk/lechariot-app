@@ -231,18 +231,40 @@ struct ShoppingListRowView: View {
     /// Rahmen, der auf zwei Kacheln zeigt, zeigt auf keine.
     private func positionTile(_ position: ItemSuggestion.Position, isFirst: Bool) -> some View {
         Button(action: { onShowMatches?() }) {
-            suggestionContent(position.offer, isPinned: position.isPinned)
-                // Screen background as nested fill: reads as "recessed into
-                // the row" and stays in the brand palette instead of system gray.
-                .padding(Theme.Spacing.sm)
-                .background(
-                    Theme.background,
-                    in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                        .strokeBorder(position.isPinned ? Theme.accent.opacity(0.45) : Theme.stroke)
-                )
+            HStack(spacing: Theme.Spacing.sm) {
+                // **Der Balken statt des Rahmens.** Die Heftung war eine
+                // eingefärbte Kante am Kasten; ohne Kasten trägt sie ein
+                // Strich an der Kante der Zeile — dasselbe Signal, ein
+                // Element weniger. `PinnedChip` sagt daneben weiter das Wort.
+                Rectangle()
+                    .fill(position.isPinned ? Theme.accent : .clear)
+                    .frame(width: 2)
+                    .clipShape(Capsule())
+
+                suggestionContent(position.offer, isPinned: position.isPinned)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.secondaryText)
+                    .accessibilityHidden(true)
+            }
+            // **Ohne Kasten** (06.08.). Bis dahin lag hier eine gefüllte,
+            // gerahmte Fläche *in* der Zeilenfläche, und darin noch einmal die
+            // gerahmte Fläche des Bildchens — drei ineinandergeschachtelte
+            // Rechtecke für eine Angebotszeile. Scott: „i dont like that
+            // everything is in containers."
+            //
+            // Zwei davon waren ohnehin schwer zu verteidigen: Die Kachel und
+            // das Bildchen trugen **dieselbe Füllung** (`Theme.background`),
+            // das innere Rechteck war also nur an seinem Haarstrich zu sehen —
+            // und Radius 10 in Radius 10 bei 8 pt Abstand widerspricht der
+            // Regel, die in `Theme` über den Radien steht.
+            //
+            // Was den Knopf jetzt als Knopf lesbar hält, ist nicht die
+            // Umrandung, sondern das Winkelzeichen rechts und die
+            // Druckrückmeldung von `TactileButtonStyle`.
+            .padding(.vertical, Theme.Spacing.xs)
+            .contentShape(Rectangle())
         }
         .buttonStyle(TactileButtonStyle())
         // See BranchPickerRow: `.accessibilityElement(children: .ignore)` on a
@@ -264,7 +286,10 @@ struct ShoppingListRowView: View {
                 HStack(spacing: Theme.Spacing.sm) {
                     OfferThumbnail(
                         imageUrl: offer.imageUrl, emoji: offer.emoji,
-                        category: offer.category, title: offer.product, size: 32
+                        category: offer.category, title: offer.product, size: 32,
+                        // Fläche nur unter einem Foto — das Kategoriezeichen
+                        // steht ohne, siehe `OfferThumbnail.framed`.
+                        framed: offer.imageUrl != nil
                     )
                     offerText(offer, lineLimit: nil, isPinned: isPinned)
                     Spacer(minLength: 0)
@@ -282,7 +307,10 @@ struct ShoppingListRowView: View {
             HStack(spacing: Theme.Spacing.sm) {
                 OfferThumbnail(
                         imageUrl: offer.imageUrl, emoji: offer.emoji,
-                        category: offer.category, title: offer.product, size: 32
+                        category: offer.category, title: offer.product, size: 32,
+                        // Fläche nur unter einem Foto — das Kategoriezeichen
+                        // steht ohne, siehe `OfferThumbnail.framed`.
+                        framed: offer.imageUrl != nil
                     )
                 // Two lines: real product names ("Landliebe Butter Original")
                 // truncated to "Landliebe B…" at one line, which is not enough
