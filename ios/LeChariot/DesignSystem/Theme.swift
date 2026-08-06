@@ -33,8 +33,13 @@ enum Theme {
     static let accent = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
             // The light green lacks contrast on the dark surfaces; same hue, lifted.
-            ? UIColor(red: 0.56, green: 0.74, blue: 0.58, alpha: 1)   // ~#8FBD94
-            : UIColor(red: 0.247, green: 0.392, blue: 0.267, alpha: 1) // #3F6444
+            // **Richtung „Tiefe", 06.08.:** Der dunkle Akzent kommt von L* 72,5
+            // auf 66 herunter, damit er `secondaryText` (L* 76) von unten
+            // freihat; im hellen Modus geht das Grün auf Flaschentiefe. Vorher
+            // lagen Akzent und Sekundärtext bei **1,04:1** — und genau diese
+            // zwei Farben unterscheiden „geheftet" von „nicht geheftet".
+            ? UIColor(red: 0.475, green: 0.678, blue: 0.498, alpha: 1) // #79AD7F
+            : UIColor(red: 0.145, green: 0.310, blue: 0.176, alpha: 1) // #254F2D
     })
 
     /// Beschriftung **auf** einer Akzentfläche (gefüllte Knöpfe).
@@ -46,7 +51,10 @@ enum Theme {
     /// Onboarding-Schritts. Auf dem hellen Grün gehört das dunkle Olivgrün.
     static let onAccent = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.10, green: 0.12, blue: 0.08, alpha: 1)   // ~#1A1F15, 7,9:1
+            // Eigener Wert statt `background`: Der Hintergrund geht mit der
+            // Richtung „Tiefe" tiefer, die Schrift auf dem Akzent soll aber
+            // nicht mitwandern. 7,25:1 auf dem neuen Akzent.
+            ? UIColor(red: 0.059, green: 0.075, blue: 0.035, alpha: 1) // #0F1309
             : .white
     })
 
@@ -62,32 +70,55 @@ enum Theme {
     /// desaturated green-olive — dark counterpart to the cream, not a hue swap.
     static let background = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.10, green: 0.12, blue: 0.08, alpha: 1)   // ~#1A1F15
-            : UIColor(red: 0.93, green: 0.91, blue: 0.75, alpha: 1)   // #EDE9C0
+            // Eine Stufe tiefer als vorher, gleicher Farbton. Der Abstand zur
+            // Karte war **1,13:1** — Karte, Seite und Kartenkante lagen
+            // innerhalb von 1,2:1, und das *ist* die beige Masse.
+            ? UIColor(red: 0.082, green: 0.098, blue: 0.059, alpha: 1) // #15190F
+            : UIColor(red: 0.890, green: 0.871, blue: 0.722, alpha: 1) // #E3DEB8
     })
 
     /// Discount badge background (semantic, not decorative). Both variants
     /// keep white caption text above the WCAG-AA 4.5:1 contrast ratio.
     static let discount = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.82, green: 0.22, blue: 0.20, alpha: 1)
-            : UIColor(red: 0.80, green: 0.16, blue: 0.14, alpha: 1)
+            // Der dunkle Wert stand bei **2,87:1** gegen `surface` und lag
+            // damit unter der 3:1-Grenze für Nicht-Text — der einzige echte
+            // Durchfaller der alten Palette. Jetzt helle Fläche, dunkle
+            // Schrift (siehe `onDiscount`).
+            ? UIColor(red: 0.929, green: 0.443, blue: 0.329, alpha: 1) // #ED7154
+            : UIColor(red: 0.800, green: 0.161, blue: 0.137, alpha: 1) // #CC2923
+    })
+
+    /// Beschriftung **auf** dem Rabatt-Schild.
+    ///
+    /// Bis zum 06.08. stand an der Kapsel hart `.white` — genau der Fehler, den
+    /// `onAccent` ein paar Zeilen weiter oben beschreibt und der dort schon
+    /// einmal 2,13:1 gekostet hat. Im dunklen Modus ist die Fläche jetzt hell,
+    /// also gehört die Schrift dunkel: 5,97:1.
+    static let onDiscount = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0.165, green: 0.071, blue: 0.024, alpha: 1) // #2A1206
+            : .white
     })
 
     /// Hairline stroke separating cards from the background — warm neutral
     /// so it reads as an edge, not as a colored border.
     static let stroke = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(white: 1, alpha: 0.10)
-            : UIColor(red: 0.28, green: 0.17, blue: 0.11, alpha: 0.10)
+            // Kräftiger: Die Kante erreichte gegen die Karte, die sie umrandet,
+            // **1,20:1** — eine Linie, die man nicht sieht, ist keine Kante.
+            ? UIColor(white: 1, alpha: 0.16)
+            : UIColor(red: 0.28, green: 0.17, blue: 0.11, alpha: 0.22)
     })
 
     /// Elevated surface for tiles/cards/list rows on `background` — same
     /// hue family as the background, one step lifted, in both appearances.
     static let surface = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.16, green: 0.18, blue: 0.13, alpha: 1)   // lifted olive
-            : UIColor(red: 0.97, green: 0.96, blue: 0.88, alpha: 1)   // lifted #EDE9C0
+            // Papier auf Creme statt Creme auf Creme: ΔL* 9,4 statt 4,7,
+            // also 1,28:1 statt 1,13:1.
+            ? UIColor(red: 0.176, green: 0.196, blue: 0.145, alpha: 1) // #2D3225
+            : UIColor(red: 0.980, green: 0.973, blue: 0.922, alpha: 1) // #FAF8EB
     })
 
     /// Sekundärtext. Ersetzt Apples `.secondary`, das auf Creme nur 3,15:1
@@ -96,8 +127,8 @@ enum Theme {
     /// Messwerte: [[Le Chariot Entscheidungen]], „Palette und Kontrast".
     static let secondaryText = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.72, green: 0.72, blue: 0.64, alpha: 1)
-            : UIColor(red: 0.42, green: 0.36, blue: 0.28, alpha: 1)
+            ? UIColor(red: 0.753, green: 0.737, blue: 0.663, alpha: 1) // #C0BCA9
+            : UIColor(red: 0.427, green: 0.373, blue: 0.286, alpha: 1) // #6D5F49
     })
 
     // MARK: Status colors
@@ -127,16 +158,23 @@ enum Theme {
     /// on surface. Distinct from `discount`, which is a price semantic.
     static let error = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 1.0, green: 0.45, blue: 0.42, alpha: 1)    // #FF736B
+            // Vom Hellwert des Akzents heruntergeholt.
+            ? UIColor(red: 0.976, green: 0.569, blue: 0.533, alpha: 1) // #F99188
             : UIColor(red: 0.639, green: 0.078, blue: 0.059, alpha: 1) // #A3140F
     })
 
     /// Confirmations — markets found during the region sync. A deeper green
-    /// than the accent so "done" never reads as "tappable". 5.76:1 / 7.48:1.
+    /// than the accent so "done" never reads as "tappable".
+    ///
+    /// **Und seit dem 06.08. stimmt dieser Satz auch.** Gemessen war das alte
+    /// `success` bei praktisch gleichem Farbton **1,6 Hellwertpunkte heller**
+    /// als der Akzent — die Absicht stand seit jeher im Kommentar und war nie
+    /// umgesetzt. Jetzt trennen die beiden 9 Punkte im hellen und 18 im
+    /// dunklen Modus.
     static let success = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.56, green: 0.80, blue: 0.60, alpha: 1)
-            : UIColor(red: 0.20, green: 0.42, blue: 0.24, alpha: 1)
+            ? UIColor(red: 0.678, green: 0.871, blue: 0.690, alpha: 1) // #ADDEB0
+            : UIColor(red: 0.184, green: 0.404, blue: 0.224, alpha: 1) // #2F6739
     })
 
     /// Linien **auf** der Abdunklung des Rundgangs — in beiden
@@ -328,7 +366,7 @@ struct DiscountBadge: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(Theme.discount, in: Capsule())
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.onDiscount)
             .accessibilityLabel("\(percent) Prozent reduziert")
     }
 }

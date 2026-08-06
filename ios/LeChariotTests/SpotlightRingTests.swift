@@ -67,8 +67,8 @@ final class SpotlightRingTests: XCTestCase {
     /// sind dunkler und damit der freundlichere Fall — geprüft wird der enge.
     func testTheRingContrastsWithTheScrimInBothAppearances() {
         let cases: [(name: String, background: (r: Double, g: Double, b: Double))] = [
-            ("hell (Creme)", (0.93, 0.91, 0.75)),
-            ("dunkel (Oliv)", (0.10, 0.12, 0.08)),
+            ("hell (Creme)", (0.890, 0.871, 0.722)),
+            ("dunkel (Oliv)", (0.082, 0.098, 0.059)),
         ]
         for item in cases {
             let scrim = dimmed(item.background, by: 0.6)
@@ -88,8 +88,8 @@ final class SpotlightRingTests: XCTestCase {
     /// dort praktisch gleich hell, eine Linie in Akzentgrün wäre unsichtbar
     /// gewesen. Ohne diesen Test wäre `Theme.onScrim` eine Behauptung.
     func testTheAccentWouldNotHaveBeenEnough() {
-        let cream = dimmed((0.93, 0.91, 0.75), by: 0.6)
-        let lightAccent = (r: 0.247, g: 0.392, b: 0.267)
+        let cream = dimmed((0.890, 0.871, 0.722), by: 0.6)
+        let lightAccent = (r: 0.145, g: 0.310, b: 0.176)
         XCTAssertLessThan(
             contrast(lightAccent, cream), 1.5,
             "Der helle Akzent besteht plötzlich gegen die Abdunklung — dann ist "
