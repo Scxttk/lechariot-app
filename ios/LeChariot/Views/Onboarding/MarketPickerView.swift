@@ -358,12 +358,20 @@ struct MarketPickerView: View {
         let subtitle = MarketFilter.chainSubtitle(
             branchCount: markets.count,
             selectedCount: selected,
-            nearestKm: markets.compactMap { distance(for: $0) }.min()
+            // **Null Kilometer heißt „keine Angabe", nicht „du stehst drin".**
+            // Am 06.08. im Wähler gesehen: „REWE · nächste 0,0 km". Filialen
+            // ohne Koordinate im Verzeichnis liefern 0, und die Zeile machte
+            // daraus eine Behauptung, die kein Mensch glaubt. Ohne Entfernung
+            // fällt der Teil jetzt weg — dafür ist `nearestKm` optional.
+            nearestKm: markets.compactMap { distance(for: $0) }.filter { $0 > 0 }.min()
         )
         return NavigationLink {
             ChainBranchesView(chain: chain, rows: rows(for: markets))
         } label: {
             HStack {
+                // Das Monogramm der Kette statt ihres Logos — siehe `ChainMark`
+                // für die ganze Abwägung.
+                ChainMark(chain: chain)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(chain)
                         .font(.body.weight(.medium))
