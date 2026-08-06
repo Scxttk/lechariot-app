@@ -1,0 +1,104 @@
+import SwiftUI
+
+/// **Der Auftritt beim Kaltstart: Der Wagen zeichnet sich selbst.**
+///
+/// Scott, 06.08.: „i want a start animation where the logo morphs and
+/// everything."
+///
+/// **Was iOS erlaubt, und was nicht.** Der Startbildschirm ist statisch,
+/// Punkt — das System zeichnet ihn, bevor der eigene Prozess läuft. Kein Code,
+/// keine Bewegung. Der einzige Hebel ist, das **letzte statische Bild und das
+/// erste eigene Bild gleich aussehen zu lassen**, damit der Übergang nicht zu
+/// sehen ist. Genau deshalb ist der Startbildschirm hier eine leere cremefarbene
+/// Fläche (`LaunchBackground` in `project.yml`) und das erste Bild dieser
+/// Ansicht auch eine — der Wagen steht bei `trim = 0`, ist also noch gar nicht
+/// da. Zwei identische leere Flächen lassen sich nicht falsch aneinandersetzen.
+///
+/// **Warum Aufziehen und kein echter Form-Morph.** Ein überzeugender Morph
+/// zwischen zwei Silhouetten braucht beide von Hand als dieselben ~20 Punkte,
+/// mit gleicher Umlaufrichtung — ein Tagwerk für eine Sekunde, die man einmal
+/// pro Installation sieht. `.trim` auf einem mehrteiligen Pfad läuft dessen
+/// Teilpfade der Reihe nach ab und schreibt den Wagen dadurch **in der
+/// Reihenfolge, in der ein Mensch ihn zeichnen würde** (siehe `CartShape`).
+///
+/// **Und kein `Task.sleep` als Taktgeber.** `PhaseAnimator` läuft auf der
+/// Render-Schleife, ist unterbrechbar und driftet unter Last nicht. Die
+/// Sequenz-mit-Schlafen-Bauart steht anderswo in dieser App und ist genau das,
+/// was hier nicht kopiert werden soll.
+struct LaunchIntroView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let onFinish: () -> Void
+
+    @State private var started = false
+
+    /// Vier Takte. `leer` ist absichtlich der erste: Er ist das Bild, das der
+    /// statische Startbildschirm schon zeigt.
+    private enum Beat: CaseIterable {
+        case leer, gezeichnet, gesetzt, weg
+
+        var draw: CGFloat {
+            switch self {
+            case .leer: 0
+            case .gezeichnet, .gesetzt, .weg: 1
+            }
+        }
+
+        var scale: CGFloat {
+            switch self {
+            case .leer: 0.94
+            case .gezeichnet: 0.94
+            case .gesetzt: 1
+            case .weg: 1.04
+            }
+        }
+
+        var opacity: CGFloat {
+            switch self {
+            case .weg: 0
+            default: 1
+            }
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            Theme.background.ignoresSafeArea()
+
+            PhaseAnimator(Beat.allCases, trigger: started) { beat in
+                CartShape()
+                    .trim(from: 0, to: beat.draw)
+                    .stroke(
+                        Theme.accent,
+                        style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round)
+                    )
+                    .frame(width: 116, height: 116)
+                    .scaleEffect(beat.scale)
+                    .opacity(beat.opacity)
+            } animation: { beat in
+                switch beat {
+                case .leer: .none
+                // Zeichnen ist kein Federweg: Eine Feder ließe den Strich am
+                // Ende zurückschwingen, und ein Strich schwingt nicht.
+                case .gezeichnet: .easeOut(duration: 0.55)
+                case .gesetzt: .snappy(duration: 0.28)
+                case .weg: Theme.Motion.screen.animation
+                }
+            }
+        }
+        .accessibilityHidden(true)
+        .task {
+            // **Bewegung abgestellt heißt: kein Auftritt.** Nicht „kürzer" —
+            // dieselbe Regel wie überall sonst in dieser App. Wer Bewegung
+            // ausgeschaltet hat, sieht den statischen Startbildschirm und dann
+            // die Liste.
+            guard !reduceMotion else { onFinish(); return }
+            started = true
+            try? await Task.sleep(for: .milliseconds(1150))
+            onFinish()
+        }
+    }
+}
+
+#Preview {
+    LaunchIntroView(onFinish: {})
+}
