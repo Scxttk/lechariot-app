@@ -29,10 +29,17 @@ final class BringSectionsJourneyTests: XCTestCase {
     /// Vorrat eine Zeile der **Folgewoche**. Der Test hatte unrecht, nicht die
     /// App — und nebenbei ist das die Leck-Regel von der anderen Seite: Was
     /// nächste Woche gilt, sortiert diese Woche nichts ein.
+    /// **Vier Artikel, nicht zwei — und das ist seit dem 06.08. der Punkt.**
+    /// Eine Überschrift steht erst, wenn im Schnitt zwei Artikel auf einen
+    /// Abschnitt kommen; über einer einzelnen Zeile sortiert sie nichts. Mit
+    /// den alten zwei Artikeln prüfte diese Journey ab jetzt den Fall, in dem
+    /// es zu Recht keine Überschriften gibt.
     func testTheListSortsItselfIntoCategorySections() {
         startTyping()
         app.typeText("Vollmilch\n")
+        app.typeText("Milch\n")
         app.typeText("Erdbeeren\n")
+        app.typeText("Orangen\n")
         // Aus dem Fluss heraus, sonst verdeckt die Schicht die Liste.
         app.typeText("\n")
 
@@ -58,33 +65,43 @@ final class BringSectionsJourneyTests: XCTestCase {
         )
     }
 
-    /// **Die Zeile aus dem Video, in der Liste statt im Angebote-Tab** — mit
-    /// Ketten-Zählern, und sie führt zu **den Treffern dieser Liste**.
+    /// **Ein Weg zu den Treffern, und er liegt in der Plan-Karte.**
     ///
-    /// Bis zum 03.08. abends führte sie in den Angebote-Tab, also in *alle*
-    /// Angebote der Woche. Scott: „wirkt tot — nur ein Link." Die Zahl in der
-    /// Zeile verspricht diese Treffer, nicht alle; siehe `OfferHitsView`.
-    func testTheOfferHitsRowStandsInTheListAndLeadsToTheMatches() {
+    /// Bis zum 03.08. abends führte er in den Angebote-Tab, also in *alle*
+    /// Angebote der Woche. Scott: „wirkt tot — nur ein Link." Bis zum 06.08.
+    /// stand er dann in einer **eigenen zweiten Karte** unter der Plan-Karte,
+    /// mit denselben Ketten noch einmal als Chips. Zwei Kästen, eine Frage;
+    /// jetzt einer. Das Ziel ist unverändert `OfferHitsView`.
+    func testThePlanCardLeadsToTheMatchesOfThisList() {
         startTyping()
         app.typeText("Vollmilch\n")
         app.typeText("\n")
 
-        let zeile = app.descendants(matching: .any)["list.offerHits"]
+        let weg = app.descendants(matching: .any)["list.plan.disclosure"]
         XCTAssertTrue(
-            zeile.waitForExistence(timeout: 10),
-            "„Passende Artikel im Angebot“ gehört in die Liste\n" + app.debugDescription
-        )
-        // Der Zähler steht in der Vorlesefassung — sonst wäre die Zeile für
-        // VoiceOver vier Bruchstücke.
-        XCTAssertTrue(
-            zeile.label.contains("Passende Artikel im Angebot"),
-            "gelesen wurde: \(zeile.label)"
+            weg.waitForExistence(timeout: 10),
+            "Der Weg zu den Treffern gehört in die Plan-Karte\n" + app.debugDescription
         )
 
-        zeile.tap()
+        weg.tap()
         XCTAssertTrue(
             app.navigationBars["Passende Artikel"].waitForExistence(timeout: 10),
-            "die Zeile muss zu den Treffern dieser Liste führen\n" + app.debugDescription
+            "der Weg muss zu den Treffern dieser Liste führen\n" + app.debugDescription
+        )
+    }
+
+    /// **Die zweite Karte ist weg und darf nicht zurückkommen.**
+    func testTheSecondCardIsGone() {
+        startTyping()
+        app.typeText("Vollmilch\n")
+        app.typeText("\n")
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["list.plan.headline"].waitForExistence(timeout: 10)
+        )
+        XCTAssertFalse(
+            app.descendants(matching: .any)["list.offerHits"].exists,
+            "„Passende Artikel im Angebot“ steht wieder als eigene Karte in der Liste"
         )
     }
 

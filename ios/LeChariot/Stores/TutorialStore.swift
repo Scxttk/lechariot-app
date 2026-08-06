@@ -82,8 +82,35 @@ struct TutorialStep: Identifiable, Equatable {
     /// Rahmen, der ohnehin von ihrer Stelle handelt. Eigene Rahmen bekommen nur
     /// die zwei, die man sonst nicht findet: die Angaben-Schicht und die
     /// Vorschau hinter dem Knopf oben links.
+    /// **Drei Rahmen, und zwar seit dem 06.08.**
+    ///
+    /// Vorher waren es neun, über drei Tabs, mit Überblendung dazwischen.
+    /// Scotts Befund: zu viel. Und die Messung vom 03.08. sagt dasselbe von der
+    /// anderen Seite — der Rundgang steht bei rund **+100 % Instruktionen**
+    /// gegen den gespeicherten Grundwert und ist damit die teuerste Strecke der
+    /// App, für etwas, das jeder Nutzer genau einmal sieht.
+    ///
+    /// **Was den Ausschlag gab, welche drei bleiben:** Der Rundgang gibt es,
+    /// weil Testern nach dem Onboarding nicht klar war, *was sie tun sollen*.
+    /// Das sind drei Handgriffe — aufschreiben, den Markt ablesen, im Laden
+    /// abhaken. Alles andere im alten Rundgang erklärte Dinge, die auf dem
+    /// Bildschirm ohnehin stehen (die Vorschlagskacheln, die Tab-Leiste, die
+    /// Angebotszeile unter dem Artikel) oder die man erst später sucht (die
+    /// Vorschau, die Einstellungen). Ein Rahmen, der etwas zeigt, das man sieht,
+    /// kostet nur Zeit.
+    ///
+    /// **Und alle drei spielen auf der Liste.** Damit ist der Tab-Wechsel im
+    /// Rundgang keine Strecke mehr, sondern nur noch der Weg hinein, wenn er aus
+    /// den Einstellungen gestartet wurde.
+    ///
+    /// `hasMarkets` ändert weiter einen Text: Seit dem 2026-07-31 endet das
+    /// Onboarding in der Liste statt in der Filialauswahl, der Rundgang läuft
+    /// also im Normalfall über einer Liste **ohne** gewählte Filiale. „Sie sagt
+    /// dir, welche Filiale am günstigsten ist" über einer Karte, die den
+    /// Leerzustand zeigt, ist eine kleine Lüge — und die erste, die ein Tester
+    /// zu sehen bekommt.
     static func tour(hasMarkets: Bool) -> [TutorialStep] {
-        var steps: [TutorialStep] = [
+        [
             TutorialStep(
                 id: "input",
                 title: "Schreib auf, was du brauchst",
@@ -92,74 +119,21 @@ struct TutorialStep: Identifiable, Equatable {
                 allowsInteraction: true
             ),
             TutorialStep(
-                id: "details",
-                title: "Menge, Größe, Sorte — wenn du magst",
-                text: "Zu jedem neuen Artikel liegen hier seine Angaben. Das ist ein Angebot, keine Frage: Wer weitertippt, überspringt sie einfach. Hinter „Notiz …“ ist Platz für eigene Worte.",
-                spotlight: .anchor(.detailPanel),
-                seedsDemoItems: true,
-                showsDetailPanel: true
-            ),
-            TutorialStep(
-                id: "chips",
-                title: "Oder nimm einen Vorschlag",
-                text: "Häufig Gekauftes liegt schon bereit. Ein Tipp, und es steht auf der Liste.",
-                spotlight: .anchor(.suggestions),
-                allowsInteraction: true
-            ),
-            TutorialStep(
                 id: "plan",
                 title: "Ein Einkauf, ein Markt",
                 text: hasMarkets
-                    ? "Diese Karte ist der Kern: Sie sagt dir, welche deiner Filialen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet."
-                    : "Diese Karte ist der Kern: Sobald du Filialen gewählt hast, sagt sie dir, welche von ihnen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet.",
-                spotlight: .anchor(.planCard)
-            ),
-            TutorialStep(
-                id: "match",
-                title: "Das günstigste Angebot",
-                text: hasMarkets
-                    ? "Unter jedem Artikel steht das beste Angebot mit Preis und Markt. Tipp es an: Dort stehen alle Treffer samt Preisverlauf, und du kannst dir eine — oder mehrere — Wahlen fest anheften."
-                    : "Unter jedem Artikel steht dann das beste Angebot mit Preis und Markt. Antippen zeigt alle Treffer samt Preisverlauf und lässt dich deine Wahl fest anheften.",
-                spotlight: .anchor(.rowMatch)
+                    ? "Diese Karte ist der Kern: Sie sagt dir, welche deiner Filialen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet. Unter jedem Artikel steht das beste Angebot dazu."
+                    : "Diese Karte ist der Kern: Sobald du Filialen gewählt hast, sagt sie dir, welche von ihnen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet. Unter jedem Artikel steht dann das beste Angebot dazu.",
+                spotlight: .anchor(.planCard),
+                seedsDemoItems: true
             ),
             TutorialStep(
                 id: "check",
                 title: "Abhaken beim Einkaufen",
-                text: "Im Laden tippst du den Kreis an, dann wandert der Artikel nach unten zu „Erledigt“. Zum Löschen wischst du die Zeile nach links.",
+                text: "Im Laden tippst du den Kreis an, dann wandert der Artikel nach unten zu „Erledigt“. Zum Löschen wischst du die Zeile nach links. Diesen Rundgang findest du jederzeit wieder unter „Einstellungen“.",
                 spotlight: .anchor(.rowCheck)
             ),
-            TutorialStep(
-                id: "tabs",
-                title: "Angebote und Einstellungen",
-                text: "Unter „Angebote“ siehst du alles, was diese Woche günstig ist. Unter „Einstellungen“ änderst du deine Filialen.",
-                spotlight: .tabBar
-            ),
         ]
-
-        // **Nur mit Filialen.** Ohne sie steht im Angebote-Tab kein
-        // Bildschirm, sondern der Hinweis „Keine Filiale gewählt" — der Knopf
-        // „Nächste Woche" existiert dort gar nicht. Der Rahmen liefe also ins
-        // Leere, überspränge sich nach der Schonfrist selbst und hinterließe
-        // dabei genau das Blinzeln, das diese Runde abschaffen soll. Der
-        // Normalfall direkt nach dem Onboarding ist **ohne** Filiale.
-        if hasMarkets {
-            steps.append(TutorialStep(
-                id: "nextWeek",
-                title: "Was ab Montag billiger wird",
-                text: "Oben links führt „Nächste Woche“ in die Vorschau. Sie beantwortet die Frage, die es sonst nicht gibt: Was kaufe ich heute bewusst nicht, weil es nächste Woche günstiger ist?",
-                spotlight: .navBar,
-                tab: .angebote
-            ))
-        }
-
-        steps.append(TutorialStep(
-            id: "settings",
-            title: "Hier stellst du alles um",
-            text: "Deine Filialen änderst du hier — und diesen Rundgang kannst du jederzeit noch einmal starten.",
-            spotlight: .union(.settingsMarkets, .settingsHelp),
-            tab: .einstellungen
-        ))
-        return steps
     }
 }
 

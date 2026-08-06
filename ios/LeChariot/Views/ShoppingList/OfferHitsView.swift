@@ -85,8 +85,62 @@ struct OfferHitsView: View {
                     .listRowBackground(Theme.surface)
                 }
             }
+
+            // **Der Vergleich, der bis zum 06.08. in der Plan-Karte aufklappte.**
+            // Er gehört hierher: Die Karte auf der Liste beantwortet „wohin",
+            // dieser Bildschirm beantwortet „warum". Beim Filter auf eine Kette
+            // steht er nicht — dann vergleicht gerade niemand.
+            if chain == nil, ranks.count > 1 {
+                Section {
+                    ForEach(ranks) { rank in
+                        comparisonRow(rank)
+                    }
+                    .listRowBackground(Theme.surface)
+                } header: {
+                    Text("Deine Filialen im Vergleich")
+                } footer: {
+                    Text(footnote)
+                        .accessibilityIdentifier("hits.footnote")
+                }
+            }
         }
         .accessibilityIdentifier("hits.list")
+    }
+
+    /// Eine Kette im Vergleich: wie viel sie abdeckt und was das kostet.
+    private func comparisonRow(_ rank: MarketListRank) -> some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            Text(rank.chain)
+                .font(.subheadline)
+            Spacer(minLength: Theme.Spacing.sm)
+            Text("\(rank.matchedCount)/\(rank.itemCount)")
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(Theme.secondaryText)
+            if let total = rank.total {
+                Text(total, format: .currency(code: "EUR"))
+                    .font(.subheadline.monospacedDigit())
+                    .frame(minWidth: 60, alignment: .trailing)
+            } else {
+                Text("–")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.secondaryText)
+                    .frame(minWidth: 60, alignment: .trailing)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(rank.chain), \(rank.matchedCount) von \(rank.itemCount) Artikeln"
+            + (rank.total.map { ", \($0.formatted(.currency(code: "EUR")))" } ?? "")
+        )
+    }
+
+    /// Wie die Summe zustande kommt — und **nur dann** etwas über Heftungen,
+    /// wenn eine im Spiel ist. Ein Satz über eine Funktion, die dieser Nutzer
+    /// nicht benutzt, ist Rauschen.
+    private var footnote: String {
+        let basis = "Erst Abdeckung, dann Preis. Die Summe zählt nur die gefundenen Angebote — Normalpreise sind nicht dabei."
+        guard ranks.contains(where: \.hasPinnedItems) else { return basis }
+        return basis + " Angeheftete Artikel zählen mit deinem Preis, nicht mit dem billigsten."
     }
 
     /// Ein Treffer: der Artikel der Liste, das Angebot dazu, und der Knopf, der

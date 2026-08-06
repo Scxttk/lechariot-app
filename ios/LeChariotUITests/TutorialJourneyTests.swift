@@ -224,25 +224,23 @@ final class TutorialJourneyTests: XCTestCase {
         }
     }
 
-    /// **Der Befund, mit dem diese Runde angefangen hat.**
+    /// **Der Befund, mit dem die Runde vom 03.08. angefangen hat — und er gilt
+    /// weiter, nur für einen Rahmen weniger.**
     ///
-    /// Über einer Liste ohne Filialen hatten die Rahmen „plan" und „match"
-    /// kein Ziel: Die Plan-Karte wurde gar nicht gebaut, und die Treffer-Zeile
-    /// war ein grauer Satz ohne Anker. Beide überspringen sich dann über die
-    /// Schonfrist von 1,2 s — rund sechs Sekunden Abdunklung über Bedienelemente,
-    /// die nicht auf dem Bildschirm sind, zwischendurch zwei Karten übereinander.
+    /// Über einer Liste ohne Filialen hatte der Plan-Rahmen kein Ziel: Die
+    /// Karte wurde gar nicht gebaut. Ein Rahmen ohne Ziel überspringt sich über
+    /// die Schonfrist von 1,2 s selbst, und niemand merkt es.
     ///
     /// Gewartet wird hier **länger als die Schonfrist**, bevor gelesen wird:
     /// Ein Rahmen mit Ziel bleibt beliebig lange stehen, ein Rahmen ohne wäre
     /// nach 1,2 s weitergesprungen. Genau dieser Unterschied ist die Prüfung.
-    func testTheFramesAboutOffersHaveATargetEvenWithoutBranches() {
+    ///
+    /// Der zweite Teil dieser Journey — derselbe Nachweis für den Rahmen „Das
+    /// günstigste Angebot" — ist am 06.08. mit dem Rahmen weggefallen.
+    func testThePlanFrameHasATargetEvenWithoutBranches() {
         startTour()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
-        next.tap()                                   // → details
-        Thread.sleep(forTimeInterval: 0.5)
-        next.tap()                                   // → chips
-        Thread.sleep(forTimeInterval: 0.5)
         next.tap()                                   // → plan
         Thread.sleep(forTimeInterval: 2.5)           // über die Schonfrist hinaus
         XCTAssertTrue(
@@ -250,37 +248,6 @@ final class TutorialJourneyTests: XCTestCase {
             "Der Plan-Rahmen hat kein Ziel und hat sich übersprungen: "
             + app.staticTexts["tutorial.card"].label
         )
-
-        next.tap()                                   // → match
-        Thread.sleep(forTimeInterval: 2.5)
-        XCTAssertTrue(
-            app.staticTexts["tutorial.card"].label.contains("Das günstigste Angebot"),
-            "Der Treffer-Rahmen hat kein Ziel und hat sich übersprungen: "
-            + app.staticTexts["tutorial.card"].label
-        )
-    }
-
-    /// **Der neue Rahmen bringt sein Ziel selbst mit** (03.08.).
-    ///
-    /// Er erklärt die Angaben-Schicht — die man ohne Hinweis nicht findet, weil
-    /// sie nur nach dem Anlegen dasteht. Er darf deshalb nicht davon abhängen,
-    /// dass der Tester im Rahmen davor wirklich getippt hat. Geprüft wie oben
-    /// **über die Schonfrist hinaus**: Ein Rahmen ohne Ziel wäre nach 1,2 s
-    /// weitergesprungen.
-    func testTheDetailsFrameStandsEvenWhenNobodyTypedAnything() {
-        startTour()
-        XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
-
-        next.tap()                                   // → details
-        Thread.sleep(forTimeInterval: 2.5)
-
-        XCTAssertTrue(
-            app.staticTexts["tutorial.card"].label.contains("Menge, Größe, Sorte"),
-            "Der Angaben-Rahmen hat sich übersprungen: "
-            + app.staticTexts["tutorial.card"].label
-        )
-        XCTAssertTrue(app.buttons["list.detailPanel.more"].exists,
-                      "Die Schicht, die der Rahmen erklärt, steht gar nicht da")
     }
 
     // MARK: Die Frage am Ende
@@ -357,16 +324,14 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
     }
 
-    /// **Der neue Vorschau-Rahmen — und der Tab-Wechsel, den er auslöst.**
+    /// **Der Rundgang bleibt auf der Liste, von vorn bis hinten.**
     ///
-    /// Zwei Dinge auf einmal, weil sie zusammengehören: Der Rahmen gibt es nur
-    /// mit Filialen (ohne sie steht im Angebote-Tab kein Bildschirm), und sein
-    /// Ziel ist die Navigationsleiste — die UIKit zeichnet und die deshalb
-    /// keinen Anker trägt. Beides kann still schiefgehen: Ein Rahmen ohne
-    /// aufgelöstes Ziel überspringt sich nach 1,2 s selbst, und niemand merkt
-    /// es. Deshalb wird **über die Schonfrist hinaus** gewartet, bevor gelesen
-    /// wird.
-    func testThePreviewFrameStandsOnTheOffersTab() {
+    /// Bis zum 06.08. stand hier die Gegenprobe: Der vorletzte Rahmen wechselte
+    /// auf den Angebote-Tab und leuchtete dort „Nächste Woche" aus. Beides ist
+    /// weg — mit drei Rahmen ist der Rundgang ein Bildschirm, und ein
+    /// Tab-Wechsel mitten in einer Führung ist genau die Sorte Bewegung, die
+    /// niemand bestellt hat.
+    func testTheTourNeverLeavesTheListTab() {
         app.launchArguments = ["-uiTesting", "-uiTestingTutorial", "-uiTestingOnboarded"]
         app.launch()
 
@@ -376,20 +341,21 @@ final class TutorialJourneyTests: XCTestCase {
         restart.tap()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
-        // input → details → chips → plan → match → check → tabs → nextWeek
-        for _ in 0..<7 {
+        // input → plan → check, und dazwischen steht immer die Einkaufsliste.
+        for _ in 0..<2 {
+            XCTAssertTrue(app.navigationBars["Einkaufsliste"].exists,
+                          "Der Rundgang hat den Tab gewechselt: "
+                          + app.staticTexts["tutorial.card"].label)
             next.tap()
             Thread.sleep(forTimeInterval: 0.9)
         }
         Thread.sleep(forTimeInterval: 2.5)
 
         XCTAssertTrue(
-            app.staticTexts["tutorial.card"].label.contains("Was ab Montag billiger wird"),
-            "Der Vorschau-Rahmen hat kein Ziel und hat sich übersprungen: "
-            + app.staticTexts["tutorial.card"].label
+            app.staticTexts["tutorial.card"].label.contains("Abhaken beim Einkaufen"),
+            "Der letzte Rahmen steht nicht: " + app.staticTexts["tutorial.card"].label
         )
-        XCTAssertTrue(app.buttons["offers.nextWeek"].exists,
-                      "Der Rundgang steht nicht auf dem Angebote-Tab")
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].exists)
     }
 
     func testTheTourCanBeStartedAgainFromTheSettings() {

@@ -75,9 +75,14 @@ struct SettingsView: View {
         } header: {
             Text("Einkaufen")
         } footer: {
-            Text(store.hasFavorites
-                 ? "Nur Angebote deiner Filialen zählen für deine Liste."
-                 : "Ohne gewählte Filiale werden keine Angebote angezeigt.")
+            // **Nur der Fall, der einen Irrtum verhindert.** „Nur Angebote
+            // deiner Filialen zählen" stand unter einer Zeile, die schon „6
+            // Filialen · 1 Region" sagt — eine Beischrift, die die Zeile
+            // wiederholt. Der leere Fall bleibt: Er beantwortet die Frage,
+            // warum die Liste keine Preise zeigt.
+            if !store.hasFavorites {
+                Text("Ohne gewählte Filiale werden keine Angebote angezeigt.")
+            }
         }
     }
 
@@ -187,7 +192,7 @@ struct SettingsView: View {
         } header: {
             Text("Hilfe")
         } footer: {
-            Text("Der Rundgang zeigt die kurze Einführung auf der Einkaufsliste noch einmal; Le Chariot legt dafür ein paar Beispiel-Artikel auf die Liste und räumt sie danach wieder ab. Zurücksetzen hilft, wenn etwas hakt — es löscht alles, was auf dem Gerät liegt.")
+            Text("Zurücksetzen löscht alles, was auf dem Gerät liegt.")
         }
     }
 
@@ -230,8 +235,8 @@ struct SettingsView: View {
             Text("Rückfragen")
         } footer: {
             Text(feedback.isAskingEnabled
-                 ? "Wenn du einen Treffer weglegst, fragt Le Chariot kurz nach dem Grund. Das ist der einzige Weg, wie falsche Treffer gefunden und behoben werden. Überspringen geht immer."
-                 : "Weglegen funktioniert unverändert. Es wird nicht gefragt und nichts übertragen.")
+                 ? "Die Frage nach dem Grund ist der einzige Weg, falsche Treffer zu finden. Überspringen geht immer."
+                 : "Weglegen funktioniert unverändert, es wird nur nichts gefragt.")
         }
     }
 
@@ -333,7 +338,7 @@ struct SettingsView: View {
             // Gebietsanforderungen sind je Laden **eine** Zeile für alle
             // Tester — dort steht, welcher Laden geholt werden soll, nicht wer
             // ihn wollte.
-            Text("Die Installations-ID ist das Einzige, womit sich die hochgeladenen Zeilen benennen lassen — sie hängt an keinem Namen und an keinem Gerät. Gelöscht werden deine Profilangaben und deine Rückmeldungen. Angeforderte Filialen bleiben: dort steht nur, welcher Laden geholt werden soll, nicht wer ihn wollte. Zurücksetzen vergibt eine neue ID; die alten Zeilen kann danach niemand mehr zuordnen, du auch nicht.")
+            Text("Gelöscht werden deine Profilangaben und deine Rückmeldungen. Angeforderte Filialen bleiben — dort steht, welcher Laden geholt werden soll, nicht wer ihn wollte.")
         }
     }
 

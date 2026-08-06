@@ -16,6 +16,13 @@ import XCTest
 /// Die Messstelle dafür ist `tutorial.hole` — eine durchsichtige Fläche, die
 /// im Testlauf genau auf dem Loch liegt (siehe `TutorialOverlay.holeProbe`).
 /// Damit ist „das Loch deckt sein Ziel" eine Rechnung auf zwei Rechtecken.
+///
+/// **Am 06.08. sind vier dieser Journeys weggefallen, weil ihr Gegenstand
+/// weggefallen ist:** Der Rundgang hat statt neun Rahmen noch drei, und alle
+/// drei spielen auf der Liste. Damit gibt es die Angaben-Schicht, die Vorschau
+/// und die Treffer-Kachel als Rahmen nicht mehr — und auch keinen Tab-Wechsel
+/// mehr, dessen Überblendung die Karte schwarz übermalen könnte. Was hier
+/// steht, ist das, was der Rundgang noch behauptet.
 final class TourTargetJourneyTests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -80,83 +87,14 @@ final class TourTargetJourneyTests: XCTestCase {
 
     // MARK: Der Anfang
 
-    /// **Der Rahmen zu den Angaben leuchtete die Eingabezeile aus.**
+    /// Der erste Rahmen zeigt auf die Eingabezeile.
     ///
-    /// Gemessen am 03.08. gegen den Stand `fb8699b`: Das Loch stand auf
-    /// `(-16, 723, 418, 186)`, die Schicht, die der Rahmen erklärt, auf
-    /// `(311, 569, 75, 32)` — **volle 186 pt daneben**, exakt eine Panelhöhe
-    /// tiefer. Ursache war `.move(edge: .bottom)` an der Schicht: Der Anker
-    /// nimmt den Versatz der Einblendung mit und wird danach nicht noch einmal
-    /// gemeldet. Was Scott sah, war ein Loch, das beim Weiterschalten von allein
-    /// nach unten wanderte statt auf sein Ziel.
-    func testTheDetailsFrameHighlightsThePanelAndNotTheInputBar() {
-        startTourFromSettings()
-        advance(to: "Menge, Größe, Sorte")
-        settle()
-        assertHoleCovers(app.buttons["list.detailPanel.more"], "die Angaben-Schicht")
-    }
-
-    /// Die Gegenrichtung, damit der Fix nicht einfach „alles ist ein großes
-    /// Loch" heißt: Der erste Rahmen zeigt weiter auf die Eingabezeile.
+    /// Der Rahmen daneben („Menge, Größe, Sorte") ist am 06.08. weggefallen,
+    /// und mit ihm die Journey, die sein Loch nachgemessen hat.
     func testTheFirstFrameStillHighlightsTheInputBar() {
         startTourFromSettings()
         settle()
         assertHoleCovers(app.textFields["list.input"], "die Eingabezeile")
-    }
-
-    // MARK: Der vorletzte Rahmen
-
-    /// **Der Rahmen zur Vorschau leuchtete die Uhr aus.**
-    ///
-    /// Sein Ziel ist der Knopf „Nächste Woche" oben links. Gemessen gegen
-    /// `fb8699b`: Loch `(12, 0, 378, 66)` — die Statusleiste. Der Marker für
-    /// `navBarBottom` lag außerhalb des `NavigationStack` und meldete damit die
-    /// Kante **über** der Leiste statt darunter. Jetzt: `(12, 0, 378, 230)`.
-    func testThePreviewFrameHighlightsTheNextWeekButton() {
-        startTourFromSettings()
-        advance(to: "Was ab Montag billiger wird")
-        settle()
-        assertHoleCovers(app.buttons["offers.nextWeek"], "der Knopf „Nächste Woche“")
-    }
-
-    // MARK: Der Rahmen, der sich selbst übersprang
-
-    /// **Ein Wort ohne Treffer genügte, und der Rundgang schaltete allein weiter.**
-    ///
-    /// Der Rahmen „Das günstigste Angebot" hängt am Anker der Treffer-Kachel.
-    /// Hat der **erste offene** Artikel diese Woche nirgends ein Angebot, gab es
-    /// die Kachel nicht — nur den grauen Satz „Diese Woche nirgends im
-    /// Angebot", und der trug keinen Anker. Ohne Ziel überspringt sich ein
-    /// Rahmen nach 1,2 s selbst. Auf einer echten Einkaufsliste steht selten
-    /// nur Gefundenes.
-    ///
-    /// Geprüft wird **über die Schonfrist hinaus**: Genau dieser Unterschied
-    /// ist die Behauptung.
-    func testTheMatchFrameStandsWhenTheFirstItemHasNoOffer() {
-        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded",
-                               "-uiTestingOnboardedThreeChains", "-uiTestingTutorial"]
-        app.launch()
-        let field = app.textFields["list.input"]
-        XCTAssertTrue(field.waitForExistence(timeout: 20))
-        field.tap()
-        // Ein Wort, zu dem der Vorrat garantiert nichts hat — und das damit
-        // der erste offene Artikel ohne Treffer ist.
-        field.typeText("Zahnstocher\n")
-        Thread.sleep(forTimeInterval: 0.8)
-        app.swipeDown()
-
-        openTab("Einstellungen")
-        let restart = app.buttons["settings.tutorial"]
-        XCTAssertTrue(restart.waitForExistence(timeout: 20))
-        restart.tap()
-        XCTAssertTrue(card.waitForExistence(timeout: 20))
-
-        advance(to: "Das günstigste Angebot")
-        settle()
-        XCTAssertTrue(
-            card.label.contains("Das günstigste Angebot"),
-            "Der Rahmen hat sich selbst übersprungen: \(card.label)"
-        )
     }
 
     // MARK: „Probier es gleich aus"
@@ -180,71 +118,6 @@ final class TourTargetJourneyTests: XCTestCase {
                       "Was der Rahmen zu tippen einlädt, muss auch auf der Liste landen")
         XCTAssertTrue(card.label.contains("Schreib auf, was du brauchst"),
                       "Mitmachen schaltet nicht weiter — jeder Rahmen wartet auf „Weiter“")
-    }
-
-    // MARK: Der Wechsel zum letzten Rahmen
-
-    /// **„Visuell desaströs" in Zahlen: Der Bildschirm wurde ganz schwarz.**
-    ///
-    /// Der Rundgang blendet für den Tab-Wechsel ab — das ist gewollt, sonst
-    /// tauscht die `TabView` ihren Inhalt in einem einzigen Bild aus. Die
-    /// Abdunklung lag aber **über allem**, auch über der Karte, die man gerade
-    /// liest. Am Simulator Bild für Bild belegt: 0,12 s nach dem Tipp war
-    /// nichts als Schwarz auf dem Schirm, Statusleiste eingeschlossen.
-    ///
-    /// Gemessen wird die mittlere Helligkeit **in der Fläche der Karte**,
-    /// unmittelbar nach dem Tipp. Die Karte ist hell (Sandton); gegen
-    /// `fb8699b` liegt der Wert bei nahezu 0.
-    func testTheCardSurvivesTheChangeToTheLastFrame() {
-        startTourFromSettings()
-        advance(to: "Was ab Montag billiger wird")
-        settle()
-
-        let cardArea = card.frame
-        next.tap()
-        // Mitten in der Überblendung: 0,15 s abblenden, 0,10 s halten,
-        // 0,20 s aufblenden — siehe `TourTabTransition.standard`.
-        Thread.sleep(forTimeInterval: 0.18)
-        let helligkeit = meanLuminance(of: XCUIScreen.main.screenshot(), in: cardArea)
-
-        XCTAssertGreaterThan(
-            helligkeit, 0.35,
-            "Während des Wechsels ist die Karte schwarz übermalt (mittlere Helligkeit \(helligkeit))"
-        )
-    }
-
-    /// Mittlere Helligkeit eines Bildschirmausschnitts, 0…1.
-    ///
-    /// Der einzige Weg, „sieht desaströs aus" zu einer Zahl zu machen: Das Loch
-    /// und die Abdunklung sind keine Elemente, und die Barrierefreiheits-
-    /// Hierarchie meldet eine schwarze Fläche darüber gar nicht — die Karte
-    /// „existiert" auch dann, wenn niemand sie sehen kann.
-    private func meanLuminance(of shot: XCUIScreenshot, in rect: CGRect) -> Double {
-        guard let cg = shot.image.cgImage else { return -1 }
-        let scaleX = Double(cg.width) / Double(shot.image.size.width)
-        let scaleY = Double(cg.height) / Double(shot.image.size.height)
-        let px = CGRect(x: rect.minX * scaleX, y: rect.minY * scaleY,
-                        width: rect.width * scaleX, height: rect.height * scaleY)
-            .integral
-            .intersection(CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
-        guard px.width > 1, px.height > 1, let cut = cg.cropping(to: px) else { return -1 }
-
-        let w = cut.width, h = cut.height
-        var pixels = [UInt8](repeating: 0, count: w * h * 4)
-        guard let ctx = CGContext(
-            data: &pixels, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return -1 }
-        ctx.draw(cut, in: CGRect(x: 0, y: 0, width: w, height: h))
-
-        var summe = 0.0
-        for i in stride(from: 0, to: pixels.count, by: 4) {
-            summe += (0.2126 * Double(pixels[i])
-                      + 0.7152 * Double(pixels[i + 1])
-                      + 0.0722 * Double(pixels[i + 2])) / 255
-        }
-        return summe / Double(w * h)
     }
 
     /// Der Riegel dazu: Die Tab-Leiste bleibt auch auf einem Mitmach-Rahmen

@@ -22,7 +22,6 @@
 		148A98D98557D5228E03AA84 /* LoadFailure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C2FAD7BF9107A6A5B0E813 /* LoadFailure.swift */; };
 		15BDE5AB46E6FD0569826D78 /* ItemDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3E42237292FFC9E49CCBCFF /* ItemDetailSheet.swift */; };
 		1610E1CE653C317F874E09F9 /* CategorySymbolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCA3AF53774305AC29D7EA9 /* CategorySymbolTests.swift */; };
-		177C4AA4DB82B955D6657D5B /* OfferHitsRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B675EC7E24557CBF30B708 /* OfferHitsRow.swift */; };
 		185B49496501012D7361D0FD /* DiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C2928D2B22FB807EEC0C429 /* DiagnosticsTests.swift */; };
 		1ABF73D0FE837786CB85B5D6 /* OfferCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013BBA69451C31CE72CBBF3D /* OfferCache.swift */; };
 		1D32B2419CBCFBAAF6AC6DB9 /* MatchDictionary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6E3888444B33870F2CCF97B /* MatchDictionary.swift */; };
@@ -398,7 +397,6 @@
 		F62B006DAF3B9E320FC69A17 /* PrivacyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyTests.swift; sourceTree = "<group>"; };
 		F6EF1D05EA99835E5E2E073C /* ConsentStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentStepView.swift; sourceTree = "<group>"; };
 		F765F4539B77A6B82F7F6482 /* PinnedOfferJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedOfferJourneyTests.swift; sourceTree = "<group>"; };
-		F7B675EC7E24557CBF30B708 /* OfferHitsRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferHitsRow.swift; sourceTree = "<group>"; };
 		F7D02D4FEF2E9F4812299E8C /* NextWeekReasonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextWeekReasonTests.swift; sourceTree = "<group>"; };
 		F826415F9A5019BBEFB36748 /* OffersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OffersView.swift; sourceTree = "<group>"; };
 		FA9B35559D902F7671AF19A9 /* UITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestSupport.swift; sourceTree = "<group>"; };
@@ -581,7 +579,6 @@
 				9C278F6B3EC595868B3DC18D /* ItemDetailPanel.swift */,
 				C3E42237292FFC9E49CCBCFF /* ItemDetailSheet.swift */,
 				D2556F0A712FE98A27DDA2FC /* MatchDetailView.swift */,
-				F7B675EC7E24557CBF30B708 /* OfferHitsRow.swift */,
 				FF3CB16A66C72764086C7938 /* OfferHitsView.swift */,
 				647A543C891A626804D53C84 /* RejectionFeedbackSheet.swift */,
 				151682DC435E28945377F0E7 /* ShoppingListRowView.swift */,
@@ -1024,7 +1021,6 @@
 				1ABF73D0FE837786CB85B5D6 /* OfferCache.swift in Sources */,
 				83D0EA5DD7381880BEEC6817 /* OfferCoverage.swift in Sources */,
 				C09751F253E651B713832B95 /* OfferDetailView.swift in Sources */,
-				177C4AA4DB82B955D6657D5B /* OfferHitsRow.swift in Sources */,
 				C83883ECE849FE43B83F12A6 /* OfferHitsView.swift in Sources */,
 				A72D404B0CC7F16BD13E4BA2 /* OfferImageLoader.swift in Sources */,
 				068610CB2096633DF7F4EE88 /* OfferMatcher.swift in Sources */,

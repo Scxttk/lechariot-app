@@ -152,69 +152,35 @@ final class ShoppingSectionsTests: XCTestCase {
         XCTAssertFalse(ShoppingSections.needsHeaders([]))
     }
 
-    /// Sobald etwas einsortiert ist, trennen die Überschriften wirklich etwas —
-    /// auch wenn es nur ein Abschnitt ist: „Molkerei & Eier" sagt dann etwas.
-    func testOneRealCategoryIsWorthAHeader() {
+    /// **Eine Überschrift über einer einzigen Zeile sortiert nichts.**
+    ///
+    /// Bis zum 06.08. bekam ein Abschnitt seine Überschrift, sobald überhaupt
+    /// etwas einsortiert war — auch bei genau einem Artikel. Am Gerät
+    /// gemessen: fünf Artikel, drei Abschnitte, jede Überschrift über einer
+    /// Zeile und je rund 50 pt. Zusammen mehr Platz als die Artikel selbst.
+    func testASingleItemUnderAHeadingIsNotWorthTheHeading() {
         let sections = ShoppingSections.build(items: [item("Butter")]) { _ in "Molkerei & Eier" }
-        XCTAssertTrue(ShoppingSections.needsHeaders(sections))
+        XCTAssertFalse(ShoppingSections.needsHeaders(sections))
     }
 
-    func testTwoSectionsAlwaysNeedHeaders() {
+    /// Zwei Abschnitte mit je einem Artikel bleiben ohne — im Schnitt kommt
+    /// **ein** Artikel auf einen Abschnitt, und der steht schon da.
+    func testTwoSectionsOfOneItemEachStayHeaderless() {
         let sections = ShoppingSections.build(items: [item("Butter"), item("Wunderkerzen")]) {
             $0.text == "Butter" ? "Molkerei & Eier" : nil
         }
+        XCTAssertFalse(ShoppingSections.needsHeaders(sections))
+    }
+
+    /// Ab zwei Artikeln je Abschnitt im Schnitt trennen die Überschriften
+    /// wirklich etwas — dann stehen sie.
+    func testHeadingsAppearOnceTheSectionsActuallyHold() {
+        let molkerei = ["Butter", "Käse", "Quark"].map(item)
+        let rest = ["Wunderkerzen", "Batterien"].map(item)
+        let sections = ShoppingSections.build(items: molkerei + rest) {
+            molkerei.map(\.text).contains($0.text) ? "Molkerei & Eier" : nil
+        }
+        XCTAssertEqual(sections.count, 2)
         XCTAssertTrue(ShoppingSections.needsHeaders(sections))
-    }
-}
-
-/// **„Passende Artikel im Angebot" — die Zähler kommen aus der Plan-Rechnung.**
-final class OfferHitSummaryTests: XCTestCase {
-
-    private func rank(_ chain: String, matched: Int) -> MarketListRank {
-        MarketListRank(
-            chain: chain,
-            matchedItems: (0..<matched).map { _ in
-                RankedItemMatch(
-                    item: "x",
-                    match: OfferMatch(
-                        offer: Offer(
-                            market: "m", product: "p", price: 1, regularPrice: nil,
-                            unit: nil, category: "Molkerei & Eier", emoji: nil,
-                            validFrom: Date(timeIntervalSince1970: 0),
-                            validUntil: Date(timeIntervalSince1970: 604_800),
-                            basePrice: nil, baseUnit: nil, nationwide: false
-                        ),
-                        kind: .direct
-                    ),
-                    isPinned: false
-                )
-            },
-            missingItems: [],
-            total: nil
-        )
-    }
-
-    /// **Eine Kette ohne Treffer bekommt keinen Chip.** „Netto 15 · ALDI 0"
-    /// liest sich wie ein Angebot und ist keines — die Zeile heißt „passende
-    /// Artikel im Angebot".
-    func testAChainWithoutHitsGetsNoChip() {
-        let summary = OfferHitSummary(ranks: [rank("Netto", matched: 15), rank("Aldi", matched: 0)])
-        XCTAssertEqual(summary.chains.map(\.chain), ["Netto"])
-    }
-
-    /// Die meisten Treffer zuerst — genau die Reihenfolge aus dem Video
-    /// („Netto 15 · Penny 3").
-    func testTheChainWithTheMostHitsComesFirst() {
-        let summary = OfferHitSummary(ranks: [rank("Penny", matched: 3), rank("Netto", matched: 15)])
-        XCTAssertEqual(summary.chains.map(\.chain), ["Netto", "Penny"])
-        XCTAssertEqual(summary.chains.map(\.count), [15, 3])
-        XCTAssertEqual(summary.total, 18)
-    }
-
-    /// Ohne Treffer gibt es die Zeile gar nicht — statt einer Zeile, die „0"
-    /// sagt.
-    func testNoHitsMeansNoRow() {
-        XCTAssertTrue(OfferHitSummary(ranks: []).isEmpty)
-        XCTAssertTrue(OfferHitSummary(ranks: [rank("Netto", matched: 0)]).isEmpty)
     }
 }
