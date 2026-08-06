@@ -10,7 +10,7 @@ struct WelcomeStepView: View {
             step: 1,
             totalSteps: OnboardingStep.total,
             title: "Ein Einkauf, ein Markt, der beste Preis.",
-            subtitle: "Schreib deine Einkaufsliste. Le Chariot vergleicht die Wochenangebote deiner Filialen und sagt dir, wo du am besten hinfährst.",
+            subtitle: "Schreib deine Einkaufsliste. \(AppBrand.name) vergleicht die Wochenangebote deiner Filialen und sagt dir, wo du am besten hinfährst.",
             primaryTitle: "Los geht's",
             onPrimary: onContinue
         ) {
@@ -97,7 +97,7 @@ struct HouseholdStepView: View {
             step: 4,
             totalSteps: OnboardingStep.total,
             title: "Wie kaufst du ein?",
-            subtitle: "Grobe Angaben reichen — sie helfen uns, Le Chariot passender zu machen.",
+            subtitle: "Grobe Angaben reichen — sie helfen uns, \(AppBrand.name) passender zu machen.",
             onPrimary: onContinue,
             skip: (title: "Überspringen", action: onContinue)
         ) {

@@ -205,7 +205,7 @@ struct ContentView: View {
             }
             Button("Nein", role: .cancel) { tutorial.dismissMarketQuestion() }
         } message: {
-            Text("Le Chariot vergleicht die Wochenangebote der Läden, in die du wirklich gehst. Ohne Filiale bleibt deine Liste eine Liste — wählen kannst du sie jederzeit auch später in den Einstellungen.")
+            Text("\(AppBrand.name) vergleicht die Wochenangebote der Läden, in die du wirklich gehst. Ohne Filiale bleibt deine Liste eine Liste — wählen kannst du sie jederzeit auch später in den Einstellungen.")
         }
         .sheet(isPresented: $showsMarketPicker) { marketPicker }
     }
@@ -384,13 +384,13 @@ struct ContentView: View {
             setupNeeded(
                 title: "Keine Region bereit",
                 symbol: "mappin.slash",
-                message: "Füge in den Einstellungen eine Postleitzahl hinzu — dann lädt Le Chariot die Angebote deiner Gegend."
+                message: "Füge in den Einstellungen eine Postleitzahl hinzu — dann lädt \(AppBrand.name) die Angebote deiner Gegend."
             )
         } else if requiresFavorites, !store.hasFavorites {
             setupNeeded(
                 title: "Keine Filiale gewählt",
                 symbol: "storefront",
-                message: "Le Chariot vergleicht nur die Läden, in die du wirklich gehst. Wähle mindestens eine Filiale aus."
+                message: "\(AppBrand.name) vergleicht nur die Läden, in die du wirklich gehst. Wähle mindestens eine Filiale aus."
             )
         } else {
             // All favorites, unfiltered: the picker offers branches from

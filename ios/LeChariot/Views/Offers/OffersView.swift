@@ -282,7 +282,7 @@ struct OffersView: View {
             if NoOffersReason.footerApplies(to: branchesWithoutOffers
                 .filter { OfferCoverage.upcomingStart(for: $0, in: store.upcomingOffers) == nil }
                 .map { branchRequests.state(for: $0.marketId) }) {
-                Text("Nicht jeder Markt stellt seinen Prospekt ins Netz. Le Chariot kann nur zeigen, was die Kette selbst veröffentlicht.")
+                Text("Nicht jeder Markt stellt seinen Prospekt ins Netz. \(AppBrand.name) kann nur zeigen, was die Kette selbst veröffentlicht.")
             }
         }
         .accessibilityIdentifier("offers.unavailableBranches")

@@ -13,8 +13,8 @@ struct ConsentStepView: View {
         OnboardingStepView(
             step: 6,
             totalSteps: OnboardingStep.total,
-            title: "Darf Le Chariot mitlernen?",
-            subtitle: "Le Chariot ist noch jung. Deine Angaben helfen dabei, die App für echte Einkäufe besser zu machen.",
+            title: "Darf \(AppBrand.name) mitlernen?",
+            subtitle: "\(AppBrand.name) ist noch jung. Deine Angaben helfen dabei, die App für echte Einkäufe besser zu machen.",
             primaryTitle: "Fertig",
             onPrimary: {
                 profile.setConsent(isOn)

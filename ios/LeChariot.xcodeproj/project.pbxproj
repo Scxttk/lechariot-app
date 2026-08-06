@@ -75,6 +75,7 @@
 		63180789A2A84F7B04AE4C96 /* DataExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 274CCDD6435C2FD2A0635A59 /* DataExport.swift */; };
 		63A4FC3FC6CF796D17DF7355 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5414C5611E9D4E8F9AFDA07 /* ContentView.swift */; };
 		63D39D7DCEFC804DA46FB0E5 /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12F8D70A89A245C75C6851F4 /* SupabaseClient.swift */; };
+		66A6752207308A217A62899A /* AppBrand.swift in Sources */ = {isa = PBXBuildFile; fileRef = E54D57D254A5E683BFD0D713 /* AppBrand.swift */; };
 		66AB74E4C7EE9A750D51A8CD /* TourTargetJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7134351276D0200290C51CE9 /* TourTargetJourneyTests.swift */; };
 		67CC198574C33DED44D8A078 /* PrivacyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F62B006DAF3B9E320FC69A17 /* PrivacyTests.swift */; };
 		6866322FB7E05558D2DC365C /* AddFlowContractJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B86A29038C27F5F95F341A3E /* AddFlowContractJourneyTests.swift */; };
@@ -379,6 +380,7 @@
 		E3EEDA6C283BDD9B46EF50FC /* MockRepositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockRepositories.swift; sourceTree = "<group>"; };
 		E3FE89A0049B517DF629F94D /* MatchFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchFeedback.swift; sourceTree = "<group>"; };
 		E4680F51135E3E3AA07BB9DD /* BadgeLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BadgeLayoutTests.swift; sourceTree = "<group>"; };
+		E54D57D254A5E683BFD0D713 /* AppBrand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBrand.swift; sourceTree = "<group>"; };
 		E60DEF00707CD54C6A897349 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		E6129A433A9225C8B20B7E19 /* KeyboardWait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardWait.swift; sourceTree = "<group>"; };
 		E9A08415BB968381E756CF5C /* ShoppingSectionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingSectionsTests.swift; sourceTree = "<group>"; };
@@ -641,6 +643,7 @@
 			isa = PBXGroup;
 			children = (
 				93148C43EB4AA2F6D4BB5CA6 /* APIConfig.swift */,
+				E54D57D254A5E683BFD0D713 /* AppBrand.swift */,
 				5B23057004B598EFE72A2CCF /* AppDefaults.swift */,
 				2E3E846E81ED657EC69B5B88 /* AppRepositories.swift */,
 				D8066F601BF5E03181618234 /* FeatureFlags.swift */,
@@ -977,6 +980,7 @@
 				6F96E6545689A9085B0A91F4 /* ActionGlyphs.swift in Sources */,
 				22E1700D0C412F27A60762EA /* AdSlot.swift in Sources */,
 				2107D4C673398CCF60214C0D /* AddFlowState.swift in Sources */,
+				66A6752207308A217A62899A /* AppBrand.swift in Sources */,
 				0ED5098F092B30437F5E96F7 /* AppDefaults.swift in Sources */,
 				7A093EA7706CCBBECD4645DD /* AppRepositories.swift in Sources */,
 				A369882CBF0330DC4FF27C30 /* AppReset.swift in Sources */,

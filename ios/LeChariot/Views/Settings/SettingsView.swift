@@ -142,7 +142,7 @@ struct SettingsView: View {
                 Button("Vergessen", role: .destructive) { history.forget() }
                 Button("Abbrechen", role: .cancel) {}
             } message: {
-                Text("Le Chariot vergisst, was du bisher abgehakt hast. „Häufig gekauft“ zeigt danach wieder die Standardvorschläge. Deine Liste, deine Filialen und deine Angaben bleiben.")
+                Text("\(AppBrand.name) vergisst, was du bisher abgehakt hast. „Häufig gekauft“ zeigt danach wieder die Standardvorschläge. Deine Liste, deine Filialen und deine Angaben bleiben.")
             }
 
             // Der Notausgang, und ab 2026-07-30 in **jedem** Build. Vorher gab
@@ -187,7 +187,7 @@ struct SettingsView: View {
                 // niemandem mehr zu benennen — auch nicht von dem, der sie
                 // löschen lassen will. Das ist eine Folge, die man vorher
                 // wissen muss, nicht hinterher.
-                Text("Deine Filialen, deine Einkaufsliste und deine Angaben aus dem Onboarding werden gelöscht. Danach startet Le Chariot wie nach einer Neuinstallation. Du bekommst dabei eine neue Installations-ID — willst du früher hochgeladene Angaben löschen lassen, kopier die alte vorher unter „App“.")
+                Text("Deine Filialen, deine Einkaufsliste und deine Angaben aus dem Onboarding werden gelöscht. Danach startet \(AppBrand.name) wie nach einer Neuinstallation. Du bekommst dabei eine neue Installations-ID — willst du früher hochgeladene Angaben löschen lassen, kopier die alte vorher unter „App“.")
             }
         } header: {
             Text("Hilfe")
@@ -281,7 +281,7 @@ struct SettingsView: View {
             // Zeile war im Audit ohne Beschreibung. Dieselbe Falle wie bei
             // `BranchPickerRow`; ein Button nimmt das Label direkt.
             .accessibilityLabel("Deine Daten exportieren")
-            .accessibilityHint("Legt alles, was Le Chariot über dich hat, als Datei bereit")
+            .accessibilityHint("Legt alles, was \(AppBrand.name) über dich hat, als Datei bereit")
 
             if case let .done(note) = privacy.export, let file = privacy.exportFile {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {

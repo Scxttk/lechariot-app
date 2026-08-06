@@ -69,7 +69,7 @@ struct DiagnosticsView: View {
             Section {
                 ShareLink(
                     item: MetricsExport(data: MetricsArchive.export(metrics.entries)),
-                    preview: SharePreview("Le Chariot – Messwerte")
+                    preview: SharePreview("\(AppBrand.name) – Messwerte")
                 ) {
                     Label("Berichte teilen", systemImage: "square.and.arrow.up")
                 }

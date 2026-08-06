@@ -411,7 +411,7 @@ struct ShoppingListView: View {
                     // der Karte unter die Vorschlagsfläche — am Simulator
                     // gemessen, der erste Bildschirm nach dem Onboarding.
                     if hasMarkets {
-                        Text("Schreib auf, was du einkaufen willst. Le Chariot sagt dir, welche deiner Filialen die Liste am günstigsten abdeckt.")
+                        Text("Schreib auf, was du einkaufen willst. \(AppBrand.name) sagt dir, welche deiner Filialen die Liste am günstigsten abdeckt.")
                             .font(.subheadline)
                             .foregroundStyle(Theme.secondaryText)
                             .multilineTextAlignment(.center)
@@ -591,7 +591,7 @@ struct ShoppingListView: View {
     private var termSurface: some View {
         let terms = typedTerms
         return VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text(terms.isEmpty ? "Kein bekannter Begriff" : "Le Chariot kennt")
+            Text(terms.isEmpty ? "Kein bekannter Begriff" : "\(AppBrand.name) kennt")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.secondaryText)
                 .accessibilityIdentifier("list.terms.title")
@@ -1022,7 +1022,7 @@ struct NoMarketsCard: View {
             Text("Noch keine Filiale gewählt")
                 .font(.headline)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Le Chariot vergleicht nur die Läden, in die du wirklich gehst. Sobald du Filialen gewählt hast, steht hier, welche davon deine Liste am günstigsten abdeckt — und was der Einkauf dort kostet.")
+            Text("\(AppBrand.name) vergleicht nur die Läden, in die du wirklich gehst. Sobald du Filialen gewählt hast, steht hier, welche davon deine Liste am günstigsten abdeckt — und was der Einkauf dort kostet.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)

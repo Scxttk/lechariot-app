@@ -219,7 +219,7 @@ struct ShoppingListRowView: View {
                     .buttonStyle(TactileButtonStyle())
                     .accessibilityIdentifier("list.matches.empty")
                     .accessibilityLabel(lines.joined(separator: ". "))
-                    .accessibilityHint("Zeigt, als was Le Chariot dein Wort verstanden hat")
+                    .accessibilityHint("Zeigt, als was \(AppBrand.name) dein Wort verstanden hat")
             } else {
                 text.accessibilityIdentifier("list.matches.empty")
             }
