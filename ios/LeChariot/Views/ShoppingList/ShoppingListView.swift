@@ -25,6 +25,10 @@ struct ShoppingListView: View {
     @Environment(ContextTipStore.self) private var tips: ContextTipStore?
     /// Die zwei ersten Male (Artikel, Treffer) und die Checkliste dazu.
     @Environment(SetupProgressStore.self) private var setup
+    /// Der Vorschlagsstreifen fährt von Hand auf und zu (`surfaceToggle`), also
+    /// muss die Regel „nichts fliegt, wenn Bewegung abgestellt ist" hier von
+    /// Hand eingelöst werden — `stateAnimation` nimmt sie sonst mit.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var detailItem: ShoppingItem?
     /// Der Artikel, dessen Angaben gerade bearbeitet werden — nicht zu
     /// verwechseln mit `detailItem`, das die **Angebote** zum Artikel zeigt.
@@ -752,6 +756,24 @@ struct ShoppingListView: View {
             detailPanel
             inputBar
         }
+        // **Der Block ist die Grenze, hinter der der Streifen verschwindet.**
+        //
+        // `stapleSurface` geht mit `.move(edge: .bottom)`, fährt also nach
+        // unten aus dem Block heraus. Ohne Schnittkante zeichnet SwiftUI ihn
+        // dabei weiter — am 06.08. Bild für Bild gemessen: Die Kacheln laufen
+        // über die Eingabezeile hinweg und stehen 0,1 s lang über der
+        // Tab-Leiste, außerhalb jeder Fläche, zu der sie gehören. Genau die
+        // „durchsichtigen Geister", gegen die die Bewegung von unten schon
+        // einmal gebaut wurde: Sie hat die Richtung repariert, nicht den Rand.
+        //
+        // **Die Reihenfolge ist der ganze Trick, und der erste Anlauf hatte sie
+        // falsch.** Mit `.background(.bar).clipped()` schnitt die Kante die
+        // Fläche mit ab: Der Streifen endete unter der Eingabezeile, und die
+        // Tab-Leiste stand plötzlich auf dem gelben App-Hintergrund statt auf
+        // dem hellen Balken (06.08. am Screenshot A/B belegt). Geschnitten wird
+        // der **Inhalt**, hinterlegt wird **danach** — so bleibt der Balken
+        // durchgehend bis unter die Tab-Leiste.
+        .clipped()
         // Eine Fläche für beides. Vorher trug die Eingabezeile den Hintergrund
         // allein; zwei übereinandergelegte `.bar`-Flächen ergäben eine Kante
         // quer über den Block.
@@ -1120,7 +1142,16 @@ struct ShoppingListView: View {
         if !suggestions.isEmpty {
             let open = surfaceIsExpanded
             Button {
-                withAnimation(.snappy) { suggestionChoice = !open }
+                // **`.snappy` ohne Dauer ist nicht die Hausregel, sondern
+                // SwiftUIs Vorgabe.** Am 06.08. am Video nachgemessen: Der
+                // Streifen brauchte 0,548 s zum Zuklappen — die Regel in
+                // `Theme.Motion` gibt einem Element 0,22 s, und 0,5 s ist die
+                // Grenze, ab der ein Übergang sich wie Warten anfühlt. Die
+                // Kurvenfamilie war schon richtig, nur die Dauer kam aus der
+                // Vorgabe statt aus der Regel.
+                withAnimation(Theme.Motion.element.animation(reduceMotion: reduceMotion)) {
+                    suggestionChoice = !open
+                }
             } label: {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 17, weight: .semibold))
