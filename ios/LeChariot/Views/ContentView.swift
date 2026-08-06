@@ -102,7 +102,7 @@ struct ContentView: View {
                 }
                 .tag(Tab.angebote)
 
-            SettingsView(marketRepository: marketRepository)
+            SettingsView(marketRepository: marketRepository, onShowList: { selectedTab = .liste })
                 .tabItem {
                     Label("Einstellungen", systemImage: "gearshape")
                 }

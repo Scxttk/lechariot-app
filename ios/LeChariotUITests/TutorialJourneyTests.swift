@@ -312,8 +312,7 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
 
         openTab("Einstellungen")
-        let restart = app.buttons["settings.tutorial"]
-        XCTAssertTrue(restart.waitForExistence(timeout: 15))
+        let restart = app.scrollToTutorialButton()
         restart.tap()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
@@ -336,8 +335,7 @@ final class TutorialJourneyTests: XCTestCase {
         app.launch()
 
         openTab("Einstellungen")
-        let restart = app.buttons["settings.tutorial"]
-        XCTAssertTrue(restart.waitForExistence(timeout: 15))
+        let restart = app.scrollToTutorialButton()
         restart.tap()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
@@ -366,8 +364,7 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
 
         openTab("Einstellungen")
-        let restart = app.buttons["settings.tutorial"]
-        XCTAssertTrue(restart.waitForExistence(timeout: 15))
+        let restart = app.scrollToTutorialButton()
         restart.tap()
 
         Thread.sleep(forTimeInterval: 3)
@@ -472,5 +469,31 @@ final class TutorialJourneyTests: XCTestCase {
         let tab = inBar.exists ? inBar : app.buttons[name].firstMatch
         XCTAssertTrue(tab.waitForExistence(timeout: 15), "tab \(name) missing")
         tab.tap()
+    }
+}
+
+/// **Der Weg zum Rundgang-Knopf, seit „Hilfe" unten steht** (06.08.).
+///
+/// Bis dahin war „Hilfe" der zweite Abschnitt der Einstellungen, und der Knopf
+/// stand ohne Scrollen da. Er stand dort aber nicht aus Überzeugung: Der letzte
+/// Rahmen des Rundgangs zeigte auf die Filialzeile **und** die Hilfezeile
+/// gleichzeitig, also mussten beide zusammen sichtbar sein. Seit der Rundgang
+/// drei Rahmen hat und die Einstellungen gar nicht mehr zeigt, ist die Fessel
+/// weg — und „Hilfe" liegt da, wo man sie sucht, wenn etwas hakt.
+///
+/// **Eine `List` baut nur, was zu sehen ist.** Erst scrollen, dann fragen;
+/// dieselbe Falle, die in dieser Suite schon zweimal zugeschlagen hat.
+extension XCUIApplication {
+    func scrollToTutorialButton(_ file: StaticString = #filePath, _ line: UInt = #line) -> XCUIElement {
+        let restart = buttons["settings.tutorial"]
+        var versuche = 0
+        while !restart.exists && versuche < 8 {
+            swipeUp()
+            versuche += 1
+        }
+        XCTAssertTrue(restart.waitForExistence(timeout: 15),
+                      "Der Rundgang-Knopf steht nicht da:\n\(debugDescription)",
+                      file: file, line: line)
+        return restart
     }
 }

@@ -27,6 +27,10 @@ struct SettingsView: View {
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
+    /// Führt in den Liste-Tab. Nur der Einrichtungs-Abschnitt braucht ihn: Von
+    /// den Einstellungen aus zeigt er auf einen Handgriff, der woanders
+    /// passiert. `nil` in der Vorschau.
+    var onShowList: (() -> Void)? = nil
 
     @State private var showResetConfirmation = false
     /// Ob gerade auf der Zeile „Version" gedrückt wird — siehe `appSection`.
@@ -39,16 +43,29 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                // **Neue Ordnung seit dem 06.08.** (Scott: „settings needs a
+                // overhaul, things like hilfe should be more downwards").
+                //
+                // Sortiert danach, wie oft jemand wirklich herkommt: Was fehlt,
+                // ganz oben — dann das Einkaufen, dann die eigenen Angaben,
+                // dann Aussehen und Datenschutz. **Hilfe steht jetzt unten**,
+                // wo man sie sucht, wenn etwas hakt, und nicht an zweiter
+                // Stelle, wo sie jeden Tag im Weg steht.
+                //
+                // Sie stand dort auch nicht aus Überzeugung: Der letzte Rahmen
+                // des Rundgangs zeigte auf die Filialzeile **und** die
+                // Hilfezeile gleichzeitig, also mussten beide ohne Scrollen
+                // zusammen sichtbar sein. **Seit der Rundgang drei Rahmen hat
+                // und die Einstellungen gar nicht mehr zeigt, ist die Fessel
+                // weg.**
                 Group {
+                    setupSection
                     shoppingSection
-                    // Direkt darunter, nicht ganz unten: Der letzte Rahmen des
-                    // Rundgangs zeigt auf beide Abschnitte, und dafür müssen
-                    // sie ohne Scrollen zusammen sichtbar sein.
-                    helpSection
                     profileSection
                     feedbackSection
                     appearanceSection
                     privacySection
+                    helpSection
                     appSection
                 }
                 .listRowBackground(Theme.surface)
@@ -56,6 +73,83 @@ struct SettingsView: View {
             .themedScreen()
             .navigationTitle("Einstellungen")
         }
+    }
+
+    // MARK: Einrichtung
+
+    /// **Was noch fehlt — und nur, solange etwas fehlt.**
+    ///
+    /// Scotts Frage vom 06.08.: eine Liste zum Abhaken, „Rundgang erlebt?
+    /// Märkte ausgewählt? Einkaufsliste erstellt?". Die Antwort darauf ist ja,
+    /// aber als **Einrichtungs-Fortschritt und nicht als Spiel** — und der
+    /// Unterschied entscheidet, ob es hilft oder nervt.
+    ///
+    /// **Was trägt:** Eine Liste, die zeigt, was die App noch nicht kann, weil
+    /// etwas fehlt. „Keine Filiale gewählt" ist heute schon der wichtigste Satz
+    /// im Leerzustand der Plan-Karte — er beantwortet, warum keine Preise
+    /// dastehen. Hier stehen alle solchen Lücken an einer Stelle, mit dem Weg
+    /// dorthin.
+    ///
+    /// **Was nicht trägt:** Punkte, Abzeichen, Streaks. Diese App spart Geld
+    /// beim Einkaufen; ihre Belohnung steht schon als Zahl auf der Plan-Karte.
+    /// Eine zweite, erfundene Belohnung daneben macht die echte kleiner.
+    ///
+    /// **Und deshalb schafft sie sich selbst ab.** Der Auftrag vom Vormittag
+    /// des 06.08. war, dass die App **weniger** wird. Eine Fortschrittsliste
+    /// ist nur dann kein Widerspruch, wenn sie verschwindet, sobald sie leer
+    /// ist — was hier wörtlich passiert: Ist alles erledigt, gibt es den
+    /// Abschnitt nicht.
+    @ViewBuilder
+    private var setupSection: some View {
+        if !setupIsComplete {
+            Section {
+                if !store.hasFavorites {
+                    NavigationLink {
+                        ShoppingPlacesScreen(marketRepository: marketRepository)
+                    } label: {
+                        setupRow("Filiale wählen")
+                    }
+                    .accessibilityIdentifier("settings.setup.markets")
+                }
+                if list.items.isEmpty, let onShowList {
+                    Button(action: onShowList) { setupRow("Ersten Artikel aufschreiben") }
+                        .buttonStyle(TactileButtonStyle())
+                        .accessibilityIdentifier("settings.setup.list")
+                }
+                if !tutorial.hasSeenTutorial {
+                    Button {
+                        withAnimation(Theme.Motion.screen.animation(reduceMotion: reduceMotion)) {
+                            tutorial.start(origin: .settings, hasMarkets: store.hasFavorites)
+                        }
+                    } label: {
+                        setupRow("Rundgang ansehen")
+                    }
+                    .buttonStyle(TactileButtonStyle())
+                    .accessibilityIdentifier("settings.setup.tour")
+                }
+            } header: {
+                Text("Noch offen")
+            }
+            .accessibilityIdentifier("settings.setup")
+        }
+    }
+
+    /// Erledigt heißt: Der Abschnitt ist weg. Kein „3 von 3 ✓" als Trophäe —
+    /// eine Liste, die nichts mehr zu sagen hat, sagt nichts.
+    private var setupIsComplete: Bool {
+        store.hasFavorites && !list.items.isEmpty && tutorial.hasSeenTutorial
+    }
+
+    private func setupRow(_ title: String) -> some View {
+        HStack(spacing: Theme.Spacing.md) {
+            Image(systemName: "circle")
+                .foregroundStyle(Theme.secondaryText)
+                .accessibilityHidden(true)
+            Text(title)
+                .foregroundStyle(Color.primary)
+            Spacer(minLength: Theme.Spacing.sm)
+        }
+        .contentShape(Rectangle())
     }
 
     // MARK: Einkaufen

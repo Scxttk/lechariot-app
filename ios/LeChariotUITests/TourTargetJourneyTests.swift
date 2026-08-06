@@ -38,8 +38,7 @@ final class TourTargetJourneyTests: XCTestCase {
         app.launchArguments = args
         app.launch()
         openTab("Einstellungen")
-        let restart = app.buttons["settings.tutorial"]
-        XCTAssertTrue(restart.waitForExistence(timeout: 20))
+        let restart = app.scrollToTutorialButton()
         restart.tap()
         XCTAssertTrue(card.waitForExistence(timeout: 20))
     }
