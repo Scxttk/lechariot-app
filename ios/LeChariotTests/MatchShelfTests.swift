@@ -40,6 +40,30 @@ final class MatchShelfTests: XCTestCase {
     /// `milch` gesperrt), „Putenbrustfilet" (bei `fisch` gesperrt) — sie
     /// gehören zu einem anderen Begriff und müssen dort auch bleiben.
     private static let regal: [String: String] = [
+        // Tranche 3 (2026-08-07): Brot, Milchprodukte, Fleisch & Fisch.
+        "bacon": "Bacon Frühstücksspeck 100 g",
+        "bagel": "Sesam-Bagels 4 Stück",
+        "burgerbrötchen": "Burger Buns 4 Stück",
+        "croissant": "Buttercroissants 6 Stück",
+        "fleischwurst": "Lyoner am Stück 300 g",
+        "grillkäse": "Grillkäse Natur 200 g",
+        "hüttenkäse": "Körniger Frischkäse 200 g",
+        "kaffeerahm": "Kaffeesahne 10 x 10 g",
+        "kassler": "Kasslernacken ohne Knochen",
+        "magerquark": "Speisequark Magerstufe 500 g",
+        "muscheln": "Miesmuscheln 1 kg",
+        "pflanzendrink": "Hafermilch Barista 1 l",
+        "pizzateig": "Frischer Pizzateig 400 g",
+        "raclettekäse": "Raclette Scheiben 400 g",
+        "reibekäse": "Geriebener Gouda 200 g",
+        "ricotta": "Ricotta 250 g",
+        "roggenbrot": "Vollkornbrot geschnitten 500 g",
+        "sardellen": "Sardellenfilets in Öl",
+        "schinken": "Serranoschinken 100 g",
+        "schnitzel": "Schweineschnitzel 2 Stück",
+        "sojajoghurt": "Kokosjoghurt Natur 400 g",
+        "steak": "Rumpsteak 250 g",
+        "zimtschnecken": "Zimtschnecken 4 Stück",
         // Tranche 2 (2026-08-07): Obst, Gemüse, Kräuter aus Bring!s größter
         // Kategorie.
         "basilikum": "Basilikum im Topf",

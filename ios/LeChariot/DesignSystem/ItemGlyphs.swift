@@ -68,7 +68,7 @@ enum ItemGlyph {
     private static let recipes: [String: Rezept] = {
         var alle: [String: Rezept] = [:]
         for teil in [obstUndGemuese, molkereiUndBackwaren, fleischUndFisch,
-                     vorratUndGetraenke, tranche1, tranche2] {
+                     vorratUndGetraenke, tranche1, tranche2, tranche3] {
             alle.merge(teil) { erstes, _ in erstes }
         }
         return alle
@@ -2080,6 +2080,309 @@ private let tranche2: [String: ItemGlyph.Rezept] = [
         p.circle(p.at(0.28, 0.36), 0.13)
         p.circle(p.at(0.50, 0.28), 0.15)
         p.circle(p.at(0.72, 0.36), 0.13)
+    },
+]
+
+// MARK: - Tranche 3: Brot, Milchprodukte, Fleisch & Fisch
+
+/// **Dreiundzwanzig Zeichen zu Tranche 3** (2026-08-07, Backend `Tranche 3`).
+///
+/// Konkrete Gegenstände — die zeichnen sich am sichersten. Sechs Käse in
+/// einer Kategorie sind trotzdem eine Falle: Sie unterscheiden sich nicht in
+/// der Silhouette, sondern in der **Form, in der man sie kauft** — Ecke,
+/// Beutel, Rad, Becher, Pfanne. Danach ist hier gezeichnet.
+private let tranche3: [String: ItemGlyph.Rezept] = [
+
+    // Bagel: Ring mit Loch und Saatkörnern. Das Loch trennt ihn vom Brötchen.
+    "bagel": { p in
+        p.circle(p.at(0.50, 0.52), 0.34)
+        p.circle(p.at(0.50, 0.52), 0.12)
+        p.dot(p.at(0.34, 0.32), 0.03)
+        p.dot(p.at(0.66, 0.34), 0.03)
+        p.dot(p.at(0.30, 0.68), 0.03)
+        p.dot(p.at(0.70, 0.70), 0.03)
+    },
+
+    // Burgerbrötchen: Deckel, Sesam, Boden — die Fuge in der Mitte ist das,
+    // was es vom Kieselstein trennt.
+    "burgerbrötchen": { p in
+        p.begin(p.at(0.14, 0.48))
+        p.bow(p.at(0.86, 0.48), p.at(0.20, 0.14), p.at(0.80, 0.14))
+        p.close()
+        p.line([p.at(0.14, 0.58), p.at(0.86, 0.58)])
+        p.begin(p.at(0.16, 0.66))
+        p.bow(p.at(0.84, 0.66), p.at(0.22, 0.86), p.at(0.78, 0.86))
+        p.close()
+        p.dot(p.at(0.38, 0.32), 0.03)
+        p.dot(p.at(0.58, 0.28), 0.03)
+        p.dot(p.at(0.68, 0.38), 0.03)
+    },
+
+    // Croissant: Sichel mit angesetzten Hörnern.
+    "croissant": { p in
+        // **Die Hörner müssen sich nach innen krümmen.** Ein Bogen mit zwei
+        // geraden Enden ist eine Brücke; erst die eingerollten Spitzen machen
+        // die Sichel.
+        p.begin(p.at(0.14, 0.74))
+        p.bow(p.at(0.86, 0.74), p.at(0.20, 0.20), p.at(0.80, 0.20))
+        p.bow(p.at(0.14, 0.74), p.at(0.74, 0.52), p.at(0.26, 0.52))
+        p.close()
+        p.begin(p.at(0.14, 0.74))
+        p.bow(p.at(0.26, 0.86), p.at(0.06, 0.84), p.at(0.16, 0.90))
+        p.begin(p.at(0.86, 0.74))
+        p.bow(p.at(0.74, 0.86), p.at(0.94, 0.84), p.at(0.84, 0.90))
+        p.line([p.at(0.38, 0.42), p.at(0.34, 0.62)])
+        p.line([p.at(0.62, 0.42), p.at(0.66, 0.62)])
+    },
+
+    // Teig: Rolle mit Nudelholz darüber.
+    "pizzateig": { p in
+        p.begin(p.at(0.14, 0.74))
+        p.bow(p.at(0.86, 0.74), p.at(0.30, 0.58), p.at(0.70, 0.58))
+        p.bow(p.at(0.14, 0.74), p.at(0.70, 0.90), p.at(0.30, 0.90))
+        p.close()
+        p.capsule(0.50, 0.36, 0.56, 0.14, tilt: -8)
+        p.line([p.at(0.16, 0.32), p.at(0.06, 0.30)])
+        p.line([p.at(0.84, 0.40), p.at(0.94, 0.42)])
+    },
+
+    // Roggenbrot: dunkler Laib, kastiger als das Weißbrot, mit Kerben.
+    "roggenbrot": { p in
+        p.begin(p.at(0.12, 0.72))
+        p.bow(p.at(0.88, 0.72), p.at(0.14, 0.28), p.at(0.86, 0.28))
+        p.close()
+        p.line([p.at(0.30, 0.44), p.at(0.38, 0.34)])
+        p.line([p.at(0.46, 0.42), p.at(0.54, 0.32)])
+        p.line([p.at(0.62, 0.44), p.at(0.70, 0.34)])
+        p.line([p.at(0.12, 0.60), p.at(0.88, 0.60)])
+    },
+
+    // Zimtschnecke: Spirale von oben, im Papierförmchen.
+    "zimtschnecken": { p in
+        p.circle(p.at(0.50, 0.50), 0.34)
+        p.begin(p.at(0.50, 0.24))
+        p.bow(p.at(0.50, 0.66), p.at(0.74, 0.28), p.at(0.72, 0.62))
+        p.bow(p.at(0.44, 0.44), p.at(0.34, 0.68), p.at(0.34, 0.46))
+        p.bow(p.at(0.56, 0.48), p.at(0.50, 0.40), p.at(0.56, 0.42))
+        p.line([p.at(0.20, 0.80), p.at(0.80, 0.80)])
+    },
+
+    // Pflanzendrink: Karton mit Halm — dasselbe Gefäß wie die Säfte, aber mit
+    // Ähre statt Frucht.
+    "pflanzendrink": { p in
+        p.line([p.at(0.24, 0.34), p.at(0.24, 0.92), p.at(0.70, 0.92),
+                p.at(0.70, 0.34)])
+        p.line([p.at(0.24, 0.34), p.at(0.38, 0.22), p.at(0.70, 0.22),
+                p.at(0.70, 0.34)])
+        p.line([p.at(0.38, 0.22), p.at(0.38, 0.34), p.at(0.70, 0.34)])
+        p.line([p.at(0.47, 0.80), p.at(0.47, 0.48)])
+        p.line([p.at(0.47, 0.56), p.at(0.34, 0.48)])
+        p.line([p.at(0.47, 0.56), p.at(0.60, 0.48)])
+        p.line([p.at(0.47, 0.68), p.at(0.34, 0.60)])
+        p.line([p.at(0.47, 0.68), p.at(0.60, 0.60)])
+    },
+
+    // Hüttenkäse: Becher mit Deckelfolie und Körnung.
+    "hüttenkäse": { p in
+        p.line([p.at(0.20, 0.32), p.at(0.80, 0.32)])
+        p.begin(p.at(0.24, 0.32))
+        p.to(p.at(0.32, 0.88))
+        p.to(p.at(0.68, 0.88))
+        p.to(p.at(0.76, 0.32))
+        p.dot(p.at(0.42, 0.52), 0.04)
+        p.dot(p.at(0.58, 0.56), 0.04)
+        p.dot(p.at(0.48, 0.70), 0.04)
+    },
+
+    // Magerquark: derselbe Becher, aber glatt und mit Löffel — die Körnung
+    // ist genau der Unterschied zum Hüttenkäse.
+    "magerquark": { p in
+        p.line([p.at(0.18, 0.36), p.at(0.74, 0.36)])
+        p.begin(p.at(0.22, 0.36))
+        p.to(p.at(0.30, 0.90))
+        p.to(p.at(0.66, 0.90))
+        p.to(p.at(0.72, 0.36))
+        p.line([p.at(0.60, 0.36), p.at(0.80, 0.14)])
+        p.begin(p.at(0.80, 0.14))
+        p.bow(p.at(0.92, 0.24), p.at(0.90, 0.10), p.at(0.94, 0.16))
+        p.bow(p.at(0.80, 0.14), p.at(0.88, 0.28), p.at(0.80, 0.22))
+    },
+
+    // Raclette: Pfännchen mit Stiel — so kauft man ihn nicht, aber so kennt
+    // man ihn, und darum geht es beim Erkennen.
+    "raclettekäse": { p in
+        p.begin(p.at(0.16, 0.44))
+        p.to(p.at(0.16, 0.70))
+        p.bow(p.at(0.64, 0.70), p.at(0.16, 0.86), p.at(0.64, 0.86))
+        p.to(p.at(0.64, 0.44))
+        p.close()
+        p.line([p.at(0.64, 0.52), p.at(0.94, 0.44)])
+        p.line([p.at(0.24, 0.36), p.at(0.56, 0.36)])
+        p.line([p.at(0.24, 0.36), p.at(0.24, 0.44)])
+        p.line([p.at(0.56, 0.36), p.at(0.56, 0.44)])
+    },
+
+    // Reibekäse: Beutel mit Streifen. Der Beutel ist die Kaufform.
+    "reibekäse": { p in
+        p.line([p.at(0.26, 0.24), p.at(0.74, 0.24), p.at(0.78, 0.88),
+                p.at(0.22, 0.88)], closed: true)
+        p.line([p.at(0.26, 0.24), p.at(0.34, 0.14), p.at(0.50, 0.22),
+                p.at(0.66, 0.14), p.at(0.74, 0.24)])
+        p.line([p.at(0.32, 0.48), p.at(0.46, 0.44)])
+        p.line([p.at(0.52, 0.56), p.at(0.68, 0.52)])
+        p.line([p.at(0.32, 0.68), p.at(0.48, 0.64)])
+        p.line([p.at(0.54, 0.76), p.at(0.68, 0.72)])
+    },
+
+    // Ricotta: runder Becher mit Deckel, glatt.
+    "ricotta": { p in
+        p.begin(p.at(0.20, 0.40))
+        p.bow(p.at(0.80, 0.40), p.at(0.20, 0.24), p.at(0.80, 0.24))
+        p.bow(p.at(0.20, 0.40), p.at(0.80, 0.56), p.at(0.20, 0.56))
+        p.close()
+        p.line([p.at(0.20, 0.40), p.at(0.24, 0.80)])
+        p.line([p.at(0.80, 0.40), p.at(0.76, 0.80)])
+        p.begin(p.at(0.24, 0.80))
+        p.bow(p.at(0.76, 0.80), p.at(0.30, 0.92), p.at(0.70, 0.92))
+    },
+
+    // Grillkäse: Scheibe mit Grillstreifen.
+    "grillkäse": { p in
+        p.line([p.at(0.16, 0.34), p.at(0.84, 0.34), p.at(0.84, 0.74),
+                p.at(0.16, 0.74)], closed: true)
+        p.line([p.at(0.28, 0.34), p.at(0.20, 0.74)])
+        p.line([p.at(0.48, 0.34), p.at(0.40, 0.74)])
+        p.line([p.at(0.68, 0.34), p.at(0.60, 0.74)])
+        p.line([p.at(0.86, 0.36), p.at(0.80, 0.66)])
+    },
+
+    // Sojajoghurt: Becher mit Blatt — das Blatt sagt „pflanzlich", ohne dass
+    // es jemand lesen muss.
+    "sojajoghurt": { p in
+        p.line([p.at(0.20, 0.42), p.at(0.76, 0.42)])
+        p.begin(p.at(0.24, 0.42))
+        p.to(p.at(0.32, 0.90))
+        p.to(p.at(0.68, 0.90))
+        p.to(p.at(0.72, 0.42))
+        blatt(&p, von: (0.48, 0.38), nach: (0.76, 0.14), bauch: -0.10)
+        p.line([p.at(0.48, 0.38), p.at(0.66, 0.24)])
+    },
+
+    // Kaffeerahm: kleines Döschen mit abgezogener Ecke.
+    "kaffeerahm": { p in
+        p.begin(p.at(0.22, 0.44))
+        p.to(p.at(0.30, 0.82))
+        p.to(p.at(0.70, 0.82))
+        p.to(p.at(0.78, 0.44))
+        p.close()
+        p.line([p.at(0.22, 0.44), p.at(0.62, 0.44)])
+        p.begin(p.at(0.62, 0.44))
+        p.bow(p.at(0.86, 0.24), p.at(0.74, 0.42), p.at(0.86, 0.34))
+        p.line([p.at(0.86, 0.24), p.at(0.78, 0.44)])
+    },
+
+    // Bacon: zwei gewellte Streifen mit Fettrand.
+    "bacon": { p in
+        p.begin(p.at(0.10, 0.36))
+        p.bow(p.at(0.90, 0.34), p.at(0.34, 0.16), p.at(0.66, 0.52))
+        p.bow(p.at(0.10, 0.52), p.at(0.66, 0.66), p.at(0.34, 0.32))
+        p.close()
+        p.begin(p.at(0.10, 0.60))
+        p.bow(p.at(0.90, 0.58), p.at(0.34, 0.40), p.at(0.66, 0.76))
+        p.bow(p.at(0.10, 0.76), p.at(0.66, 0.90), p.at(0.34, 0.56))
+        p.close()
+    },
+
+    // Fleischwurst: Ring mit Zipfel — die Ringform ist ihr Merkmal.
+    "fleischwurst": { p in
+        p.circle(p.at(0.50, 0.54), 0.32)
+        p.circle(p.at(0.50, 0.54), 0.14)
+        p.line([p.at(0.50, 0.22), p.at(0.50, 0.10)])
+        p.line([p.at(0.42, 0.12), p.at(0.58, 0.12)])
+    },
+
+    // Kassler: Stück am Knochen, mit Fettrand.
+    "kassler": { p in
+        p.begin(p.at(0.26, 0.34))
+        p.bow(p.at(0.80, 0.44), p.at(0.52, 0.24), p.at(0.76, 0.30))
+        p.bow(p.at(0.52, 0.86), p.at(0.84, 0.62), p.at(0.70, 0.84))
+        p.bow(p.at(0.26, 0.34), p.at(0.28, 0.86), p.at(0.20, 0.54))
+        p.close()
+        p.circle(p.at(0.36, 0.50), 0.09)
+        p.line([p.at(0.62, 0.40), p.at(0.70, 0.72)])
+    },
+
+    // Schinken: Keule mit Knochenende.
+    "schinken": { p in
+        // **Der Knochen liegt in der Keule, nicht an einer Schnur.** Ein
+        // Kreis am dünnen Stiel war ein Luftballon; jetzt ist der Knochen ein
+        // kurzer Stummel mit zwei Köpfen, wie man ihn am Schinken sieht.
+        p.begin(p.at(0.36, 0.30))
+        p.bow(p.at(0.80, 0.58), p.at(0.66, 0.26), p.at(0.84, 0.40))
+        p.bow(p.at(0.40, 0.88), p.at(0.74, 0.82), p.at(0.54, 0.90))
+        p.bow(p.at(0.36, 0.30), p.at(0.22, 0.80), p.at(0.18, 0.46))
+        p.close()
+        p.line([p.at(0.34, 0.28), p.at(0.24, 0.14)])
+        p.circle(p.at(0.20, 0.10), 0.07)
+        p.circle(p.at(0.32, 0.14), 0.06)
+        p.line([p.at(0.40, 0.48), p.at(0.66, 0.56)])
+    },
+
+    // Muscheln: aufgeklappte Schale mit Rippen.
+    "muscheln": { p in
+        p.begin(p.at(0.50, 0.82))
+        p.bow(p.at(0.12, 0.34), p.at(0.24, 0.78), p.at(0.12, 0.54))
+        p.bow(p.at(0.88, 0.34), p.at(0.30, 0.10), p.at(0.70, 0.10))
+        p.bow(p.at(0.50, 0.82), p.at(0.88, 0.54), p.at(0.76, 0.78))
+        p.close()
+        p.line([p.at(0.50, 0.82), p.at(0.34, 0.26)])
+        p.line([p.at(0.50, 0.82), p.at(0.50, 0.20)])
+        p.line([p.at(0.50, 0.82), p.at(0.66, 0.26)])
+    },
+
+    // Sardellen: zwei schlanke Fische, in der Dose gedacht.
+    "sardellen": { p in
+        p.begin(p.at(0.14, 0.36))
+        p.bow(p.at(0.76, 0.36), p.at(0.34, 0.22), p.at(0.60, 0.22))
+        p.bow(p.at(0.14, 0.36), p.at(0.60, 0.50), p.at(0.34, 0.50))
+        p.close()
+        p.line([p.at(0.76, 0.36), p.at(0.90, 0.26), p.at(0.90, 0.46)], closed: true)
+        p.begin(p.at(0.14, 0.66))
+        p.bow(p.at(0.76, 0.66), p.at(0.34, 0.52), p.at(0.60, 0.52))
+        p.bow(p.at(0.14, 0.66), p.at(0.60, 0.80), p.at(0.34, 0.80))
+        p.close()
+        p.line([p.at(0.76, 0.66), p.at(0.90, 0.56), p.at(0.90, 0.76)], closed: true)
+    },
+
+    // Schnitzel: paniertes Stück mit gewelltem Rand und Zitronenspalte.
+    "schnitzel": { p in
+        // **Der Rand muss wellig sein.** Ein rundes Stück mit drei Punkten
+        // darin ist ein Keks mit Schokostückchen; die Wellen sind das, was
+        // paniertes Fleisch von Gebäck trennt. Dazu die Zitronenspalte.
+        p.begin(p.at(0.40, 0.20))
+        p.bow(p.at(0.62, 0.30), p.at(0.50, 0.16), p.at(0.60, 0.20))
+        p.bow(p.at(0.80, 0.46), p.at(0.68, 0.36), p.at(0.82, 0.36))
+        p.bow(p.at(0.72, 0.70), p.at(0.78, 0.58), p.at(0.66, 0.60))
+        p.bow(p.at(0.46, 0.84), p.at(0.76, 0.82), p.at(0.56, 0.82))
+        p.bow(p.at(0.22, 0.66), p.at(0.34, 0.88), p.at(0.20, 0.80))
+        p.bow(p.at(0.26, 0.40), p.at(0.24, 0.54), p.at(0.18, 0.46))
+        p.bow(p.at(0.40, 0.20), p.at(0.32, 0.30), p.at(0.30, 0.22))
+        p.close()
+        p.dot(p.at(0.42, 0.44), 0.03)
+        p.dot(p.at(0.56, 0.56), 0.03)
+        p.dot(p.at(0.38, 0.64), 0.03)
+    },
+
+    // Steak: Stück mit Knochen an der Seite und Grillstreifen.
+    "steak": { p in
+        p.begin(p.at(0.34, 0.26))
+        p.bow(p.at(0.86, 0.52), p.at(0.66, 0.22), p.at(0.86, 0.34))
+        p.bow(p.at(0.38, 0.84), p.at(0.86, 0.72), p.at(0.62, 0.86))
+        p.bow(p.at(0.34, 0.26), p.at(0.18, 0.80), p.at(0.14, 0.38))
+        p.close()
+        p.line([p.at(0.46, 0.40), p.at(0.70, 0.46)])
+        p.line([p.at(0.42, 0.56), p.at(0.72, 0.62)])
+        p.line([p.at(0.44, 0.70), p.at(0.66, 0.74)])
     },
 ]
 
