@@ -324,9 +324,27 @@ extension View {
     /// Sonst scheint an den unteren Displayecken neben der durchscheinenden
     /// Tastatur das schwarze Fenster durch — die schwarzen Ecken vom 31.07.
     /// Siehe [[Le Chariot Entscheidungen]], „Schwarze Ecken".
+    /// **Und die zweite Ebene ist unsere, nicht Apples.**
+    ///
+    /// Abschnittsüberschriften und -fußnoten einer `List` bekommen ihre Farbe
+    /// nicht vom Aufrufer, sondern von der zweiten Ebene des umgebenden
+    /// Vordergrundstils — voreingestellt Apples `secondaryLabel`. Der ist für
+    /// Weiß und Schwarz abgestimmt, und auf der Creme reichte er schon immer
+    /// knapp: **3,16:1** auf `#EDE9C0`. Mit der Palette vom 06.08. ist die
+    /// Fläche eine Stufe tiefer gegangen (`#E3DEB8`), und derselbe Text steht
+    /// jetzt bei **3,04:1** — über die Linie, ab der Apples Audit nicht mehr
+    /// „nearly passed" sagt, sondern durchfallen lässt. Am 07.08. in einem
+    /// Lauf über alle Bildschirme aufgeschlagen: „Einkaufen", „Profil",
+    /// „Hilfe", „Regionen" und jede Fußnote darunter.
+    ///
+    /// `Theme.secondaryText` ist derselbe Text bei **4,56:1** und ist gegen
+    /// beide Flächen gemessen (`PaletteContrastTests`). Er gehört hierher und
+    /// nicht an die Aufrufstellen: Es sind über zwanzig Überschriften und
+    /// Fußnoten, und die nächste käme wieder in Apples Farbe auf die Welt.
     func themedScreen() -> some View {
         scrollContentBackground(.hidden)
             .readableWidth()
+            .foregroundStyle(.primary, Theme.secondaryText)
             .background { Theme.background.ignoresSafeArea() }
     }
 }
