@@ -102,7 +102,10 @@ final class AddFlowJourneyTests: XCTestCase {
         app.typeText("Butter\n")
         XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10))
 
-        app.swipeUp()
+        // Der Zug muss die **Liste** treffen — mit der vollen
+        // Software-Tastatur liegt die Bildschirmmitte auf der Schicht selbst,
+        // und ein Wisch dort prüft nichts. Siehe `dragTheListUp`.
+        app.dragTheListUp()
 
         XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForNonExistence(timeout: 5),
                       "Die Angaben-Schicht bleibt über der Liste stehen")

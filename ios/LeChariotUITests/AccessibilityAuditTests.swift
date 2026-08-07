@@ -58,10 +58,19 @@ final class AccessibilityAuditTests: XCTestCase {
         plz.typeText("01219")
         try audit("Ort oder Postleitzahl")
         app.buttons["onboarding.primary"].tap()
-        try audit("Haushalt")
+        // Erst eine Kette antippen, dann messen — dieselbe Regel wie oben:
+        // Der gewählte Zustand (Akzent auf Akzentfläche) ist der, den Nutzer
+        // sehen; ungewählt misst der Audit nur die halbe Palette. Auf den
+        // Chip warten, nicht blind tippen: Die Ketten stehen erst nach der
+        // Verzeichnis-Antwort da (im Mock-Lauf sofort, aber nicht in null
+        // Bildern).
+        let chip = app.buttons["Lidl"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 15), "Ketten-Chips nicht geladen")
+        chip.tap()
+        try audit("Welche Märkte magst du")
         app.buttons["onboarding.skip"].tap()
-        try audit("Ernährung")
-        app.buttons["onboarding.skip"].tap()
+        try audit("Belohnung")
+        app.buttons["onboarding.primary"].tap()
         try audit("Einwilligung")
 
         // Der Assistent endet seit dem 2026-07-31 in der Liste — **ohne
@@ -258,8 +267,8 @@ final class AccessibilityAuditTests: XCTestCase {
         app.buttons["onboarding.primary"].tap()
         app.buttons["onboarding.skip"].tap()
         enterPLZ()
-        app.buttons["onboarding.skip"].tap()
-        app.buttons["onboarding.skip"].tap()
+        app.buttons["onboarding.skip"].tap()      // Ketten: „Später"
+        app.buttons["onboarding.primary"].tap()   // Belohnung
         app.buttons["onboarding.primary"].tap()   // Einwilligung
 
         XCTAssertTrue(app.staticTexts["Alles bereit. Einmal kurz zeigen?"]
@@ -680,11 +689,29 @@ final class AccessibilityAuditTests: XCTestCase {
         // nicht: „Rundgang erneut ansehen" fiel gescrollt bei y = 107,5 durch
         // und stand ungescrollt bei y = 484 sauber da — gleiche Zeile, gleiche
         // Farbe, nur die Leiste darüber.
-        let nav = app.navigationBars.firstMatch
-        if nav.exists {
+        //
+        // **Alle Leisten, nicht `firstMatch`** — seit dem 05.08. Ein Blatt
+        // bringt seine eigene Navigationsleiste mit, und auf halber Höhe
+        // (`.medium`-Detent) ist `firstMatch` die Leiste des Bildschirms
+        // **dahinter**: Im Rückfrage-Blatt fielen „Überspringen" und „Senden"
+        // durch — zwei Knöpfe in `Theme.accent`, derselben Farbe, die überall
+        // sonst besteht, gemessen mitten **auf** der durchscheinenden Leiste
+        // des Blatts. Dieselbe Klasse Befund wie in der Tabelle oben, nur an
+        // einer Leiste, die die Ausnahme nie abgedeckt hat. Die offene Fläche
+        // nach oben bekommt weiterhin nur die oberste Leiste — über einem
+        // halbhohen Blatt liegt der Bildschirm dahinter, und den prüft sein
+        // eigener Durchgang; die Leisten der Blätter bekommen ihr Band aus
+        // Leiste plus einer Leistenhöhe Auslauf in beide Richtungen.
+        let navBars = app.navigationBars.allElementsBoundByIndex
+        for (index, nav) in navBars.enumerated() where nav.exists {
             let bar = nav.frame
-            regions.append(CGRect(x: window.minX, y: -10_000,
-                                  width: window.width, height: 10_000 + bar.maxY + bar.height))
+            if index == 0 {
+                regions.append(CGRect(x: window.minX, y: -10_000,
+                                      width: window.width, height: 10_000 + bar.maxY + bar.height))
+            } else {
+                regions.append(CGRect(x: window.minX, y: bar.minY - bar.height,
+                                      width: window.width, height: bar.height * 3))
+            }
         }
 
         // Über der Tab-Leiste läuft ihre Weichzeichnung aus. Die Höhe ist
@@ -780,10 +807,12 @@ final class AccessibilityAuditTests: XCTestCase {
         if abbrechen.exists { abbrechen.tap(); return }
         // Seit dem 03.08. ist das Mengen-Menue kein Blatt mehr, sondern eine
         // Schicht ueber der Eingabezeile — sie geht mit dem Fokus, nicht mit
-        // einem Knopf. Ein Wisch ueber die Liste tut das.
+        // einem Knopf. Ein Zug ueber die **Liste** tut das; die
+        // Bildschirmmitte liegt mit voller Software-Tastatur auf der Schicht
+        // selbst. Siehe `dragTheListUp`.
         let panel = app.buttons["list.detailPanel.more"]
         guard panel.waitForExistence(timeout: 3) else { return }
-        app.swipeUp()
+        app.dragTheListUp()
         _ = panel.waitForNonExistence(timeout: 3)
     }
 

@@ -91,149 +91,16 @@ struct NameStepView: View {
     }
 }
 
-/// Household size, shopping rhythm and budget bracket.
-struct HouseholdStepView: View {
-    @Environment(ProfileStore.self) private var profile
-    var onContinue: () -> Void
-
-    var body: some View {
-        @Bindable var profile = profile
-        return OnboardingStepView(
-            step: 4,
-            totalSteps: OnboardingStep.total,
-            title: "Wie kaufst du ein?",
-            subtitle: "Grobe Angaben reichen — sie helfen uns, \(AppBrand.name) passender zu machen.",
-            onPrimary: onContinue,
-            skip: (title: "Überspringen", action: onContinue)
-        ) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                household
-                rhythm
-                budget
-            }
-        }
-    }
-
-    private var household: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            label("Für wie viele Personen?")
-            HStack {
-                Text(profile.profile.householdSize == 1
-                     ? "1 Person"
-                     : "\(profile.profile.householdSize) Personen")
-                    .font(.title3.weight(.medium).monospacedDigit())
-                Spacer()
-                Stepper(
-                    "Personen im Haushalt",
-                    value: Binding(
-                        get: { profile.profile.householdSize },
-                        set: { profile.setHousehold(size: $0) }
-                    ),
-                    in: 1...10
-                )
-                .labelsHidden()
-            }
-            .padding(Theme.Spacing.md)
-            .background(
-                Theme.surface,
-                in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                    .strokeBorder(Theme.stroke)
-            )
-        }
-    }
-
-    private var rhythm: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            label("Wie oft pro Woche?")
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 100), spacing: Theme.Spacing.sm)],
-                spacing: Theme.Spacing.sm
-            ) {
-                ForEach(ShoppingRhythm.allCases) { option in
-                    SelectableChip(
-                        title: option.label,
-                        isSelected: profile.profile.rhythm == option
-                    ) {
-                        profile.setRhythm(option)
-                    }
-                }
-            }
-        }
-    }
-
-    private var budget: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            label("Was gibst du ungefähr pro Woche aus?")
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 100), spacing: Theme.Spacing.sm)],
-                spacing: Theme.Spacing.sm
-            ) {
-                ForEach(BudgetBracket.allCases) { bracket in
-                    SelectableChip(
-                        title: bracket.label,
-                        isSelected: profile.profile.budget == bracket
-                    ) {
-                        // Tapping the active bracket clears it — "keine Angabe"
-                        // without needing its own button.
-                        profile.setBudget(profile.profile.budget == bracket ? nil : bracket)
-                    }
-                }
-            }
-        }
-    }
-
-    private func label(_ text: String) -> some View {
-        Text(text)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Theme.secondaryText)
-    }
-}
-
-/// Dietary preferences. All optional, multi-select.
-struct DietStepView: View {
-    @Environment(ProfileStore.self) private var profile
-    var onContinue: () -> Void
-
-    var body: some View {
-        OnboardingStepView(
-            step: 5,
-            totalSteps: OnboardingStep.total,
-            title: "Isst du irgendetwas nicht?",
-            subtitle: "Such dir aus, was zutrifft — oder nichts. Du kannst das jederzeit ändern.",
-            onPrimary: onContinue,
-            skip: (title: "Trifft nichts zu", action: onContinue)
-        ) {
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 150), spacing: Theme.Spacing.sm)],
-                spacing: Theme.Spacing.sm
-            ) {
-                ForEach(DietTag.allCases) { tag in
-                    SelectableChip(
-                        title: tag.label,
-                        symbol: tag.symbol,
-                        isSelected: profile.profile.dietTags.contains(tag)
-                    ) {
-                        profile.toggleDietTag(tag)
-                    }
-                }
-            }
-        }
-    }
-}
+// **Haushalts- und Ernährungsschritt standen hier bis zum 2026-08-05.**
+// Beide Fragen sind aus dem Onboarding raus: Sie füllten ursprünglich die
+// Wartezeit eines Backend-Scrapes, den es seit Migration v16 nicht mehr gibt,
+// und ihre Antworten änderten sichtbar nichts (Blinkist-Lehre: Fragen stellen
+// und ignorieren schadet mehr als nicht fragen). Das Datenmodell
+// (`UserProfile`, `ShoppingRhythm`, `BudgetBracket`, `DietTag`) und die
+// `ProfileStore`-Setter bleiben unangetastet — gespeicherte Antworten
+// bestehender Nutzer gelten weiter, und gefragt wird künftig kontextuell in
+// der App, wo die Antwort etwas bewirkt (eigenes Arbeitspaket).
 
 #Preview("Willkommen") {
     WelcomeStepView(onContinue: {})
-}
-
-#Preview("Haushalt") {
-    HouseholdStepView(onContinue: {})
-        .environment(ProfileStore())
-}
-
-#Preview("Ernährung") {
-    DietStepView(onContinue: {})
-        .environment(ProfileStore())
 }

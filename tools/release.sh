@@ -122,32 +122,54 @@ command -v xcodegen >/dev/null || fail "xcodegen fehlt: brew install xcodegen"
 #   - `DVTDeveloperAccountManagerAppleIDLists` ist leer — in Xcode ist keine
 #     Apple-ID angemeldet, die eins ausstellen lassen könnte.
 #
-# Trifft beides zu, kann der Export nicht signieren, egal wie gut das Archiv
-# ist. Der Lauf bricht dann **vorher** ab und sagt, welcher der zwei Handgriffe
-# fehlt. Ein Abbruch nach sechs Minuten, der dasselbe sagt, ist kein besserer
-# Abbruch.
+# **Nachtrag vom selben Abend, 22:33:** Genau in dieser Lage — kein Zertifikat,
+# keine Anmeldung — lief ein Upload trotzdem durch: über den API-Schlüssel, per
+# Cloud-Signing (`-allowProvisioningUpdates` plus `-authenticationKey*`, Build
+# 2026.0803.2008). Ein aufgelöster Schlüssel ist also der dritte Weg, und die
+# Prüfung lässt ihn durch statt abzubrechen. Ob der Schlüssel cloud-signieren
+# *darf*, ist von hier aus nicht zu sehen — das verlangt die **Admin-Rolle**,
+# ein App-Manager-Schlüssel scheitert erst im Export an `Cloud signing
+# permission error`. Dieses Restrisiko von sechs Minuten bleibt.
+#
+# Erst wenn alle drei fehlen — kein Zertifikat, kein Xcode-Konto, kein
+# Schlüssel — steht das Scheitern vorher fest. Dann bricht der Lauf **vorher**
+# ab und sagt, welcher Handgriff fehlt. Ein Abbruch nach sechs Minuten, der
+# dasselbe sagt, ist kein besserer Abbruch.
 #
 # **Nur eine Warnung ohne `--upload`:** Ein Archiv zu bauen ist auch ohne
-# Vertriebszertifikat sinnvoll (Größe ansehen, Bundle prüfen).
+# Signierweg sinnvoll (Größe ansehen, Bundle prüfen).
 check_signing_reachable() {
-	local has_dist has_account
+	local has_dist has_account has_key
 	has_dist=0
 	security find-identity -v -p codesigning 2>/dev/null \
 		| grep -q "Apple Distribution" && has_dist=1
 	has_account=0
 	defaults read com.apple.dt.Xcode DVTDeveloperAccountManagerAppleIDLists 2>/dev/null \
 		| grep -q "identifier" && has_account=1
+	has_key=0
+	[ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ] && [ -n "${ASC_KEY_PATH:-}" ] \
+		&& has_key=1
 
 	[ "$has_dist" -eq 1 ] && return 0
 	[ "$has_account" -eq 1 ] && return 0
 
-	local satz="Kein „Apple Distribution\"-Zertifikat im Schlüsselbund UND keine
-  Apple-ID in Xcode angemeldet. Der Export kann damit nicht signieren.
+	if [ "$has_key" -eq 1 ]; then
+		echo "▸ Kein Zertifikat und keine Xcode-Anmeldung — der Export setzt auf" >&2
+		echo "  Cloud-Signing über Schlüssel $ASC_KEY_ID. Das trägt nur mit Admin-Rolle;" >&2
+		echo "  ein App-Manager-Schlüssel scheitert an „Cloud signing permission error\"." >&2
+		return 0
+	fi
 
-  Zwei Wege, beide brauchen einen Menschen:
+	local satz="Kein „Apple Distribution\"-Zertifikat im Schlüsselbund, keine Apple-ID
+  in Xcode angemeldet und kein API-Schlüssel auffindbar. Der Export kann so
+  nicht signieren.
 
-  1. Dauerhaft — in App Store Connect beim API-Schlüssel
-     „Zugriff auf cloud-verwaltete Vertriebszertifikate\" anhaken.
+  Zwei Wege, beide brauchen einmal einen Menschen:
+
+  1. Dauerhaft — in App Store Connect einen API-Schlüssel mit **Admin-Rolle**
+     anlegen und ablegen wie in docs/RELEASE.md beschrieben. Cloud-Signing
+     verlangt Admin: Ein App-Manager-Schlüssel scheitert erst im Export an
+     „Cloud signing permission error\" (am 03.08. zweimal erlebt).
      Danach trägt tools/release.sh --upload allein.
   2. Für jetzt — Xcode → Einstellungen → Accounts anmelden, dann
      env -u ASC_KEY_ID -u ASC_ISSUER_ID ASC_KEY_PATH=skip tools/release.sh --upload
@@ -161,6 +183,9 @@ check_signing_reachable() {
 	echo >&2
 }
 
+# Der Schlüssel wird schon hier gesucht, nicht erst beim Export: Die
+# Signier-Prüfung muss wissen, ob Cloud-Signing als dritter Weg bereitsteht.
+find_asc_key
 check_signing_reachable
 
 
@@ -195,30 +220,32 @@ export_args=(-exportArchive
 	-exportPath "$EXPORT"
 	-allowProvisioningUpdates)
 
-# Am eigenen Mac reicht die Apple-ID, die in Xcode angemeldet ist — am
-# 2026-07-30 nachgefahren: Anmeldung und Team-Auflösung liefen damit durch, der
-# Lauf brach erst am fehlenden App-Eintrag ab. Ein API-Schlüssel ist nur nötig,
-# wo niemand angemeldet ist (CI). Sind die drei ASC_-Variablen gesetzt, werden
-# sie benutzt; sonst nicht, statt den Lauf daran scheitern zu lassen.
-#
-# Die Export-Optionen werden dafür kopiert statt geändert: `destination: upload`
-# im Repo hieße, dass ein versehentlicher Lauf ohne Argument gleich hochlädt.
+# Die Export-Optionen werden fürs Hochladen kopiert statt geändert:
+# `destination: upload` im Repo hieße, dass ein versehentlicher Lauf ohne
+# Argument gleich hochlädt.
 if [ "$upload" -eq 1 ]; then
 	OPTIONS="$BUILD/ExportOptions-upload.plist"
 	cp "$IOS/ExportOptions.plist" "$OPTIONS"
 	/usr/libexec/PlistBuddy -c "Set :destination upload" "$OPTIONS"
-	find_asc_key
-	if [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ] && [ -n "${ASC_KEY_PATH:-}" ]; then
-		echo "▸ API-Schlüssel $ASC_KEY_ID — unabhängig von der Xcode-Anmeldung."
-		export_args+=(-authenticationKeyID "$ASC_KEY_ID"
-			-authenticationKeyIssuerID "$ASC_ISSUER_ID"
-			-authenticationKeyPath "$ASC_KEY_PATH")
-	else
-		echo "▸ Kein API-Schlüssel gefunden — es gilt die in Xcode angemeldete Apple-ID."
-		echo "  Am 02.08. war genau das der Blocker: Nach dem Xcode-Update auf 26.3"
-		echo "  war keine Apple-ID mehr angemeldet und das Verteilungs-Zertifikat weg."
-		echo "  Einrichten: docs/RELEASE.md, Abschnitt API-Schlüssel."
-	fi
+fi
+
+# Signiert wird mit dem API-Schlüssel, sobald oben einer aufgelöst wurde — auch
+# ohne --upload, denn signiert werden muss die .ipa so oder so. Bis zum 03.08.
+# galt der Schlüssel als CI-Krücke („am eigenen Mac reicht die Apple-ID", am
+# 2026-07-30 nachgefahren) — dann hat das Xcode-Update die Anmeldung zum
+# zweiten Mal weggeräumt, und der Admin-Schlüssel hat Build 2026.0803.2008
+# allein hochgetragen: Cloud-Signing, kein lokales Zertifikat, keine Anmeldung.
+# Seitdem ist der Schlüssel der erste Weg und die Apple-ID der Rückfall.
+if [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ] && [ -n "${ASC_KEY_PATH:-}" ]; then
+	echo "▸ API-Schlüssel $ASC_KEY_ID — unabhängig von der Xcode-Anmeldung."
+	export_args+=(-authenticationKeyID "$ASC_KEY_ID"
+		-authenticationKeyIssuerID "$ASC_ISSUER_ID"
+		-authenticationKeyPath "$ASC_KEY_PATH")
+elif [ "$upload" -eq 1 ]; then
+	echo "▸ Kein API-Schlüssel gefunden — es gilt die in Xcode angemeldete Apple-ID."
+	echo "  Am 02.08. war genau das der Blocker: Nach dem Xcode-Update auf 26.3"
+	echo "  war keine Apple-ID mehr angemeldet und das Verteilungs-Zertifikat weg."
+	echo "  Einrichten: docs/RELEASE.md, Abschnitt API-Schlüssel."
 fi
 
 xcodebuild "${export_args[@]}" -exportOptionsPlist "$OPTIONS"

@@ -86,14 +86,71 @@ final class TourTargetJourneyTests: XCTestCase {
 
     // MARK: Der Anfang
 
-    /// Der erste Rahmen zeigt auf die Eingabezeile.
+    /// **Der Plan-Rahmen muss die Karte ausleuchten, von der er redet.**
     ///
-    /// Der Rahmen daneben („Menge, Größe, Sorte") ist am 06.08. weggefallen,
-    /// und mit ihm die Journey, die sein Loch nachgemessen hat.
+    /// Der Vorfahre dieses Tests fing den Fund vom 03.08.: Ein Loch, das um
+    /// eine ganze Panelhöhe neben seinem Ziel stand, weil der Anker den
+    /// Versatz einer Einblendung mitgenommen hatte. Der Angaben-Rahmen ist mit
+    /// der Kürzung vom 05.08. in die Kontext-Tipps gezogen; die Rechnung
+    /// „Loch deckt Ziel" wird jetzt am Plan-Rahmen geführt — dem Rahmen mit
+    /// dem Kernversprechen, dessen Karte er selbst erst herbeisät.
+    func testThePlanFrameHighlightsThePlanCard() {
+        startTourFromSettings()
+        advance(to: "Ein Einkauf, ein Markt")
+        settle()
+        // Die Kopfzeile der Karte ist das messbare Element — die Karte selbst
+        // trägt keinen Bezeichner, ihre Zusammenfassung schon (siehe
+        // `AccessibilityAuditTests.testThePlanCardIsReadAsAWhole`).
+        let summary = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@ OR label BEGINSWITH %@",
+                                  "Am besten zu", "Kein Markt hat diese Woche"))
+            .firstMatch
+        assertHoleCovers(summary, "die Plan-Karte")
+    }
+
+    /// Die Gegenrichtung, damit der Fix nicht einfach „alles ist ein großes
+    /// Loch" heißt: Der erste Rahmen zeigt weiter auf die Eingabezeile.
     func testTheFirstFrameStillHighlightsTheInputBar() {
         startTourFromSettings()
         settle()
         assertHoleCovers(app.textFields["list.input"], "die Eingabezeile")
+    }
+
+    // MARK: Der Rahmen, der sich selbst übersprang
+
+    /// **Ein Wort ohne Treffer durfte den Rundgang nie weiterschalten.**
+    ///
+    /// Der alte Treffer-Rahmen hing am Anker der Treffer-Kachel; hatte der
+    /// erste offene Artikel kein Angebot, übersprang er sich nach 1,2 s
+    /// selbst. Sein Inhalt steckt jetzt im Plan-Rahmen, und der hängt an der
+    /// Plan-Karte — die er über seine Beispiel-Artikel selbst herbeisät. Ob
+    /// diese Rettung trägt, prüft genau dieser Fall: erster Artikel ohne
+    /// Treffer, **über die Schonfrist hinaus** gewartet.
+    func testThePlanFrameStandsWhenTheFirstItemHasNoOffer() {
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded",
+                               "-uiTestingOnboardedThreeChains", "-uiTestingTutorial"]
+        app.launch()
+        let field = app.textFields["list.input"]
+        XCTAssertTrue(field.waitForExistence(timeout: 20))
+        field.tap()
+        // Ein Wort, zu dem der Vorrat garantiert nichts hat — und das damit
+        // der erste offene Artikel ohne Treffer ist.
+        field.typeText("Zahnstocher\n")
+        Thread.sleep(forTimeInterval: 0.8)
+        app.swipeDown()
+
+        openTab("Einstellungen")
+        let restart = app.buttons["settings.tutorial"]
+        XCTAssertTrue(restart.waitForExistence(timeout: 20))
+        restart.tap()
+        XCTAssertTrue(card.waitForExistence(timeout: 20))
+
+        advance(to: "Ein Einkauf, ein Markt")
+        settle()
+        XCTAssertTrue(
+            card.label.contains("Ein Einkauf, ein Markt"),
+            "Der Rahmen hat sich selbst übersprungen: \(card.label)"
+        )
     }
 
     // MARK: „Probier es gleich aus"

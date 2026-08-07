@@ -16,6 +16,8 @@ struct SettingsView: View {
     @Environment(MatchRejectionStore.self) private var rejections
     @Environment(MatchFeedbackStore.self) private var feedback
     @Environment(TutorialStore.self) private var tutorial
+    @Environment(ContextTipStore.self) private var tips
+    @Environment(SetupProgressStore.self) private var setup
     @Environment(AreaRequestStore.self) private var areaRequests
     @Environment(BranchRequestStore.self) private var branchRequests
     @Environment(PurchaseHistoryStore.self) private var history
@@ -276,6 +278,8 @@ struct SettingsView: View {
                         rejections: rejections,
                         feedback: feedback,
                         tutorial: tutorial,
+                        tips: tips,
+                        setup: setup,
                         areaRequests: areaRequests,
                         branchRequests: branchRequests,
                         history: history,
@@ -878,6 +882,7 @@ private struct ProfileEditScreen: View {
         .environment(MatchRejectionStore())
         .environment(MatchFeedbackStore())
         .environment(TutorialStore())
+        .environment(SetupProgressStore())
         .environment(AreaRequestStore(repository: MockAreaRequestRepository()))
         .environment(BranchRequestStore(repository: MockBranchRequestRepository()))
 }

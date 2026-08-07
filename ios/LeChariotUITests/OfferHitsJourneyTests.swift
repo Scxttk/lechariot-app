@@ -34,7 +34,9 @@ final class OfferHitsJourneyTests: XCTestCase {
         input.tapAndAwaitKeyboard(in: app)
         app.typeText("Milch\n")
         app.typeText("Orangen\n")
-        app.swipeUp()
+        // Beendet den Tipp-Fluss über die Liste — die Bildschirmmitte liegt
+        // mit voller Software-Tastatur auf der Schicht. Siehe `dragTheListUp`.
+        app.dragTheListUp()
         XCTAssertTrue(row.waitForExistence(timeout: 15),
                       "Der Weg „Angebote zu deiner Liste“ steht nicht in der Plan-Karte:\n"
                       + app.debugDescription)

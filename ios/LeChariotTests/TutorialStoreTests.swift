@@ -83,7 +83,7 @@ final class TutorialStoreTests: XCTestCase {
 
     func testDecliningTheOfferCountsAsSeenToo() {
         let store = makeStore()
-        store.decline()
+        store.decline(hasMarkets: true)
 
         XCTAssertFalse(store.isRunning)
         XCTAssertTrue(makeStore().hasSeenTutorial)
@@ -101,7 +101,7 @@ final class TutorialStoreTests: XCTestCase {
                       "frische Installation: der Rundgang wird angeboten")
 
         let store = makeStore()
-        store.decline()
+        store.decline(hasMarkets: true)
         XCTAssertFalse(store.offersTourAfterOnboarding)
         XCTAssertFalse(makeStore().offersTourAfterOnboarding,
                        "und auch nach einem Neustart nicht wieder — das war die Meldung")
@@ -119,7 +119,7 @@ final class TutorialStoreTests: XCTestCase {
     /// neue Installation und bekommt den Rundgang wieder angeboten.
     func testAnExplicitResetOffersTheTourAgain() {
         let store = makeStore()
-        store.decline()
+        store.decline(hasMarkets: true)
         XCTAssertFalse(store.offersTourAfterOnboarding)
 
         store.resetAllData()
@@ -244,7 +244,13 @@ final class TutorialStoreTests: XCTestCase {
         XCTAssertFalse(store.asksForMarkets)
     }
 
-    // MARK: Die zwei Texte, die von den Filialen abhängen
+    /// **Der Weg, den es vorher nicht gab** (05.08.): Wer das Angebot mit
+    /// „Später" ablehnt und keine Filiale hat, bekommt die Markt-Frage
+    /// trotzdem. Vorher hing sie nur am Ende des Rundgangs — Überspringer
+    /// standen wortlos vor einer Liste, die nichts vergleichen kann.
+    func testDecliningTheOfferWithoutMarketsAsksToo() {
+        let store = makeStore()
+        store.decline(hasMarkets: false)
 
     /// Über einer Liste ohne Filiale steht an der Plan-Karte ein Leerzustand.
     /// Der Rahmen darüber muss dieselbe Zeitform sprechen — eine Karte, die
@@ -385,14 +391,20 @@ final class TutorialStoreTests: XCTestCase {
         store.start(origin: .onboarding, hasMarkets: false)
         store.seedDemoItems(into: list)
         store.finish()
+        // Die Frage auch beantworten: Nur so liegt der Einmal-Merker auf der
+        // Platte, dessen Abräumen unten zugesichert wird.
+        store.dismissMarketQuestion()
 
         store.resetAllData()
 
         XCTAssertFalse(store.hasSeenTutorial)
         XCTAssertTrue(store.seededItems.isEmpty)
         XCTAssertFalse(store.asksForMarkets, "auch eine offene Frage gehört weggeräumt")
+        XCTAssertFalse(store.hasAnsweredMarketPrompt,
+                       "nach dem Reset ist die Installation neu — und darf wieder gefragt werden")
         let fresh = makeStore()
         XCTAssertFalse(fresh.hasSeenTutorial, "kein Schlüssel darf auf der Platte zurückbleiben")
         XCTAssertTrue(fresh.seededItems.isEmpty)
+        XCTAssertFalse(fresh.hasAnsweredMarketPrompt)
     }
 }

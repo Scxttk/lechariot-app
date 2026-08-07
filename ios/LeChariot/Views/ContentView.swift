@@ -27,8 +27,16 @@ struct ContentView: View {
     /// Der Rundgang. Lebt hier, weil ihn beide Hälften brauchen: Das Onboarding
     /// bietet ihn an, die Tabs zeigen ihn.
     @State private var tutorial = TutorialStore()
+    /// Die Einmal-Tipps nach dem Rundgang. Lebt hier, weil beide Inhalts-Tabs
+    /// ihm Momente melden und die Einstellungen ihn zurücksetzen.
+    @State private var tips = ContextTipStore()
+    /// Die zwei ersten Male (Artikel, Treffer) und die Einrichtungs-Checkliste.
+    /// Hier statt in der Liste, weil auch die Einstellungen ihn brauchen
+    /// (`AppReset`).
+    @State private var setup = SetupProgressStore()
     /// Die Filialauswahl über der Liste. Erreichbar aus dem Leerzustand der
-    /// Liste und aus der Frage am Ende des Rundgangs.
+    /// Liste; die Markt-Frage nach dem Onboarding bringt ihre eigene Fassung
+    /// mit (`MarketPromptSheet`).
     @State private var showsMarketPicker = false
     /// Deckkraft der Überblendung beim Tab-Wechsel des Rundgangs — siehe
     /// `TourTabTransition`. 0, solange nicht gewechselt wird.
@@ -60,6 +68,7 @@ struct ContentView: View {
         }
         .stateAnimation(.screen, value: store.isOnboardingComplete)
         .environment(tutorial)
+        .environment(tips)
     }
 
     private var mainTabs: some View {
@@ -111,6 +120,7 @@ struct ContentView: View {
         .environment(shoppingList)
         .environment(rejections)
         .environment(feedback)
+        .environment(setup)
         // Die Tab-Leiste ist die eine Stelle, an der man aus dem Rundgang
         // herausspaziert: Sie zeichnet UIKit **über** dem Overlay, die
         // Sperrflächen darunter erreichen sie nicht. Am Simulator nachgestellt —
@@ -182,6 +192,9 @@ struct ContentView: View {
             switchTourTab(to: tutorial.step.tab)
         }
         .onChange(of: tutorial.isRunning) { _, running in
+            // Während des Rundgangs spricht genau einer: der Rundgang. Die
+            // Tipps zählen und feuern erst wieder, wenn er vorbei ist.
+            tips.tourIsRunning = running
             if running {
                 // Der Start blendet nicht über: Das Overlay zieht ohnehin
                 // gerade auf, und zwei Überblendungen übereinander sind eine
@@ -223,24 +236,24 @@ struct ContentView: View {
                 tutorial.removeDemoItems(from: shoppingList)
             }
         }
-        .alert("Märkte jetzt auswählen?", isPresented: marketQuestion) {
-            Button("Ja") {
-                tutorial.dismissMarketQuestion()
-                showsMarketPicker = true
-            }
-            Button("Nein", role: .cancel) { tutorial.dismissMarketQuestion() }
-        } message: {
-            Text("\(AppBrand.name) vergleicht die Wochenangebote der Läden, in die du wirklich gehst. Ohne Filiale bleibt deine Liste eine Liste — wählen kannst du sie jederzeit auch später in den Einstellungen.")
-        }
+        // **Ein Sheet statt eines System-Alerts** (05.08.). Die Frage nach den
+        // Filialen ist der Moment, an dem hängt, ob die App je etwas
+        // vergleichen kann — und sie stand als nackter Alert da. Siehe
+        // `MarketPromptSheet`; die Filialauswahl liegt dort als
+        // Navigationsziel im selben Sheet.
+        .sheet(isPresented: marketQuestion) { marketPrompt }
         .sheet(isPresented: $showsMarketPicker) { marketPicker }
     }
 
-    /// **Nur der Rundgang aus dem Onboarding fragt.**
+    /// **Der Weg ohne Filialen aus dem Onboarding fragt — einmal.**
     ///
-    /// Wer ihn aus den Einstellungen noch einmal ansieht, hat seine Filialen
-    /// längst — für bestehende Installationen ändert sich hier nichts. Die
-    /// Bedingung steht im Store (`TutorialStore.asksForMarkets`), damit die
-    /// Ansicht sie nicht ein zweites Mal formuliert.
+    /// Nach einem Rundgang aus dem Onboarding wie nach einem abgelehnten
+    /// Angebot; wer ihn aus den Einstellungen noch einmal ansieht, hat seine
+    /// Filialen längst — für bestehende Installationen ändert sich hier
+    /// nichts. Die Bedingung steht im Store (`TutorialStore.asksForMarkets`),
+    /// damit die Ansicht sie nicht ein zweites Mal formuliert. Jede Art des
+    /// Schließens — Knopf wie Wegwischen — läuft durch den Setter und zählt
+    /// damit als Antwort.
     private var marketQuestion: Binding<Bool> {
         Binding(
             // `cleanupDone` hält die Frage zurück, bis der Rundgang zu Ende
@@ -250,6 +263,20 @@ struct ContentView: View {
             get: { tutorial.asksForMarkets && cleanupDone },
             set: { if !$0 { tutorial.dismissMarketQuestion() } }
         )
+    }
+
+    /// Das Markt-Sheet nach dem Onboarding. Die PLZ-Herleitung ist dieselbe
+    /// wie beim Picker darunter; ohne Region gibt es nichts zu wählen — der
+    /// Fall ist theoretisch, das Onboarding lässt niemanden ohne durch.
+    @ViewBuilder
+    private var marketPrompt: some View {
+        if let plz = store.orderedReadyRegions.first ?? store.regions.first {
+            MarketPromptSheet(
+                plz: plz,
+                marketRepository: marketRepository,
+                onDone: { tutorial.dismissMarketQuestion() }
+            )
+        }
     }
 
     /// Die Filialauswahl über der Liste, nicht in den Einstellungen: Wer sie

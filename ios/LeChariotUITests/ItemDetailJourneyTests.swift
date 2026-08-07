@@ -178,7 +178,9 @@ final class ItemDetailJourneyTests: XCTestCase {
         if abbrechen.exists { abbrechen.tap(); return }
         let panel = app.buttons["list.detailPanel.more"]
         guard panel.waitForExistence(timeout: 3) else { return }
-        app.swipeUp()
+        // Auf der Liste ziehen, nicht in der Bildschirmmitte — die liegt mit
+        // voller Software-Tastatur auf der Schicht. Siehe `dragTheListUp`.
+        app.dragTheListUp()
         _ = panel.waitForNonExistence(timeout: 3)
     }
 

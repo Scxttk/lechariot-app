@@ -35,7 +35,7 @@ struct TutorialStep: Identifiable, Equatable {
     /// Berührungen erreichen das hervorgehobene Element. Alles außerhalb des
     /// Lochs ist immer tot — das ist der Zweck der Übung.
     ///
-    /// Mitmachen heißt **nicht** weiterspringen: Die beiden Rahmen mit
+    /// Mitmachen heißt **nicht** weiterspringen: Die Rahmen mit
     /// `allowsInteraction` gingen bis zum 2026-07-30 von allein weiter, sobald
     /// ein Artikel auf der Liste landete (`advance: .itemAdded`). Scotts Bruder
     /// hat es beim ersten Anfassen gemeldet — „der erste Punkt ist automatisch
@@ -48,40 +48,24 @@ struct TutorialStep: Identifiable, Equatable {
     /// die Karte und die Zeilen nichts zu zeigen — und genau die erklären,
     /// wofür die App da ist.
     var seedsDemoItems = false
-    /// Hält die Angaben-Schicht offen, solange dieser Rahmen läuft.
-    ///
-    /// Ohne das hinge der Rahmen daran, dass der Tester im Rahmen davor
-    /// wirklich etwas getippt hat — und wer nur „Weiter" drückt, bekäme einen
-    /// Rahmen ohne Ziel, der sich nach der Schonfrist selbst überspringt.
-    var showsDetailPanel = false
 
-    /// Der Rundgang. Reihenfolge so gewählt, dass nie gescrollt werden muss:
-    /// Der erste Rahmen spielt auf dem leeren Bildschirm, der zweite legt die
-    /// Beispiel-Artikel und zeigt daran die Angaben-Schicht; danach stehen
-    /// Artikel auf der Liste und die Karte steht oben.
+    /// Der Rundgang: vier Rahmen, nur der Kern-Loop.
     ///
-    /// **`hasMarkets` ändert zwei Texte und einen Rahmen.** Seit dem 2026-07-31
-    /// endet das Onboarding in der Liste statt in der Filialauswahl — der
-    /// Rundgang läuft also im Normalfall über einer Liste **ohne** gewählte
-    /// Filiale. An der Plan-Karte und an der Treffer-Zeile steht dann der
-    /// Leerzustand, der genau das sagt; die beiden Rahmen darüber müssen
-    /// dieselbe Zeitform sprechen. „Tipp es an, um alle Treffer zu sehen" über
-    /// einer Zeile, in der nichts anzutippen ist, ist eine kleine Lüge — und
-    /// die erste, die ein Tester zu sehen bekommt. Den Rahmen zur Vorschau gibt
-    /// es ohne Filiale gar nicht — dazu unten mehr.
+    /// **Gekürzt von acht bis neun auf vier** (05.08.). Die Forschungsrunde zum
+    /// Onboarding war eindeutig: Touren über fünf Schritten werden abgebrochen,
+    /// und Rahmen, die UI beschreiben statt Ziele, erklären nichts. Der alte
+    /// Rundgang erzählte in neun Rahmen fast die ganze App — die Angaben-
+    /// Schicht, das Abhaken, die Vorschau „Nächste Woche", Preisverlauf und
+    /// Anheften. **Nichts davon ist ersatzlos gestrichen:** Diese Inhalte
+    /// wandern als Einmal-Tipps (TipKit) an die Stelle, an der sie relevant
+    /// werden — eigenes Arbeitspaket, siehe Onboarding-Plan vom 05.08. Hier
+    /// bleibt, was man braucht, um die App zum ersten Mal zu benutzen:
+    /// aufschreiben, ablesen, stöbern, umstellen.
     ///
-    /// **Der Rundgang hinkte der App hinterher** (Scott, 03.08.). Gebaut wurde
-    /// er über einer App, die es so nicht mehr gibt: Seitdem kamen die
-    /// Angaben-Schicht, die Vorschau „Nächste Woche", der Preisverlauf, das
-    /// Anheften mehrerer Wahlen und der Freitext dazu, und keins davon kam
-    /// darin vor.
+    /// Reihenfolge so gewählt, dass nie gescrollt werden muss: Der erste
+    /// Rahmen spielt auf dem leeren Bildschirm, der zweite legt die
+    /// Beispiel-Artikel selbst und zeigt daran die Karte oben.
     ///
-    /// **Geschlossen mit zwei Rahmen, nicht mit fünf.** Ein Rundgang wird nicht
-    /// dadurch besser, dass er alles erwähnt — die drei kleineren Zugaben
-    /// (Preisverlauf, mehrere Heftungen, Freitext) stehen als Halbsatz in dem
-    /// Rahmen, der ohnehin von ihrer Stelle handelt. Eigene Rahmen bekommen nur
-    /// die zwei, die man sonst nicht findet: die Angaben-Schicht und die
-    /// Vorschau hinter dem Knopf oben links.
     /// **Drei Rahmen, und zwar seit dem 06.08.**
     ///
     /// Vorher waren es neun, über drei Tabs, mit Überblendung dazwischen.
@@ -179,10 +163,18 @@ final class TutorialStore {
 
     private(set) var origin: Origin = .settings
 
-    /// Die Frage „Märkte jetzt auswählen?" steht an. Wird beim Ende eines
-    /// Rundgangs aus dem Onboarding gesetzt, der über einer Liste **ohne**
-    /// Filiale lief — und nur dann.
+    /// Das Markt-Sheet steht an. Wird gesetzt, wenn jemand am Ende des
+    /// Onboardings noch keine Filiale hat — nach einem Rundgang aus dem
+    /// Onboarding wie nach einem abgelehnten Angebot („Später"). Die zweite
+    /// Hälfte ist neu (05.08.): Wer den Rundgang überspringt, sah die Frage
+    /// vorher **nie** — die `NoMarketsCard` in der Liste war sein einziger
+    /// Weg, und die erklärt sich erst, wenn man sie findet.
     private(set) var asksForMarkets = false
+
+    /// Das Markt-Sheet wurde schon einmal gezeigt und beantwortet — egal wie.
+    /// Überlebt Neustarts: Ein Hinweis, der bei jeder Gelegenheit wiederkommt,
+    /// ist keine Hilfe, sondern eine Mahnung.
+    private(set) var hasAnsweredMarketPrompt: Bool
 
     /// Der Rundgang in der Fassung, in der er gestartet wurde. Siehe
     /// `TutorialStep.tour(hasMarkets:)`.
@@ -195,6 +187,7 @@ final class TutorialStore {
     private let defaults: UserDefaults
     private static let key = "tutorial.hasSeen"
     private static let seededKey = "tutorial.seededItems"
+    private static let marketPromptKey = "tutorial.marketPrompt.answered"
 
     /// Artikel, die der Rundgang für die datenabhängigen Rahmen setzt.
     /// Grundnahrungsmittel aus `ShoppingSuggestions.staples`, also genau die
@@ -204,6 +197,7 @@ final class TutorialStore {
     init(defaults: UserDefaults = AppDefaults.shared) {
         self.defaults = defaults
         self.hasSeenTutorial = defaults.bool(forKey: Self.key)
+        self.hasAnsweredMarketPrompt = defaults.bool(forKey: Self.marketPromptKey)
         // Wird der Rundgang vom App-Tod unterbrochen, bleiben seine
         // Beispiel-Artikel sonst für immer auf der Liste stehen. Sie überleben
         // deshalb auf Platte und werden beim nächsten Start abgeräumt.
@@ -237,8 +231,14 @@ final class TutorialStore {
     var isLastStep: Bool { index >= steps.count - 1 }
 
     /// Das Angebot am Ende des Onboardings wurde abgelehnt.
-    func decline() {
+    ///
+    /// **„Später" führt trotzdem zur Markt-Frage** (05.08.). Wer den Rundgang
+    /// überspringt und keine Filiale hat, stand vorher wortlos vor einer
+    /// Liste, die nichts vergleichen kann — die Frage hing nur am Ende des
+    /// Rundgangs, und den hat er gerade abgelehnt.
+    func decline(hasMarkets: Bool) {
         markSeen()
+        asksForMarkets = !hasMarkets && !hasAnsweredMarketPrompt
     }
 
     /// Startet den Rundgang von vorn — aus dem Onboarding oder aus den
@@ -285,13 +285,19 @@ final class TutorialStore {
         isRunning = false
         index = 0
         asksForMarkets = origin == .onboarding && !startedWithMarkets
+            && !hasAnsweredMarketPrompt
         markSeen()
     }
 
-    /// Die Frage ist beantwortet — egal wie. Ohne das käme sie beim nächsten
-    /// Rendern wieder.
+    /// Die Frage ist beantwortet — egal wie: „Märkte wählen", „Später" oder
+    /// weggewischt. Der Merker überlebt Neustarts, denn das Sheet ist ein
+    /// Angebot und keine Mahnung — einmal gezeigt, danach bleiben der
+    /// Leerzustand der Liste und die Einstellungen als Wege.
     func dismissMarketQuestion() {
         asksForMarkets = false
+        guard !hasAnsweredMarketPrompt else { return }
+        hasAnsweredMarketPrompt = true
+        defaults.set(true, forKey: Self.marketPromptKey)
     }
 
     private func markSeen() {
@@ -346,10 +352,12 @@ final class TutorialStore {
         seededItems = []
         hasSeenTutorial = false
         asksForMarkets = false
+        hasAnsweredMarketPrompt = false
         origin = .settings
         startedWithMarkets = true
         steps = TutorialStep.tour(hasMarkets: true)
         defaults.removeObject(forKey: Self.key)
         defaults.removeObject(forKey: Self.seededKey)
+        defaults.removeObject(forKey: Self.marketPromptKey)
     }
 }

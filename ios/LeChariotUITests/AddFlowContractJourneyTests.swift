@@ -43,10 +43,31 @@ final class AddFlowContractJourneyTests: XCTestCase {
         return candidates.min() ?? app.windows.firstMatch.frame.maxY
     }
 
-    /// Wie viel vom Bildschirm der Block unten frisst.
+    /// Wie viel vom Bildschirm der Block unten frisst — **unser** Block,
+    /// ohne Apples Tastatur.
+    ///
+    /// Bis zum 05.08. rechnete die Messung bis zur Bildschirmunterkante und
+    /// zählte damit die Tastatur mit. Das ging nur zufällig gut: Auf Läufen
+    /// mit offenem Simulator-Fenster (Hardware-Tastatur angeschlossen) ist
+    /// die Software-Tastatur nur die Minileiste. Auf einem kopflosen
+    /// Simulator steht die volle — allein 291 pt von 852 (34 %), und der
+    /// Deckel riss bei 59,97 %, **auf `origin/main` vor dem Merge
+    /// (e79b2f7) auf die Stelle genau gleich**. Ein Deckel, der auf dem
+    /// unveränderten Stand reißt, misst nicht die App, sondern Apples
+    /// Tastaturhöhe.
+    ///
+    /// Abgezogen wird dieselbe Fläche, die der Accessibility-Audit ausnimmt
+    /// (`softwareKeyboardRegion`): die Tastatur plus eine Berührungsfläche
+    /// (44 pt) QuickType-Leiste darüber. Was der Deckel bewacht, bleibt
+    /// unverändert scharf: Der 55-%-Fall vom 03.08. stand **ohne** Tastatur
+    /// da und risse auch heute.
     private var blockShare: Double {
         let screen = app.windows.firstMatch.frame
-        return Double((screen.maxY - blockTop) / screen.height)
+        let keyboard = app.keyboards.firstMatch
+        let unten = keyboard.exists
+            ? min(screen.maxY, keyboard.frame.minY - 44)
+            : screen.maxY
+        return Double((unten - blockTop) / screen.height)
     }
 
     /// **Der Deckel.** Gemessen am 03.08. gegen `4311709`: Der Weg über eine

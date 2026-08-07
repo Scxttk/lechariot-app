@@ -1,4 +1,5 @@
 import SwiftUI
+import TipKit
 
 @main
 struct LeChariotApp: App {
@@ -24,6 +25,16 @@ struct LeChariotApp: App {
             memoryCapacity: 50 * 1024 * 1024,
             diskCapacity: 200 * 1024 * 1024
         )
+
+        // TipKit zeichnet die Sprechblasen der Einmal-Tipps; wann einer dran
+        // ist, entscheidet `ContextTipStore`. Ohne `configure()` zeigt TipKit
+        // gar nichts. Unter `-uiTesting` wird sein eigener Speicher vorher
+        // geleert — er liegt im App-Container, nicht in den UserDefaults, und
+        // überlebte sonst die frische Suite von `AppDefaults`.
+        #if DEBUG
+        if UITestSupport.isActive { try? Tips.resetDatastore() }
+        #endif
+        try? Tips.configure()
 
         let regionStore = RegionStore()
         let profileStore = ProfileStore(repository: AppRepositories.profiles())
