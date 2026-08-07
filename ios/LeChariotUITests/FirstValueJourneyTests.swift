@@ -36,8 +36,13 @@ final class FirstValueJourneyTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["Milch"].waitForExistence(timeout: 10),
                       "Der Artikel ist nicht auf der Liste gelandet")
-        XCTAssertTrue(app.buttons["list.matches"].waitForExistence(timeout: 10),
-                      "Der Aha-Moment ist die Treffer-Kachel unter dem Artikel")
+        // Der Aha-Moment ist seit dem Raster (07.08.) die **Preisfahne an der
+        // Kachel** statt einer Treffer-Kachel unter dem Artikel. Geprüft wird
+        // deshalb, dass die Kachel ein Angebot kennt.
+        let kachel = app.buttons["Milch"].firstMatch
+        XCTAssertTrue(kachel.waitForExistence(timeout: 10), "Keine Kachel für den Artikel")
+        XCTAssertTrue(((kachel.value as? String) ?? "").contains("Angebot"),
+                      "Die Kachel trägt kein Angebot: \(kachel.value ?? "–")")
         XCTAssertFalse(app.buttons["list.firstItem.add.Milch"].exists,
                        "Mit dem ersten Artikel ist die Einladung erledigt")
         // Alle vier Punkte sind damit erfüllt (Profil, Markt, Artikel,

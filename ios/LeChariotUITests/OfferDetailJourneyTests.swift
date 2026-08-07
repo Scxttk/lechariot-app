@@ -95,7 +95,7 @@ final class OfferDetailJourneyTests: XCTestCase {
         input.typeText("Vollmilch\n")
         dismissQuantitySheet()
 
-        app.buttons["list.matches"].firstMatch.tap()
+        app.tapInTileMenu("list.matches")
         XCTAssertTrue(
             app.staticTexts.containing(
                 NSPredicate(format: "label CONTAINS[c] %@", "Preisverlauf")

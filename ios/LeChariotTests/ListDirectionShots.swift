@@ -57,9 +57,7 @@ final class ListDirectionShots: XCTestCase {
             // Das Raster ist seit dem 07.08. ein voller Einkauf und braucht
             // mehr Höhe als eine Liste mit vier Zeilen — sonst schneidet der
             // Ausschnitt genau die Abschnitte ab, um die es geht.
-            try write(DirectionD(zeichen: .kategorie), to: "\(dir)/liste-D1-kacheln-zeichen-\(suffix).png", scheme: scheme, hoehe: 1500)
-            try write(DirectionD(zeichen: .emoji), to: "\(dir)/liste-D2-kacheln-emoji-\(suffix).png", scheme: scheme, hoehe: 1500)
-            try write(DirectionD(zeichen: .artikel), to: "\(dir)/liste-D3-kacheln-artikelzeichen-\(suffix).png", scheme: scheme, hoehe: 1500)
+            try write(DirectionD(), to: "\(dir)/liste-D-raster-\(suffix).png", scheme: scheme, hoehe: 1500)
         }
     }
 
@@ -409,109 +407,77 @@ private struct DirectionC: View {
 /// 06.08. lief — das Zeichen hat eine eigene Silhouette und braucht keinen
 /// Rahmen, der ihm eine gibt.
 private struct DirectionD: View {
-    /// **Der Unterschied, an dem diese Richtung hängt.**
-    ///
-    /// - `kategorie`: das Zeichen der *Kategorie* — fünf Sorten Obst sehen
-    ///   gleich aus. Der Stand vom 07.08.
-    /// - `emoji`: das Emoji des zugeordneten *Angebots* (`Offer.emoji`). Deckt
-    ///   nur ab, was diese Woche im Prospekt steht, und mischt Apples
-    ///   3-D-Emoji unter unsere Strichzeichnungen. War der Notbehelf.
-    /// - `artikel`: das **eigene Zeichen des Artikels** aus `ItemGlyph`,
-    ///   aufgelöst über dasselbe Wörterbuch, das der Zuordner benutzt. Das ist
-    ///   der Grund, warum es diesen Satz gibt.
-    enum Zeichenwahl { case kategorie, emoji, artikel }
-
-    let zeichen: Zeichenwahl
-
-    /// Vier nebeneinander: Bei 393 pt bleiben je Kachel 81 pt, und darin steht
-    /// ein Wort wie „Zahnpasta" noch einzeilig.
-    private let spalten = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
-
+    /// Seit dem 07.08. rendert dieser Bogen **die gebaute Kachel**
+    /// (`ShoppingGridTile`) und keinen Nachbau mehr. Die zwei Entwürfe, mit
+    /// denen die Richtung entschieden wurde — Kategoriezeichen und Emoji —
+    /// sind damit erledigt: Die Frage, die sie beantwortet haben, ist
+    /// beantwortet.
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                abschnitt("Obst & Gemüse", ShotGrid.obst)
-                abschnitt("Molkerei & Eier", ShotGrid.molkerei)
-                abschnitt("Fleisch & Wurst", ShotGrid.fleisch)
-                abschnitt("Vorräte & Kochen", ShotGrid.vorrat)
-                abschnitt("Backwaren", ShotGrid.backwaren)
-                abschnitt("Haushalt", ShotGrid.haushalt)
-                abschnitt("Erledigt", ShotGrid.erledigt)
-            }
-            .padding(.horizontal, Theme.Spacing.lg)
-            .padding(.top, Theme.Spacing.lg)
+        List {
+            abschnitt("Obst & Gemüse", ShotGrid.obst)
+            abschnitt("Molkerei & Eier", ShotGrid.molkerei)
+            abschnitt("Fleisch & Wurst", ShotGrid.fleisch)
+            abschnitt("Vorräte & Kochen", ShotGrid.vorrat)
+            abschnitt("Backwaren", ShotGrid.backwaren)
+            abschnitt("Haushalt", ShotGrid.haushalt)
+            abschnitt("Erledigt", ShotGrid.erledigt, kopfzeichen: false)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         .background(Theme.background)
     }
 
-    private func abschnitt(_ titel: String, _ eintraege: [ShotGrid.Eintrag]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            Text(titel.uppercased())
-                .font(.caption2.weight(.semibold))
-                .tracking(1.4)
-                .foregroundStyle(Theme.accent)
-            LazyVGrid(columns: spalten, alignment: .leading, spacing: Theme.Spacing.lg) {
-                ForEach(eintraege) { kachel($0) }
+    @ViewBuilder
+    private func abschnitt(_ titel: String, _ einträge: [ShotGrid.Eintrag],
+                           kopfzeichen: Bool = true) -> some View {
+        Section {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 76), spacing: Theme.Spacing.md)],
+                alignment: .leading,
+                spacing: Theme.Spacing.lg
+            ) {
+                ForEach(einträge) { eintrag in
+                    ShoppingGridTile(
+                        item: ShoppingItem(
+                            text: eintrag.name,
+                            isChecked: eintrag.erledigt,
+                            detail: eintrag.unterzeile.map { [$0] }
+                        ),
+                        suggestion: vorschlag(eintrag),
+                        onToggle: {}, onShowMatches: {}, onEditDetail: {}, onDelete: {}
+                    )
+                }
+            }
+            .padding(.vertical, Theme.Spacing.sm)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(
+                top: Theme.Spacing.xs, leading: Theme.Spacing.lg,
+                bottom: Theme.Spacing.xs, trailing: Theme.Spacing.lg
+            ))
+        } header: {
+            HStack(spacing: Theme.Spacing.sm) {
+                if kopfzeichen {
+                    CategoryGlyphView(category: einträge.first?.kategorie ?? "", size: 15)
+                        .foregroundStyle(Theme.accent)
+                }
+                Text(titel)
             }
         }
     }
 
-    private func kachel(_ eintrag: ShotGrid.Eintrag) -> some View {
-        VStack(spacing: 6) {
-            ZStack(alignment: .topTrailing) {
-                Group {
-                    switch zeichen {
-                    case .emoji where eintrag.emoji != nil:
-                        Text(eintrag.emoji!).font(.system(size: 32))
-                    case .artikel:
-                        // **Der Begriff wird aufgelöst, nicht eingetragen.**
-                        // Die Kachel bekommt den Artikeltext, so wie ihn
-                        // jemand getippt hat; welcher Begriff das ist, sagt
-                        // dasselbe Wörterbuch wie dem Zuordner.
-                        ItemGlyphView(term: ItemGlyphTerm.term(for: eintrag.name),
-                                      category: eintrag.kategorie, size: 40)
-                            .foregroundStyle(eintrag.erledigt ? Theme.secondaryText : Theme.accent)
-                    default:
-                        CategoryGlyphView(category: eintrag.kategorie, size: 40)
-                            .foregroundStyle(eintrag.erledigt ? Theme.secondaryText : Theme.accent)
-                    }
-                }
-                .frame(width: 52, height: 46)
-
-                // **Die Fahne.** Sie sitzt am Zeichen und nicht unter dem Wort,
-                // damit die Wortzeilen der Kacheln eine gemeinsame Höhe
-                // behalten — sonst tanzt jede zweite Kachel.
-                if let preis = eintrag.preis {
-                    Text(preis, format: .currency(code: "EUR"))
-                        .font(.system(size: 9, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(Theme.onAccent)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
-                        .background(Theme.accent, in: Capsule())
-                        .offset(x: 6, y: -2)
-                }
-            }
-            // **Feste Höhe für die Beschriftung.** Ohne sie sitzt „Bananen"
-            // (ohne Unterzeile) höher als „Erdbeeren" (mit), und die Reihe
-            // tanzt — am ersten Bild gesehen.
-            VStack(spacing: 1) {
-                Text(eintrag.name)
-                    .font(.caption.weight(.medium))
-                    .strikethrough(eintrag.erledigt)
-                    .foregroundStyle(eintrag.erledigt ? Theme.secondaryText : .primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                if let unten = eintrag.unterzeile {
-                    Text(unten)
-                        .font(.system(size: 9))
-                        .foregroundStyle(Theme.secondaryText)
-                        .lineLimit(1)
-                }
-            }
-            .frame(height: 28, alignment: .top)
-        }
-        .frame(maxWidth: .infinity)
-        .opacity(eintrag.erledigt ? 0.45 : 1)
+    /// Ein Angebot nur dort, wo der Eintrag einen Preis trägt — die Fahne soll
+    /// im Bild genauso oft fehlen wie in einem echten Einkauf.
+    private func vorschlag(_ eintrag: ShotGrid.Eintrag) -> ItemSuggestion {
+        guard let preis = eintrag.preis else { return ItemSuggestion(match: nil) }
+        let angebot = Offer(
+            marketId: "lidl-01219-1", market: eintrag.unterzeile ?? "Lidl",
+            product: eintrag.name, price: preis, regularPrice: preis * 1.3,
+            unit: nil, category: eintrag.kategorie, emoji: eintrag.emoji,
+            validFrom: Date(), validUntil: Date(), basePrice: nil, baseUnit: nil,
+            nationwide: true
+        )
+        return ItemSuggestion(match: OfferMatch(offer: angebot, kind: .direct))
     }
 }
 

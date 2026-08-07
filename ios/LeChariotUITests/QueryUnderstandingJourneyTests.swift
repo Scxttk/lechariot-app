@@ -24,7 +24,7 @@ final class QueryUnderstandingJourneyTests: XCTestCase {
     /// das Tag gefunden wurde, dass sie darüber gefunden wurde.
     func testTheSheetSaysWhatTheTypedWordWasUnderstoodAs() {
         addItem("Vollmilch")
-        app.buttons["list.matches"].firstMatch.tap()
+        app.tapInTileMenu("list.matches")
 
         let kopf = app.staticTexts["matches.understanding"]
         XCTAssertTrue(kopf.waitForExistence(timeout: 10),
@@ -51,7 +51,7 @@ final class QueryUnderstandingJourneyTests: XCTestCase {
     /// **Der Fall, an dem „vegan Schnitzel" hing.** Ohne Treffer sah „das Wort
     /// kennt das Wörterbuch nicht" genauso aus wie „diese Woche gibt es dazu
     /// nichts" — und es gab keinen Weg, nachzusehen.
-    func testAWordWithoutADictionaryEntrySaysSoOnTheListItself() {
+    func testAWordWithoutADictionaryEntrySaysSoOnTheTileItself() {
         // **Das Beispiel musste weichen, weil der Wortschatz es eingeholt
         // hat.** „Schnitzel" war hier das unbekannte Wort; seit Tranche 3 hat
         // es einen eigenen Begriff samt Zeichnung, und der Bogen prüfte
@@ -60,18 +60,23 @@ final class QueryUnderstandingJourneyTests: XCTestCase {
         // Korrektur wie in `ItemGlyphTests` und `QueryUnderstandingTests`.
         addItem("Schnürsenkel")
 
-        let hinweis = app.buttons["list.matches.empty"]
-        XCTAssertTrue(hinweis.waitForExistence(timeout: 10),
-                      "Die Zeile ohne Treffer ist kein Weg ins Trefferblatt")
-        XCTAssertTrue(hinweis.label.contains("nicht im Wörterbuch"),
-                      "Die Zeile sagt nicht, dass das Wort unbekannt ist: \(hinweis.label)")
-        XCTAssertTrue(hinweis.label.contains("Diese Woche nirgends im Angebot"),
-                      "Die alte Auskunft darf nicht verschwinden — beide Gründe zählen")
+        // **Die Kachel sagt es selbst, nur nicht mehr in einem Satz.** Bis zum
+        // 07.08. stand unter dem Artikel „… steht nicht im Wörterbuch"; ein
+        // Raster aus 76-pt-Kacheln trägt keinen Satz. Was bleibt, ist das
+        // Fragezeichen statt eines Zeichens — und der Wert der Kachel, den
+        // VoiceOver ausspricht. **Die Unterscheidung selbst darf nicht
+        // verschwinden:** „das Wort kenne ich nicht" sah bis zum 31.07.
+        // genauso aus wie „diese Woche gibt es dazu nichts", und daran hing
+        // „vegan Schnitzel" zehn Tage lang.
+        let kachel = app.buttons["Schnürsenkel"].firstMatch
+        XCTAssertTrue(kachel.waitForExistence(timeout: 10), "Keine Kachel für den Artikel")
+        XCTAssertTrue((kachel.value as? String ?? "").contains("nicht im Wörterbuch"),
+                      "Die Kachel sagt nicht, dass das Wort unbekannt ist: \(kachel.value ?? "–")")
         attach("liste-unbekanntes-wort")
 
-        // Und der Hinweis ist selbst der Knopf: Er führt ins Trefferblatt, wo
-        // derselbe Satz noch einmal steht — dort mit dem Weg zur Rückmeldung.
-        hinweis.tap()
+        // Und der Weg ins Trefferblatt steht weiter offen, wo derselbe Satz
+        // noch einmal steht — dort mit dem Weg zur Rückmeldung.
+        app.tapInTileMenu("list.matches.empty", ofItem: "Schnürsenkel")
         XCTAssertTrue(
             app.staticTexts["matches.understanding.unknown"].waitForExistence(timeout: 10),
             "Das leere Trefferblatt sagt nicht, dass das Wort unbekannt ist"

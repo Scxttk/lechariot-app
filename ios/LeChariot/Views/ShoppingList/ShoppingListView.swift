@@ -126,17 +126,6 @@ struct ShoppingListView: View {
         )
     }
 
-    /// Der Satz für eine Zeile ohne Treffer, wenn ein Suchwort dem Wörterbuch
-    /// fremd ist. `nil`, sobald es einen Treffer gibt — dann führt die Kachel
-    /// ins Trefferblatt, und dort steht die Auskunft im Kopf.
-    ///
-    /// Der Vorbehalt spart mehr als er aussieht: `QueryUnderstanding` liest den
-    /// ganzen Vorrat nur, wenn wirklich ein Wort unbekannt ist, und diese Zeile
-    /// fragt nur, wenn wirklich nichts gefunden wurde.
-    private func unknownWordNote(for item: ShoppingItem, suggestion: ItemSuggestion) -> String? {
-        guard suggestion.match == nil else { return nil }
-        return QueryUnderstanding.of(query: item.query, in: offerStore.offers).unknownNote
-    }
 
     private var ranks: [MarketListRank] {
         ShoppingListRanking.rank(
@@ -395,6 +384,63 @@ struct ShoppingListView: View {
         }
     }
 
+    // MARK: Das Raster
+
+    /// **Ein Abschnitt der Liste als Raster** (2026-08-07, Scott: „i want the
+    /// list to look like bring").
+    ///
+    /// Bis heute war jeder Artikel eine `List`-Zeile mit Kreis, Name und
+    /// Angebotszeile — vier Artikel füllten den Bildschirm. Jetzt trägt **eine**
+    /// Zeile der `List` das ganze Raster eines Abschnitts. Die Karten darüber
+    /// (Plan, Tipp, Checkliste) bleiben eigene Zeilen; sie sind Fließtext und
+    /// gehören nicht ins Raster.
+    ///
+    /// `.adaptive` statt vier fester Spalten: Auf dem iPhone kommen vier
+    /// heraus (bei 393 pt bleiben je Kachel 76 pt, und darin steht „Zahnpasta"
+    /// einzeilig), auf dem iPad entsprechend mehr — ohne zweite Regel.
+    ///
+    /// **Was mit den Zeilen weggefallen ist**, steht nicht mehr auf der
+    /// Fläche: der Satz „Diese Woche nirgends im Angebot", der Hinweis auf ein
+    /// Wort ohne Wörterbucheintrag, und der Satz zur schlafenden Wahl. Eine
+    /// Kachel von 76 pt trägt keinen Satz. Alle drei stehen weiterhin im
+    /// Trefferblatt, das das Kontextmenü der Kachel öffnet, und der
+    /// Vorlesetext der Kachel spricht sie unverändert aus.
+    private func raster(_ items: [ShoppingItem], plan: [MarketListRank],
+                        firstOpenItem: UUID?) -> some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 76), spacing: Theme.Spacing.md)],
+            alignment: .leading,
+            spacing: Theme.Spacing.lg
+        ) {
+            ForEach(items) { item in
+                ShoppingGridTile(
+                    item: item,
+                    suggestion: suggestion(for: item, plan: plan),
+                    // Nur die erste offene Kachel trägt die Anker des
+                    // Rundgangs — sonst zeigt das Loch auf sechs Stellen.
+                    carriesTutorialAnchors: item.id == firstOpenItem,
+                    highlightsFirstMatch: item.id == glowItemID,
+                    onToggle: { check(item) },
+                    onShowMatches: { detailItem = item },
+                    onEditDetail: {
+                        editingItem = item
+                        tips?.detailsUsed()
+                    },
+                    onDelete: { list.remove(item) }
+                )
+            }
+        }
+        .padding(.vertical, Theme.Spacing.sm)
+        .listRowBackground(Color.clear)
+        // Ohne das zieht die `List` eine Haarlinie unter das ganze Raster —
+        // eine Trennlinie zwischen Kacheln und Nichts.
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(
+            top: Theme.Spacing.xs, leading: Theme.Spacing.lg,
+            bottom: Theme.Spacing.xs, trailing: Theme.Spacing.lg
+        ))
+    }
+
     // MARK: List
 
     private var itemList: some View {
@@ -495,52 +541,7 @@ struct ShoppingListView: View {
 
             ForEach(groups) { section in
                 Section {
-                    ForEach(section.items) { item in
-                        let itemSuggestion = suggestion(for: item, plan: plan)
-                        ShoppingListRowView(
-                            item: item,
-                            suggestion: itemSuggestion,
-                            hasMarkets: hasMarkets,
-                            // Nur die erste offene Zeile trägt die Anker des
-                            // Rundgangs — sonst zeigt das Loch auf sechs
-                            // Stellen. Mit Abschnitten ist das nicht mehr
-                            // „Index 0", sondern der erste Artikel der Liste.
-                            carriesTutorialAnchors: item.id == firstOpenItem,
-                            highlightsFirstMatch: item.id == glowItemID,
-                            unknownWordNote: unknownWordNote(for: item, suggestion: itemSuggestion),
-                            onToggle: { check(item) },
-                            onShowMatches: { detailItem = item },
-                            onEditDetail: {
-                                editingItem = item
-                                tips?.detailsUsed()
-                            }
-                        )
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
-                                list.remove(item)
-                            } label: {
-                                Label("Löschen", systemImage: "trash")
-                            }
-                        }
-                        // **Linien statt Kästen** (06.08.). Die gerundete
-                        // Abschnittsfläche ist weg; was die Zeilen trennt, ist
-                        // eine Haarlinie, und was sie zusammenhält, ist der
-                        // gemeinsame Rand.
-                        //
-                        // Das **überstimmt** die Entscheidung vom 30.07. hinter
-                        // `groupedRowBackground` nicht, es **löst sie auf**: Sie
-                        // stand da, weil eine flache Farbe nicht weiß, dass sie
-                        // oben in einem gerundeten Abschnitt sitzt, und beim
-                        // Wischen eine harte Ecke im runden Rahmen erschien.
-                        // Ohne runden Rahmen gibt es keine Ecke, gegen die
-                        // etwas zeigen könnte.
-                        .listRowBackground(Color.clear)
-                        .listRowSeparatorTint(Theme.stroke)
-                        .listRowInsets(EdgeInsets(
-                            top: Theme.Spacing.xs, leading: Theme.Spacing.lg,
-                            bottom: Theme.Spacing.xs, trailing: Theme.Spacing.lg
-                        ))
-                    }
+                    raster(section.items, plan: plan, firstOpenItem: firstOpenItem)
                 } header: {
                     if showsHeaders {
                         // **Das gezeichnete Zeichen trägt hier die Identität.**
@@ -561,33 +562,7 @@ struct ShoppingListView: View {
 
             if !list.checkedItems.isEmpty {
                 Section("Erledigt") {
-                    ForEach(list.checkedItems) { item in
-                        ShoppingListRowView(
-                            item: item,
-                            onToggle: { check(item) },
-                            // Auch am erledigten Artikel: Die Angabe gilt beim
-                            // nächsten Mal genauso, und wer im Laden merkt,
-                            // dass es die große Packung sein muss, notiert es
-                            // dort — nicht zu Hause davor.
-                            onEditDetail: {
-                                editingItem = item
-                                tips?.detailsUsed()
-                            }
-                        )
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
-                                list.remove(item)
-                            } label: {
-                                Label("Löschen", systemImage: "trash")
-                            }
-                        }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparatorTint(Theme.stroke)
-                        .listRowInsets(EdgeInsets(
-                            top: Theme.Spacing.xs, leading: Theme.Spacing.lg,
-                            bottom: Theme.Spacing.xs, trailing: Theme.Spacing.lg
-                        ))
-                    }
+                    raster(list.checkedItems, plan: plan, firstOpenItem: nil)
                 }
             }
 

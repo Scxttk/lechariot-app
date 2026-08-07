@@ -60,3 +60,39 @@ extension XCUIApplication {
         von.press(forDuration: 0.05, thenDragTo: nach)
     }
 }
+
+// MARK: - Das Kontextmenü der Kachel
+
+/// **Seit dem 07.08. ist die Liste ein Raster** (`ShoppingGridTile`), und eine
+/// Kachel von 76 pt trägt genau eine Trefferfläche: den Tipp, der abhakt.
+/// Alles andere — Angebote, Angaben, Löschen — liegt im Kontextmenü.
+///
+/// Die Journeys tippten vorher direkt auf `list.matches` und
+/// `list.item.detail`. Beide gibt es weiterhin, nur eine Geste später. Dieser
+/// Helfer ist die eine Stelle, an der das steht — sonst stünde der lange Druck
+/// zwanzigmal im Testbestand und wäre beim nächsten Umbau zwanzigmal falsch.
+extension XCUIApplication {
+    /// Öffnet das Menü der Kachel mit diesem Namen und tippt den Punkt.
+    ///
+    /// `press(forDuration:)` statt `tap()`: Ein kurzer Tipp würde den Artikel
+    /// abhaken — genau die Handlung, die die Kachel im Laden können muss.
+    func tapInTileMenu(
+        _ menuIdentifier: String,
+        ofItem itemLabel: String? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let kachel = itemLabel.map { label in
+            buttons.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
+        } ?? buttons["list.tile"].firstMatch
+        XCTAssertTrue(kachel.waitForExistence(timeout: 15),
+                      "Keine Kachel \(itemLabel ?? "list.tile") gefunden", file: file, line: line)
+        kachel.press(forDuration: 1.0)
+
+        let punkt = buttons[menuIdentifier].firstMatch
+        XCTAssertTrue(punkt.waitForExistence(timeout: 10),
+                      "Der Menüpunkt \(menuIdentifier) steht nicht im Kachelmenü",
+                      file: file, line: line)
+        punkt.tap()
+    }
+}
