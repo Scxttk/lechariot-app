@@ -49,6 +49,8 @@ final class ListDirectionShots: XCTestCase {
             try write(DirectionB(), to: "\(dir)/liste-B-blatt-\(suffix).png", scheme: scheme)
             try write(DirectionA(), to: "\(dir)/liste-A-linien-\(suffix).png", scheme: scheme)
             try write(DirectionC(), to: "\(dir)/liste-C-preisspalte-\(suffix).png", scheme: scheme)
+            try write(DirectionD(mitEmoji: false), to: "\(dir)/liste-D1-kacheln-zeichen-\(suffix).png", scheme: scheme)
+            try write(DirectionD(mitEmoji: true), to: "\(dir)/liste-D2-kacheln-emoji-\(suffix).png", scheme: scheme)
         }
     }
 
@@ -366,4 +368,167 @@ private struct DirectionC: View {
         }
         .padding(.vertical, Theme.Spacing.sm)
     }
+}
+
+// MARK: - D · Kacheln, wie Bring!
+
+/// **Die Liste hört auf, eine Liste zu sein.**
+///
+/// Scott, 07.08.: „go more like Bring!" Bring! zeigt Artikel nicht als Zeilen,
+/// sondern als **Raster kleiner Kacheln** — gezeichnetes Zeichen oben, Wort
+/// darunter, vier nebeneinander. Man liest es nicht von oben nach unten, man
+/// **erkennt** es: Der Einkauf ist auf einen Blick da, statt gescrollt zu
+/// werden.
+///
+/// **Warum das hier besser passt als bei jeder anderen App, die es abkupfert:**
+/// Le Chariot hat die Zeichnungen längst. `CategoryGlyphView` sind **fünfzehn
+/// von Hand gezeichnete Zeichen**, und die Erkundung vom 06.08. hat gezählt,
+/// wie oft man sie zu sehen bekam — an *einer* Stelle, als Rückfall eines
+/// Rückfalls. Das Raster ist die Form, in der dieser Posten endlich arbeitet.
+///
+/// **Was Bring! nicht lösen muss und wir schon.** Bei Bring! ist die Kachel
+/// nur Artikel plus Menge; die Aktionen liegen in einem eigenen Bereich. Hier
+/// trägt der Einkauf den Preis mit — deshalb sitzt das Angebot als **kleine
+/// Fahne an der Ecke des Zeichens**, nicht als eigene Zeile. Wer nur einkaufen
+/// will, sieht das Raster; wer den Preis sucht, findet ihn, ohne dass er die
+/// Fläche beherrscht.
+///
+/// **Und keine Karten.** Bring! setzt jede Kachel auf ein weißes Kärtchen mit
+/// Schatten. Genau das ist der Container, gegen den Scotts ganze Runde am
+/// 06.08. lief — das Zeichen hat eine eigene Silhouette und braucht keinen
+/// Rahmen, der ihm eine gibt.
+private struct DirectionD: View {
+    /// **Der Unterschied, an dem diese Richtung hängt.** Mit `false` trägt jede
+    /// Kachel das Zeichen ihrer *Kategorie* — und fünf Sorten Obst sehen dann
+    /// gleich aus. Mit `true` trägt sie das Emoji ihres *Angebots*, das die
+    /// Zeile ohnehin schon kennt (`Offer.emoji`). Siehe die Notiz am Ende.
+    let mitEmoji: Bool
+
+    /// Vier nebeneinander: Bei 393 pt bleiben je Kachel 81 pt, und darin steht
+    /// ein Wort wie „Zahnpasta" noch einzeilig.
+    private let spalten = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                abschnitt("Obst & Gemüse", ShotGrid.obst)
+                abschnitt("Molkerei & Eier", ShotGrid.molkerei)
+                abschnitt("Backwaren", ShotGrid.backwaren)
+                abschnitt("Haushalt", ShotGrid.haushalt)
+                abschnitt("Erledigt", ShotGrid.erledigt)
+            }
+            .padding(.horizontal, Theme.Spacing.lg)
+            .padding(.top, Theme.Spacing.lg)
+        }
+        .background(Theme.background)
+    }
+
+    private func abschnitt(_ titel: String, _ eintraege: [ShotGrid.Eintrag]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            Text(titel.uppercased())
+                .font(.caption2.weight(.semibold))
+                .tracking(1.4)
+                .foregroundStyle(Theme.accent)
+            LazyVGrid(columns: spalten, alignment: .leading, spacing: Theme.Spacing.lg) {
+                ForEach(eintraege) { kachel($0) }
+            }
+        }
+    }
+
+    private func kachel(_ eintrag: ShotGrid.Eintrag) -> some View {
+        VStack(spacing: 6) {
+            ZStack(alignment: .topTrailing) {
+                Group {
+                    if mitEmoji, let emoji = eintrag.emoji {
+                        Text(emoji).font(.system(size: 32))
+                    } else {
+                        CategoryGlyphView(category: eintrag.kategorie, size: 40)
+                            .foregroundStyle(eintrag.erledigt ? Theme.secondaryText : Theme.accent)
+                    }
+                }
+                .frame(width: 52, height: 46)
+
+                // **Die Fahne.** Sie sitzt am Zeichen und nicht unter dem Wort,
+                // damit die Wortzeilen der Kacheln eine gemeinsame Höhe
+                // behalten — sonst tanzt jede zweite Kachel.
+                if let preis = eintrag.preis {
+                    Text(preis, format: .currency(code: "EUR"))
+                        .font(.system(size: 9, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(Theme.accent, in: Capsule())
+                        .offset(x: 6, y: -2)
+                }
+            }
+            // **Feste Höhe für die Beschriftung.** Ohne sie sitzt „Bananen"
+            // (ohne Unterzeile) höher als „Erdbeeren" (mit), und die Reihe
+            // tanzt — am ersten Bild gesehen.
+            VStack(spacing: 1) {
+                Text(eintrag.name)
+                    .font(.caption.weight(.medium))
+                    .strikethrough(eintrag.erledigt)
+                    .foregroundStyle(eintrag.erledigt ? Theme.secondaryText : .primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                if let unten = eintrag.unterzeile {
+                    Text(unten)
+                        .font(.system(size: 9))
+                        .foregroundStyle(Theme.secondaryText)
+                        .lineLimit(1)
+                }
+            }
+            .frame(height: 28, alignment: .top)
+        }
+        .frame(maxWidth: .infinity)
+        .opacity(eintrag.erledigt ? 0.45 : 1)
+    }
+}
+
+/// Ein voller Einkauf statt vier Zeilen — ein Raster mit vier Kacheln sagt
+/// nichts darüber aus, ob ein Raster trägt.
+private enum ShotGrid {
+    struct Eintrag: Identifiable {
+        let name: String
+        let kategorie: String
+        var unterzeile: String? = nil
+        /// Das Emoji, das das zugeordnete Angebot mitbringt. Nil heißt: zu
+        /// diesem Artikel gibt es diese Woche nichts — dann bleibt nur das
+        /// Kategoriezeichen.
+        var emoji: String? = nil
+        var preis: Double? = nil
+        var erledigt = false
+        var id: String { name }
+    }
+
+    static let obst: [Eintrag] = [
+        Eintrag(name: "Erdbeeren", kategorie: "Obst & Gemüse", unterzeile: "Netto", emoji: "🍓", preis: 1.99),
+        Eintrag(name: "Bananen", kategorie: "Obst & Gemüse", emoji: "🍌"),
+        Eintrag(name: "Tomaten", kategorie: "Obst & Gemüse", unterzeile: "500 g", emoji: "🍅"),
+        Eintrag(name: "Zwiebeln", kategorie: "Obst & Gemüse", emoji: "🧅"),
+        Eintrag(name: "Salat", kategorie: "Obst & Gemüse", emoji: "🥬"),
+    ]
+
+    static let molkerei: [Eintrag] = [
+        Eintrag(name: "Milch", kategorie: "Molkerei & Eier", unterzeile: "2 l · Bio", emoji: "🥛", preis: 0.99),
+        Eintrag(name: "Butter", kategorie: "Molkerei & Eier", emoji: "🧈", preis: 1.49),
+        Eintrag(name: "Eier", kategorie: "Molkerei & Eier", unterzeile: "10er", emoji: "🥚"),
+        Eintrag(name: "Joghurt", kategorie: "Molkerei & Eier", emoji: "🥣"),
+    ]
+
+    static let backwaren: [Eintrag] = [
+        Eintrag(name: "Brot", kategorie: "Backwaren", unterzeile: "Vollkorn", emoji: "🍞"),
+        Eintrag(name: "Brötchen", kategorie: "Backwaren", emoji: "🥐"),
+    ]
+
+    static let haushalt: [Eintrag] = [
+        Eintrag(name: "Zahnpasta", kategorie: "Drogerie"),
+        Eintrag(name: "Spülmittel", kategorie: "Haushalt", emoji: "🧴"),
+        Eintrag(name: "Müllbeutel", kategorie: "Haushalt"),
+    ]
+
+    static let erledigt: [Eintrag] = [
+        Eintrag(name: "Orangen", kategorie: "Obst & Gemüse", emoji: "🍊", erledigt: true),
+        Eintrag(name: "Kaffee", kategorie: "Vorräte & Kochen", emoji: "☕️", erledigt: true),
+    ]
 }
