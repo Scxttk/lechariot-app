@@ -140,9 +140,11 @@ final class TourTargetJourneyTests: XCTestCase {
         app.swipeDown()
 
         openTab("Einstellungen")
-        let restart = app.buttons["settings.tutorial"]
-        XCTAssertTrue(restart.waitForExistence(timeout: 20))
-        restart.tap()
+        // **Scrollen, nicht suchen.** Seit die Einstellungen am 06.08. neu
+        // sortiert sind, steht „Rundgang" unter der Falzkante — und eine
+        // `List` baut nur, was sichtbar ist. Der Knopf ist nicht weg, er ist
+        // noch nicht entstanden. Siehe `scrollToTutorialButton`.
+        app.scrollToTutorialButton().tap()
         XCTAssertTrue(card.waitForExistence(timeout: 20))
 
         advance(to: "Ein Einkauf, ein Markt")

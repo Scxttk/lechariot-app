@@ -42,9 +42,21 @@ struct ContentView: View {
     /// `TourTabTransition`. 0, solange nicht gewechselt wird.
     @State private var tourVeil: Double = 0
     /// Ob das Aufräumen nach dem Rundgang durch ist. Hält die Filialen-Frage so
-    /// lange zurück — sonst fährt der Alert über einen Bildschirm, der sich
-    /// gerade selbst umbaut. Siehe `marketQuestion`.
-    @State private var cleanupDone = false
+    /// lange zurück — sonst fährt sie über einen Bildschirm, der sich gerade
+    /// selbst umbaut. Siehe `marketQuestion`.
+    ///
+    /// **Anfangs `true`, und das ist die Korrektur vom 07.08.** Der Merker
+    /// stand auf `false` und wurde **nur** am Ende eines gelaufenen Rundgangs
+    /// gesetzt. Wer das Angebot ablehnt („Später"), lässt aber gar keinen
+    /// Rundgang laufen — der Zweig, der ihn wahr macht, kam nie dran, und die
+    /// Filialfrage blieb für immer stumm. Genau das trifft den Nutzer, der die
+    /// Frage am nötigsten hat: den ohne Filiale, der sich durchgeklickt hat.
+    ///
+    /// Vier Journeys haben es gefangen (`TutorialJourneyTests`, „Ohne Filialen
+    /// muss das Markt-Sheet stehen"), und zwar erst nach dem Merge: Das
+    /// Ablehnen ohne Filialen kam am 05.08. aus `main`, die Sperre am 06.08.
+    /// aus diesem Zweig. **Keine der beiden Seiten war für sich falsch.**
+    @State private var cleanupDone = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Tab {
