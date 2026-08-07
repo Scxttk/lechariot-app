@@ -21,8 +21,8 @@ final class CityNameJourneyTests: XCTestCase {
         if let alternatives { args += ["-uiTestingCityAlternatives", alternatives] }
         app.launchArguments = args
         app.launch()
-        app.buttons["onboarding.primary"].tap()   // Willkommen
-        app.buttons["onboarding.skip"].tap()      // Name
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")   // Willkommen
+        app.tippe(app.buttons["onboarding.skip"], "Überspringen im Assistenten")      // Name
     }
 
     private var field: XCUIElement { app.textFields["region.input"] }

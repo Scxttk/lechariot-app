@@ -47,7 +47,7 @@ final class TutorialJourneyTests: XCTestCase {
         launch(withTour: true)
         completeOnboarding()
         XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15))
-        app.buttons["onboarding.skip"].tap()          // gesehen: „Später" zählt
+        app.tippe(app.buttons["onboarding.skip"], "Überspringen im Assistenten")          // gesehen: „Später" zählt
         answerMarketPrompt(choose: false)             // und auch das Markt-Sheet zählt
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
 
@@ -107,7 +107,7 @@ final class TutorialJourneyTests: XCTestCase {
         launch(withTour: true)
         completeOnboarding()
         XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15))
-        app.buttons["onboarding.skip"].tap()
+        app.tippe(app.buttons["onboarding.skip"], "Überspringen im Assistenten")
 
         answerMarketPrompt(choose: false)
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
@@ -334,7 +334,7 @@ final class TutorialJourneyTests: XCTestCase {
         launch(withTour: true)
         completeOnboarding()
         XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15))
-        app.buttons["onboarding.skip"].tap()
+        app.tippe(app.buttons["onboarding.skip"], "Überspringen im Assistenten")
         answerMarketPrompt(choose: false)
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
 
@@ -387,7 +387,7 @@ final class TutorialJourneyTests: XCTestCase {
         launch(withTour: true)
         completeOnboarding()
         XCTAssertTrue(app.staticTexts[tourTitle].waitForExistence(timeout: 15))
-        app.buttons["onboarding.skip"].tap()
+        app.tippe(app.buttons["onboarding.skip"], "Überspringen im Assistenten")
         // „Später" ohne Filialen führt seit dem 05.08. ins Markt-Sheet — es
         // liegt über der Tab-Leiste, und ohne Antwort käme dieser Test gar
         // nicht erst in die Einstellungen.

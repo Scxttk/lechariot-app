@@ -96,3 +96,34 @@ extension XCUIApplication {
         punkt.tap()
     }
 }
+
+// MARK: - Tippen im Assistenten
+
+extension XCUIApplication {
+    /// Tippt erst, wenn das Element **erreichbar** ist — nicht schon, wenn es
+    /// im Baum steht.
+    ///
+    /// Der Unterschied hat am 07.08. zwei Läufe gekostet, und beim zweiten Mal
+    /// an drei anderen Stellen als beim ersten. Der Assistent fährt den neuen
+    /// Bildschirm über 0,3 s herein (siehe `Theme.Motion`); währenddessen
+    /// existiert `onboarding.skip` bereits, sitzt aber noch halb außerhalb.
+    /// Ein `tap()` darauf geht ins Leere, die Seite bleibt stehen, und der
+    /// nächste Schritt sucht die Postleitzahl auf der Profilseite.
+    ///
+    /// **Erst als es das zweite Mal woanders aufschlug, war klar, dass es kein
+    /// Einzelfall ist**, sondern jeder blinde Tipp im Assistenten. Deshalb
+    /// steht das hier und nicht in einem Bogen.
+    ///
+    /// `isHittable` ist die Wartebedingung, die `waitForExistence` nicht hat.
+    func tippe(_ element: XCUIElement, _ was: String,
+               file: StaticString = #filePath, line: UInt = #line) {
+        let erreichbar = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"), object: element
+        )
+        XCTAssertEqual(XCTWaiter().wait(for: [erreichbar], timeout: 15), .completed,
+                       "\(was) ist nicht antippbar", file: file, line: line)
+        element.tap()
+    }
+
+
+}
