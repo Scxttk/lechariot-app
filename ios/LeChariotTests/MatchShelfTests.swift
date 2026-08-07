@@ -40,6 +40,32 @@ final class MatchShelfTests: XCTestCase {
     /// `milch` gesperrt), „Putenbrustfilet" (bei `fisch` gesperrt) — sie
     /// gehören zu einem anderen Begriff und müssen dort auch bleiben.
     private static let regal: [String: String] = [
+        // Tranche 2 (2026-08-07): Obst, Gemüse, Kräuter aus Bring!s größter
+        // Kategorie.
+        "basilikum": "Basilikum im Topf",
+        "birnen": "Abate Fetel Birnen, 1 kg",
+        "dill": "Bund Dill, frisch",
+        "feigen": "Türkische Feigen 250 g Schale",
+        "fenchel": "Fenchelknolle Klasse I",
+        "granatapfel": "Granatapfel Wonderful",
+        "grünkohl": "Grünkohl 500 g Beutel",
+        "kaki": "Sharonfrucht 2 Stück",
+        "kohl": "Spitzkohl Klasse I",
+        "kürbis": "Hokkaido, ganze Frucht",
+        "lauchzwiebeln": "Bund Frühlingszwiebeln",
+        "litschi": "Litschis 250 g Schale",
+        "minze": "Marokkanische Minze im Topf",
+        "papaya": "Papaya Formosa, Stück",
+        "pastinaken": "Pastinaken 500 g",
+        "peperoni": "Peperoni mild, 100 g",
+        "petersilie": "Glatte Petersilie im Bund",
+        "quitten": "Quitten 1 kg Netz",
+        "rettich": "Bayerischer Radi, Stück",
+        "rhabarber": "Rhabarber Bund 500 g",
+        "rosenkohl": "Rosenkohl 500 g",
+        "schnittlauch": "Schnittlauch im Topf",
+        "sellerie": "Staudensellerie Klasse I",
+        "stachelbeeren": "Stachelbeeren 250 g Schale",
         // Tranche 1 (2026-08-07): Begriffe für Wörter, die bisher gesperrt
         // waren und nichts trafen. Titel wie im Regal darüber — echte
         // Produktnamen, nicht aus den Synonymlisten zusammengesetzt.

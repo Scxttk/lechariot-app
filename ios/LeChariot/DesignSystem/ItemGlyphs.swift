@@ -68,7 +68,7 @@ enum ItemGlyph {
     private static let recipes: [String: Rezept] = {
         var alle: [String: Rezept] = [:]
         for teil in [obstUndGemuese, molkereiUndBackwaren, fleischUndFisch,
-                     vorratUndGetraenke, tranche1] {
+                     vorratUndGetraenke, tranche1, tranche2] {
             alle.merge(teil) { erstes, _ in erstes }
         }
         return alle
@@ -1755,6 +1755,349 @@ private let tranche1: [String: ItemGlyph.Rezept] = [
         p.line([p.at(0.52, 0.22), p.at(0.58, 0.12)])
     },
 ]
+
+// MARK: - Tranche 2: Obst, Gemüse, Kräuter
+
+/// **Vierundzwanzig Zeichen zu Tranche 2** (2026-08-07, Backend `50b724b`).
+///
+/// Aus Bring!s größter Kategorie. **Die Auswahl folgt der Unterscheidbarkeit,
+/// nicht dem Katalog:** Sechs weitere Kräuter sind nicht dabei, weil Basilikum,
+/// Minze, Salbei, Oregano und Estragon alle dasselbe Blattbüschel wären — und
+/// fünf gleiche Büschel sind genau der Fehler, gegen den das Vorhaben läuft.
+///
+/// Die vier, die es hierher geschafft haben, sind es über ihre **Silhouette**:
+/// Basilikum ein Zweig mit breiten Blattpaaren, Minze zwei gezähnte Blätter,
+/// Schnittlauch ein Bündel Röhren mit Blüte, Dill eine Dolde aus Strichen.
+private let tranche2: [String: ItemGlyph.Rezept] = [
+
+    // Birne: oben schmal, unten bauchig — der Unterschied zum Apfel steckt
+    // allein in der Taille, nicht im Stiel.
+    "birnen": { p in
+        p.begin(p.at(0.50, 0.20))
+        p.bow(p.at(0.34, 0.52), p.at(0.42, 0.26), p.at(0.34, 0.40))
+        p.bow(p.at(0.50, 0.92), p.at(0.34, 0.76), p.at(0.30, 0.92))
+        p.bow(p.at(0.66, 0.52), p.at(0.70, 0.92), p.at(0.66, 0.76))
+        p.bow(p.at(0.50, 0.20), p.at(0.66, 0.40), p.at(0.58, 0.26))
+        p.close()
+        p.line([p.at(0.50, 0.20), p.at(0.52, 0.08)])
+        p.begin(p.at(0.52, 0.12))
+        p.bow(p.at(0.74, 0.08), p.at(0.60, 0.04), p.at(0.72, 0.02))
+        p.bow(p.at(0.52, 0.12), p.at(0.74, 0.14), p.at(0.62, 0.14))
+    },
+
+    // Feige: Tropfenform mit kurzem Stiel, dazu der aufgeschnittene Kern.
+    "feigen": { p in
+        p.begin(p.at(0.50, 0.20))
+        p.bow(p.at(0.20, 0.62), p.at(0.34, 0.26), p.at(0.20, 0.44))
+        p.bow(p.at(0.50, 0.90), p.at(0.20, 0.78), p.at(0.32, 0.90))
+        p.bow(p.at(0.80, 0.62), p.at(0.68, 0.90), p.at(0.80, 0.78))
+        p.bow(p.at(0.50, 0.20), p.at(0.80, 0.44), p.at(0.66, 0.26))
+        p.close()
+        // **Kein Kreuz im Bauch.** Ein senkrechter und ein waagerechter
+        // Strich in einem Kreis sind das Apothekenzeichen, nicht das
+        // Fruchtfleisch. Drei Kerne sagen dasselbe, ohne etwas anderes zu
+        // behaupten.
+        p.line([p.at(0.50, 0.20), p.at(0.50, 0.10)])
+        p.line([p.at(0.42, 0.09), p.at(0.58, 0.09)])
+        p.dot(p.at(0.42, 0.56), 0.045)
+        p.dot(p.at(0.58, 0.58), 0.045)
+        p.dot(p.at(0.50, 0.72), 0.045)
+    },
+
+    // Granatapfel: runde Frucht mit Krönchen und drei Kernen.
+    "granatapfel": { p in
+        p.circle(p.at(0.50, 0.58), 0.32)
+        p.line([p.at(0.42, 0.28), p.at(0.40, 0.14), p.at(0.50, 0.20),
+                p.at(0.60, 0.14), p.at(0.58, 0.28)])
+        p.dot(p.at(0.42, 0.54), 0.05)
+        p.dot(p.at(0.60, 0.56), 0.05)
+        p.dot(p.at(0.50, 0.70), 0.05)
+    },
+
+    // Kaki: flache Kugel mit vier breiten Kelchblättern — die Blätter sind
+    // das ganze Erkennungsmerkmal.
+    "kaki": { p in
+        // Der Kelch ist ein **vierzackiger Stern auf** der Frucht, keine
+        // Kappe über ihr: Als durchgehender Bogen las sich das als Beutel.
+        p.circle(p.at(0.50, 0.60), 0.32)
+        p.line([p.at(0.30, 0.40), p.at(0.50, 0.46), p.at(0.70, 0.40)])
+        p.line([p.at(0.42, 0.30), p.at(0.50, 0.46), p.at(0.58, 0.30)])
+        p.line([p.at(0.50, 0.46), p.at(0.50, 0.24)])
+    },
+
+    // Litschi: runde Frucht mit genoppter Schale.
+    "litschi": { p in
+        p.circle(p.at(0.50, 0.56), 0.30)
+        p.line([p.at(0.50, 0.26), p.at(0.54, 0.12)])
+        p.dot(p.at(0.38, 0.46), 0.035)
+        p.dot(p.at(0.58, 0.44), 0.035)
+        p.dot(p.at(0.46, 0.60), 0.035)
+        p.dot(p.at(0.64, 0.62), 0.035)
+        p.dot(p.at(0.40, 0.72), 0.035)
+    },
+
+    // Papaya: halbiert, mit den Kernen im Hohlraum.
+    "papaya": { p in
+        p.begin(p.at(0.24, 0.28))
+        p.bow(p.at(0.72, 0.84), p.at(0.42, 0.26), p.at(0.74, 0.56))
+        p.bow(p.at(0.24, 0.28), p.at(0.66, 0.94), p.at(0.22, 0.62))
+        p.close()
+        p.dot(p.at(0.46, 0.56), 0.04)
+        p.dot(p.at(0.56, 0.64), 0.04)
+        p.dot(p.at(0.44, 0.70), 0.04)
+    },
+
+    // Rhabarber: zwei Stangen mit dem großen Blatt oben.
+    "rhabarber": { p in
+        // **Zwei Stangen mit je eigenem Blatt.** Ein einziges großes Blatt
+        // über zwei Stielen war eine Tischplatte auf Beinen.
+        p.line([p.at(0.34, 0.92), p.at(0.30, 0.40)])
+        p.line([p.at(0.58, 0.92), p.at(0.62, 0.44)])
+        p.begin(p.at(0.30, 0.40))
+        p.bow(p.at(0.10, 0.16), p.at(0.18, 0.36), p.at(0.08, 0.26))
+        p.bow(p.at(0.44, 0.22), p.at(0.16, 0.06), p.at(0.38, 0.08))
+        p.bow(p.at(0.30, 0.40), p.at(0.46, 0.32), p.at(0.38, 0.36))
+        p.close()
+        p.begin(p.at(0.62, 0.44))
+        p.bow(p.at(0.90, 0.22), p.at(0.72, 0.38), p.at(0.90, 0.32))
+        p.bow(p.at(0.58, 0.26), p.at(0.90, 0.10), p.at(0.64, 0.10))
+        p.bow(p.at(0.62, 0.44), p.at(0.54, 0.34), p.at(0.58, 0.40))
+        p.close()
+    },
+
+    // Stachelbeere: Kugel mit Längsstreifen und Stiel.
+    "stachelbeeren": { p in
+        p.circle(p.at(0.50, 0.58), 0.30)
+        p.begin(p.at(0.50, 0.28))
+        p.bow(p.at(0.50, 0.88), p.at(0.30, 0.44), p.at(0.30, 0.72))
+        p.begin(p.at(0.50, 0.28))
+        p.bow(p.at(0.50, 0.88), p.at(0.70, 0.44), p.at(0.70, 0.72))
+        p.line([p.at(0.50, 0.28), p.at(0.52, 0.12)])
+    },
+
+    // Quitte: birnenähnlich, aber gedrungener, mit Blatt am Stiel.
+    "quitten": { p in
+        p.begin(p.at(0.50, 0.24))
+        p.bow(p.at(0.24, 0.56), p.at(0.34, 0.28), p.at(0.24, 0.42))
+        p.bow(p.at(0.50, 0.92), p.at(0.24, 0.78), p.at(0.30, 0.92))
+        p.bow(p.at(0.76, 0.56), p.at(0.70, 0.92), p.at(0.76, 0.78))
+        p.bow(p.at(0.50, 0.24), p.at(0.76, 0.42), p.at(0.66, 0.28))
+        p.close()
+        p.line([p.at(0.50, 0.24), p.at(0.50, 0.10)])
+        p.begin(p.at(0.50, 0.14))
+        p.bow(p.at(0.76, 0.10), p.at(0.58, 0.06), p.at(0.74, 0.04))
+        p.bow(p.at(0.50, 0.14), p.at(0.76, 0.16), p.at(0.60, 0.16))
+    },
+
+    // Fenchel: bauchige Knolle mit zwei Stängeln und Fiederblatt.
+    "fenchel": { p in
+        p.begin(p.at(0.50, 0.50))
+        p.bow(p.at(0.22, 0.72), p.at(0.28, 0.52), p.at(0.22, 0.60))
+        p.bow(p.at(0.50, 0.92), p.at(0.22, 0.86), p.at(0.34, 0.92))
+        p.bow(p.at(0.78, 0.72), p.at(0.66, 0.92), p.at(0.78, 0.86))
+        p.bow(p.at(0.50, 0.50), p.at(0.78, 0.60), p.at(0.72, 0.52))
+        p.close()
+        // **Die Stängel bleiben kurz und stehen dicht.** Weit gespreizt und
+        // lang waren sie ein Geweih; das Fiederblatt oben macht daraus eine
+        // Knolle mit Grün.
+        p.line([p.at(0.44, 0.52), p.at(0.42, 0.28)])
+        p.line([p.at(0.56, 0.52), p.at(0.58, 0.28)])
+        p.line([p.at(0.42, 0.28), p.at(0.28, 0.16)])
+        p.line([p.at(0.42, 0.28), p.at(0.40, 0.12)])
+        p.line([p.at(0.58, 0.28), p.at(0.72, 0.16)])
+        p.line([p.at(0.58, 0.28), p.at(0.60, 0.12)])
+    },
+
+    // Kohlkopf: Kugel mit umgeschlagenen äußeren Blättern.
+    "kohl": { p in
+        // **Die Blattadern gehen vom Strunk aus, nicht quer.** Zwei
+        // waagerechte Bögen im Kreis lasen sich als Schale mit Sonnenaufgang.
+        p.circle(p.at(0.50, 0.54), 0.32)
+        p.line([p.at(0.50, 0.86), p.at(0.50, 0.36)])
+        p.begin(p.at(0.50, 0.42))
+        p.bow(p.at(0.20, 0.44), p.at(0.38, 0.28), p.at(0.24, 0.32))
+        p.begin(p.at(0.50, 0.42))
+        p.bow(p.at(0.80, 0.44), p.at(0.62, 0.28), p.at(0.76, 0.32))
+        p.begin(p.at(0.50, 0.62))
+        p.bow(p.at(0.24, 0.68), p.at(0.40, 0.54), p.at(0.28, 0.58))
+        p.begin(p.at(0.50, 0.62))
+        p.bow(p.at(0.76, 0.68), p.at(0.60, 0.54), p.at(0.72, 0.58))
+    },
+
+    // Kürbis: breite Kugel mit Rippen und Stiel.
+    "kürbis": { p in
+        p.circle(p.at(0.50, 0.60), 0.32)
+        p.begin(p.at(0.50, 0.28))
+        p.bow(p.at(0.50, 0.92), p.at(0.34, 0.44), p.at(0.34, 0.76))
+        p.begin(p.at(0.50, 0.28))
+        p.bow(p.at(0.50, 0.92), p.at(0.66, 0.44), p.at(0.66, 0.76))
+        p.line([p.at(0.50, 0.28), p.at(0.50, 0.14)])
+        p.line([p.at(0.50, 0.16), p.at(0.66, 0.10)])
+    },
+
+    // Lauchzwiebeln: zwei Röhren mit verdicktem weißen Ende unten.
+    "lauchzwiebeln": { p in
+        p.line([p.at(0.40, 0.72), p.at(0.30, 0.14)])
+        p.line([p.at(0.54, 0.72), p.at(0.56, 0.12)])
+        p.line([p.at(0.66, 0.74), p.at(0.76, 0.18)])
+        p.begin(p.at(0.36, 0.68))
+        p.bow(p.at(0.70, 0.70), p.at(0.36, 0.94), p.at(0.70, 0.94))
+        p.close()
+    },
+
+    // Pastinake: lange spitze Wurzel mit Blattschopf.
+    "pastinaken": { p in
+        // **Senkrecht und nach unten spitz.** Schräg gelegt war die Wurzel
+        // ein Stock zwischen anderen Stöcken.
+        p.begin(p.at(0.34, 0.34))
+        p.bow(p.at(0.50, 0.92), p.at(0.36, 0.62), p.at(0.44, 0.80))
+        p.bow(p.at(0.66, 0.34), p.at(0.56, 0.80), p.at(0.64, 0.62))
+        p.close()
+        p.line([p.at(0.38, 0.42), p.at(0.24, 0.48)])
+        p.line([p.at(0.62, 0.50), p.at(0.76, 0.56)])
+        p.line([p.at(0.50, 0.34), p.at(0.50, 0.14)])
+        p.line([p.at(0.50, 0.20), p.at(0.34, 0.10)])
+        p.line([p.at(0.50, 0.20), p.at(0.66, 0.10)])
+    },
+
+    // Peperoni: gebogene Schote mit Stiel.
+    "peperoni": { p in
+        p.begin(p.at(0.34, 0.22))
+        p.bow(p.at(0.60, 0.86), p.at(0.62, 0.34), p.at(0.66, 0.66))
+        p.bow(p.at(0.34, 0.22), p.at(0.50, 0.84), p.at(0.44, 0.50))
+        p.close()
+        p.line([p.at(0.34, 0.22), p.at(0.24, 0.10)])
+        p.line([p.at(0.24, 0.10), p.at(0.44, 0.12)])
+    },
+
+    // Rettich: dicke weiße Wurzel mit Blattschopf und Wurzelspitze.
+    "rettich": { p in
+        // **Oben rund, unten spitz** — und die Blätter sitzen als kurzes
+        // Büschel obenauf. Zwei lange Striche nach außen waren ein Geweih.
+        p.begin(p.at(0.50, 0.32))
+        p.bow(p.at(0.26, 0.56), p.at(0.34, 0.32), p.at(0.26, 0.44))
+        p.bow(p.at(0.50, 0.92), p.at(0.26, 0.72), p.at(0.42, 0.84))
+        p.bow(p.at(0.74, 0.56), p.at(0.58, 0.84), p.at(0.74, 0.72))
+        p.bow(p.at(0.50, 0.32), p.at(0.74, 0.44), p.at(0.66, 0.32))
+        p.close()
+        p.line([p.at(0.50, 0.32), p.at(0.50, 0.14)])
+        p.line([p.at(0.50, 0.20), p.at(0.36, 0.10)])
+        p.line([p.at(0.50, 0.20), p.at(0.64, 0.10)])
+    },
+
+    // Rosenkohl: kleines Röschen mit deutlich abgesetzten Blättern.
+    "rosenkohl": { p in
+        p.begin(p.at(0.50, 0.20))
+        p.bow(p.at(0.26, 0.60), p.at(0.34, 0.26), p.at(0.26, 0.42))
+        p.bow(p.at(0.50, 0.86), p.at(0.26, 0.76), p.at(0.34, 0.86))
+        p.bow(p.at(0.74, 0.60), p.at(0.66, 0.86), p.at(0.74, 0.76))
+        p.bow(p.at(0.50, 0.20), p.at(0.74, 0.42), p.at(0.66, 0.26))
+        p.close()
+        p.line([p.at(0.50, 0.22), p.at(0.50, 0.84)])
+        p.begin(p.at(0.30, 0.44))
+        p.bow(p.at(0.70, 0.44), p.at(0.40, 0.62), p.at(0.60, 0.62))
+    },
+
+    // Staudensellerie: Bündel Stangen mit Blattgrün.
+    "sellerie": { p in
+        p.line([p.at(0.38, 0.90), p.at(0.32, 0.36)])
+        p.line([p.at(0.50, 0.92), p.at(0.50, 0.34)])
+        p.line([p.at(0.62, 0.90), p.at(0.68, 0.36)])
+        p.begin(p.at(0.32, 0.36))
+        p.bow(p.at(0.20, 0.16), p.at(0.24, 0.30), p.at(0.18, 0.24))
+        p.begin(p.at(0.50, 0.34))
+        p.bow(p.at(0.50, 0.12), p.at(0.42, 0.24), p.at(0.44, 0.16))
+        p.begin(p.at(0.68, 0.36))
+        p.bow(p.at(0.80, 0.16), p.at(0.76, 0.30), p.at(0.82, 0.24))
+        p.line([p.at(0.34, 0.72), p.at(0.66, 0.72)])
+    },
+
+    // Grünkohl: krause Blätter, der Kraus ist das Merkmal.
+    "grünkohl": { p in
+        // **Drei krause Blätter statt einer Krone.** Ein einzelner Ballen auf
+        // einem Stiel ist ein Baum, egal wie krauß sein Rand ist.
+        p.line([p.at(0.50, 0.92), p.at(0.50, 0.56)])
+        for (mx, my, w) in [(0.24, 0.42, -1.0), (0.50, 0.28, 0.0), (0.76, 0.42, 1.0)] {
+            p.begin(p.at(0.50, 0.58))
+            p.bow(p.at(mx + w * 0.10, my - 0.16),
+                  p.at(mx - 0.14, my + 0.10), p.at(mx - 0.16, my - 0.06))
+            p.bow(p.at(0.50, 0.58),
+                  p.at(mx + 0.18, my - 0.04), p.at(mx + 0.10, my + 0.14))
+            p.close()
+        }
+    },
+
+    // Basilikum: Zweig mit zwei Paar breiten Blättern.
+    "basilikum": { p in
+        p.line([p.at(0.50, 0.92), p.at(0.50, 0.24)])
+        blatt(&p, von: (0.50, 0.42), nach: (0.16, 0.28), bauch: 0.13)
+        blatt(&p, von: (0.50, 0.42), nach: (0.84, 0.28), bauch: -0.13)
+        blatt(&p, von: (0.50, 0.66), nach: (0.20, 0.58), bauch: 0.11)
+        blatt(&p, von: (0.50, 0.66), nach: (0.80, 0.58), bauch: -0.11)
+    },
+
+    // Minze: zwei Blätter mit gezähntem Rand und Mittelrippe.
+    "minze": { p in
+        p.line([p.at(0.50, 0.92), p.at(0.50, 0.46)])
+        p.begin(p.at(0.50, 0.50))
+        p.bow(p.at(0.20, 0.14), p.at(0.28, 0.48), p.at(0.16, 0.32))
+        p.bow(p.at(0.50, 0.50), p.at(0.34, 0.20), p.at(0.44, 0.34))
+        p.line([p.at(0.50, 0.50), p.at(0.24, 0.20)])
+        p.begin(p.at(0.50, 0.58))
+        p.bow(p.at(0.82, 0.28), p.at(0.66, 0.56), p.at(0.82, 0.44))
+        p.bow(p.at(0.50, 0.58), p.at(0.72, 0.32), p.at(0.58, 0.44))
+        p.line([p.at(0.50, 0.58), p.at(0.78, 0.34)])
+    },
+
+    // Schnittlauch: Bündel Röhren, eine mit Blüte. Die Blüte trennt ihn vom
+    // Weizengras.
+    "schnittlauch": { p in
+        p.line([p.at(0.34, 0.92), p.at(0.24, 0.28)])
+        p.line([p.at(0.46, 0.92), p.at(0.46, 0.18)])
+        p.line([p.at(0.58, 0.92), p.at(0.66, 0.30)])
+        p.line([p.at(0.70, 0.92), p.at(0.80, 0.44)])
+        p.circle(p.at(0.46, 0.13), 0.09)
+    },
+
+    // Dill: Dolde aus feinen Strichen an einem Stiel.
+    "dill": { p in
+        p.line([p.at(0.50, 0.92), p.at(0.50, 0.34)])
+        p.line([p.at(0.50, 0.34), p.at(0.16, 0.14)])
+        p.line([p.at(0.50, 0.34), p.at(0.32, 0.10)])
+        p.line([p.at(0.50, 0.34), p.at(0.50, 0.08)])
+        p.line([p.at(0.50, 0.34), p.at(0.68, 0.10)])
+        p.line([p.at(0.50, 0.34), p.at(0.84, 0.14)])
+        p.line([p.at(0.50, 0.60), p.at(0.26, 0.48)])
+        p.line([p.at(0.50, 0.60), p.at(0.74, 0.48)])
+    },
+
+    // Petersilie: krause Büschel an drei Stielen — der Kraus unterscheidet
+    // sie von Dills geraden Strichen.
+    "petersilie": { p in
+        p.line([p.at(0.50, 0.92), p.at(0.50, 0.52)])
+        p.line([p.at(0.50, 0.62), p.at(0.30, 0.44)])
+        p.line([p.at(0.50, 0.62), p.at(0.70, 0.44)])
+        p.circle(p.at(0.28, 0.36), 0.13)
+        p.circle(p.at(0.50, 0.28), 0.15)
+        p.circle(p.at(0.72, 0.36), 0.13)
+    },
+]
+
+/// Ein Blatt als zwei Bögen zwischen zwei Punkten. **Kräuter unterscheiden
+/// sich in der Blattform, und die entsteht aus der Bauchtiefe** — ohne einen
+/// gemeinsamen Baustein wären es zwanzig handgelegte Kurven, die beim ersten
+/// Nachziehen auseinanderlaufen.
+private func blatt(_ p: inout Pen, von a: (CGFloat, CGFloat),
+                   nach b: (CGFloat, CGFloat), bauch: CGFloat) {
+    let mx = (a.0 + b.0) / 2, my = (a.1 + b.1) / 2
+    let dx = b.0 - a.0, dy = b.1 - a.1
+    let len = max(0.0001, (dx * dx + dy * dy).squareRoot())
+    let nx = -dy / len * bauch, ny = dx / len * bauch
+    p.begin(p.at(a.0, a.1))
+    p.bow(p.at(b.0, b.1), p.at(mx + nx, my + ny), p.at(mx + nx, my + ny))
+    p.bow(p.at(a.0, a.1), p.at(mx - nx, my - ny), p.at(mx - nx, my - ny))
+    p.close()
+}
 
 /// Der Karton, den sich die drei Säfte teilen: Giebel links, Strohhalm rechts.
 ///
