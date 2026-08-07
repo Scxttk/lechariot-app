@@ -30,6 +30,27 @@ Ansehen sind sie das, was sie hier sind: eine Messlatte für den Umfang.
 | **neu** | **483** |
 | gezeichnet (`ItemGlyphs.swift`) | **226** |
 
+### Die Zahl, die zählt — und die, die ich sechs Runden lang falsch berichtet habe
+
+**„226 Zeichen von 750 Artikeln" vergleicht zwei verschiedene Dinge.** Bring!
+zeichnet je *Artikel*, wir je *Begriff*, und ein Begriff deckt mehrere Artikel ab:
+`römersalat` trägt Kopf-, Eisberg-, Feldsalat und Rucola, `oregano` trägt Rosmarin
+und Salbei. Wer die Zeichen zählt, misst den **Aufwand**; wer die abgedeckten
+Artikel zählt, misst das **Ergebnis**.
+
+Gemessen mit `tools/artikelzeichen-stand.py` (liest `docs/bring-katalog.txt`, löst
+über das Wörterbuch auf, sieht in `ItemGlyphs.swift` nach):
+
+| | |
+|---|---:|
+| Bring!-Artikel, Rauschen abgezogen | 664 |
+| lösen bei uns auf einen Begriff auf | 436 (66 %) |
+| **bekommen ein gezeichnetes Zeichen** | **408 (61 %)** |
+| unsere Zeichen | 226 |
+
+**Die 750 aus der ersten Messung waren zu hoch:** Die Texterkennung hat Kopfzeilen,
+Marken und abgeschnittene Zeilen mitgelesen. Nach Abzug bleiben 664 echte Artikel.
+
 ### Fortschritt
 
 | Tranche | Thema | Begriffe | Zeichen gesamt | Abdeckung |
