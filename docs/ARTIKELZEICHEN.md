@@ -4,6 +4,25 @@
 mehr. Das Zuordnen und die beste Filiale bleiben der Kern der App — die Zeichen
 sind Oberfläche, aber sie entscheiden, ob das Raster (Richtung D) trägt.
 
+## Wo die Zeichen stehen (Stand 07.08.)
+
+In der **Einkaufsliste**, je Zeile links neben dem Namen (`ShoppingListRowView.itemGlyph`).
+Aufgelöst über `ItemGlyphTerm` aus dem getippten Wort, mit dem Kategoriezeichen als
+Rückfall.
+
+**Und nur dort.** Die Liste zeichnet, die Angebote fotografieren:
+
+| Bildschirm | Bild |
+|---|---|
+| Einkaufsliste (ohne Tipp) | nur das Zeichen |
+| Trefferblatt, Angebote, Top-Deals | Produktfoto wie bisher |
+
+Der Grund ist nicht nur rechtlich (das Foto kommt mit dem Angebot, dort gehört es
+hin), sondern inhaltlich: In der Liste stand bis heute das Foto der Packung, auf
+die der Zuordner gerade zeigte — ein Bild des Prospekts, nicht des Artikels, das
+mit dem Angebot der Woche wechselte. Das Zeichen hängt am eigenen Wort und ist
+auch dann da, wenn diese Woche nichts im Angebot ist.
+
 ## Woher diese Liste kommt
 
 Aus Scotts Bildschirmaufnahme von Bring! (`_attachments/bring-referenz-2026-08-03.mp4`
