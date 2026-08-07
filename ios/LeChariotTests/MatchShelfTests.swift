@@ -40,6 +40,32 @@ final class MatchShelfTests: XCTestCase {
     /// `milch` gesperrt), „Putenbrustfilet" (bei `fisch` gesperrt) — sie
     /// gehören zu einem anderen Begriff und müssen dort auch bleiben.
     private static let regal: [String: String] = [
+        // Tranche 4 (2026-08-07): Getränke, Süßwaren, Getreide.
+        "bonbons": "Werther's Original 245 g",
+        "chiasamen": "Bio Chiasamen 500 g",
+        "cornflakes": "Kellogg's Corn Flakes 375 g",
+        "couscous": "Couscous 500 g",
+        "dörrobst": "Getrocknete Aprikosen 200 g",
+        "gelee": "Johannisbeergelee 340 g",
+        "glasnudeln": "Glasnudeln 250 g",
+        "glühwein": "Winzerglühwein rot 1 l",
+        "grieß": "Hartweizengrieß 500 g",
+        "kaffeepads": "Senseo Pads Classic 36er",
+        "kaugummi": "Wrigley's Extra Spearmint",
+        "kuvertüre": "Zartbitter-Kuvertüre 200 g",
+        "lasagneblätter": "Lasagneplatten 250 g",
+        "lollis": "Chupa Chups 10 Stück",
+        "nougatcreme": "Nuss-Nougat-Creme 400 g",
+        "plätzchen": "Butterspekulatius 200 g",
+        "popcorn": "Popcorn süß 100 g",
+        "reispapier": "Reispapier 22 cm, 100 g",
+        "schnaps": "Wodka Gorbatschow 0,7 l",
+        "sirup": "Holunderblütensirup 0,5 l",
+        "smoothie": "Green Smoothie 250 ml",
+        "sportgetränk": "Isodrink Zitrone 750 ml",
+        "spätzle": "Schwäbische Spätzle 500 g",
+        "tempeh": "Bio Tempeh Natur 200 g",
+        "tonicwater": "Thomas Henry Tonic 6 x 0,2 l",
         // Tranche 3 (2026-08-07): Brot, Milchprodukte, Fleisch & Fisch.
         "bacon": "Bacon Frühstücksspeck 100 g",
         "bagel": "Sesam-Bagels 4 Stück",

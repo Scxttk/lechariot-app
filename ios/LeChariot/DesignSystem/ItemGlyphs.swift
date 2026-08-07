@@ -68,7 +68,7 @@ enum ItemGlyph {
     private static let recipes: [String: Rezept] = {
         var alle: [String: Rezept] = [:]
         for teil in [obstUndGemuese, molkereiUndBackwaren, fleischUndFisch,
-                     vorratUndGetraenke, tranche1, tranche2, tranche3] {
+                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4] {
             alle.merge(teil) { erstes, _ in erstes }
         }
         return alle
@@ -2383,6 +2383,308 @@ private let tranche3: [String: ItemGlyph.Rezept] = [
         p.line([p.at(0.46, 0.40), p.at(0.70, 0.46)])
         p.line([p.at(0.42, 0.56), p.at(0.72, 0.62)])
         p.line([p.at(0.44, 0.70), p.at(0.66, 0.74)])
+    },
+]
+
+// MARK: - Tranche 4: Getränke, Süßwaren, Getreide
+
+/// **Fünfundzwanzig Zeichen zu Tranche 4** (2026-08-07).
+///
+/// Die schwierigste Gruppe bisher: Bonbons, Lollis, Kaugummi und Plätzchen
+/// sind alle „etwas Kleines, Süßes". Getrennt sind sie hier über **Verpackung
+/// und Haltung** — der Lolli am Stiel, das Bonbon im gedrehten Papier, der
+/// Kaugummistreifen in der Hülle, das Plätzchen als Stern.
+private let tranche4: [String: ItemGlyph.Rezept] = [
+
+    // Cornflakes: Schale mit Flocken und Löffel.
+    "cornflakes": { p in
+        p.begin(p.at(0.10, 0.50))
+        p.bow(p.at(0.78, 0.50), p.at(0.16, 0.88), p.at(0.72, 0.88))
+        p.close()
+        p.line([p.at(0.68, 0.46), p.at(0.90, 0.20)])
+        p.begin(p.at(0.90, 0.20))
+        p.bow(p.at(0.80, 0.36), p.at(0.98, 0.22), p.at(0.90, 0.36))
+        p.close()
+        p.dot(p.at(0.28, 0.42), 0.05)
+        p.dot(p.at(0.48, 0.38), 0.05)
+    },
+
+    // Couscous: Schale mit feinem Korn — die Körnung ist der Unterschied zu
+    // den Flocken darüber.
+    "couscous": { p in
+        p.begin(p.at(0.14, 0.52))
+        p.bow(p.at(0.86, 0.52), p.at(0.20, 0.90), p.at(0.80, 0.90))
+        p.close()
+        p.begin(p.at(0.22, 0.52))
+        p.bow(p.at(0.78, 0.52), p.at(0.34, 0.32), p.at(0.66, 0.32))
+        p.dot(p.at(0.38, 0.44), 0.03)
+        p.dot(p.at(0.52, 0.40), 0.03)
+        p.dot(p.at(0.64, 0.46), 0.03)
+    },
+
+    // Grieß: Tüte mit Ausguss und rieselndem Korn.
+    "grieß": { p in
+        p.line([p.at(0.20, 0.30), p.at(0.60, 0.30), p.at(0.64, 0.90),
+                p.at(0.16, 0.90)], closed: true)
+        p.line([p.at(0.20, 0.30), p.at(0.30, 0.18), p.at(0.50, 0.24),
+                p.at(0.60, 0.30)])
+        p.dot(p.at(0.76, 0.40), 0.03)
+        p.dot(p.at(0.84, 0.54), 0.03)
+        p.dot(p.at(0.78, 0.68), 0.03)
+    },
+
+    // Glasnudeln: dünnes Bündel mit Bandage in der Mitte.
+    "glasnudeln": { p in
+        // **Gewellt, nicht gerade.** Vier senkrechte Striche mit zwei
+        // Querbalken sind ein Gartenzaun; erst der Schwung macht sie zu
+        // Nudeln. Die Bandage bleibt, sie hält das Bündel zusammen.
+        for (i, x) in [0.24, 0.40, 0.56, 0.72].enumerated() {
+            let v = CGFloat(x) + (i.isMultiple(of: 2) ? 0.0 : 0.02)
+            p.begin(p.at(v, 0.12))
+            p.bow(p.at(v + 0.04, 0.50), p.at(v - 0.08, 0.28), p.at(v + 0.10, 0.36))
+            p.bow(p.at(v - 0.02, 0.90), p.at(v - 0.02, 0.66), p.at(v + 0.08, 0.76))
+        }
+        p.line([p.at(0.14, 0.48), p.at(0.86, 0.46)])
+        p.line([p.at(0.14, 0.60), p.at(0.86, 0.58)])
+    },
+
+    // Spätzle: drei kurze, gebogene Klöße auf einem Haufen.
+    "spätzle": { p in
+        p.capsule(0.36, 0.38, 0.16, 0.40, tilt: -60)
+        p.capsule(0.62, 0.46, 0.16, 0.40, tilt: 40)
+        p.capsule(0.44, 0.68, 0.16, 0.44, tilt: -15)
+        p.capsule(0.70, 0.74, 0.14, 0.32, tilt: 70)
+    },
+
+    // Lasagneblätter: gestapelte Platten mit gewelltem Rand.
+    "lasagneblätter": { p in
+        for y in [0.36, 0.54, 0.72] {
+            p.line([p.at(0.16, CGFloat(y)), p.at(0.84, CGFloat(y) - 0.06)])
+            p.line([p.at(0.16, CGFloat(y) + 0.10), p.at(0.84, CGFloat(y) + 0.04)])
+            p.line([p.at(0.16, CGFloat(y)), p.at(0.16, CGFloat(y) + 0.10)])
+            p.line([p.at(0.84, CGFloat(y) - 0.06), p.at(0.84, CGFloat(y) + 0.04)])
+        }
+    },
+
+    // Chiasamen: Löffel voll feiner Körner.
+    "chiasamen": { p in
+        p.begin(p.at(0.22, 0.52))
+        p.bow(p.at(0.66, 0.52), p.at(0.22, 0.82), p.at(0.66, 0.82))
+        p.close()
+        p.line([p.at(0.64, 0.56), p.at(0.90, 0.34)])
+        p.dot(p.at(0.34, 0.46), 0.03)
+        p.dot(p.at(0.46, 0.42), 0.03)
+        p.dot(p.at(0.56, 0.46), 0.03)
+        p.dot(p.at(0.40, 0.34), 0.03)
+    },
+
+    // Reispapier: runde Blätter, halb durchscheinend gedacht.
+    "reispapier": { p in
+        // **Zwei Kreise nebeneinander sind ein Mengendiagramm**, und ein
+        // Kreis mit einer Kerbe ist ein angebissener Keks. Reispapier sind
+        // **runde Blätter im Stapel**: zwei Scheiben leicht versetzt, die
+        // obere durchscheinend gedacht, dazu die Kante des Stapels.
+        p.circle(p.at(0.44, 0.42), 0.30)
+        p.circle(p.at(0.58, 0.58), 0.30)
+        p.line([p.at(0.28, 0.86), p.at(0.74, 0.86)])
+    },
+
+    // Tempeh: Block mit sichtbaren Bohnen im Schnitt.
+    "tempeh": { p in
+        p.line([p.at(0.14, 0.32), p.at(0.86, 0.32), p.at(0.86, 0.74),
+                p.at(0.14, 0.74)], closed: true)
+        p.dot(p.at(0.30, 0.46), 0.045)
+        p.dot(p.at(0.50, 0.42), 0.045)
+        p.dot(p.at(0.68, 0.48), 0.045)
+        p.dot(p.at(0.38, 0.62), 0.045)
+        p.dot(p.at(0.60, 0.62), 0.045)
+    },
+
+    // Bonbon: Kugel im gedrehten Papier — die zwei Zipfel sind das Zeichen.
+    "bonbons": { p in
+        p.circle(p.at(0.50, 0.52), 0.20)
+        p.line([p.at(0.30, 0.52), p.at(0.10, 0.34), p.at(0.14, 0.56),
+                p.at(0.08, 0.72), p.at(0.30, 0.54)])
+        p.line([p.at(0.70, 0.52), p.at(0.90, 0.34), p.at(0.86, 0.56),
+                p.at(0.92, 0.72), p.at(0.70, 0.54)])
+    },
+
+    // Kaugummi: Streifen in der Hülle, einer halb herausgezogen.
+    "kaugummi": { p in
+        p.line([p.at(0.24, 0.30), p.at(0.62, 0.30), p.at(0.62, 0.88),
+                p.at(0.24, 0.88)], closed: true)
+        p.line([p.at(0.62, 0.36), p.at(0.86, 0.24), p.at(0.86, 0.68),
+                p.at(0.62, 0.80)])
+        p.line([p.at(0.30, 0.44), p.at(0.56, 0.44)])
+        p.line([p.at(0.30, 0.58), p.at(0.56, 0.58)])
+    },
+
+    // Lolli: Kugel am Stiel mit Spirale.
+    "lollis": { p in
+        p.circle(p.at(0.50, 0.36), 0.26)
+        p.begin(p.at(0.50, 0.36))
+        p.bow(p.at(0.50, 0.16), p.at(0.62, 0.34), p.at(0.62, 0.18))
+        p.bow(p.at(0.50, 0.58), p.at(0.30, 0.14), p.at(0.28, 0.58))
+        p.line([p.at(0.50, 0.62), p.at(0.50, 0.92)])
+    },
+
+    // Plätzchen: Stern mit Zuckerpunkt.
+    "plätzchen": { p in
+        var punkte: [CGPoint] = []
+        for i in 0..<12 {
+            let w = Double(i) / 12 * 2 * Double.pi - Double.pi / 2
+            let r: CGFloat = i.isMultiple(of: 2) ? 0.38 : 0.18
+            punkte.append(p.at(0.50 + r * CGFloat(cos(w)), 0.52 + r * CGFloat(sin(w))))
+        }
+        p.line(punkte, closed: true)
+        p.dot(p.at(0.50, 0.52), 0.06)
+    },
+
+    // Popcorn: Tüte mit gestreiftem Papier und überquellenden Puffs.
+    "popcorn": { p in
+        p.line([p.at(0.26, 0.46), p.at(0.74, 0.46), p.at(0.68, 0.92),
+                p.at(0.32, 0.92)], closed: true)
+        p.line([p.at(0.42, 0.46), p.at(0.40, 0.92)])
+        p.line([p.at(0.58, 0.46), p.at(0.60, 0.92)])
+        p.circle(p.at(0.36, 0.32), 0.11)
+        p.circle(p.at(0.60, 0.26), 0.12)
+        p.circle(p.at(0.72, 0.40), 0.09)
+    },
+
+    // Nougatcreme: Glas mit Deckel und Messer daneben.
+    "nougatcreme": { p in
+        p.line([p.at(0.24, 0.24), p.at(0.62, 0.24)])
+        p.line([p.at(0.24, 0.24), p.at(0.22, 0.34)])
+        p.line([p.at(0.62, 0.24), p.at(0.64, 0.34)])
+        p.line([p.at(0.22, 0.34), p.at(0.22, 0.88), p.at(0.64, 0.88),
+                p.at(0.64, 0.34)], closed: true)
+        p.line([p.at(0.28, 0.52), p.at(0.58, 0.52)])
+        p.line([p.at(0.78, 0.28), p.at(0.86, 0.72)])
+        p.line([p.at(0.78, 0.28), p.at(0.72, 0.44), p.at(0.82, 0.50)])
+    },
+
+    // Dörrobst: drei geschrumpfte Scheiben mit welligem Rand.
+    "dörrobst": { p in
+        for (cx, cy, r) in [(0.32, 0.36, 0.19), (0.66, 0.44, 0.17), (0.44, 0.72, 0.18)] {
+            var pk: [CGPoint] = []
+            for i in 0..<10 {
+                let w = Double(i) / 10 * 2 * Double.pi
+                let rr = CGFloat(r) * (i.isMultiple(of: 2) ? 1.0 : 0.74)
+                pk.append(p.at(CGFloat(cx) + rr * CGFloat(cos(w)),
+                               CGFloat(cy) + rr * CGFloat(sin(w))))
+            }
+            p.line(pk, closed: true)
+        }
+    },
+
+    // Gelee: Glas mit Schraubdeckel und Fruchtstück.
+    "gelee": { p in
+        p.line([p.at(0.28, 0.18), p.at(0.72, 0.18), p.at(0.72, 0.30),
+                p.at(0.28, 0.30)], closed: true)
+        p.line([p.at(0.28, 0.30), p.at(0.24, 0.88), p.at(0.76, 0.88),
+                p.at(0.72, 0.30)])
+        p.circle(p.at(0.50, 0.60), 0.14)
+    },
+
+    // Kuvertüre: Tafel mit abgebrochenem Stück.
+    "kuvertüre": { p in
+        p.line([p.at(0.16, 0.30), p.at(0.72, 0.30), p.at(0.72, 0.82),
+                p.at(0.16, 0.82)], closed: true)
+        p.line([p.at(0.34, 0.30), p.at(0.34, 0.82)])
+        p.line([p.at(0.53, 0.30), p.at(0.53, 0.82)])
+        p.line([p.at(0.16, 0.56), p.at(0.72, 0.56)])
+        p.line([p.at(0.72, 0.42), p.at(0.90, 0.36), p.at(0.90, 0.66),
+                p.at(0.72, 0.70)])
+    },
+
+    // Glühwein: Becher mit Henkel, Dampf und Zimtstange.
+    "glühwein": { p in
+        p.line([p.at(0.20, 0.46), p.at(0.28, 0.90), p.at(0.66, 0.90),
+                p.at(0.74, 0.46)], closed: true)
+        p.begin(p.at(0.74, 0.56))
+        p.bow(p.at(0.74, 0.78), p.at(0.94, 0.56), p.at(0.94, 0.78))
+        p.line([p.at(0.46, 0.42), p.at(0.58, 0.16)])
+        p.begin(p.at(0.34, 0.40))
+        p.bow(p.at(0.34, 0.18), p.at(0.24, 0.32), p.at(0.44, 0.26))
+    },
+
+    // Sirup: schlanke Flasche mit langem Hals und Etikett.
+    "sirup": { p in
+        p.line([p.at(0.42, 0.10), p.at(0.58, 0.10)])
+        p.line([p.at(0.42, 0.10), p.at(0.42, 0.34)])
+        p.line([p.at(0.58, 0.10), p.at(0.58, 0.34)])
+        p.begin(p.at(0.42, 0.34))
+        p.bow(p.at(0.28, 0.52), p.at(0.40, 0.44), p.at(0.28, 0.46))
+        p.to(p.at(0.28, 0.90))
+        p.to(p.at(0.72, 0.90))
+        p.to(p.at(0.72, 0.52))
+        p.bow(p.at(0.58, 0.34), p.at(0.72, 0.46), p.at(0.60, 0.44))
+        p.line([p.at(0.28, 0.62), p.at(0.72, 0.62)])
+        p.line([p.at(0.28, 0.76), p.at(0.72, 0.76)])
+    },
+
+    // Smoothie: Becher mit Kuppeldeckel und Halm.
+    "smoothie": { p in
+        p.begin(p.at(0.28, 0.40))
+        p.to(p.at(0.34, 0.90))
+        p.to(p.at(0.68, 0.90))
+        p.to(p.at(0.74, 0.40))
+        p.begin(p.at(0.28, 0.40))
+        p.bow(p.at(0.74, 0.40), p.at(0.32, 0.20), p.at(0.70, 0.20))
+        p.line([p.at(0.56, 0.24), p.at(0.72, 0.06)])
+        p.line([p.at(0.34, 0.62), p.at(0.68, 0.62)])
+    },
+
+    // Tonic: Longdrinkglas mit Eis und Limettenscheibe.
+    "tonicwater": { p in
+        p.line([p.at(0.32, 0.16), p.at(0.36, 0.90), p.at(0.66, 0.90),
+                p.at(0.70, 0.16)], closed: true)
+        p.line([p.at(0.34, 0.44), p.at(0.68, 0.44)])
+        p.circle(p.at(0.50, 0.66), 0.10)
+        p.line([p.at(0.40, 0.66), p.at(0.60, 0.66)])
+    },
+
+    // Kaffeepad: runde Scheibe mit gewelltem Rand und Naht.
+    "kaffeepads": { p in
+        // **Kein Kreis im Kreis mit Kreuz** — das war ein Wappen. Ein Pad ist
+        // eine flache Scheibe mit gekräuseltem Rand und Pulver darin.
+        var rand: [CGPoint] = []
+        for i in 0..<20 {
+            let w = Double(i) / 20 * 2 * Double.pi
+            let r: CGFloat = i.isMultiple(of: 2) ? 0.36 : 0.32
+            rand.append(p.at(0.50 + r * CGFloat(cos(w)), 0.52 + r * CGFloat(sin(w))))
+        }
+        p.line(rand, closed: true)
+        p.circle(p.at(0.50, 0.52), 0.16)
+        p.dot(p.at(0.46, 0.48), 0.035)
+        p.dot(p.at(0.56, 0.54), 0.035)
+        p.dot(p.at(0.47, 0.60), 0.035)
+    },
+
+    // Schnaps: bauchige Flasche mit Korken und schmalem Hals.
+    "schnaps": { p in
+        p.line([p.at(0.42, 0.08), p.at(0.58, 0.08), p.at(0.58, 0.18),
+                p.at(0.42, 0.18)], closed: true)
+        p.line([p.at(0.44, 0.18), p.at(0.44, 0.40)])
+        p.line([p.at(0.56, 0.18), p.at(0.56, 0.40)])
+        p.begin(p.at(0.44, 0.40))
+        p.bow(p.at(0.24, 0.66), p.at(0.32, 0.48), p.at(0.24, 0.54))
+        p.bow(p.at(0.50, 0.92), p.at(0.24, 0.84), p.at(0.34, 0.92))
+        p.bow(p.at(0.76, 0.66), p.at(0.66, 0.92), p.at(0.76, 0.84))
+        p.bow(p.at(0.56, 0.40), p.at(0.76, 0.54), p.at(0.68, 0.48))
+    },
+
+    // Sportgetränk: Trinkflasche mit Sportverschluss.
+    "sportgetränk": { p in
+        p.line([p.at(0.44, 0.06), p.at(0.56, 0.06), p.at(0.56, 0.16),
+                p.at(0.44, 0.16)], closed: true)
+        p.begin(p.at(0.32, 0.30))
+        p.bow(p.at(0.68, 0.30), p.at(0.40, 0.16), p.at(0.60, 0.16))
+        p.to(p.at(0.70, 0.88))
+        p.bow(p.at(0.30, 0.88), p.at(0.70, 0.94), p.at(0.30, 0.94))
+        p.close()
+        p.line([p.at(0.34, 0.50), p.at(0.66, 0.50)])
+        p.line([p.at(0.34, 0.66), p.at(0.66, 0.66)])
     },
 ]
 
