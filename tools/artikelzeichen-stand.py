@@ -61,11 +61,23 @@ def main():
 
     woerterbuch = json.load(open(os.path.join(
         WURZEL, "ios/LeChariot/Resources/matching-woerterbuch.json")))["begriffe"]
-    wort_zu_begriff = {}
+    # **Dieselbe Wahl wie `ItemGlyphTerm.beste(aus:für:)`.** Der erste Anlauf
+    # nahm per `setdefault` den Begriff, der zufällig zuerst kam; die App nahm
+    # den alphabetisch ersten. Zwei Regeln für dieselbe Frage, und keine davon
+    # meinte etwas. Jetzt beide: Heißt der Begriff wie das Wort, ist er es;
+    # sonst gewinnt der mit den wenigsten Synonymen (der feinere), bei
+    # Gleichstand der alphabetisch erste.
+    synonyme = {b: len(e.get("exact") or []) + 1 for b, e in woerterbuch.items()}
+    kandidaten = {}
     for begriff, eintrag in woerterbuch.items():
-        wort_zu_begriff[normalisiert(begriff)] = begriff
-        for wort in (eintrag.get("exact") or []):
-            wort_zu_begriff.setdefault(normalisiert(wort), begriff)
+        for wort in (eintrag.get("exact") or []) + [begriff]:
+            kandidaten.setdefault(normalisiert(wort), set()).add(begriff)
+
+    wort_zu_begriff = {
+        wort: (wort if wort in {normalisiert(b) for b in menge} and wort in woerterbuch
+               else min(menge, key=lambda b: (synonyme[b], b)))
+        for wort, menge in kandidaten.items()
+    }
 
     quelle = open(os.path.join(WURZEL, "ios/LeChariot/DesignSystem/ItemGlyphs.swift")).read()
     gezeichnet = set(re.findall(r'^\s*"([^"]+)": \{ p in', quelle, re.M))
