@@ -147,7 +147,10 @@ final class OnboardingJourneyTests: XCTestCase {
         XCTAssertTrue(liked.exists, "…und die getroffene Auswahl sichtbar machen")
 
         tapPrimary()               // Belohnung → Einwilligung
-        tapPrimary()               // consent
+        tapSkip()                  // consent: "Keine Angaben übermitteln"
+
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+    }
 
     /// **Beide Antworten stehen als Knopf da, und beide führen in die App.**
     ///

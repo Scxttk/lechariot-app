@@ -252,6 +252,21 @@ final class TutorialStoreTests: XCTestCase {
         let store = makeStore()
         store.decline(hasMarkets: false)
 
+        XCTAssertTrue(store.asksForMarkets)
+    }
+
+    /// Und die Gegenrichtung: Wer beim Ablehnen schon Filialen hat, hat die
+    /// Frage längst beantwortet — für bestehende Installationen ändert sich
+    /// nichts.
+    func testDecliningTheOfferWithMarketsDoesNotAsk() {
+        let store = makeStore()
+        store.decline(hasMarkets: true)
+
+        XCTAssertFalse(store.asksForMarkets)
+    }
+
+    // MARK: Was der Rundgang sagt
+
     /// Über einer Liste ohne Filiale steht an der Plan-Karte ein Leerzustand.
     /// Der Rahmen darüber muss dieselbe Zeitform sprechen — eine Karte, die
     /// „sagt dir, welche Filiale am günstigsten ist", während sie den
