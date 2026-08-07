@@ -84,12 +84,40 @@ enum CityLookup {
         // zweiten Mal mit demselben Ort.
         if let land, forward.administrativeArea != land { return nil }
 
+        // **Eine Straße beantwortet sich selbst** (06.08.). Wer „Dresden
+        // Karl-Laux-Straße 6" tippt, bekam bis dahin „kennt Apple nicht" —
+        // nicht weil Apple die Adresse nicht kennt, sondern weil `PlaceMatch`
+        // verlangt, dass der **ganze getippte Text** im Ortsnamen steckt, und
+        // „Dresden Karl-Laux-Straße 6" steckt nicht in „Dresden".
+        //
+        // Gemessen am 06.08. an Apples Geocoder:
+        //
+        //     Dresden Karl-Laux-Straße 6  → locality Dresden, subLocality
+        //     Prohlis, thoroughfare Karl-Laux-Straße, **postalCode 01219**
+        //
+        // Zwei Dinge stehen darin, die vorher anders in den Notizen standen:
+        // Eine Adresse ist **eindeutig** — an ihr ist nichts zu wählen, also
+        // gibt es auch nichts zu prüfen. Und der **Vorwärts**-Geocoder liefert
+        // hier sehr wohl eine PLZ; der Befund vom 03.08. („neunmal nil") galt
+        // für blanke *Ortsnamen*, nicht für Adressen. Wo sie schon dasteht,
+        // spart das die Rückwärts-Abfrage.
+        let istAdresse = forward.thoroughfare != nil
+
+        if istAdresse, let plz = forward.postalCode, PLZValidator.isValid(plz) {
+            let ort = forward.locality ?? forward.name ?? plz
+            return Hit(
+                candidate: PlaceCandidate(plz: plz, ort: ort, land: forward.administrativeArea),
+                answersQuery: true
+            )
+        }
+
         guard let back = try? await CLGeocoder().reverseGeocodeLocation(location).first,
               let plz = back.postalCode, PLZValidator.isValid(plz) else { return nil }
 
         let ort = back.locality ?? forward.locality ?? forward.name ?? plz
         let candidate = PlaceCandidate(plz: plz, ort: ort, land: back.administrativeArea)
-        let matches = PlaceMatch.answers(name, ort: back.locality, ortsteil: back.subLocality)
+        let matches = istAdresse
+            || PlaceMatch.answers(name, ort: back.locality, ortsteil: back.subLocality)
             || PlaceMatch.answers(name, ort: forward.locality, ortsteil: forward.subLocality)
             || PlaceMatch.answers(name, ort: forward.name, ortsteil: nil)
         return Hit(candidate: candidate, answersQuery: matches)

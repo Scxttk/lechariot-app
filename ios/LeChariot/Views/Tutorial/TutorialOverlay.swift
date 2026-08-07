@@ -398,13 +398,37 @@ struct TutorialOverlay: View {
     /// Platz über dem Loch, sichere Fläche und Abstände schon abgezogen — und
     /// dazu `sm`, damit die Karte samt Abstandhaltern in den Bildschirm passt
     /// statt ihn um ein paar Punkte zu überziehen.
+    /// **Die Karte rechnet mit dem gezeichneten Loch, nicht mit dem gerade
+    /// aufgelösten** — seit dem 06.08.
+    ///
+    /// Das war die Ursache von „die Animationen sind alle nicht flüssig". Das
+    /// Loch wandert an *einer* Stelle, nämlich in der Transaktion, in der der
+    /// Anker eintrifft (`withAnimation` weiter unten, siehe `shownHole`). Die
+    /// Karte hing dagegen an `resolvedHole`, und das ändert sich einen
+    /// Layout-Durchgang **später** als `tutorial.index`. Die
+    /// `.animation(…, value: tutorial.index)` am Behälter deckt diese Änderung
+    /// also nicht ab.
+    ///
+    /// Ergebnis bei **jedem** Rahmenwechsel: **Das Loch gleitet, die Karte
+    /// springt.** Genau das steht schon als Kommentar an `visualHole` („Was
+    /// gezeichnet wird — nicht was gerade aufgelöst ist. Der Unterschied ist
+    /// der gemeldete Ruckler"); er war nur nie auf die Karte angewandt.
+    ///
+    /// **`interactiveHole` bleibt bewusst auf `resolvedHole`.** Was man
+    /// durchtippen kann, muss dem echten Ziel folgen und nicht der Zeichnung —
+    /// sonst landet ein Tipp während des Flugs neben dem Bedienelement.
+    private var cardHole: CGRect? {
+        let hole = visualHole
+        return hole == .zero ? nil : hole
+    }
+
     private var spaceAbove: CGFloat {
-        guard let hole = resolvedHole else { return 0 }
+        guard let hole = cardHole else { return 0 }
         return hole.minY - safeArea.top - gap - Theme.Spacing.sm
     }
 
     private var spaceBelow: CGFloat {
-        guard let hole = resolvedHole else { return 0 }
+        guard let hole = cardHole else { return 0 }
         return proxy.size.height - hole.maxY - safeArea.bottom
             - gap - Theme.Spacing.sm
     }
@@ -415,13 +439,13 @@ struct TutorialOverlay: View {
         // Bildschirm. Sie rückt in die Mitte und scrollt; das Loch bleibt
         // sichtbar, nur eben hinter ihr.
         if typeSize.isAccessibilitySize { return .centred }
-        guard resolvedHole != nil else { return .centred }
+        guard cardHole != nil else { return .centred }
         return spaceBelow >= spaceAbove ? .below : .above
     }
 
     @ViewBuilder
     private var cardLayer: some View {
-        let hole = resolvedHole
+        let hole = cardHole
         VStack(spacing: 0) {
             switch placement {
             case .below:
@@ -540,7 +564,25 @@ struct TutorialOverlay: View {
             // Rahmen davor, denn dort ist er eine echte Wahl.
             if !tutorial.isLastStep {
                 Button {
-                    tutorial.skip()
+                    // **Der Ausgang war eine Ecke, kein Übergang** (06.08.).
+                    // `ContentView` legt `.transition(.opacity)` auf das
+                    // Overlay — aber eine Transition spielt nur, wenn die
+                    // Zustandsänderung, die die Ansicht entfernt, **in** einer
+                    // animierten Transaktion passiert. `skip()` und `next()`
+                    // waren nackte Aufrufe, `TutorialStore.finish()` setzt
+                    // `isRunning = false` ohne `withAnimation`, und nichts sonst
+                    // führt eine Kurve auf diesen Wert. Abdunklung, Ring, Karte
+                    // und Sperrflächen verschwanden also **in einem Bild** —
+                    // Scotts „it ends with a weird jump".
+                    //
+                    // Dass der *Anfang* weich aussah, war ein Zufall: Beim Start
+                    // aus dem Onboarding kippt im selben Durchgang
+                    // `isOnboardingComplete`, und dessen `.stateAnimation` in
+                    // `ContentView` deckte den Baum mit ab. Aus den Einstellungen
+                    // heraus poppte das Overlay auch beim Aufgehen.
+                    withAnimation(Theme.Motion.screen.animation(reduceMotion: reduceMotion)) {
+                        tutorial.skip()
+                    }
                 } label: {
                     Text("Tour beenden")
                         .font(.subheadline)
@@ -554,7 +596,12 @@ struct TutorialOverlay: View {
             Spacer(minLength: 0)
 
             Button {
-                tutorial.next()
+                // Derselbe Grund wie beim Abbruch darüber: Auf dem letzten
+                // Rahmen ist „Weiter" der Ausgang, und der muss durch eine
+                // animierte Transaktion laufen.
+                withAnimation(Theme.Motion.screen.animation(reduceMotion: reduceMotion)) {
+                    tutorial.next()
+                }
             } label: {
                 Text(tutorial.isLastStep ? "Fertig" : "Weiter")
                     .font(.subheadline.weight(.semibold))

@@ -113,7 +113,7 @@ struct MatchDetailView: View {
                         // liegt. Der Preisverlauf war gebaut und erreichbar,
                         // aber nichts sagte, dass es ihn gibt — Scotts Frage
                         // „where can i see the preisverlauf?" ([UI-5]).
-                        Text("Tippe ein Angebot an: Packungsgröße, Gültigkeit und der Preisverlauf der letzten Wochen. Tippe die Reißzwecke, um es dauerhaft auf die Liste zu heften — auch wenn es nicht das billigste ist. Passt eines gar nicht zu deinem Artikel? Leg es weg, dann schlägt Le Chariot es nicht mehr vor.")
+                        Text("Tippe ein Angebot an: Packungsgröße, Gültigkeit und der Preisverlauf der letzten Wochen. Tippe die Reißzwecke, um es dauerhaft auf die Liste zu heften — auch wenn es nicht das billigste ist. Passt eines gar nicht zu deinem Artikel? Leg es weg, dann schlägt \(AppBrand.name) es nicht mehr vor.")
                     }
                     .listRowBackground(Theme.surface)
                 }

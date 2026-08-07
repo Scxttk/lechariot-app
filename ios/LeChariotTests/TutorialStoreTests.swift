@@ -137,11 +137,12 @@ final class TutorialStoreTests: XCTestCase {
         }
     }
 
-    /// Genau der Mitmach-Rahmen lässt Berührungen durch. Sonst wäre der
+    /// Genau der eine Mitmach-Rahmen lässt Berührungen durch. Sonst wäre der
     /// Rundgang entweder eine Diashow oder ein Loch, durch das man sich
-    /// versehentlich aus der Führung klickt. Bis zum 05.08. waren es zwei
-    /// (der Vorschlags-Rahmen ist der Kürzung zum Opfer gefallen — die Chips
-    /// liegen sichtbar unter der Eingabezeile und erklären sich selbst).
+    /// versehentlich aus der Führung klickt.
+    ///
+    /// Bis zum 06.08. waren es zwei — der zweite zeigte auf die
+    /// Vorschlagskacheln, die auf dem Bildschirm ohnehin stehen.
     func testOnlyTheHandsOnStepLetsTouchesThrough() {
         let store = makeStore()
         let interactive = store.steps.filter(\.allowsInteraction)
@@ -264,91 +265,61 @@ final class TutorialStoreTests: XCTestCase {
         XCTAssertFalse(store.asksForMarkets)
     }
 
-    /// **Einmal, nicht bei jeder Gelegenheit.** Die Antwort — egal welche —
-    /// überlebt den Neustart; ein Sheet, das wiederkommt, ist keine Hilfe,
-    /// sondern eine Mahnung. Die dauerhaften Wege bleiben der Leerzustand der
-    /// Liste und die Einstellungen.
-    func testTheMarketPromptIsAskedOnlyOnce() {
-        let store = makeStore()
-        store.decline(hasMarkets: false)
-        XCTAssertTrue(store.asksForMarkets)
-        store.dismissMarketQuestion()
+    // MARK: Was der Rundgang sagt
 
-        // Derselbe Store fragt nicht noch einmal …
-        store.start(origin: .onboarding, hasMarkets: false)
-        while store.isRunning { store.next() }
-        XCTAssertFalse(store.asksForMarkets, "beantwortet ist beantwortet")
-
-        // … und ein Neustart auch nicht.
-        let restarted = makeStore()
-        restarted.decline(hasMarkets: false)
-        XCTAssertFalse(restarted.asksForMarkets, "die Antwort muss den Neustart überleben")
-    }
-
-    // MARK: Der Text, der von den Filialen abhängt
-
-    /// Über einer Liste ohne Filiale steht an der Stelle der Plan-Karte ein
-    /// Leerzustand. Der Rahmen darüber muss dieselbe Zeitform sprechen —
-    /// „Hier siehst du" über einer Karte, die nichts zeigt, ist die erste
-    /// Lüge, die ein Tester zu sehen bekäme.
-    func testThePlanFrameSpeaksDifferentlyWithoutMarkets() {
+    /// Über einer Liste ohne Filiale steht an der Plan-Karte ein Leerzustand.
+    /// Der Rahmen darüber muss dieselbe Zeitform sprechen — eine Karte, die
+    /// „sagt dir, welche Filiale am günstigsten ist", während sie den
+    /// Leerzustand zeigt, ist die erste Lüge, die ein Tester zu sehen bekäme.
+    func testTheDataDependentFrameSpeaksDifferentlyWithoutMarkets() {
         let withMarkets = TutorialStep.tour(hasMarkets: true)
         let without = TutorialStep.tour(hasMarkets: false)
 
-        // Seit der Kürzung vom 05.08. haben beide Fassungen dieselben Rahmen
-        // in derselben Reihenfolge — der Vorschau-Rahmen, der nur mit
-        // Filialen existierte, ist mitsamt seiner Sonderrolle weg.
-        XCTAssertEqual(withMarkets.map(\.id), without.map(\.id),
-                       "beide Fassungen zeigen dieselben Rahmen")
+        // Seit dem 06.08. sind es dieselben drei Rahmen — der Vorschau-Rahmen,
+        // den es nur mit Filiale gab, ist ganz weg.
+        XCTAssertEqual(withMarkets.map(\.id), without.map(\.id))
 
         let mitId = Dictionary(uniqueKeysWithValues: withMarkets.map { ($0.id, $0.text) })
         let changed = without.filter { $0.text != mitId[$0.id] }.map(\.id)
-        XCTAssertEqual(changed, ["plan"],
-                       "genau der datenabhängige Rahmen wechselt die Zeitform")
+        XCTAssertEqual(changed, ["plan"])
 
         let plan = without.first { $0.id == "plan" }!
         XCTAssertTrue(plan.text.contains("Sobald du Filialen gewählt hast"),
-                      "ohne Filiale spricht der Rahmen im Futur")
+                      "ohne Filiale spricht der Rahmen in der Zukunft")
     }
 
-    // MARK: Was der Rundgang erklärt — und was bewusst nicht (05.08.)
+    // MARK: Was der Rundgang zeigen muss — und was nicht (06.08.)
 
-    /// **Nur noch der Kern-Loop.** Die Forschungsrunde vom 05.08. war
-    /// eindeutig: Touren über fünf Schritten werden abgebrochen, und Rahmen,
-    /// die UI beschreiben statt Ziele, erklären nichts. Der Vorgänger dieses
-    /// Tests verlangte hier die Angaben-Schicht, die Vorschau „Nächste
-    /// Woche", Preisverlauf, Anheften und Freitext — diese Inhalte sind
-    /// **nicht gestrichen**, sie ziehen als Einmal-Tipps (TipKit) an die
-    /// Stelle, an der sie relevant werden; eigenes Arbeitspaket. Der Test
-    /// hält fest, was der Rundgang seitdem verspricht: aufschreiben, ablesen,
-    /// stöbern, umstellen.
-    func testTheTourCoversTheCoreLoopAndNothingElse() {
+    /// **Drei Handgriffe, drei Rahmen.**
+    ///
+    /// Am 03.08. ging es in die andere Richtung: Der Rundgang „hinkte der App
+    /// hinterher", also bekam jede neue Funktion einen eigenen Rahmen, und es
+    /// wurden neun. Scotts Befund am 06.08.: zu viel. **Diese Umkehr ist
+    /// beabsichtigt und steht hier, damit sie nicht als Versehen zurückgedreht
+    /// wird.**
+    ///
+    /// Der Rundgang gibt es, weil Testern nach dem Onboarding nicht klar war,
+    /// *was sie tun sollen*. Das sind drei Handgriffe: aufschreiben, den Markt
+    /// ablesen, im Laden abhaken. Was auf dem Bildschirm ohnehin steht
+    /// (Vorschlagskacheln, Tab-Leiste, Angebotszeile) braucht keinen Rahmen.
+    func testTheTourShowsTheThreeHandlesAndNothingElse() {
         let tour = TutorialStep.tour(hasMarkets: true)
-        XCTAssertEqual(tour.map(\.id), ["input", "plan", "angebote", "settings"])
 
-        let alles = tour.map { "\($0.title) \($0.text)" }.joined(separator: " ")
-        for wort in ["günstigsten", "beste Angebot", "Angebote", "Filialen", "Rundgang"] {
-            XCTAssertTrue(alles.contains(wort),
-                          "Der Rundgang erwähnt \u{201E}\(wort)\u{201C} nirgends")
-        }
+        XCTAssertEqual(tour.map(\.id), ["input", "plan", "check"])
     }
 
-    /// **Und er bleibt kurz — jetzt wirklich.** Der Deckel lag bei neun und
-    /// war damit eine Bankrotterklärung an die eigene Zusage „Vier
-    /// Handgriffe". Ab fünf Rahmen bricht die Mehrheit ab; vier ist die Zahl,
-    /// die das Angebot verspricht.
+    /// **Und er bleibt kurz.** Ein Rundgang, den man wegklickt, erklärt nichts.
     func testTheTourStaysShort() {
         XCTAssertLessThanOrEqual(
-            TutorialStep.tour(hasMarkets: true).count, 4,
-            "Mehr als vier Rahmen liest niemand zu Ende — und das Angebot verspricht vier Handgriffe"
+            TutorialStep.tour(hasMarkets: true).count, 3,
+            "Mehr als drei Rahmen liest niemand zu Ende"
         )
     }
 
-    /// Der Plan-Rahmen bringt seine Beispiel-Artikel selbst mit. Sonst hinge
-    /// er daran, dass der Tester im Rahmen davor wirklich getippt hat — und
-    /// wer nur „Weiter" drückt, bekäme eine leere Liste, über der die Karte
-    /// nichts zu zeigen hat.
-    func testThePlanFrameBringsItsOwnItemsAlong() {
+    /// Der Plan-Rahmen bringt sein Ziel selbst mit: Ohne Artikel auf der Liste
+    /// steht dort keine Karte, sondern der Leerzustand — und der erklärt nicht,
+    /// wofür die App da ist.
+    func testThePlanFrameBringsItsOwnTargetAlong() {
         let tour = TutorialStep.tour(hasMarkets: true)
         let plan = tour.first { $0.id == "plan" }!
 
@@ -358,34 +329,12 @@ final class TutorialStoreTests: XCTestCase {
                        "Zweimal legen heißt zweimal aufräumen")
     }
 
-    /// Genau ein Rahmen verlässt die Liste — der letzte, in die
-    /// Einstellungen. Jeder weitere Wechsel ist eine Überblendung mehr, die
-    /// niemand bestellt hat; der Angebote-Rahmen zeigt deshalb auf die
-    /// Tab-Leiste statt auf den Tab selbst.
-    func testOnlyTheLastFrameLeavesTheListTab() {
+    /// **Kein Rahmen verlässt die Liste.** Jeder Tab-Wechsel ist eine
+    /// Überblendung, die niemand bestellt hat — bis zum 06.08. waren es zwei.
+    func testNoFrameLeavesTheListTab() {
         let tour = TutorialStep.tour(hasMarkets: true)
-        let auswaerts = tour.filter { $0.tab != .liste }.map { ($0.id, $0.tab) }
 
-        XCTAssertEqual(auswaerts.map(\.0), ["settings"])
-        XCTAssertEqual(auswaerts.map(\.1), [.einstellungen])
-    }
-
-    // MARK: Das Angebot verspricht, was der Rundgang hält
-
-    /// **„Vier Handgriffe" war eine Konstante und log** — der Rundgang hatte
-    /// acht bis neun Rahmen, das Angebot versprach vier, und nichts verband
-    /// die beiden. Jetzt zählt `TourStepView` die Rahmen selbst; dieser Test
-    /// fällt, sobald Zahl, Zahlwort oder Aufzählung wieder auseinanderlaufen.
-    func testTheOfferCountsItsFramesInsteadOfGuessing() {
-        let count = TourStepView.frameCount
-        XCTAssertEqual(count, TutorialStep.tour(hasMarkets: false).count)
-        XCTAssertEqual(TutorialStep.tour(hasMarkets: true).count, count,
-                       "beide Fassungen müssen gleich lang sein, sonst zählt das Angebot falsch")
-        XCTAssertTrue(TourStepView.subtitle.contains(TourStepView.zahlwort(count)))
-        XCTAssertNil(Int(TourStepView.zahlwort(count)),
-                     "für \(count) fehlt das Zahlwort — „\(count) Handgriffe“ liest sich wie eine Fehlermeldung")
-        XCTAssertEqual(TourStepView.points.count, count,
-                       "die Aufzählung ist der Rundgang in Kurzform — ein Punkt je Rahmen")
+        XCTAssertEqual(tour.filter { $0.tab != .liste }.map(\.id), [])
     }
 
     /// Der Store friert die Fassung beim Start ein — die Filialauswahl liegt

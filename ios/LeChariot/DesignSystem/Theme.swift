@@ -33,8 +33,13 @@ enum Theme {
     static let accent = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
             // The light green lacks contrast on the dark surfaces; same hue, lifted.
-            ? UIColor(red: 0.56, green: 0.74, blue: 0.58, alpha: 1)   // ~#8FBD94
-            : UIColor(red: 0.247, green: 0.392, blue: 0.267, alpha: 1) // #3F6444
+            // **Richtung „Tiefe", 06.08.:** Der dunkle Akzent kommt von L* 72,5
+            // auf 66 herunter, damit er `secondaryText` (L* 76) von unten
+            // freihat; im hellen Modus geht das Grün auf Flaschentiefe. Vorher
+            // lagen Akzent und Sekundärtext bei **1,04:1** — und genau diese
+            // zwei Farben unterscheiden „geheftet" von „nicht geheftet".
+            ? UIColor(red: 0.475, green: 0.678, blue: 0.498, alpha: 1) // #79AD7F
+            : UIColor(red: 0.145, green: 0.310, blue: 0.176, alpha: 1) // #254F2D
     })
 
     /// Beschriftung **auf** einer Akzentfläche (gefüllte Knöpfe).
@@ -46,7 +51,10 @@ enum Theme {
     /// Onboarding-Schritts. Auf dem hellen Grün gehört das dunkle Olivgrün.
     static let onAccent = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.10, green: 0.12, blue: 0.08, alpha: 1)   // ~#1A1F15, 7,9:1
+            // Eigener Wert statt `background`: Der Hintergrund geht mit der
+            // Richtung „Tiefe" tiefer, die Schrift auf dem Akzent soll aber
+            // nicht mitwandern. 7,25:1 auf dem neuen Akzent.
+            ? UIColor(red: 0.059, green: 0.075, blue: 0.035, alpha: 1) // #0F1309
             : .white
     })
 
@@ -62,32 +70,55 @@ enum Theme {
     /// desaturated green-olive — dark counterpart to the cream, not a hue swap.
     static let background = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.10, green: 0.12, blue: 0.08, alpha: 1)   // ~#1A1F15
-            : UIColor(red: 0.93, green: 0.91, blue: 0.75, alpha: 1)   // #EDE9C0
+            // Eine Stufe tiefer als vorher, gleicher Farbton. Der Abstand zur
+            // Karte war **1,13:1** — Karte, Seite und Kartenkante lagen
+            // innerhalb von 1,2:1, und das *ist* die beige Masse.
+            ? UIColor(red: 0.082, green: 0.098, blue: 0.059, alpha: 1) // #15190F
+            : UIColor(red: 0.890, green: 0.871, blue: 0.722, alpha: 1) // #E3DEB8
     })
 
     /// Discount badge background (semantic, not decorative). Both variants
     /// keep white caption text above the WCAG-AA 4.5:1 contrast ratio.
     static let discount = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.82, green: 0.22, blue: 0.20, alpha: 1)
-            : UIColor(red: 0.80, green: 0.16, blue: 0.14, alpha: 1)
+            // Der dunkle Wert stand bei **2,87:1** gegen `surface` und lag
+            // damit unter der 3:1-Grenze für Nicht-Text — der einzige echte
+            // Durchfaller der alten Palette. Jetzt helle Fläche, dunkle
+            // Schrift (siehe `onDiscount`).
+            ? UIColor(red: 0.929, green: 0.443, blue: 0.329, alpha: 1) // #ED7154
+            : UIColor(red: 0.800, green: 0.161, blue: 0.137, alpha: 1) // #CC2923
+    })
+
+    /// Beschriftung **auf** dem Rabatt-Schild.
+    ///
+    /// Bis zum 06.08. stand an der Kapsel hart `.white` — genau der Fehler, den
+    /// `onAccent` ein paar Zeilen weiter oben beschreibt und der dort schon
+    /// einmal 2,13:1 gekostet hat. Im dunklen Modus ist die Fläche jetzt hell,
+    /// also gehört die Schrift dunkel: 5,97:1.
+    static let onDiscount = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0.165, green: 0.071, blue: 0.024, alpha: 1) // #2A1206
+            : .white
     })
 
     /// Hairline stroke separating cards from the background — warm neutral
     /// so it reads as an edge, not as a colored border.
     static let stroke = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(white: 1, alpha: 0.10)
-            : UIColor(red: 0.28, green: 0.17, blue: 0.11, alpha: 0.10)
+            // Kräftiger: Die Kante erreichte gegen die Karte, die sie umrandet,
+            // **1,20:1** — eine Linie, die man nicht sieht, ist keine Kante.
+            ? UIColor(white: 1, alpha: 0.16)
+            : UIColor(red: 0.28, green: 0.17, blue: 0.11, alpha: 0.22)
     })
 
     /// Elevated surface for tiles/cards/list rows on `background` — same
     /// hue family as the background, one step lifted, in both appearances.
     static let surface = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.16, green: 0.18, blue: 0.13, alpha: 1)   // lifted olive
-            : UIColor(red: 0.97, green: 0.96, blue: 0.88, alpha: 1)   // lifted #EDE9C0
+            // Papier auf Creme statt Creme auf Creme: ΔL* 9,4 statt 4,7,
+            // also 1,28:1 statt 1,13:1.
+            ? UIColor(red: 0.176, green: 0.196, blue: 0.145, alpha: 1) // #2D3225
+            : UIColor(red: 0.980, green: 0.973, blue: 0.922, alpha: 1) // #FAF8EB
     })
 
     /// Sekundärtext. Ersetzt Apples `.secondary`, das auf Creme nur 3,15:1
@@ -96,8 +127,8 @@ enum Theme {
     /// Messwerte: [[Le Chariot Entscheidungen]], „Palette und Kontrast".
     static let secondaryText = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.72, green: 0.72, blue: 0.64, alpha: 1)
-            : UIColor(red: 0.42, green: 0.36, blue: 0.28, alpha: 1)
+            ? UIColor(red: 0.753, green: 0.737, blue: 0.663, alpha: 1) // #C0BCA9
+            : UIColor(red: 0.427, green: 0.373, blue: 0.286, alpha: 1) // #6D5F49
     })
 
     // MARK: Status colors
@@ -127,16 +158,23 @@ enum Theme {
     /// on surface. Distinct from `discount`, which is a price semantic.
     static let error = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 1.0, green: 0.45, blue: 0.42, alpha: 1)    // #FF736B
+            // Vom Hellwert des Akzents heruntergeholt.
+            ? UIColor(red: 0.976, green: 0.569, blue: 0.533, alpha: 1) // #F99188
             : UIColor(red: 0.639, green: 0.078, blue: 0.059, alpha: 1) // #A3140F
     })
 
     /// Confirmations — markets found during the region sync. A deeper green
-    /// than the accent so "done" never reads as "tappable". 5.76:1 / 7.48:1.
+    /// than the accent so "done" never reads as "tappable".
+    ///
+    /// **Und seit dem 06.08. stimmt dieser Satz auch.** Gemessen war das alte
+    /// `success` bei praktisch gleichem Farbton **1,6 Hellwertpunkte heller**
+    /// als der Akzent — die Absicht stand seit jeher im Kommentar und war nie
+    /// umgesetzt. Jetzt trennen die beiden 9 Punkte im hellen und 18 im
+    /// dunklen Modus.
     static let success = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.56, green: 0.80, blue: 0.60, alpha: 1)
-            : UIColor(red: 0.20, green: 0.42, blue: 0.24, alpha: 1)
+            ? UIColor(red: 0.678, green: 0.871, blue: 0.690, alpha: 1) // #ADDEB0
+            : UIColor(red: 0.184, green: 0.404, blue: 0.224, alpha: 1) // #2F6739
     })
 
     /// Linien **auf** der Abdunklung des Rundgangs — in beiden
@@ -185,15 +223,31 @@ extension Theme {
             reduceMotion ? nil : animation
         }
 
-        /// Der neue Bildschirm blendet **ein**, der alte ist sofort weg.
+        /// Der neue Bildschirm **kommt herein**, der alte ist sofort weg.
         ///
         /// Kein Überblenden: Zwei Ansichten auf demselben Platz hießen, dass
         /// der abgelöste Bildschirm 0,3 s lang bedienbar und im
         /// Barrierefreiheits-Baum bleibt. Der Audit fand so zwei Knöpfe
         /// `onboarding.skip` und tippte den gehenden.
         /// Siehe [[Le Chariot Entscheidungen]], „Bewegung".
+        ///
+        /// **Seit dem 06.08. bewegt sich der Neue dabei** (Scott: „I want a
+        /// better Animation between Onboarding Pages then a blink"). Der Grund
+        /// für das Blinzeln steckte in der Kombination: Der alte Bildschirm
+        /// stirbt in einem Bild, der neue blendet über 0,3 s auf — dazwischen
+        /// sieht man **die nackte Fläche**, auf der Text erscheint. Nichts geht,
+        /// nichts kommt, es blitzt. Und weil jeder Onboarding-Schritt dasselbe
+        /// Gerüst hat (Punkte, Titel, Inhalt, Fußleiste an derselben Stelle),
+        /// war der Textwechsel das einzige sichtbare Ereignis.
+        ///
+        /// Ein Ding, das **ankommt**, führt das Auge; ein Bild, das aufblendet,
+        /// lässt es warten. Die Falle mit dem doppelten Knopf bleibt dabei
+        /// geschlossen — am Weggehen ändert sich nichts.
         var transition: AnyTransition {
-            .asymmetric(insertion: .opacity, removal: .identity)
+            .asymmetric(
+                insertion: .move(edge: .trailing).combined(with: .opacity),
+                removal: .identity
+            )
         }
     }
 }
@@ -270,9 +324,27 @@ extension View {
     /// Sonst scheint an den unteren Displayecken neben der durchscheinenden
     /// Tastatur das schwarze Fenster durch — die schwarzen Ecken vom 31.07.
     /// Siehe [[Le Chariot Entscheidungen]], „Schwarze Ecken".
+    /// **Und die zweite Ebene ist unsere, nicht Apples.**
+    ///
+    /// Abschnittsüberschriften und -fußnoten einer `List` bekommen ihre Farbe
+    /// nicht vom Aufrufer, sondern von der zweiten Ebene des umgebenden
+    /// Vordergrundstils — voreingestellt Apples `secondaryLabel`. Der ist für
+    /// Weiß und Schwarz abgestimmt, und auf der Creme reichte er schon immer
+    /// knapp: **3,16:1** auf `#EDE9C0`. Mit der Palette vom 06.08. ist die
+    /// Fläche eine Stufe tiefer gegangen (`#E3DEB8`), und derselbe Text steht
+    /// jetzt bei **3,04:1** — über die Linie, ab der Apples Audit nicht mehr
+    /// „nearly passed" sagt, sondern durchfallen lässt. Am 07.08. in einem
+    /// Lauf über alle Bildschirme aufgeschlagen: „Einkaufen", „Profil",
+    /// „Hilfe", „Regionen" und jede Fußnote darunter.
+    ///
+    /// `Theme.secondaryText` ist derselbe Text bei **4,56:1** und ist gegen
+    /// beide Flächen gemessen (`PaletteContrastTests`). Er gehört hierher und
+    /// nicht an die Aufrufstellen: Es sind über zwanzig Überschriften und
+    /// Fußnoten, und die nächste käme wieder in Apples Farbe auf die Welt.
     func themedScreen() -> some View {
         scrollContentBackground(.hidden)
             .readableWidth()
+            .foregroundStyle(.primary, Theme.secondaryText)
             .background { Theme.background.ignoresSafeArea() }
     }
 }
@@ -312,7 +384,7 @@ struct DiscountBadge: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(Theme.discount, in: Capsule())
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.onDiscount)
             .accessibilityLabel("\(percent) Prozent reduziert")
     }
 }
@@ -331,6 +403,16 @@ struct OfferThumbnail: View {
     var category: String? = nil
     var title: String? = nil
     var size: CGFloat = 48
+    /// **Ob das Bildchen eine eigene Fläche bekommt** — seit dem 06.08. nur
+    /// noch dort, wo es eine braucht.
+    ///
+    /// Ein **Foto** braucht sie: Freigestellte Produktbilder haben weiße Ränder
+    /// und laufen sonst in die Kartenfläche aus. Ein **gezeichnetes
+    /// Kategoriezeichen** braucht sie nicht — es ist ohnehin nur Strich, und die
+    /// Fläche darunter trug bis heute dieselbe Füllung wie die Kachel darum
+    /// (`Theme.background` in `Theme.background`), war also gar nicht zu sehen
+    /// außer an ihrem Haarstrich. Drei Rechtecke für ein Zeichen.
+    var framed = true
 
     var body: some View {
         OfferImageContent(
@@ -346,7 +428,7 @@ struct OfferThumbnail: View {
         // dropping a system gray onto the cream. Carries a cut-out product
         // photo too, now that the emoji no longer sits behind it.
         .background(
-            Theme.background,
+            framed ? Theme.background : .clear,
             in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
         )
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous))
@@ -354,7 +436,7 @@ struct OfferThumbnail: View {
         // neutral alpha, never brand-tinted.
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08))
+                .strokeBorder(framed ? Color.primary.opacity(0.08) : .clear)
         )
         .accessibilityHidden(true)
     }
@@ -629,12 +711,25 @@ extension View {
 struct TactileButtonStyle: ButtonStyle {
     // Custom styles bypass the system's automatic disabled dimming.
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+            // **Feder statt Kurve** (06.08.). Eine dauerbasierte `easeOut` auf
+            // etwas, das sich *bewegt*, startet nach einer Unterbrechung wieder
+            // aus dem Stand — zweimal schnell tippen, und die Skalierung setzt
+            // sichtbar neu an. Eine Feder wird im Flug umgelenkt und behält
+            // dabei ihre Geschwindigkeit. Das ist der Unterschied, den man als
+            // „fühlt sich nicht wie Apple an" beschreibt, ohne ihn zu benennen.
+            //
+            // Verblassen bleibt Kurvensache — die Deckkraft läuft im selben
+            // Modifikator mit, und ein Fade darf hart enden.
+            .animation(
+                reduceMotion ? nil : .snappy(duration: 0.15, extraBounce: 0),
+                value: configuration.isPressed
+            )
             // Ohne das ist nur der gezeichnete Inhalt antippbar — bei einem
             // Icon in einem 44-pt-Rahmen also der Glyph, nicht der Rahmen.
             // Der Accessibility-Audit hat genau das am Weglegen-Knopf gemeldet;

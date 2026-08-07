@@ -97,6 +97,19 @@ final class RestartJourneyTests: XCTestCase {
         plz.tap()
         plz.typeText("01219")
         app.buttons["onboarding.primary"].tap()
+        // **Warten, bis der Ort-Schritt wirklich weg ist.** Die Ortssuche ist
+        // asynchron; ohne diese Zeile liefen die drei Tipps danach an ihr
+        // vorbei, der Assistent stand am Ende einen Bildschirm zu früh, und
+        // der Fehler zeigte sich als „die Liste kommt nicht" — eine Zeile
+        // weiter oben, in einer anderen Frage. Dieselbe Ursache wie in
+        // `AccessibilityAuditTests.enterPLZ`.
+        let weg = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: plz
+        )
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [weg], timeout: 15), .completed,
+            "Der Ort-Schritt steht noch: die Suche ist nicht durch"
+        )
         app.buttons["onboarding.skip"].tap()      // Ketten: „Später"
         app.buttons["onboarding.primary"].tap()   // Belohnung
         app.buttons["onboarding.primary"].tap()   // Einwilligung

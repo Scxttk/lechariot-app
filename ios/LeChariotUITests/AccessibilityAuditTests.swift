@@ -823,6 +823,26 @@ final class AccessibilityAuditTests: XCTestCase {
         plz.tap()
         plz.typeText("01219")
         app.buttons["onboarding.primary"].tap()
+        // **Und warten, bis der Ort wirklich weg ist.** Die Ortssuche ist
+        // asynchron; ohne diese Zeile lief die Kette der Tipps danach an ihr
+        // vorbei — am 07.08. gemessen: Ort, Ketten, Belohnung und Einwilligung
+        // lagen in 0,7 s, und der Tipp, der die Ketten überspringen sollte,
+        // traf noch den Ort. Der Assistent stand am Ende einen Bildschirm zu
+        // früh, und der Bogen wartete auf ein Rundgang-Angebot, das nie kam.
+        //
+        // **Merksatz: Ein Tipp ohne Warten prüft die Reihenfolge nicht — er
+        // setzt sie voraus.**
+        //
+        // Über ein Prädikat und nicht über `waitForExistence`: Letzteres wartet
+        // die volle Frist ab, *wenn* das Feld weg ist — also genau im guten
+        // Fall, und das bei jedem Aufruf.
+        let weg = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: plz
+        )
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [weg], timeout: 15), .completed,
+            "Der Ort-Schritt steht noch: die Suche ist nicht durch"
+        )
     }
 
 }

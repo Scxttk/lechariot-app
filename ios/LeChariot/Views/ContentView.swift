@@ -41,6 +41,22 @@ struct ContentView: View {
     /// Deckkraft der Überblendung beim Tab-Wechsel des Rundgangs — siehe
     /// `TourTabTransition`. 0, solange nicht gewechselt wird.
     @State private var tourVeil: Double = 0
+    /// Ob das Aufräumen nach dem Rundgang durch ist. Hält die Filialen-Frage so
+    /// lange zurück — sonst fährt sie über einen Bildschirm, der sich gerade
+    /// selbst umbaut. Siehe `marketQuestion`.
+    ///
+    /// **Anfangs `true`, und das ist die Korrektur vom 07.08.** Der Merker
+    /// stand auf `false` und wurde **nur** am Ende eines gelaufenen Rundgangs
+    /// gesetzt. Wer das Angebot ablehnt („Später"), lässt aber gar keinen
+    /// Rundgang laufen — der Zweig, der ihn wahr macht, kam nie dran, und die
+    /// Filialfrage blieb für immer stumm. Genau das trifft den Nutzer, der die
+    /// Frage am nötigsten hat: den ohne Filiale, der sich durchgeklickt hat.
+    ///
+    /// Vier Journeys haben es gefangen (`TutorialJourneyTests`, „Ohne Filialen
+    /// muss das Markt-Sheet stehen"), und zwar erst nach dem Merge: Das
+    /// Ablehnen ohne Filialen kam am 05.08. aus `main`, die Sperre am 06.08.
+    /// aus diesem Zweig. **Keine der beiden Seiten war für sich falsch.**
+    @State private var cleanupDone = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Tab {
@@ -107,7 +123,7 @@ struct ContentView: View {
                 }
                 .tag(Tab.angebote)
 
-            SettingsView(marketRepository: marketRepository)
+            SettingsView(marketRepository: marketRepository, onShowList: { selectedTab = .liste })
                 .tabItem {
                     Label("Einstellungen", systemImage: "gearshape")
                 }
@@ -196,12 +212,33 @@ struct ContentView: View {
                 // gerade auf, und zwei Überblendungen übereinander sind eine
                 // zu viel.
                 selectedTab = tab(for: tutorial.step.tab)
+                cleanupDone = false
             } else {
                 tourVeil = 0
-                // Jeder Ausgang läuft hier durch — „Fertig“ wie „Tour beenden“.
-                // Deshalb steht das Aufräumen hier und nicht an einem Knopf.
-                tutorial.removeDemoItems(from: shoppingList)
-                selectedTab = .liste
+                // **Erst den Vorhang, dann die Bühne** (06.08.).
+                //
+                // Bis dahin passierte im selben Bild dreierlei: Die Abdunklung
+                // verschwand, `removeDemoItems` nahm drei Zeilen aus der Liste
+                // (und kippte sie, wenn der Tester nichts getippt hatte, vom
+                // `itemList` auf den `emptyState` — ein vollständiger
+                // Bildschirmtausch ohne Übergang), und der Filialen-Alert fuhr
+                // darüber. Drei zusammenhanglose Bewegungen auf einmal, und
+                // zusammen waren sie Scotts „weird jump".
+                //
+                // Jeder Ausgang läuft hier durch — „Fertig" wie „Tour beenden".
+                // Deshalb steht das Aufräumen hier und nicht an einem Knopf; es
+                // wartet nur, bis der Ausgang zu Ende gespielt ist.
+                //
+                // Wiederholt aufrufen ist ungefährlich: `removeDemoItems`
+                // steigt bei leerer `seededItems` aus.
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(Theme.Motion.screen.duration))
+                    withAnimation(Theme.Motion.element.animation(reduceMotion: reduceMotion)) {
+                        tutorial.removeDemoItems(from: shoppingList)
+                    }
+                    selectedTab = .liste
+                    cleanupDone = true
+                }
             }
         }
         .task {
@@ -231,7 +268,11 @@ struct ContentView: View {
     /// damit als Antwort.
     private var marketQuestion: Binding<Bool> {
         Binding(
-            get: { tutorial.asksForMarkets },
+            // `cleanupDone` hält die Frage zurück, bis der Rundgang zu Ende
+            // gespielt und die Liste umgebaut ist. Ohne das kam der Alert im
+            // selben Bild wie das Verschwinden der Abdunklung und das Abräumen
+            // der Beispiel-Artikel — drei Bewegungen übereinander.
+            get: { tutorial.asksForMarkets && cleanupDone },
             set: { if !$0 { tutorial.dismissMarketQuestion() } }
         )
     }
@@ -255,8 +296,8 @@ struct ContentView: View {
     /// zurückkommen, wo er losgegangen ist.
     @ViewBuilder
     private var marketPicker: some View {
-        if let plz = store.orderedReadyRegions.first ?? store.regions.first {
-            NavigationStack {
+        NavigationStack {
+            if let plz = store.orderedReadyRegions.first ?? store.regions.first {
                 MarketPickerView(
                     plz: plz,
                     marketRepository: marketRepository,
@@ -266,6 +307,48 @@ struct ContentView: View {
                 // Abbruch wäre der Bildschirm für jemanden, der es sich anders
                 // überlegt, eine Sackgasse. Im Onboarding war das richtig, hier
                 // ist es keine Pflichtstation mehr.
+                //
+                // **Am Bildschirm, nicht am `NavigationStack`:** Kurz am 06.08.
+                // nach oben gewandert, damit der leere Fall ihn erbt — aber
+                // dann gehört „Abbrechen" dem Stapel und nicht mehr der Wurzel,
+                // und nach einem Weg in eine Kette und zurück war es weg. Eine
+                // Journey hat es gemeldet. Beide Fälle tragen ihn jetzt selbst.
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Abbrechen") { showsMarketPicker = false }
+                    }
+                }
+            } else {
+                // **Ein Blatt, das nichts zeigt, ist schlimmer als keins.**
+                //
+                // Bis zum 06.08. stand hier `if let plz = …` **um das ganze
+                // Blatt**: Ohne Region baute der Zweig nichts, das Blatt fuhr
+                // trotzdem hoch, und man sah eine **weiße Fläche ohne einen
+                // einzigen Knopf** — nicht einmal „Abbrechen". Aus dem
+                // Leerzustand der Liste heraus war das eine Sackgasse, aus der
+                // nur die Wischgeste half.
+                //
+                // Gefunden über eine Journey, die genau hier hängenblieb, und
+                // sichtbar erst im Video des Testlaufs: Der Bildschirm war weiß,
+                // nicht creme — also gar kein Inhalt, keine Ansicht mit Fehler.
+                //
+                // **Merksatz: Ein `if let` um einen ganzen Bildschirm braucht
+                // immer ein `else`.** Was fehlt, muss die Ansicht sagen, sonst
+                // sagt sie nichts.
+                ContentUnavailableView {
+                    Label("Noch keine Region", systemImage: "mappin.slash")
+                } description: {
+                    Text("Ohne Postleitzahl weiß \(AppBrand.name) nicht, welche Filialen in Frage kommen. In den Einstellungen kannst du eine hinzufügen.")
+                } actions: {
+                    Button("Zu den Einstellungen") {
+                        showsMarketPicker = false
+                        selectedTab = .einstellungen
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .foregroundStyle(Theme.onAccent)
+                }
+                .themedScreen()
+                .accessibilityIdentifier("picker.noRegion")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Abbrechen") { showsMarketPicker = false }
@@ -411,13 +494,13 @@ struct ContentView: View {
             setupNeeded(
                 title: "Keine Region bereit",
                 symbol: "mappin.slash",
-                message: "Füge in den Einstellungen eine Postleitzahl hinzu — dann lädt Le Chariot die Angebote deiner Gegend."
+                message: "Füge in den Einstellungen eine Postleitzahl hinzu — dann lädt \(AppBrand.name) die Angebote deiner Gegend."
             )
         } else if requiresFavorites, !store.hasFavorites {
             setupNeeded(
                 title: "Keine Filiale gewählt",
                 symbol: "storefront",
-                message: "Le Chariot vergleicht nur die Läden, in die du wirklich gehst. Wähle mindestens eine Filiale aus."
+                message: "\(AppBrand.name) vergleicht nur die Läden, in die du wirklich gehst. Wähle mindestens eine Filiale aus."
             )
         } else {
             // All favorites, unfiltered: the picker offers branches from

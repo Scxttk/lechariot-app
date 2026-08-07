@@ -240,20 +240,20 @@ final class TutorialJourneyTests: XCTestCase {
         }
     }
 
-    /// **Der Befund, mit dem die Rundgang-Runde vom 03.08. angefangen hat —
-    /// auf den gekürzten Rundgang übertragen.**
+    /// **Der Befund, mit dem die Runde vom 03.08. angefangen hat — und er gilt
+    /// weiter, nur für einen Rahmen weniger.**
     ///
-    /// Über einer Liste ohne Filialen hatte der Plan-Rahmen einst kein Ziel:
-    /// Die Plan-Karte wurde gar nicht gebaut, der Rahmen übersprang sich nach
-    /// der Schonfrist von 1,2 s selbst. Heute steht an ihrer Stelle die
-    /// `NoMarketsCard` mit demselben Anker — und der Rahmen legt seine
-    /// Beispiel-Artikel selbst, darf also auch nicht daran hängen, dass der
-    /// Tester im ersten Rahmen wirklich getippt hat (niemand tippt hier).
+    /// Über einer Liste ohne Filialen hatte der Plan-Rahmen kein Ziel: Die
+    /// Karte wurde gar nicht gebaut. Ein Rahmen ohne Ziel überspringt sich über
+    /// die Schonfrist von 1,2 s selbst, und niemand merkt es.
     ///
     /// Gewartet wird **länger als die Schonfrist**, bevor gelesen wird:
     /// Ein Rahmen mit Ziel bleibt beliebig lange stehen, ein Rahmen ohne wäre
     /// nach 1,2 s weitergesprungen. Genau dieser Unterschied ist die Prüfung.
-    func testThePlanFrameStandsEvenWithoutBranchesAndWithoutTyping() {
+    ///
+    /// Der zweite Teil dieser Journey — derselbe Nachweis für den Rahmen „Das
+    /// günstigste Angebot" — ist am 06.08. mit dem Rahmen weggefallen.
+    func testThePlanFrameHasATargetEvenWithoutBranches() {
         startTour()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
@@ -264,11 +264,9 @@ final class TutorialJourneyTests: XCTestCase {
             "Der Plan-Rahmen hat kein Ziel und hat sich übersprungen: "
             + app.staticTexts["tutorial.card"].label
         )
-        XCTAssertTrue(app.staticTexts["Noch keine Filiale gewählt"].exists,
-                      "Das Ziel des Rahmens ist ohne Filialen die NoMarketsCard — und die fehlt")
     }
 
-    // MARK: Das Markt-Sheet am Ende
+    // MARK: Die Frage am Ende
 
     /// **Der Ablauf, für den der ganze Umbau da ist** (Scotts Entscheidung vom
     /// 2026-07-31, seit dem 05.08. als gestaltetes Sheet statt als
@@ -341,8 +339,7 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
 
         openTab("Einstellungen")
-        let restart = app.buttons["settings.tutorial"]
-        XCTAssertTrue(restart.waitForExistence(timeout: 15))
+        let restart = app.scrollToTutorialButton()
         restart.tap()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
@@ -353,39 +350,37 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
     }
 
-    /// **Der Rahmen, für den der Rundgang den Tab wechselt.**
+    /// **Der Rundgang bleibt auf der Liste, von vorn bis hinten.**
     ///
-    /// Der letzte Rahmen spielt in den Einstellungen; sein Ziel ist die
-    /// Vereinigung aus Filial-Zeile und Rundgang-Knopf. Der Wechsel kann
-    /// still schiefgehen: Ein Rahmen, dessen Ziel nach dem Tab-Wechsel nicht
-    /// auftaucht, überspringt sich nach 1,2 s selbst, und niemand merkt es.
-    /// Deshalb wird **über die Schonfrist hinaus** gewartet, bevor gelesen
-    /// wird. (Bis zum 05.08. prüfte das der Vorschau-Rahmen auf dem
-    /// Angebote-Tab — der ist mit der Kürzung in die Kontext-Tipps gezogen.)
-    func testTheSettingsFrameStandsOnTheSettingsTab() {
+    /// Bis zum 06.08. stand hier die Gegenprobe: Der vorletzte Rahmen wechselte
+    /// auf den Angebote-Tab und leuchtete dort „Nächste Woche" aus. Beides ist
+    /// weg — mit drei Rahmen ist der Rundgang ein Bildschirm, und ein
+    /// Tab-Wechsel mitten in einer Führung ist genau die Sorte Bewegung, die
+    /// niemand bestellt hat.
+    func testTheTourNeverLeavesTheListTab() {
         app.launchArguments = ["-uiTesting", "-uiTestingTutorial", "-uiTestingOnboarded"]
         app.launch()
 
         openTab("Einstellungen")
-        let restart = app.buttons["settings.tutorial"]
-        XCTAssertTrue(restart.waitForExistence(timeout: 15))
+        let restart = app.scrollToTutorialButton()
         restart.tap()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
-        // input → plan → angebote → settings
-        for _ in 0..<3 {
+        // input → plan → check, und dazwischen steht immer die Einkaufsliste.
+        for _ in 0..<2 {
+            XCTAssertTrue(app.navigationBars["Einkaufsliste"].exists,
+                          "Der Rundgang hat den Tab gewechselt: "
+                          + app.staticTexts["tutorial.card"].label)
             next.tap()
             Thread.sleep(forTimeInterval: 0.9)
         }
         Thread.sleep(forTimeInterval: 2.5)
 
         XCTAssertTrue(
-            app.staticTexts["tutorial.card"].label.contains("Hier stellst du alles um"),
-            "Der Einstellungs-Rahmen hat kein Ziel und hat sich übersprungen: "
-            + app.staticTexts["tutorial.card"].label
+            app.staticTexts["tutorial.card"].label.contains("Abhaken beim Einkaufen"),
+            "Der letzte Rahmen steht nicht: " + app.staticTexts["tutorial.card"].label
         )
-        XCTAssertTrue(app.buttons["settings.tutorial"].exists,
-                      "Der Rundgang steht nicht auf dem Einstellungen-Tab")
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].exists)
     }
 
     func testTheTourCanBeStartedAgainFromTheSettings() {
@@ -400,8 +395,7 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
 
         openTab("Einstellungen")
-        let restart = app.buttons["settings.tutorial"]
-        XCTAssertTrue(restart.waitForExistence(timeout: 15))
+        let restart = app.scrollToTutorialButton()
         restart.tap()
 
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
@@ -505,5 +499,31 @@ final class TutorialJourneyTests: XCTestCase {
         let tab = inBar.exists ? inBar : app.buttons[name].firstMatch
         XCTAssertTrue(tab.waitForExistence(timeout: 15), "tab \(name) missing")
         tab.tap()
+    }
+}
+
+/// **Der Weg zum Rundgang-Knopf, seit „Hilfe" unten steht** (06.08.).
+///
+/// Bis dahin war „Hilfe" der zweite Abschnitt der Einstellungen, und der Knopf
+/// stand ohne Scrollen da. Er stand dort aber nicht aus Überzeugung: Der letzte
+/// Rahmen des Rundgangs zeigte auf die Filialzeile **und** die Hilfezeile
+/// gleichzeitig, also mussten beide zusammen sichtbar sein. Seit der Rundgang
+/// drei Rahmen hat und die Einstellungen gar nicht mehr zeigt, ist die Fessel
+/// weg — und „Hilfe" liegt da, wo man sie sucht, wenn etwas hakt.
+///
+/// **Eine `List` baut nur, was zu sehen ist.** Erst scrollen, dann fragen;
+/// dieselbe Falle, die in dieser Suite schon zweimal zugeschlagen hat.
+extension XCUIApplication {
+    func scrollToTutorialButton(_ file: StaticString = #filePath, _ line: UInt = #line) -> XCUIElement {
+        let restart = buttons["settings.tutorial"]
+        var versuche = 0
+        while !restart.exists && versuche < 8 {
+            swipeUp()
+            versuche += 1
+        }
+        XCTAssertTrue(restart.waitForExistence(timeout: 15),
+                      "Der Rundgang-Knopf steht nicht da:\n\(debugDescription)",
+                      file: file, line: line)
+        return restart
     }
 }

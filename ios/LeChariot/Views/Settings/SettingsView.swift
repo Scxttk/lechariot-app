@@ -25,9 +25,14 @@ struct SettingsView: View {
     /// `PlaceNameStore`.
     @Environment(PlaceNameStore.self) private var placeNames
     @Environment(DiagnosticsGate.self) private var diagnostics
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
+    /// Führt in den Liste-Tab. Nur der Einrichtungs-Abschnitt braucht ihn: Von
+    /// den Einstellungen aus zeigt er auf einen Handgriff, der woanders
+    /// passiert. `nil` in der Vorschau.
+    var onShowList: (() -> Void)? = nil
 
     @State private var showResetConfirmation = false
     /// Ob gerade auf der Zeile „Version" gedrückt wird — siehe `appSection`.
@@ -40,16 +45,29 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                // **Neue Ordnung seit dem 06.08.** (Scott: „settings needs a
+                // overhaul, things like hilfe should be more downwards").
+                //
+                // Sortiert danach, wie oft jemand wirklich herkommt: Was fehlt,
+                // ganz oben — dann das Einkaufen, dann die eigenen Angaben,
+                // dann Aussehen und Datenschutz. **Hilfe steht jetzt unten**,
+                // wo man sie sucht, wenn etwas hakt, und nicht an zweiter
+                // Stelle, wo sie jeden Tag im Weg steht.
+                //
+                // Sie stand dort auch nicht aus Überzeugung: Der letzte Rahmen
+                // des Rundgangs zeigte auf die Filialzeile **und** die
+                // Hilfezeile gleichzeitig, also mussten beide ohne Scrollen
+                // zusammen sichtbar sein. **Seit der Rundgang drei Rahmen hat
+                // und die Einstellungen gar nicht mehr zeigt, ist die Fessel
+                // weg.**
                 Group {
+                    setupSection
                     shoppingSection
-                    // Direkt darunter, nicht ganz unten: Der letzte Rahmen des
-                    // Rundgangs zeigt auf beide Abschnitte, und dafür müssen
-                    // sie ohne Scrollen zusammen sichtbar sein.
-                    helpSection
                     profileSection
                     feedbackSection
                     appearanceSection
                     privacySection
+                    helpSection
                     appSection
                 }
                 .listRowBackground(Theme.surface)
@@ -57,6 +75,83 @@ struct SettingsView: View {
             .themedScreen()
             .navigationTitle("Einstellungen")
         }
+    }
+
+    // MARK: Einrichtung
+
+    /// **Was noch fehlt — und nur, solange etwas fehlt.**
+    ///
+    /// Scotts Frage vom 06.08.: eine Liste zum Abhaken, „Rundgang erlebt?
+    /// Märkte ausgewählt? Einkaufsliste erstellt?". Die Antwort darauf ist ja,
+    /// aber als **Einrichtungs-Fortschritt und nicht als Spiel** — und der
+    /// Unterschied entscheidet, ob es hilft oder nervt.
+    ///
+    /// **Was trägt:** Eine Liste, die zeigt, was die App noch nicht kann, weil
+    /// etwas fehlt. „Keine Filiale gewählt" ist heute schon der wichtigste Satz
+    /// im Leerzustand der Plan-Karte — er beantwortet, warum keine Preise
+    /// dastehen. Hier stehen alle solchen Lücken an einer Stelle, mit dem Weg
+    /// dorthin.
+    ///
+    /// **Was nicht trägt:** Punkte, Abzeichen, Streaks. Diese App spart Geld
+    /// beim Einkaufen; ihre Belohnung steht schon als Zahl auf der Plan-Karte.
+    /// Eine zweite, erfundene Belohnung daneben macht die echte kleiner.
+    ///
+    /// **Und deshalb schafft sie sich selbst ab.** Der Auftrag vom Vormittag
+    /// des 06.08. war, dass die App **weniger** wird. Eine Fortschrittsliste
+    /// ist nur dann kein Widerspruch, wenn sie verschwindet, sobald sie leer
+    /// ist — was hier wörtlich passiert: Ist alles erledigt, gibt es den
+    /// Abschnitt nicht.
+    @ViewBuilder
+    private var setupSection: some View {
+        if !setupIsComplete {
+            Section {
+                if !store.hasFavorites {
+                    NavigationLink {
+                        ShoppingPlacesScreen(marketRepository: marketRepository)
+                    } label: {
+                        setupRow("Filiale wählen")
+                    }
+                    .accessibilityIdentifier("settings.setup.markets")
+                }
+                if list.items.isEmpty, let onShowList {
+                    Button(action: onShowList) { setupRow("Ersten Artikel aufschreiben") }
+                        .buttonStyle(TactileButtonStyle())
+                        .accessibilityIdentifier("settings.setup.list")
+                }
+                if !tutorial.hasSeenTutorial {
+                    Button {
+                        withAnimation(Theme.Motion.screen.animation(reduceMotion: reduceMotion)) {
+                            tutorial.start(origin: .settings, hasMarkets: store.hasFavorites)
+                        }
+                    } label: {
+                        setupRow("Rundgang ansehen")
+                    }
+                    .buttonStyle(TactileButtonStyle())
+                    .accessibilityIdentifier("settings.setup.tour")
+                }
+            } header: {
+                Text("Noch offen")
+            }
+            .accessibilityIdentifier("settings.setup")
+        }
+    }
+
+    /// Erledigt heißt: Der Abschnitt ist weg. Kein „3 von 3 ✓" als Trophäe —
+    /// eine Liste, die nichts mehr zu sagen hat, sagt nichts.
+    private var setupIsComplete: Bool {
+        store.hasFavorites && !list.items.isEmpty && tutorial.hasSeenTutorial
+    }
+
+    private func setupRow(_ title: String) -> some View {
+        HStack(spacing: Theme.Spacing.md) {
+            Image(systemName: "circle")
+                .foregroundStyle(Theme.secondaryText)
+                .accessibilityHidden(true)
+            Text(title)
+                .foregroundStyle(Color.primary)
+            Spacer(minLength: Theme.Spacing.sm)
+        }
+        .contentShape(Rectangle())
     }
 
     // MARK: Einkaufen
@@ -77,9 +172,14 @@ struct SettingsView: View {
         } header: {
             Text("Einkaufen")
         } footer: {
-            Text(store.hasFavorites
-                 ? "Nur Angebote deiner Filialen zählen für deine Liste."
-                 : "Ohne gewählte Filiale werden keine Angebote angezeigt.")
+            // **Nur der Fall, der einen Irrtum verhindert.** „Nur Angebote
+            // deiner Filialen zählen" stand unter einer Zeile, die schon „6
+            // Filialen · 1 Region" sagt — eine Beischrift, die die Zeile
+            // wiederholt. Der leere Fall bleibt: Er beantwortet die Frage,
+            // warum die Liste keine Preise zeigt.
+            if !store.hasFavorites {
+                Text("Ohne gewählte Filiale werden keine Angebote angezeigt.")
+            }
         }
     }
 
@@ -102,7 +202,15 @@ struct SettingsView: View {
                 // Aus den Einstellungen: **keine** Frage nach den Filialen am
                 // Ende. Wer hier startet, hat seine Wahl längst getroffen oder
                 // sitzt eine Zeile über dem Weg dorthin.
-                tutorial.start(origin: .settings, hasMarkets: store.hasFavorites)
+                //
+                // In einer animierten Transaktion, damit das Overlay auch von
+                // dieser Tür aus **aufgeht** statt zu poppen. Aus dem Onboarding
+                // sah es weich aus, aber nur zufällig: Dort kippt im selben
+                // Durchgang `isOnboardingComplete`, und dessen `.stateAnimation`
+                // deckte den Baum mit ab. Hier gibt es nichts, was das täte.
+                withAnimation(Theme.Motion.screen.animation(reduceMotion: reduceMotion)) {
+                    tutorial.start(origin: .settings, hasMarkets: store.hasFavorites)
+                }
             } label: {
                 // Gezeichneter Wegweiser statt `sparkles` — siehe `AppGlyph`.
                 // Die zwei Glitzer-Glyphen versprachen Zauberei, wo eine
@@ -139,7 +247,7 @@ struct SettingsView: View {
                 Button("Vergessen", role: .destructive) { history.forget() }
                 Button("Abbrechen", role: .cancel) {}
             } message: {
-                Text("Le Chariot vergisst, was du bisher abgehakt hast. „Häufig gekauft“ zeigt danach wieder die Standardvorschläge. Deine Liste, deine Filialen und deine Angaben bleiben.")
+                Text("\(AppBrand.name) vergisst, was du bisher abgehakt hast. „Häufig gekauft“ zeigt danach wieder die Standardvorschläge. Deine Liste, deine Filialen und deine Angaben bleiben.")
             }
 
             // Der Notausgang, und ab 2026-07-30 in **jedem** Build. Vorher gab
@@ -186,12 +294,12 @@ struct SettingsView: View {
                 // niemandem mehr zu benennen — auch nicht von dem, der sie
                 // löschen lassen will. Das ist eine Folge, die man vorher
                 // wissen muss, nicht hinterher.
-                Text("Deine Filialen, deine Einkaufsliste und deine Angaben aus dem Onboarding werden gelöscht. Danach startet Le Chariot wie nach einer Neuinstallation. Du bekommst dabei eine neue Installations-ID — willst du früher hochgeladene Angaben löschen lassen, kopier die alte vorher unter „App“.")
+                Text("Deine Filialen, deine Einkaufsliste und deine Angaben aus dem Onboarding werden gelöscht. Danach startet \(AppBrand.name) wie nach einer Neuinstallation. Du bekommst dabei eine neue Installations-ID — willst du früher hochgeladene Angaben löschen lassen, kopier die alte vorher unter „App“.")
             }
         } header: {
             Text("Hilfe")
         } footer: {
-            Text("Der Rundgang zeigt die kurze Einführung auf der Einkaufsliste noch einmal; Le Chariot legt dafür ein paar Beispiel-Artikel auf die Liste und räumt sie danach wieder ab. Zurücksetzen hilft, wenn etwas hakt — es löscht alles, was auf dem Gerät liegt.")
+            Text("Zurücksetzen löscht alles, was auf dem Gerät liegt.")
         }
     }
 
@@ -234,8 +342,8 @@ struct SettingsView: View {
             Text("Rückfragen")
         } footer: {
             Text(feedback.isAskingEnabled
-                 ? "Wenn du einen Treffer weglegst, fragt Le Chariot kurz nach dem Grund. Das ist der einzige Weg, wie falsche Treffer gefunden und behoben werden. Überspringen geht immer."
-                 : "Weglegen funktioniert unverändert. Es wird nicht gefragt und nichts übertragen.")
+                 ? "Die Frage nach dem Grund ist der einzige Weg, falsche Treffer zu finden. Überspringen geht immer."
+                 : "Weglegen funktioniert unverändert, es wird nur nichts gefragt.")
         }
     }
 
@@ -280,7 +388,7 @@ struct SettingsView: View {
             // Zeile war im Audit ohne Beschreibung. Dieselbe Falle wie bei
             // `BranchPickerRow`; ein Button nimmt das Label direkt.
             .accessibilityLabel("Deine Daten exportieren")
-            .accessibilityHint("Legt alles, was Le Chariot über dich hat, als Datei bereit")
+            .accessibilityHint("Legt alles, was \(AppBrand.name) über dich hat, als Datei bereit")
 
             if case let .done(note) = privacy.export, let file = privacy.exportFile {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -337,7 +445,7 @@ struct SettingsView: View {
             // Gebietsanforderungen sind je Laden **eine** Zeile für alle
             // Tester — dort steht, welcher Laden geholt werden soll, nicht wer
             // ihn wollte.
-            Text("Die Installations-ID ist das Einzige, womit sich die hochgeladenen Zeilen benennen lassen — sie hängt an keinem Namen und an keinem Gerät. Gelöscht werden deine Profilangaben und deine Rückmeldungen. Angeforderte Filialen bleiben: dort steht nur, welcher Laden geholt werden soll, nicht wer ihn wollte. Zurücksetzen vergibt eine neue ID; die alten Zeilen kann danach niemand mehr zuordnen, du auch nicht.")
+            Text("Gelöscht werden deine Profilangaben und deine Rückmeldungen. Angeforderte Filialen bleiben — dort steht, welcher Laden geholt werden soll, nicht wer ihn wollte.")
         }
     }
 

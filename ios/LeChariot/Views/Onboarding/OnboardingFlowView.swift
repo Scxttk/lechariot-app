@@ -42,6 +42,25 @@ struct OnboardingFlowView: View {
 
     private enum Phase: Equatable {
         case welcome, name, region, chains, payoff, consent, tour
+
+        /// Welcher Punkt leuchtet. Eins zu eins, seit jeder Bildschirm seinen
+        /// eigenen Punkt hat — siehe `OnboardingStep.total`.
+        ///
+        /// Die Zuordnung sitzt hier und nicht mehr im Schritt-Bildschirm: Die
+        /// Punkte liegen seit dem 06.08. **außerhalb** des Übergangs, damit sie
+        /// beim Schrittwechsel nicht mit verschwinden, und brauchen deshalb
+        /// eine Nummer, die der Fluss kennt und der einzelne Schritt nicht.
+        var step: Int {
+            switch self {
+            case .welcome: 1
+            case .name: 2
+            case .region: 3
+            case .chains: 4
+            case .payoff: 5
+            case .consent: 6
+            case .tour: 7
+            }
+        }
     }
 
     var body: some View {
@@ -51,11 +70,28 @@ struct OnboardingFlowView: View {
             // und trägt deshalb die Kurve. Ein `Group` täte es nicht — es
             // reicht Modifikatoren an seine Kinder durch, und die Kurve säße
             // dann an der Ansicht, die gerade verschwindet.
-            ZStack {
-                content
-                    .stateTransition(.screen)
+            VStack(spacing: 0) {
+                // **Das eine Stück Gerüst, das über die Schritte hinweg lebt.**
+                //
+                // Es steht bewusst **außerhalb** des Übergangs: Was hier liegt,
+                // verschwindet beim Schrittwechsel nicht und kann sich deshalb
+                // bewegen, statt neu zu erscheinen. Genau daran hing das
+                // Blinzeln — vorher verschwand der ganze Bildschirm, Punkte
+                // eingeschlossen, und es gab keinen einzigen ruhenden Halt für
+                // das Auge.
+                OnboardingProgressDots(step: phase.step, totalSteps: OnboardingStep.total)
+                    .padding(.horizontal, Theme.Spacing.xl)
+                    .padding(.top, Theme.Spacing.xl)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .readableWidth()
+
+                ZStack {
+                    content
+                        .stateTransition(.screen)
+                }
+                .stateAnimation(.screen, value: phase)
             }
-            .stateAnimation(.screen, value: phase)
+            .background { Theme.background.ignoresSafeArea() }
         }
         .onAppear(perform: resume)
     }

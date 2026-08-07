@@ -7,6 +7,7 @@ import SwiftUI
 /// Before this existed each step invented its own spacing and button placement,
 /// which made a five-screen flow feel like five unrelated screens.
 struct OnboardingStepView<Content: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let step: Int
     let totalSteps: Int
     let title: String
@@ -23,7 +24,12 @@ struct OnboardingStepView<Content: View>: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                        progressDots
+                        // **Die Punkte stehen nicht mehr hier** (06.08.). Sie
+                        // gehören dem Gerüst (`OnboardingFlowView`), weil nur
+                        // dort eine Ansicht über die Schritte hinweg **lebt**.
+                        // Solange sie hier standen, baute jeder Schritt neue
+                        // Punkte, `step` änderte sich also auf keiner lebenden
+                        // Ansicht — und die Animation daran war toter Code.
                         Text(title)
                             .font(.title.bold())
                             .fixedSize(horizontal: false, vertical: true)
@@ -51,19 +57,6 @@ struct OnboardingStepView<Content: View>: View {
         .background { Theme.background.ignoresSafeArea() }
     }
 
-    private var progressDots: some View {
-        HStack(spacing: 6) {
-            ForEach(1...totalSteps, id: \.self) { index in
-                Capsule()
-                    .fill(index <= step ? Theme.accent : Theme.accent.opacity(0.2))
-                    .frame(width: index == step ? 20 : 6, height: 6)
-                    .animation(.easeOut(duration: 0.25), value: step)
-            }
-        }
-        .padding(.bottom, Theme.Spacing.xs)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Schritt \(step) von \(totalSteps)")
-    }
 
     private var footer: some View {
         VStack(spacing: Theme.Spacing.sm) {
@@ -153,5 +146,38 @@ struct SelectableChip: View {
             SelectableChip(title: "Vegetarisch", symbol: "carrot", isSelected: true) {}
             SelectableChip(title: "Vegan", symbol: "leaf", isSelected: false) {}
         }
+    }
+}
+
+/// **Die Fortschrittspunkte des Assistenten — eine Ansicht für alle Schritte.**
+///
+/// Sie liegen im Gerüst und nicht im Schritt, und das ist der ganze Trick: Nur
+/// eine Ansicht, die über den Schrittwechsel hinweg **lebt**, kann eine
+/// Änderung animieren. Solange jeder Schritt seine eigenen Punkte baute, war
+/// `step` bei jeder Geburt schon richtig, änderte sich nie, und die Animation
+/// daran lief nie — sie stand als toter Code da und sah aus, als täte sie
+/// etwas.
+///
+/// Jetzt gleitet der aktive Punkt von Position zu Position, während der Inhalt
+/// darunter wechselt. **Das ist der größte Teil dessen, was „wie Apple" an
+/// dieser Stelle heißt:** Etwas bleibt stehen und bewegt sich, statt dass alles
+/// gleichzeitig verschwindet und neu erscheint.
+struct OnboardingProgressDots: View {
+    let step: Int
+    let totalSteps: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(1...totalSteps, id: \.self) { index in
+                Capsule()
+                    .fill(index <= step ? Theme.accent : Theme.accent.opacity(0.2))
+                    // Breite ist Bewegung, also Federsache.
+                    .frame(width: index == step ? 20 : 6, height: 6)
+            }
+        }
+        .animation(reduceMotion ? nil : Theme.Motion.element.animation, value: step)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Schritt \(step) von \(totalSteps)")
     }
 }

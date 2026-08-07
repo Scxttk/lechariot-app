@@ -66,13 +66,33 @@ struct TutorialStep: Identifiable, Equatable {
     /// Rahmen spielt auf dem leeren Bildschirm, der zweite legt die
     /// Beispiel-Artikel selbst und zeigt daran die Karte oben.
     ///
-    /// **`hasMarkets` ändert einen Text.** Seit dem 2026-07-31 endet das
-    /// Onboarding in der Liste statt in der Filialauswahl — der Rundgang läuft
-    /// also im Normalfall über einer Liste **ohne** gewählte Filiale. An der
-    /// Plan-Karte steht dann der Leerzustand, der genau das sagt; der Rahmen
-    /// darüber muss dieselbe Zeitform sprechen. „Hier siehst du" über einer
-    /// Karte, die nichts zeigt, ist eine kleine Lüge — und die erste, die ein
-    /// Tester zu sehen bekommt.
+    /// **Drei Rahmen, und zwar seit dem 06.08.**
+    ///
+    /// Vorher waren es neun, über drei Tabs, mit Überblendung dazwischen.
+    /// Scotts Befund: zu viel. Und die Messung vom 03.08. sagt dasselbe von der
+    /// anderen Seite — der Rundgang steht bei rund **+100 % Instruktionen**
+    /// gegen den gespeicherten Grundwert und ist damit die teuerste Strecke der
+    /// App, für etwas, das jeder Nutzer genau einmal sieht.
+    ///
+    /// **Was den Ausschlag gab, welche drei bleiben:** Der Rundgang gibt es,
+    /// weil Testern nach dem Onboarding nicht klar war, *was sie tun sollen*.
+    /// Das sind drei Handgriffe — aufschreiben, den Markt ablesen, im Laden
+    /// abhaken. Alles andere im alten Rundgang erklärte Dinge, die auf dem
+    /// Bildschirm ohnehin stehen (die Vorschlagskacheln, die Tab-Leiste, die
+    /// Angebotszeile unter dem Artikel) oder die man erst später sucht (die
+    /// Vorschau, die Einstellungen). Ein Rahmen, der etwas zeigt, das man sieht,
+    /// kostet nur Zeit.
+    ///
+    /// **Und alle drei spielen auf der Liste.** Damit ist der Tab-Wechsel im
+    /// Rundgang keine Strecke mehr, sondern nur noch der Weg hinein, wenn er aus
+    /// den Einstellungen gestartet wurde.
+    ///
+    /// `hasMarkets` ändert weiter einen Text: Seit dem 2026-07-31 endet das
+    /// Onboarding in der Liste statt in der Filialauswahl, der Rundgang läuft
+    /// also im Normalfall über einer Liste **ohne** gewählte Filiale. „Sie sagt
+    /// dir, welche Filiale am günstigsten ist" über einer Karte, die den
+    /// Leerzustand zeigt, ist eine kleine Lüge — und die erste, die ein Tester
+    /// zu sehen bekommt.
     static func tour(hasMarkets: Bool) -> [TutorialStep] {
         [
             TutorialStep(
@@ -86,23 +106,16 @@ struct TutorialStep: Identifiable, Equatable {
                 id: "plan",
                 title: "Ein Einkauf, ein Markt",
                 text: hasMarkets
-                    ? "Das Versprechen der App: Hier siehst du, welcher deiner Märkte deine Liste am günstigsten abdeckt und was der Einkauf dort kostet — und unter jedem Artikel steht das beste Angebot mit Preis und Markt."
-                    : "Das Versprechen der App: Sobald du Filialen gewählt hast, siehst du hier, welcher Markt deine Liste am günstigsten abdeckt und was der Einkauf dort kostet — und unter jedem Artikel steht dann das beste Angebot mit Preis und Markt.",
+                    ? "Diese Karte ist der Kern: Sie sagt dir, welche deiner Filialen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet. Unter jedem Artikel steht das beste Angebot dazu."
+                    : "Diese Karte ist der Kern: Sobald du Filialen gewählt hast, sagt sie dir, welche von ihnen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet. Unter jedem Artikel steht dann das beste Angebot dazu.",
                 spotlight: .anchor(.planCard),
                 seedsDemoItems: true
             ),
             TutorialStep(
-                id: "angebote",
-                title: "Was diese Woche günstig ist",
-                text: "Wenn du erst stöbern willst, statt zu planen: Unter „Angebote“ findest du alles, was deine Märkte diese Woche billiger machen.",
-                spotlight: .tabBar
-            ),
-            TutorialStep(
-                id: "settings",
-                title: "Hier stellst du alles um",
-                text: "Welche Filialen zählen, entscheidest du in den Einstellungen — und wenn du diesen Rundgang später noch einmal sehen willst: Er wohnt gleich darunter.",
-                spotlight: .union(.settingsMarkets, .settingsHelp),
-                tab: .einstellungen
+                id: "check",
+                title: "Abhaken beim Einkaufen",
+                text: "Im Laden tippst du den Kreis an, dann wandert der Artikel nach unten zu „Erledigt“. Zum Löschen wischst du die Zeile nach links. Diesen Rundgang findest du jederzeit wieder unter „Einstellungen“.",
+                spotlight: .anchor(.rowCheck)
             ),
         ]
     }

@@ -167,7 +167,8 @@ struct OffersView: View {
             // real offers arrive. Bare rows on purpose: a disabled Button would
             // dim the already-redacted placeholder a second time, and the list
             // carries its own "wird geladen" label below.
-            List(Offer.skeleton) { OfferRowView(offer: $0).listRowBackground(Theme.surface) }
+            List(Offer.skeleton) { OfferRowView(offer: $0).listRowBackground(Color.clear)
+                    .listRowSeparatorTint(Theme.stroke) }
                 .redacted(reason: .placeholder)
                 .disabled(true)
                 .accessibilityElement(children: .ignore)
@@ -291,14 +292,15 @@ struct OffersView: View {
                 .padding(.vertical, 2)
                 .accessibilityElement(children: .combine)
             }
-            .listRowBackground(Theme.surface)
+            .listRowBackground(Color.clear)
+                    .listRowSeparatorTint(Theme.stroke)
         } header: {
             Text("Ohne Angebote")
         } footer: {
             if NoOffersReason.footerApplies(to: branchesWithoutOffers
                 .filter { OfferCoverage.upcomingStart(for: $0, in: store.upcomingOffers) == nil }
                 .map { branchRequests.state(for: $0.marketId) }) {
-                Text("Nicht jeder Markt stellt seinen Prospekt ins Netz. Le Chariot kann nur zeigen, was die Kette selbst veröffentlicht.")
+                Text("Nicht jeder Markt stellt seinen Prospekt ins Netz. \(AppBrand.name) kann nur zeigen, was die Kette selbst veröffentlicht.")
             }
         }
         .accessibilityIdentifier("offers.unavailableBranches")
@@ -356,7 +358,8 @@ struct OffersView: View {
                     Section(sectionTitle(section.key)) {
                         ForEach(section.offers) { offerRow($0) }
                     }
-                    .listRowBackground(Theme.surface)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparatorTint(Theme.stroke)
                     // Reserved ad position: after the first market section, so a
                     // creative can never be read as part of a group. Renders
                     // nothing today — see `AdSlot`.
@@ -380,6 +383,18 @@ struct OffersView: View {
         .task(id: prefetchURLs.map(\.absoluteString)) {
             OfferImageLoader.shared.prefetch(prefetchURLs)
         }
+        // **Dieselbe Grammatik wie die Einkaufsliste** (06.08.): Zeilen auf
+        // der Seite, getrennt durch eine Haarlinie, statt Blöcken in
+        // gerundeten Flächen. Ohne `.listStyle` wäre das `insetGrouped`, die
+        // Vorgabe von iOS — und genau die hat die halbe App wie eine
+        // Systemeinstellung aussehen lassen.
+        //
+        // **Die Einstellungen bleiben bewusst gruppiert.** Sie sind ein
+        // Formular, kein Inhalt: Dort trennen die Flächen Zusammengehöriges,
+        // und ein Nutzer erwartet an dieser Stelle genau das, was iOS überall
+        // sonst zeigt. Scotts Beschwerde galt den Inhaltsbildschirmen.
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
 
     /// Die Ernährungsfrage — nur über einer geladenen Liste, nur nach dem
@@ -435,7 +450,8 @@ struct OffersView: View {
             } header: {
                 Text("Top-Deals der Woche")
             }
-            .listRowBackground(Theme.surface)
+            .listRowBackground(Color.clear)
+                    .listRowSeparatorTint(Theme.stroke)
         }
     }
 

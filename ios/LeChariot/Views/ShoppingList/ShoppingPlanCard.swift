@@ -3,9 +3,12 @@ import SwiftUI
 /// The answer the app exists to give, at the top of the shopping list: which
 /// of the chosen branches covers today's list best, and what that costs.
 ///
-/// The winner is stated in one line a person can read while walking. Everything
-/// else — which items are covered, what is missing, how the other markets
-/// compare — sits behind a disclosure, because on most days it is not needed.
+/// **Eine Karte, ein Weg.** Bis zum 06.08. standen hier zwei Kästen
+/// übereinander — diese Karte mit einer aufklappbaren Aufschlüsselung und
+/// darunter „Passende Artikel im Angebot" mit denselben Ketten noch einmal als
+/// Chips. Zusammen 209 pt, und der erste Artikel der Liste fing erst bei 535
+/// von 874 pt an. Beide beantworteten dieselbe Frage; die Aufschlüsselung steht
+/// jetzt einmal, hinter dem Weg zu den Treffern.
 struct ShoppingPlanCard: View {
     let ranks: [MarketListRank]
     /// Die Kette, die ohne die gehefteten Wahlen gewönne — `nil`, wenn sie am
@@ -16,46 +19,28 @@ struct ShoppingPlanCard: View {
     /// sagen dürfen**. Ein Sieger, der sich ohne erkennbaren Grund ändert,
     /// sieht aus wie ein Fehler der App statt wie die Folge der eigenen Wahl.
     var winnerWithoutPins: String? = nil
+    /// Der Weg zu den Treffern. Ohne ihn zeigt die Karte nur die Antwort.
+    var onShowHits: (() -> Void)? = nil
 
-    @State private var isExpanded = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var winner: MarketListRank? { ranks.first }
-    private var others: [MarketListRank] { Array(ranks.dropFirst()) }
+
+    private var hasMatches: Bool { ranks.contains { $0.matchedCount > 0 } }
 
     var body: some View {
         if let winner {
-            // Spacing 0 with explicit padding: the details block must be able
-            // to collapse to a true zero height, and a VStack spacing would
-            // leave its gap behind even then.
             VStack(alignment: .leading, spacing: 0) {
                 headline(winner)
 
-                if !winner.matchedItems.isEmpty || !winner.pinnedElsewhere.isEmpty || !others.isEmpty {
+                if hasMatches, let onShowHits {
                     Divider()
                         .padding(.vertical, Theme.Spacing.md)
-                    disclosureButton
-                    if isExpanded {
-                        details(winner)
-                            // Behält die eigene Höhe, statt sich von der noch
-                            // wachsenden Karte stauchen zu lassen — das war die
-                            // Ursache dafür, dass „Weniger anzeigen" und „Bei
-                            // Lidl im Angebot" ein paar Bilder lang übereinander
-                            // lagen. Was noch nicht freigelegt ist, schneidet
-                            // das `.clipped()` unten weg.
-                            .fixedSize(horizontal: false, vertical: true)
-                            .transition(.opacity)
-                    }
+                    hitsButton(onShowHits)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .clipped()
             .themeCard()
-            // One animation for the whole card. A `DisclosureGroup` inside a
-            // `List` row animated in three separate steps — the row height by
-            // the List, the content by itself, the card's rounded background
-            // and shadow after both — which is what made the expansion judder.
-            .animation(.snappy(duration: 0.28), value: isExpanded)
         }
     }
 
@@ -148,27 +133,21 @@ struct ShoppingPlanCard: View {
         return summary
     }
 
-    // MARK: Details
+    // MARK: Weg zu den Treffern
 
-    /// Plain button rather than a `DisclosureGroup`: the label stays put, the
-    /// chevron turns with the same animation as the card, and the caption
-    /// cross-fades instead of swapping halfway through the expansion.
-    private var disclosureButton: some View {
-        Button { isExpanded.toggle() } label: {
+    /// **Ein Weg statt einer Aufklappung.** „Was heißt das?" legte die
+    /// Aufschlüsselung auf denselben Bildschirm, auf dem schon die Liste steht;
+    /// dahinter liegt jetzt der Bildschirm, der dieselben Treffer zeigt und an
+    /// dem man sie auch anheften kann.
+    private func hitsButton(_ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             HStack(spacing: Theme.Spacing.sm) {
-                // Bewusst ohne `contentTransition`: eine Kreuzblende zwischen
-                // zwei verschieden langen Wörtern zeigt sie ein paar Bilder
-                // lang übereinander, und „Weniger anzeigen" über „Was heißt
-                // das?" ist genau das Matschbild, das hier weg sollte. Der
-                // Wechsel fällt mit dem eigenen Tippen zusammen und liest sich
-                // dadurch als Reaktion, nicht als Sprung.
-                Text(isExpanded ? "Weniger anzeigen" : "Was heißt das?")
+                Image(systemName: "tag.fill")
+                Text("Angebote zu deiner Liste")
                     .font(.subheadline.weight(.medium))
-                    .animation(nil, value: isExpanded)
                 Spacer(minLength: Theme.Spacing.sm)
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
             }
             .foregroundStyle(Theme.accent)
             // The row centre is a Spacer and would otherwise not react —
@@ -176,120 +155,11 @@ struct ShoppingPlanCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityHint(isExpanded ? "Blendet die Details aus" : "Zeigt Artikel und die anderen Filialen")
+        .accessibilityHint("Zeigt die Angebote zu den Artikeln deiner Liste")
         // Die zweite Ecke der Schattenfläche — siehe `list.plan.headline`.
         .accessibilityIdentifier("list.plan.disclosure")
     }
 
-    private func details(_ winner: MarketListRank) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            if !winner.matchedItems.isEmpty {
-                itemGroup(
-                    title: "Bei \(winner.chain) im Angebot",
-                    items: winner.matchedItems.map(\.item),
-                    symbol: "checkmark.circle.fill",
-                    color: Theme.success
-                )
-            }
-            // Eigene Gruppe, nicht unter „Zum Normalpreis": „Lidl hat keinen
-            // Käse im Angebot" und „Lidl hat Käse, aber nicht deinen" sind für
-            // jemanden, der einen Einkauf plant, zwei verschiedene Sätze.
-            if !winner.pinnedElsewhere.isEmpty {
-                itemGroup(
-                    title: "Deine Wahl woanders",
-                    items: winner.pinnedElsewhere.map(\.line),
-                    symbol: "pin.fill",
-                    color: Theme.accent
-                )
-            }
-            if !winner.missingItems.isEmpty {
-                itemGroup(
-                    title: "Zum Normalpreis",
-                    items: winner.missingItems,
-                    symbol: "circle",
-                    color: .secondary
-                )
-            }
-            if !others.isEmpty {
-                otherMarkets
-            }
-            Text(footnote(winner))
-                .font(.caption)
-                .foregroundStyle(Theme.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        // Eigener Abstand nach oben statt VStack-Spacing: er gehört zur
-        // gemessenen Höhe und verschwindet damit im eingeklappten Zustand mit.
-        .padding(.top, Theme.Spacing.md)
-    }
-
-    /// Die Fußnote sagt, wie die Summe zustande kommt — und **nur dann**
-    /// zusätzlich etwas über Heftungen, wenn eine im Spiel ist. Ein Satz über
-    /// eine Funktion, die dieser Nutzer nicht benutzt, ist Rauschen.
-    private func footnote(_ winner: MarketListRank) -> String {
-        let basis = "Erst Abdeckung, dann Preis. Die Summe zählt nur die gefundenen Angebote — Normalpreise sind nicht dabei."
-        guard winner.hasPinnedItems else { return basis }
-        return basis + " Angeheftete Artikel zählen mit deinem Preis, nicht mit dem billigsten."
-    }
-
-    private func itemGroup(
-        title: String,
-        items: [String],
-        symbol: String,
-        color: Color
-    ) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.secondaryText)
-            ForEach(items, id: \.self) { item in
-                HStack(spacing: Theme.Spacing.sm) {
-                    Image(systemName: symbol)
-                        .foregroundStyle(color)
-                        .font(.caption)
-                    Text(item)
-                        .font(.subheadline)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title): \(items.joined(separator: ", "))")
-    }
-
-    private var otherMarkets: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            Text("Deine anderen Filialen")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.secondaryText)
-            ForEach(others) { rank in
-                HStack(spacing: Theme.Spacing.sm) {
-                    Text(rank.chain)
-                        .font(.subheadline)
-                    Spacer(minLength: Theme.Spacing.sm)
-                    Text("\(rank.matchedCount)/\(rank.itemCount)")
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundStyle(Theme.secondaryText)
-                    if let total = rank.total {
-                        Text(total, format: .currency(code: "EUR"))
-                            .font(.subheadline.monospacedDigit())
-                            .frame(minWidth: 60, alignment: .trailing)
-                    } else {
-                        Text("–")
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.secondaryText)
-                            .frame(minWidth: 60, alignment: .trailing)
-                    }
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(
-                    "\(rank.chain), \(rank.matchedCount) von \(rank.itemCount) Artikeln"
-                    + (rank.total.map { ", \($0.formatted(.currency(code: "EUR")))" } ?? "")
-                )
-            }
-        }
-    }
 }
 
 #Preview("Mit Treffern") {

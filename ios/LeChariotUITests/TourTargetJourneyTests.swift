@@ -16,6 +16,13 @@ import XCTest
 /// Die Messstelle dafür ist `tutorial.hole` — eine durchsichtige Fläche, die
 /// im Testlauf genau auf dem Loch liegt (siehe `TutorialOverlay.holeProbe`).
 /// Damit ist „das Loch deckt sein Ziel" eine Rechnung auf zwei Rechtecken.
+///
+/// **Am 06.08. sind vier dieser Journeys weggefallen, weil ihr Gegenstand
+/// weggefallen ist:** Der Rundgang hat statt neun Rahmen noch drei, und alle
+/// drei spielen auf der Liste. Damit gibt es die Angaben-Schicht, die Vorschau
+/// und die Treffer-Kachel als Rahmen nicht mehr — und auch keinen Tab-Wechsel
+/// mehr, dessen Überblendung die Karte schwarz übermalen könnte. Was hier
+/// steht, ist das, was der Rundgang noch behauptet.
 final class TourTargetJourneyTests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -31,8 +38,7 @@ final class TourTargetJourneyTests: XCTestCase {
         app.launchArguments = args
         app.launch()
         openTab("Einstellungen")
-        let restart = app.buttons["settings.tutorial"]
-        XCTAssertTrue(restart.waitForExistence(timeout: 20))
+        let restart = app.scrollToTutorialButton()
         restart.tap()
         XCTAssertTrue(card.waitForExistence(timeout: 20))
     }
@@ -110,30 +116,6 @@ final class TourTargetJourneyTests: XCTestCase {
         assertHoleCovers(app.textFields["list.input"], "die Eingabezeile")
     }
 
-    // MARK: Die beiden Band-Rahmen
-
-    /// Der Angebote-Rahmen zeigt auf die Tab-Leiste — die UIKit zeichnet und
-    /// die deshalb keinen Anker trägt, sondern ein aus der sicheren Fläche
-    /// hergeleitetes Band (`TutorialOverlay.tabBarBand`). Genau solche
-    /// Herleitungen sind schon zweimal danebengegangen (Statusleiste statt
-    /// Navigationsleiste, 03.08.); deshalb wird gerechnet statt geglaubt.
-    func testTheOffersFrameHighlightsTheTabBar() {
-        startTourFromSettings()
-        advance(to: "Was diese Woche günstig ist")
-        settle()
-        assertHoleCovers(app.buttons["Angebote"].firstMatch, "der Angebote-Tab")
-    }
-
-    /// Und der letzte Rahmen: die Vereinigung aus Filial-Zeile und
-    /// Rundgang-Knopf in den Einstellungen — nach einem Tab-Wechsel, dessen
-    /// Anker erst hinter der Überblendung eintreffen.
-    func testTheSettingsFrameHighlightsBothItsTargets() {
-        startTourFromSettings()
-        advance(to: "Hier stellst du alles um")
-        settle()
-        assertHoleCovers(app.buttons["settings.tutorial"], "der Rundgang-Knopf")
-    }
-
     // MARK: Der Rahmen, der sich selbst übersprang
 
     /// **Ein Wort ohne Treffer durfte den Rundgang nie weiterschalten.**
@@ -158,9 +140,11 @@ final class TourTargetJourneyTests: XCTestCase {
         app.swipeDown()
 
         openTab("Einstellungen")
-        let restart = app.buttons["settings.tutorial"]
-        XCTAssertTrue(restart.waitForExistence(timeout: 20))
-        restart.tap()
+        // **Scrollen, nicht suchen.** Seit die Einstellungen am 06.08. neu
+        // sortiert sind, steht „Rundgang" unter der Falzkante — und eine
+        // `List` baut nur, was sichtbar ist. Der Knopf ist nicht weg, er ist
+        // noch nicht entstanden. Siehe `scrollToTutorialButton`.
+        app.scrollToTutorialButton().tap()
         XCTAssertTrue(card.waitForExistence(timeout: 20))
 
         advance(to: "Ein Einkauf, ein Markt")
@@ -192,86 +176,6 @@ final class TourTargetJourneyTests: XCTestCase {
                       "Was der Rahmen zu tippen einlädt, muss auch auf der Liste landen")
         XCTAssertTrue(card.label.contains("Schreib auf, was du brauchst"),
                       "Mitmachen schaltet nicht weiter — jeder Rahmen wartet auf „Weiter“")
-    }
-
-    // MARK: Der Wechsel zum letzten Rahmen
-
-    /// **„Visuell desaströs" in Zahlen: Der Bildschirm wurde ganz schwarz.**
-    ///
-    /// Der Rundgang blendet für den Tab-Wechsel ab — das ist gewollt, sonst
-    /// tauscht die `TabView` ihren Inhalt in einem einzigen Bild aus. Die
-    /// Abdunklung lag aber **über allem**, auch über der Karte, die man gerade
-    /// liest. Am Simulator Bild für Bild belegt: 0,12 s nach dem Tipp war
-    /// nichts als Schwarz auf dem Schirm, Statusleiste eingeschlossen.
-    ///
-    /// Gemessen wird die mittlere Helligkeit **in der Fläche der Karte**,
-    /// unmittelbar nach dem Tipp. Die Karte ist hell (Sandton); gegen
-    /// `fb8699b` liegt der Wert bei nahezu 0.
-    ///
-    /// **Gemessen wird die Fläche, in der die Karte danach steht — nicht die
-    /// davor.** Die Karte wandert mit dem Loch: Der Angebote-Rahmen leuchtet
-    /// die Tab-Leiste unten aus, die Karte steht darüber; der
-    /// Einstellungs-Rahmen leuchtet zwei Zeilen in der Bildmitte aus, die
-    /// Karte rutscht darunter. Ein vor dem Tipp gemerkter Ausschnitt liegt
-    /// nach dem Wechsel über abgedunkeltem Hintergrund und klagte die
-    /// Abdunklung an, wo die Karte nur umgezogen ist (05.08. gemessen: alte
-    /// Fläche 0,19 — neue Fläche im selben Bild 0,88). Der Bildschirmabzug
-    /// entsteht mitten in der Überblendung, der Ausschnitt wird danach
-    /// erfragt; die Karte steht zu diesem Zeitpunkt bereits an ihrem Platz.
-    func testTheCardSurvivesTheChangeToTheLastFrame() {
-        startTourFromSettings()
-        advance(to: "Was diese Woche günstig ist")
-        settle()
-
-        next.tap()
-        // Mitten in der Überblendung: 0,15 s abblenden, 0,10 s halten,
-        // 0,20 s aufblenden — siehe `TourTabTransition.standard`.
-        Thread.sleep(forTimeInterval: 0.18)
-        let shot = XCUIScreen.main.screenshot()
-
-        settle()
-        XCTAssertTrue(card.label.contains("Hier stellst du alles um"),
-                      "Der Wechsel ist gar nicht angekommen: \(card.label)")
-        let helligkeit = meanLuminance(of: shot, in: card.frame)
-
-        XCTAssertGreaterThan(
-            helligkeit, 0.35,
-            "Während des Wechsels ist die Karte schwarz übermalt (mittlere Helligkeit \(helligkeit))"
-        )
-    }
-
-    /// Mittlere Helligkeit eines Bildschirmausschnitts, 0…1.
-    ///
-    /// Der einzige Weg, „sieht desaströs aus" zu einer Zahl zu machen: Das Loch
-    /// und die Abdunklung sind keine Elemente, und die Barrierefreiheits-
-    /// Hierarchie meldet eine schwarze Fläche darüber gar nicht — die Karte
-    /// „existiert" auch dann, wenn niemand sie sehen kann.
-    private func meanLuminance(of shot: XCUIScreenshot, in rect: CGRect) -> Double {
-        guard let cg = shot.image.cgImage else { return -1 }
-        let scaleX = Double(cg.width) / Double(shot.image.size.width)
-        let scaleY = Double(cg.height) / Double(shot.image.size.height)
-        let px = CGRect(x: rect.minX * scaleX, y: rect.minY * scaleY,
-                        width: rect.width * scaleX, height: rect.height * scaleY)
-            .integral
-            .intersection(CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
-        guard px.width > 1, px.height > 1, let cut = cg.cropping(to: px) else { return -1 }
-
-        let w = cut.width, h = cut.height
-        var pixels = [UInt8](repeating: 0, count: w * h * 4)
-        guard let ctx = CGContext(
-            data: &pixels, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return -1 }
-        ctx.draw(cut, in: CGRect(x: 0, y: 0, width: w, height: h))
-
-        var summe = 0.0
-        for i in stride(from: 0, to: pixels.count, by: 4) {
-            summe += (0.2126 * Double(pixels[i])
-                      + 0.7152 * Double(pixels[i + 1])
-                      + 0.0722 * Double(pixels[i + 2])) / 255
-        }
-        return summe / Double(w * h)
     }
 
     /// Der Riegel dazu: Die Tab-Leiste bleibt auch auf einem Mitmach-Rahmen

@@ -325,11 +325,32 @@ struct MarketPickerView: View {
                     chainRow(chain: group.chain, markets: group.markets)
                 }
             } header: {
-                Text("Ketten in deiner Nähe")
+                Text(chainSectionTitle)
             } footer: {
                 Text("Tippe eine Kette an, um ihre Filialen zu sehen.")
             }
         }
+    }
+
+    /// **„In deiner Nähe" sagt nicht, wie nah** (Scott, 06.08.: „vlt etwas
+    /// große Reichweite").
+    ///
+    /// Er hat recht, und das Problem war nicht der Umkreis, sondern dass ihn
+    /// niemand nannte: In Dresden liegen im Zehn-Kilometer-Kreis über hundert
+    /// Filialen, und eine Überschrift, die sie alle „in deiner Nähe" nennt,
+    /// behauptet mehr Nähe, als die Zahl hergibt.
+    ///
+    /// Die Reichweite steht jetzt dabei, und zwar **gemessen** statt
+    /// angenommen: die Entfernung der weitesten geladenen Filiale. Der Umkreis
+    /// wächst auf dem Land automatisch mit (`nearbyWideningIfSparse`) — eine
+    /// feste Zahl in der Überschrift wäre dort schlicht falsch.
+    private var chainSectionTitle: String {
+        let weiteste = chainGroups
+            .flatMap(\.markets)
+            .compactMap { distance(for: $0) }
+            .max()
+        guard let weiteste else { return "Ketten in deiner Nähe" }
+        return "Ketten im Umkreis von \(MarketFilter.distanceLabel(weiteste))"
     }
 
     private func chainRow(chain: String, markets: [Market]) -> some View {
@@ -337,12 +358,20 @@ struct MarketPickerView: View {
         let subtitle = MarketFilter.chainSubtitle(
             branchCount: markets.count,
             selectedCount: selected,
-            nearestKm: markets.compactMap { distance(for: $0) }.min()
+            // **Null Kilometer heißt „keine Angabe", nicht „du stehst drin".**
+            // Am 06.08. im Wähler gesehen: „REWE · nächste 0,0 km". Filialen
+            // ohne Koordinate im Verzeichnis liefern 0, und die Zeile machte
+            // daraus eine Behauptung, die kein Mensch glaubt. Ohne Entfernung
+            // fällt der Teil jetzt weg — dafür ist `nearestKm` optional.
+            nearestKm: markets.compactMap { distance(for: $0) }.filter { $0 > 0 }.min()
         )
         return NavigationLink {
             ChainBranchesView(chain: chain, rows: rows(for: markets))
         } label: {
             HStack {
+                // Das Monogramm der Kette statt ihres Logos — siehe `ChainMark`
+                // für die ganze Abwägung.
+                ChainMark(chain: chain)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(chain)
                         .font(.body.weight(.medium))

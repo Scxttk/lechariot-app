@@ -197,7 +197,8 @@ struct NextWeekView: View {
                             .accessibilityLabel(voiceOver(offer))
                             .accessibilityIdentifier("nextWeek.row")
                         }
-                        .listRowBackground(Theme.surface)
+                        .listRowBackground(Color.clear)
+                    .listRowSeparatorTint(Theme.stroke)
                     }
                 }
             }
@@ -212,6 +213,18 @@ struct NextWeekView: View {
         }
         .refreshable { await store.refresh() }
         .accessibilityIdentifier("nextWeek.list")
+        // **Dieselbe Grammatik wie die Einkaufsliste** (06.08.): Zeilen auf
+        // der Seite, getrennt durch eine Haarlinie, statt Blöcken in
+        // gerundeten Flächen. Ohne `.listStyle` wäre das `insetGrouped`, die
+        // Vorgabe von iOS — und genau die hat die halbe App wie eine
+        // Systemeinstellung aussehen lassen.
+        //
+        // **Die Einstellungen bleiben bewusst gruppiert.** Sie sind ein
+        // Formular, kein Inhalt: Dort trennen die Flächen Zusammengehöriges,
+        // und ein Nutzer erwartet an dieser Stelle genau das, was iOS überall
+        // sonst zeigt. Scotts Beschwerde galt den Inhaltsbildschirmen.
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
 
     /// Abschnittstitel wie in der laufenden Woche: Bei einer einzigen gewählten
@@ -281,7 +294,8 @@ struct NextWeekView: View {
                 .padding(.vertical, 2)
                 .accessibilityElement(children: .combine)
             }
-            .listRowBackground(Theme.surface)
+            .listRowBackground(Color.clear)
+                    .listRowSeparatorTint(Theme.stroke)
         } header: {
             Text("Ohne Vorschau")
         }

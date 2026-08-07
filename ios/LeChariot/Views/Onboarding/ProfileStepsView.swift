@@ -10,7 +10,7 @@ struct WelcomeStepView: View {
             step: 1,
             totalSteps: OnboardingStep.total,
             title: "Ein Einkauf, ein Markt, der beste Preis.",
-            subtitle: "Schreib deine Einkaufsliste. Le Chariot vergleicht die Wochenangebote deiner Filialen und sagt dir, wo du am besten hinfährst.",
+            subtitle: "Schreib deine Einkaufsliste. \(AppBrand.name) vergleicht die Wochenangebote deiner Filialen und sagt dir, wo du am besten hinfährst.",
             primaryTitle: "Los geht's",
             onPrimary: onContinue
         ) {
@@ -79,10 +79,15 @@ struct NameStepView: View {
                 )
                 .accessibilityLabel("Vorname")
         }
-        .onAppear {
-            name = profile.profile.firstName
-            focused = true
-        }
+        // **Ohne Tastatur ankommen** (Scott, 06.08.). Vorher stand hier
+        // `focused = true`, und der Bildschirm empfing mit einer halben
+        // Bildschirmhöhe Tastatur — obwohl der häufigste Weg hier „Ohne Namen
+        // weiter" ist. Wer den Namen tippen will, tippt auf das Feld; wer nicht,
+        // muss nicht erst eine Tastatur wegräumen, die niemand angefordert hat.
+        //
+        // Dieselbe Regel wie bei der Angaben-Schicht in der Liste (03.08.):
+        // kein Zwang zur Tastatur auf einem Weg, der ohne sie auskommt.
+        .onAppear { name = profile.profile.firstName }
     }
 }
 

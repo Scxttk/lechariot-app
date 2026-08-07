@@ -99,7 +99,7 @@ enum DataExportFile {
         // Server ist: Ihn zu dekodieren und neu zu kodieren gäbe dem Nutzer
         // eine Umschrift statt seiner Daten.
         var text = "{\n"
-        text += "  \"hinweis\": \"Alles, was Le Chariot zu dieser Installation hält. "
+        text += "  \"hinweis\": \"Alles, was \(AppBrand.name) zu dieser Installation hält. "
         text += "Der Teil unter auf_dem_geraet hat den Server nie gesehen.\",\n"
         if let serverNote {
             text += "  \"hinweis_server\": \(quoted(serverNote)),\n"

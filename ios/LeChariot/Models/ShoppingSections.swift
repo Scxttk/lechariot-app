@@ -109,42 +109,21 @@ enum ShoppingSections {
     /// Eine frische Liste ohne Filialen hat keinen einzigen Treffer — dann
     /// stünde über der ganzen Liste „Noch nicht einsortiert", und das ist
     /// schlechter als gar keine Überschrift. Ermessensentscheidung vom 03.08.
-    static func needsHeaders(_ sections: [ShoppingSection]) -> Bool {
-        !(sections.count <= 1 && sections.first?.isRest != false)
-    }
-}
-
-/// **„Passende Artikel im Angebot!" — die Zeile aus dem Video.**
-///
-/// Bring! stellt sie *in* die Liste, nicht in einen eigenen Reiter, mit
-/// Ketten-Chips samt Zählern („Netto 15 · Penny 3"). Genau das ist der
-/// interessante Teil: die **Platzierung**, nicht das Matching.
-///
-/// Und deshalb rechnet hier nichts nach: Die Zahlen stehen bereits in
-/// `MarketListRank.matchedCount`, aus dem Lauf, den die Plan-Karte ohnehin
-/// macht. Ein zweiter Durchlauf über dieselben Angebote wäre eine zweite
-/// Wahrheit über dieselbe Frage.
-struct OfferHitSummary: Equatable {
-    struct ChainHits: Equatable, Identifiable {
-        let chain: String
-        let count: Int
-        var id: String { chain }
-    }
-
-    let chains: [ChainHits]
-
-    var total: Int { chains.reduce(0) { $0 + $1.count } }
-    var isEmpty: Bool { chains.isEmpty }
-
-    /// Aus der Wertung, die für die Plan-Karte ohnehin läuft.
     ///
-    /// Ketten ohne Treffer bekommen **keinen** Chip: „Netto 15 · ALDI 0" liest
-    /// sich wie ein Angebot, das keines ist, und die Zeile heißt „passende
-    /// Artikel im Angebot".
-    init(ranks: [MarketListRank]) {
-        chains = ranks
-            .filter { $0.matchedCount > 0 }
-            .sorted { ($0.matchedCount, $1.chain) > ($1.matchedCount, $0.chain) }
-            .map { ChainHits(chain: $0.chain, count: $0.matchedCount) }
+    /// **Und seit dem 06.08. muss ein Abschnitt auch etwas fassen.** Am Gerät
+    /// gemessen: Eine Liste mit fünf Artikeln zerfiel in drei Abschnitte, jede
+    /// Überschrift stand über **einer** Zeile und kostete dabei rund 50 pt —
+    /// zusammen mehr Platz, als die Artikel selbst brauchten. Eine Überschrift
+    /// über einer einzelnen Zeile sortiert nichts, sie wiederholt nur, was in
+    /// der Zeile steht.
+    ///
+    /// Die Schwelle ist deshalb keine Zahl von Artikeln, sondern ein
+    /// Verhältnis: Im Schnitt müssen **zwei Artikel** auf einen Abschnitt
+    /// kommen. Fünf Artikel in drei Abschnitten bleiben ohne, zehn in dreien
+    /// bekommen ihre Überschriften.
+    static func needsHeaders(_ sections: [ShoppingSection]) -> Bool {
+        guard !(sections.count <= 1 && sections.first?.isRest != false) else { return false }
+        let items = sections.reduce(0) { $0 + $1.items.count }
+        return items >= 2 * sections.count
     }
 }

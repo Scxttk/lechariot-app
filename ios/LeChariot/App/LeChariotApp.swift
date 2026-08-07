@@ -55,8 +55,14 @@ struct LeChariotApp: App {
         marketRepository = AppRepositories.markets()
     }
 
+    /// Ob der Auftritt durch ist. **`@State` in der App-Struktur, nicht an
+    /// `scenePhase`**: So spielt er genau einmal je Kaltstart und nicht bei
+    /// jeder Rückkehr aus dem Hintergrund.
+    @State private var introDone = false
+
     var body: some Scene {
         WindowGroup {
+            ZStack {
             ContentView(marketRepository: marketRepository)
                 // **Vor** den Umgebungswerten, nicht danach: Die Anzeige liest
                 // `DiagnosticsGate` selbst. Hinter `.environment(...)` gehängt
@@ -109,6 +115,23 @@ struct LeChariotApp: App {
                 // Not `preferredColorScheme` — that flips content and bars in
                 // separate steps. See `AppearanceWindowBridge`.
                 .appearanceOverride(appearance)
+
+            // **Über der App, nicht in ihr.** `ContentView` trägt schon den
+            // Wechsel Onboarding ↔ Tabs mit einer eigenen Animation; ein
+            // dritter Zweig dort teilte sich einen Animationsmodifikator mit
+            // zwei zusammenhanglosen Zustandswechseln — genau die Klasse
+            // Fehler, die den Rundgang am Ende springen ließ.
+            //
+            // Der Auftritt hält **keine Daten auf**: Die `.task`s oben laufen
+            // unabhängig weiter, die Liste ist also warm, wenn der Vorhang
+            // aufgeht.
+            if !introDone {
+                LaunchIntroView {
+                    withAnimation(Theme.Motion.screen.animation) { introDone = true }
+                }
+                .transition(.opacity)
+            }
+            }
         }
     }
 }

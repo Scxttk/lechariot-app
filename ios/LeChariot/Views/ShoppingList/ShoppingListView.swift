@@ -250,7 +250,10 @@ struct ShoppingListView: View {
         guard !setup.firstMatchSeen,
               tutorial?.isRunning != true,
               !list.items.isEmpty else { return false }
-        return !OfferHitSummary(ranks: ranks).isEmpty
+        // Direkt an der Wertung abgelesen: `OfferHitSummary` hat diese Frage
+        // bis zum 06.08. beantwortet und ist mit der Trefferzeile weggefallen.
+        // Es war ohnehin nur diese eine Zeile Arithmetik.
+        return ranks.contains { $0.matchedCount > 0 }
     }
 
     /// Ein Artikel ist auf einem Bedienweg entstanden — nicht durch den
@@ -279,6 +282,12 @@ struct ShoppingListView: View {
             }
             .themedScreen()
             .navigationTitle("Einkaufsliste")
+            // **Kompakt statt groß.** Der große Titel kostet oben rund 56 pt
+            // für ein Wort, das die Tab-Leiste unten ohnehin schon sagt. Auf
+            // dem Bildschirm, für den es die App gibt, ist das der teuerste
+            // Platz — vor der Entschlackung am 06.08. fing der erste Artikel
+            // der Liste bei 535 von 874 pt an.
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarMenu }
             .safeAreaInset(edge: .bottom) { bottomBar }
         }
@@ -393,7 +402,11 @@ struct ShoppingListView: View {
             let plan = ranks
             if !plan.isEmpty {
                 Section {
-                    ShoppingPlanCard(ranks: plan, winnerWithoutPins: winnerWithoutPins(plan))
+                    ShoppingPlanCard(
+                        ranks: plan,
+                        winnerWithoutPins: winnerWithoutPins(plan),
+                        onShowHits: { hitsRanks = plan }
+                    )
                         .tutorialAnchor(.planCard)
                         .listRowInsets(EdgeInsets(
                             top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
@@ -453,23 +466,12 @@ struct ShoppingListView: View {
                 .listRowBackground(Color.clear)
             }
 
-            // **Die Zeile aus dem Video, in der Liste statt im Angebote-Tab.**
-            // Sie rechnet nichts nach: Die Zähler stehen schon in `plan`.
-            let hits = OfferHitSummary(ranks: plan)
-            if !hits.isEmpty {
-                Section {
-                    // **Die Zeile führt zu den Treffern, nicht in den
-                    // Angebote-Tab** (Scott, 03.08.: „wirkt tot"). Die Zahl in
-                    // der Zeile verspricht *diese* fünfzehn; der Tab zeigte
-                    // alle Angebote der Woche und wechselte damit die Frage.
-                    OfferHitsRow(summary: hits, onOpen: { hitsRanks = plan })
-                        .listRowInsets(EdgeInsets(
-                            top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
-                            bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
-                        ))
-                }
-                .listRowBackground(Color.clear)
-            }
+            // **Die Zeile „Passende Artikel im Angebot" ist am 06.08.
+            // weggefallen.** Sie stand als eigene Karte unter der Plan-Karte
+            // und zeigte dieselben Ketten noch einmal als Chips — zusammen 209
+            // pt, bevor der erste Artikel anfing. Der Weg zu den Treffern liegt
+            // jetzt in der Plan-Karte selbst; das Ziel ist unverändert.
+
 
             // **Kategorie-Abschnitte wie bei Bring!** — einsortiert wird über
             // den Treffer, den die Zeile ohnehin zeigt.
@@ -478,9 +480,22 @@ struct ShoppingListView: View {
             let showsHeaders = ShoppingSections.needsHeaders(sections)
             let firstOpenItem = list.uncheckedItems.first?.id
 
-            ForEach(sections) { section in
+            // **Ohne Überschriften auch ohne Abschnitte.** Am 06.08. am Gerät
+            // gesehen: Die Überschriften waren weg, die Abschnitte standen
+            // aber weiter als eigene Blöcke da — drei Artikel, drei Karten,
+            // dazwischen je rund 40 pt Luft, und der Bildschirm war voll.
+            //
+            // Dazu kommt der zweite Grund, und der wiegt schwerer: Abschnitte
+            // sortieren die Liste um. Mit Überschrift ist das erklärt, ohne
+            // sie ist es eine Umsortierung, die niemand angefordert hat und
+            // die aussieht wie ein Fehler. Dann gilt die eigene Reihenfolge.
+            let groups = showsHeaders
+                ? sections
+                : [ShoppingSection(category: "", items: list.uncheckedItems)]
+
+            ForEach(groups) { section in
                 Section {
-                    ForEach(Array(section.items.enumerated()), id: \.element.id) { index, item in
+                    ForEach(section.items) { item in
                         let itemSuggestion = suggestion(for: item, plan: plan)
                         ShoppingListRowView(
                             item: item,
@@ -507,24 +522,46 @@ struct ShoppingListView: View {
                                 Label("Löschen", systemImage: "trash")
                             }
                         }
-                        // Pro Zeile statt pro Abschnitt: Diese Zeilen wischen,
-                        // und ein flacher Hintergrund zeigt dabei eine eckige
-                        // Kante. Die Rundung gilt jetzt je Abschnitt.
-                        .groupedRowBackground(
-                            GroupedRowPosition(index: index, count: section.items.count)
-                        )
+                        // **Linien statt Kästen** (06.08.). Die gerundete
+                        // Abschnittsfläche ist weg; was die Zeilen trennt, ist
+                        // eine Haarlinie, und was sie zusammenhält, ist der
+                        // gemeinsame Rand.
+                        //
+                        // Das **überstimmt** die Entscheidung vom 30.07. hinter
+                        // `groupedRowBackground` nicht, es **löst sie auf**: Sie
+                        // stand da, weil eine flache Farbe nicht weiß, dass sie
+                        // oben in einem gerundeten Abschnitt sitzt, und beim
+                        // Wischen eine harte Ecke im runden Rahmen erschien.
+                        // Ohne runden Rahmen gibt es keine Ecke, gegen die
+                        // etwas zeigen könnte.
+                        .listRowBackground(Color.clear)
+                        .listRowSeparatorTint(Theme.stroke)
+                        .listRowInsets(EdgeInsets(
+                            top: Theme.Spacing.xs, leading: Theme.Spacing.lg,
+                            bottom: Theme.Spacing.xs, trailing: Theme.Spacing.lg
+                        ))
                     }
                 } header: {
                     if showsHeaders {
-                        Text(section.category)
-                            .accessibilityIdentifier("list.section.\(section.category)")
+                        // **Das gezeichnete Zeichen trägt hier die Identität.**
+                        // `CategoryGlyphView` hatte in der ganzen App genau
+                        // eine Aufrufstelle — als Rückfall eines Rückfalls.
+                        // Fünfzehn von Hand gezeichnete Zeichen, und man bekam
+                        // sie praktisch nie zu sehen.
+                        HStack(spacing: Theme.Spacing.sm) {
+                            CategoryGlyphView(category: section.category, size: 15)
+                                .foregroundStyle(Theme.accent)
+                                .accessibilityHidden(true)
+                            Text(section.category)
+                        }
+                        .accessibilityIdentifier("list.section.\(section.category)")
                     }
                 }
             }
 
             if !list.checkedItems.isEmpty {
                 Section("Erledigt") {
-                    ForEach(Array(list.checkedItems.enumerated()), id: \.element.id) { index, item in
+                    ForEach(list.checkedItems) { item in
                         ShoppingListRowView(
                             item: item,
                             onToggle: { check(item) },
@@ -544,14 +581,31 @@ struct ShoppingListView: View {
                                 Label("Löschen", systemImage: "trash")
                             }
                         }
-                        .groupedRowBackground(
-                            GroupedRowPosition(index: index, count: list.checkedItems.count)
-                        )
+                        .listRowBackground(Color.clear)
+                        .listRowSeparatorTint(Theme.stroke)
+                        .listRowInsets(EdgeInsets(
+                            top: Theme.Spacing.xs, leading: Theme.Spacing.lg,
+                            bottom: Theme.Spacing.xs, trailing: Theme.Spacing.lg
+                        ))
                     }
                 }
             }
 
         }
+        // **`.plain`, und das ist der ganze Unterschied** (06.08.).
+        //
+        // Die App setzte **nirgends** ein `.listStyle`. Jede Liste war damit
+        // `insetGrouped`, die Vorgabe von iOS — die Hälfte des Kasten-Gefühls,
+        // über das Scott sich beschwert hat, kam gar nicht aus dem Theme,
+        // sondern aus dem System.
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        // **Der Abstand über der Plan-Karte war Luft, kein Aufbau.** Zwischen
+        // der Titelleiste und der Karte lagen rund 50 pt Nichts — die
+        // Standardluft, die eine gruppierte `List` über ihren ersten Abschnitt
+        // legt. Auf dem Bildschirm, für den es die App gibt, ist das der
+        // teuerste Platz.
+        .contentMargins(.top, Theme.Spacing.sm, for: .scrollContent)
         // **Wer die Liste anfasst, ist mit dem Aufschreiben fertig.** Der
         // zweite Ausgang aus dem Tipp-Fluss neben „Tastatur weg": Ohne ihn
         // bliebe die Angaben-Schicht stehen, während man schon durch die Liste
@@ -618,7 +672,7 @@ struct ShoppingListView: View {
                     // der Karte unter die Vorschlagsfläche — am Simulator
                     // gemessen, der erste Bildschirm nach dem Onboarding.
                     if hasMarkets {
-                        Text("Schreib auf, was du einkaufen willst. Le Chariot sagt dir, welche deiner Filialen die Liste am günstigsten abdeckt.")
+                        Text("Schreib auf, was du einkaufen willst. \(AppBrand.name) sagt dir, welche deiner Filialen die Liste am günstigsten abdeckt.")
                             .font(.subheadline)
                             .foregroundStyle(Theme.secondaryText)
                             .multilineTextAlignment(.center)
@@ -861,7 +915,7 @@ struct ShoppingListView: View {
     private var termSurface: some View {
         let terms = typedTerms
         return VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text(terms.isEmpty ? "Kein bekannter Begriff" : "Le Chariot kennt")
+            Text(terms.isEmpty ? "Kein bekannter Begriff" : "\(AppBrand.name) kennt")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.secondaryText)
                 .accessibilityIdentifier("list.terms.title")
@@ -1295,7 +1349,7 @@ struct NoMarketsCard: View {
             Text("Noch keine Filiale gewählt")
                 .font(.headline)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Le Chariot vergleicht nur die Läden, in die du wirklich gehst. Sobald du Filialen gewählt hast, steht hier, welche davon deine Liste am günstigsten abdeckt — und was der Einkauf dort kostet.")
+            Text("\(AppBrand.name) vergleicht nur die Läden, in die du wirklich gehst. Sobald du Filialen gewählt hast, steht hier, welche davon deine Liste am günstigsten abdeckt — und was der Einkauf dort kostet.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)

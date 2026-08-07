@@ -40,6 +40,20 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: "Le Chariot"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
+        # **Ohne das blitzt jeder Kaltstart weiss auf** (06.08. gefunden). Ein
+        # leerer `UILaunchScreen` heisst `systemBackground` — reinweiss im
+        # hellen, reinschwarz im dunklen Modus. Danach malt die App
+        # `Theme.background` (#EDE9C0 / #1A1F15). Jeder Start war also
+        # weiss -> creme bzw. schwarz -> oliv.
+        #
+        # Das Farbset traegt exakt die Werte aus `Theme.background`; ein Test
+        # haelt beide zusammen, sonst driften sie beim naechsten Farbdreh.
+        #
+        # Achtung beim Pruefen: iOS legt den gerenderten Startbildschirm je
+        # App-Version ab. Nach dieser Aenderung zeigt ein Geraet unter Umstaenden
+        # weiter den alten, bis die App neu installiert oder die Version
+        # angehoben wird. Nicht eine Stunde lang debuggen.
+        INFOPLIST_KEY_UILaunchScreen_BackgroundColor: LaunchBackground
         # Der Text nennt beide Zwecke, seit die Entfernungen im Filial-Picker
         # ab dem Standort gemessen werden — vorher stand hier "einmalig, um
         # deine Postleitzahl zu ermitteln", und das stimmte dann nicht mehr.

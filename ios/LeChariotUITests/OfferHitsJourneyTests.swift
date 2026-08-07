@@ -22,7 +22,11 @@ final class OfferHitsJourneyTests: XCTestCase {
     }
 
     private var input: XCUIElement { app.textFields["list.input"] }
-    private var row: XCUIElement { app.buttons["list.offerHits"] }
+    /// **Der Weg liegt seit dem 06.08. in der Plan-Karte.** Vorher stand
+    /// darunter eine zweite Karte („Passende Artikel im Angebot") mit denselben
+    /// Ketten als Chips; zusammen nahmen beide 209 pt, bevor der erste Artikel
+    /// der Liste anfing. Das Ziel ist unverändert.
+    private var row: XCUIElement { app.descendants(matching: .any)["list.plan.disclosure"] }
 
     /// Legt zwei Artikel an, zu denen der Vorrat sicher Treffer hat.
     private func seedList() {
@@ -34,7 +38,7 @@ final class OfferHitsJourneyTests: XCTestCase {
         // mit voller Software-Tastatur auf der Schicht. Siehe `dragTheListUp`.
         app.dragTheListUp()
         XCTAssertTrue(row.waitForExistence(timeout: 15),
-                      "Die Zeile „Passende Artikel im Angebot“ steht nicht da:\n"
+                      "Der Weg „Angebote zu deiner Liste“ steht nicht in der Plan-Karte:\n"
                       + app.debugDescription)
     }
 

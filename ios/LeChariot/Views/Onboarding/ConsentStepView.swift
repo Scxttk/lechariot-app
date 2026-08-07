@@ -1,13 +1,32 @@
 import SwiftUI
 
-/// Asks whether the answers may be sent to the backend. Opt-in, off by default,
-/// and "Weiter" works either way — declining costs the user nothing, so the
-/// question can be asked honestly instead of nagged.
+/// Asks whether the answers may be sent to the backend.
+///
+/// **Zwei Knöpfe, kein Schalter — seit dem 06.08.** Scotts Befund: „Darf Le
+/// Chariot mitlernen?" mit einem Schalter und einem „Fertig" darunter liest
+/// sich wie jede andere App, die alle Daten will, „und deswegen klickt man bei
+/// der Seite einfach weiter."
+///
+/// Er hat recht, und der Schalter ist der Grund. Ein Schalter plus „Fertig"
+/// heißt: Die eigentliche Entscheidung steckt in einem Bedienelement, das man
+/// überspringen kann, und „Fertig" tut dann irgendetwas — nämlich das, was der
+/// Schalter zufällig gerade sagt. **Wer durchklickt, hat nicht Nein gesagt, er
+/// hat gar nichts gesagt.**
+///
+/// Jetzt stehen beide Antworten als Knopf da und heißen beide, was sie tun:
+/// „Angaben übermitteln" und „Keine Angaben übermitteln". Kein Weg führt an der
+/// Frage vorbei, und keine der zwei Antworten ist verkleidet. Die Frage selbst
+/// sagt nicht mehr „darf ich", sondern was zur Wahl steht.
+///
+/// Die Voreinstellung bleibt, was sie war: Ohne Antwort wird nichts übermittelt.
 struct ConsentStepView: View {
     @Environment(ProfileStore.self) private var profile
     var onContinue: () -> Void
 
-    @State private var isOn = false
+    private func answer(_ consent: Bool) {
+        profile.setConsent(consent)
+        onContinue()
+    }
 
     var body: some View {
         OnboardingStepView(
@@ -15,34 +34,13 @@ struct ConsentStepView: View {
             // seinen eigenen Punkt, vorher teilten sich beide den sechsten.
             step: 6,
             totalSteps: OnboardingStep.total,
-            title: "Darf Le Chariot mitlernen?",
-            subtitle: "Le Chariot ist noch jung. Deine Angaben helfen dabei, die App für echte Einkäufe besser zu machen.",
-            primaryTitle: "Fertig",
-            onPrimary: {
-                profile.setConsent(isOn)
-                onContinue()
-            }
+            title: "Anonyme Angaben — oder nicht?",
+            subtitle: "\(AppBrand.name) ist noch jung. Deine Angaben helfen dabei, die App für echte Einkäufe besser zu machen. Beides ist in Ordnung, und die App funktioniert gleich.",
+            primaryTitle: "Angaben übermitteln",
+            onPrimary: { answer(true) },
+            skip: (title: "Keine Angaben übermitteln", action: { answer(false) })
         ) {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                Toggle(isOn: $isOn) {
-                    Text("Angaben anonym übermitteln")
-                        .font(.body.weight(.medium))
-                }
-                .tint(Theme.accent)
-                .padding(Theme.Spacing.lg)
-                .background(
-                    Theme.surface,
-                    in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                        .strokeBorder(Theme.stroke)
-                )
-
-                // Die Liste zählt auf, was wirklich geht — seit die Fragen zu
-                // Haushalt und Ernährung nicht mehr im Onboarding stehen,
-                // stehen sie hier als das, was sie sind: spätere, freiwillige
-                // Angaben in der App.
                 detail(
                     "checkmark.circle",
                     Theme.success,
@@ -62,12 +60,11 @@ struct ConsentStepView: View {
                     "Die Daten hängen an einer Zufallsnummer dieser Installation — nicht an dir."
                 )
 
-                Text("Sagst du Nein, funktioniert die App genau gleich. Du kannst es in den Einstellungen jederzeit ändern.")
+                Text("Du kannst es in den Einstellungen jederzeit ändern.")
                     .font(.footnote)
                     .foregroundStyle(Theme.secondaryText)
             }
         }
-        .onAppear { isOn = profile.hasConsented }
     }
 
     private func detail(

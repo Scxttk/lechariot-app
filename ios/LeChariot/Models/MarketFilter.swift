@@ -158,8 +158,13 @@ enum MarketFilter {
     static func chainSubtitle(
         branchCount: Int, selectedCount: Int, nearestKm: Double?
     ) -> String {
-        var parts = [branchCount == 1 ? "1 Filiale" : "\(branchCount) Filialen"]
+        // **Die Entfernung zuerst** (06.08.). Vorher führte die Filialzahl —
+        // „24 Filialen · nächste 1,2 km". Beim Wählen einer Kette ist aber die
+        // Frage „wie weit muss ich fahren", nicht „wie viele gibt es"; die
+        // große Zahl vorn war der Grund, warum die Reichweite zu groß wirkte.
+        var parts: [String] = []
         if let nearestKm { parts.append("nächste \(distanceLabel(nearestKm))") }
+        parts.append(branchCount == 1 ? "1 Filiale" : "\(branchCount) Filialen")
         if selectedCount > 0 { parts.append("\(selectedCount) gewählt") }
         return parts.joined(separator: " · ")
     }
