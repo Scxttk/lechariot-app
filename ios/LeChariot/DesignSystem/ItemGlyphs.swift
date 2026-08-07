@@ -68,7 +68,7 @@ enum ItemGlyph {
     private static let recipes: [String: Rezept] = {
         var alle: [String: Rezept] = [:]
         for teil in [obstUndGemuese, molkereiUndBackwaren, fleischUndFisch,
-                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4, tranche5] {
+                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4, tranche5, tranche6] {
             alle.merge(teil) { erstes, _ in erstes }
         }
         return alle
@@ -3023,6 +3023,283 @@ private let tranche5: [String: ItemGlyph.Rezept] = [
         p.line([p.at(0.50, 0.24), p.at(0.50, 0.14)])
         p.begin(p.at(0.14, 0.46))
         p.bow(p.at(0.14, 0.62), p.at(0.02, 0.46), p.at(0.02, 0.62))
+    },
+]
+
+// MARK: - Tranche 6: der Rest aus Obst & Gemüse
+
+/// **Dreiundzwanzig Zeichen zu Tranche 6** (2026-08-07).
+///
+/// Was in Bring!s größter Kategorie noch offen war. **Vier Salate unter einem
+/// Begriff** (`römersalat` trägt Kopf-, Eisberg-, Feldsalat und Rucola): Ein
+/// Salatkopf ist ein Salatkopf, und vier Varianten desselben Bildes wären der
+/// Fehler, gegen den das Vorhaben läuft.
+private let tranche6: [String: ItemGlyph.Rezept] = [
+
+    // Blutorange: Kugel mit angeschnittener Hälfte, Segmente sichtbar.
+    "blutorangen": { p in
+        p.circle(p.at(0.36, 0.56), 0.28)
+        p.line([p.at(0.36, 0.30), p.at(0.38, 0.16)])
+        p.begin(p.at(0.62, 0.44))
+        p.bow(p.at(0.62, 0.88), p.at(0.94, 0.48), p.at(0.94, 0.84))
+        p.close()
+        p.line([p.at(0.62, 0.66), p.at(0.90, 0.66)])
+        p.line([p.at(0.62, 0.52), p.at(0.80, 0.56)])
+        p.line([p.at(0.62, 0.80), p.at(0.80, 0.76)])
+    },
+
+    // Chicorée: geschlossene Knospe mit spitzen Blattenden.
+    "chicorée": { p in
+        p.begin(p.at(0.50, 0.10))
+        p.bow(p.at(0.28, 0.86), p.at(0.30, 0.34), p.at(0.26, 0.66))
+        p.bow(p.at(0.72, 0.86), p.at(0.38, 0.94), p.at(0.62, 0.94))
+        p.bow(p.at(0.50, 0.10), p.at(0.74, 0.66), p.at(0.70, 0.34))
+        p.close()
+        p.line([p.at(0.42, 0.24), p.at(0.40, 0.84)])
+        p.line([p.at(0.58, 0.24), p.at(0.60, 0.84)])
+    },
+
+    // Drachenfrucht: ovale Frucht mit abstehenden Schuppen.
+    "drachenfrucht": { p in
+        p.begin(p.at(0.50, 0.20))
+        p.bow(p.at(0.50, 0.86), p.at(0.24, 0.34), p.at(0.24, 0.72))
+        p.bow(p.at(0.50, 0.20), p.at(0.76, 0.72), p.at(0.76, 0.34))
+        p.close()
+        p.line([p.at(0.26, 0.38), p.at(0.10, 0.28)])
+        p.line([p.at(0.74, 0.38), p.at(0.90, 0.28)])
+        p.line([p.at(0.26, 0.62), p.at(0.10, 0.56)])
+        p.line([p.at(0.74, 0.62), p.at(0.90, 0.56)])
+        p.dot(p.at(0.44, 0.50), 0.03)
+        p.dot(p.at(0.56, 0.60), 0.03)
+    },
+
+    // Kiwi: halbierte Frucht mit Kernkranz.
+    "kiwi": { p in
+        p.circle(p.at(0.50, 0.52), 0.34)
+        p.circle(p.at(0.50, 0.52), 0.10)
+        for i in 0..<8 {
+            let w = Double(i) / 8 * 2 * Double.pi
+            p.dot(p.at(0.50 + 0.20 * CGFloat(cos(w)), 0.52 + 0.20 * CGFloat(sin(w))), 0.028)
+        }
+    },
+
+    // Guave/Maracuja: halbierte Frucht mit Kerngrube.
+    "guave": { p in
+        p.circle(p.at(0.50, 0.54), 0.32)
+        p.begin(p.at(0.28, 0.54))
+        p.bow(p.at(0.72, 0.54), p.at(0.34, 0.32), p.at(0.66, 0.32))
+        p.bow(p.at(0.28, 0.54), p.at(0.66, 0.76), p.at(0.34, 0.76))
+        p.close()
+        p.dot(p.at(0.44, 0.50), 0.035)
+        p.dot(p.at(0.58, 0.54), 0.035)
+        p.dot(p.at(0.48, 0.62), 0.035)
+    },
+
+    // Haselnuss: runde Nuss im gezackten Fruchtbecher.
+    "haselnüsse": { p in
+        p.circle(p.at(0.50, 0.62), 0.26)
+        p.line([p.at(0.24, 0.50), p.at(0.32, 0.30), p.at(0.44, 0.44),
+                p.at(0.56, 0.26), p.at(0.68, 0.44), p.at(0.76, 0.30),
+                p.at(0.76, 0.50)])
+    },
+
+    // Kastanie: glänzende Nuss mit heller Narbe unten.
+    "kastanien": { p in
+        p.begin(p.at(0.50, 0.20))
+        p.bow(p.at(0.20, 0.62), p.at(0.30, 0.24), p.at(0.20, 0.44))
+        p.bow(p.at(0.80, 0.62), p.at(0.20, 0.88), p.at(0.80, 0.88))
+        p.bow(p.at(0.50, 0.20), p.at(0.80, 0.44), p.at(0.70, 0.24))
+        p.close()
+        p.begin(p.at(0.36, 0.78))
+        p.bow(p.at(0.64, 0.78), p.at(0.40, 0.66), p.at(0.60, 0.66))
+        p.close()
+    },
+
+    // Kokosnuss: Nuss mit den drei Keimlöchern.
+    "kokosnuss": { p in
+        // **Drei Keimlöcher im Dreieck sind ein Gesicht** — zwei Augen und
+        // ein Mund, dieselbe Falle wie bei der Brezel. Halbiert gezeichnet,
+        // mit den Löchern **am Rand** statt in der Mitte, ist es eine Nuss.
+        p.circle(p.at(0.50, 0.54), 0.34)
+        p.begin(p.at(0.24, 0.44))
+        p.bow(p.at(0.76, 0.44), p.at(0.32, 0.20), p.at(0.68, 0.20))
+        p.bow(p.at(0.24, 0.44), p.at(0.68, 0.68), p.at(0.32, 0.68))
+        p.close()
+        p.dot(p.at(0.30, 0.80), 0.04)
+        p.dot(p.at(0.50, 0.86), 0.04)
+        p.dot(p.at(0.70, 0.80), 0.04)
+    },
+
+    // Kresse: Schälchen mit dichtem, kurzem Bewuchs.
+    "kresse": { p in
+        p.line([p.at(0.22, 0.62), p.at(0.28, 0.88), p.at(0.72, 0.88),
+                p.at(0.78, 0.62)], closed: true)
+        for x in [0.30, 0.40, 0.50, 0.60, 0.70] {
+            p.line([p.at(CGFloat(x), 0.60), p.at(CGFloat(x) - 0.03, 0.30)])
+            p.dot(p.at(CGFloat(x) - 0.03, 0.26), 0.035)
+        }
+    },
+
+    // Maiskolben: Kolben mit Körnerraster und Hüllblatt.
+    "maiskolben": { p in
+        p.begin(p.at(0.44, 0.14))
+        p.bow(p.at(0.44, 0.84), p.at(0.26, 0.30), p.at(0.26, 0.68))
+        p.bow(p.at(0.44, 0.14), p.at(0.62, 0.68), p.at(0.62, 0.30))
+        p.close()
+        p.line([p.at(0.30, 0.36), p.at(0.58, 0.36)])
+        p.line([p.at(0.28, 0.50), p.at(0.60, 0.50)])
+        p.line([p.at(0.30, 0.64), p.at(0.58, 0.64)])
+        p.line([p.at(0.44, 0.20), p.at(0.44, 0.80)])
+        blatt(&p, von: (0.56, 0.66), nach: (0.90, 0.44), bauch: -0.10)
+    },
+
+    // Mangold: breites Blatt mit dickem Stiel.
+    "mangold": { p in
+        p.line([p.at(0.48, 0.92), p.at(0.50, 0.46)])
+        p.begin(p.at(0.50, 0.50))
+        p.bow(p.at(0.18, 0.24), p.at(0.30, 0.48), p.at(0.16, 0.38))
+        p.bow(p.at(0.50, 0.08), p.at(0.20, 0.10), p.at(0.36, 0.06))
+        p.bow(p.at(0.82, 0.24), p.at(0.64, 0.06), p.at(0.80, 0.10))
+        p.bow(p.at(0.50, 0.50), p.at(0.84, 0.38), p.at(0.70, 0.48))
+        p.close()
+        p.line([p.at(0.50, 0.46), p.at(0.50, 0.12)])
+    },
+
+    // Preiselbeeren: drei kleine Beeren am Zweig.
+    "preiselbeeren": { p in
+        p.circle(p.at(0.34, 0.56), 0.15)
+        p.circle(p.at(0.62, 0.48), 0.15)
+        p.circle(p.at(0.50, 0.78), 0.14)
+        p.line([p.at(0.34, 0.41), p.at(0.40, 0.20)])
+        p.line([p.at(0.62, 0.33), p.at(0.48, 0.18)])
+        p.line([p.at(0.40, 0.20), p.at(0.48, 0.18)])
+    },
+
+    // Quinoa: Schale mit feinem Korn und Spiralen.
+    "quinoa": { p in
+        p.begin(p.at(0.16, 0.52))
+        p.bow(p.at(0.84, 0.52), p.at(0.22, 0.88), p.at(0.78, 0.88))
+        p.close()
+        p.circle(p.at(0.36, 0.42), 0.06)
+        p.circle(p.at(0.52, 0.36), 0.06)
+        p.circle(p.at(0.66, 0.44), 0.06)
+    },
+
+    // Salatkopf: lockere Blätter um ein Herz — steht für die ganze Gruppe.
+    "römersalat": { p in
+        p.begin(p.at(0.50, 0.16))
+        p.bow(p.at(0.14, 0.56), p.at(0.26, 0.20), p.at(0.14, 0.36))
+        p.bow(p.at(0.50, 0.90), p.at(0.14, 0.78), p.at(0.30, 0.90))
+        p.bow(p.at(0.86, 0.56), p.at(0.70, 0.90), p.at(0.86, 0.78))
+        p.bow(p.at(0.50, 0.16), p.at(0.86, 0.36), p.at(0.74, 0.20))
+        p.close()
+        p.begin(p.at(0.28, 0.48))
+        p.bow(p.at(0.50, 0.84), p.at(0.34, 0.68), p.at(0.42, 0.80))
+        p.begin(p.at(0.72, 0.48))
+        p.bow(p.at(0.50, 0.84), p.at(0.66, 0.68), p.at(0.58, 0.80))
+        p.line([p.at(0.50, 0.24), p.at(0.50, 0.80)])
+    },
+
+    // Schwarzwurzel: lange dünne Wurzel, gerade, mit Erdspitze.
+    "schwarzwurzel": { p in
+        p.begin(p.at(0.38, 0.12))
+        p.bow(p.at(0.56, 0.92), p.at(0.44, 0.44), p.at(0.50, 0.70))
+        p.bow(p.at(0.38, 0.12), p.at(0.48, 0.68), p.at(0.32, 0.42))
+        p.close()
+        p.line([p.at(0.42, 0.34), p.at(0.22, 0.26)])
+        p.line([p.at(0.48, 0.58), p.at(0.70, 0.52)])
+        p.line([p.at(0.38, 0.12), p.at(0.30, 0.04)])
+    },
+
+    // Snacktomaten: Rispe mit drei kleinen Früchten.
+    "snacktomaten": { p in
+        p.circle(p.at(0.30, 0.64), 0.16)
+        p.circle(p.at(0.58, 0.70), 0.16)
+        p.circle(p.at(0.74, 0.46), 0.15)
+        p.line([p.at(0.24, 0.28), p.at(0.80, 0.22)])
+        p.line([p.at(0.30, 0.48), p.at(0.34, 0.28)])
+        p.line([p.at(0.58, 0.54), p.at(0.56, 0.26)])
+        p.line([p.at(0.74, 0.31), p.at(0.72, 0.24)])
+    },
+
+    // Weizengras: dichtes Büschel gerader Halme in der Schale.
+    "weizengras": { p in
+        p.line([p.at(0.24, 0.66), p.at(0.28, 0.88), p.at(0.72, 0.88),
+                p.at(0.76, 0.66)], closed: true)
+        for (x, tip) in [(0.30, 0.20), (0.40, 0.10), (0.50, 0.16), (0.60, 0.08), (0.70, 0.22)] {
+            p.line([p.at(CGFloat(x), 0.64), p.at(CGFloat(x) + 0.03, CGFloat(tip))])
+        }
+    },
+
+    // Zitronengras: drei Halme mit verdicktem Fuß.
+    "zitronengras": { p in
+        for (x, t) in [(0.34, -8.0), (0.50, 0.0), (0.66, 8.0)] {
+            p.capsule(CGFloat(x), 0.72, 0.13, 0.34, tilt: t)
+            p.line([p.at(CGFloat(x) + CGFloat(t) * 0.004, 0.56),
+                    p.at(CGFloat(x) + CGFloat(t) * 0.012, 0.10)])
+        }
+    },
+
+    // Portulak: kleine runde Blätter an dünnen Stielen.
+    "portulak": { p in
+        p.line([p.at(0.50, 0.92), p.at(0.50, 0.46)])
+        p.line([p.at(0.50, 0.66), p.at(0.28, 0.50)])
+        p.line([p.at(0.50, 0.66), p.at(0.72, 0.50)])
+        p.circle(p.at(0.24, 0.42), 0.12)
+        p.circle(p.at(0.76, 0.42), 0.12)
+        p.circle(p.at(0.50, 0.30), 0.13)
+    },
+
+    // Artischocke: Knospe aus geschuppten Blättern mit Stiel.
+    "artischocken": { p in
+        p.begin(p.at(0.50, 0.14))
+        p.bow(p.at(0.22, 0.52), p.at(0.30, 0.18), p.at(0.22, 0.36))
+        p.bow(p.at(0.50, 0.80), p.at(0.22, 0.70), p.at(0.34, 0.80))
+        p.bow(p.at(0.78, 0.52), p.at(0.66, 0.80), p.at(0.78, 0.70))
+        p.bow(p.at(0.50, 0.14), p.at(0.78, 0.36), p.at(0.70, 0.18))
+        p.close()
+        p.line([p.at(0.26, 0.42), p.at(0.74, 0.42)])
+        p.line([p.at(0.30, 0.60), p.at(0.70, 0.60)])
+        p.line([p.at(0.50, 0.80), p.at(0.50, 0.94)])
+    },
+
+    // Spargel: drei Stangen mit Kopf.
+    "spargel": { p in
+        for (x, t) in [(0.32, -10.0), (0.50, 0.0), (0.68, 10.0)] {
+            p.line([p.at(CGFloat(x) - CGFloat(t) * 0.006, 0.90),
+                    p.at(CGFloat(x) + CGFloat(t) * 0.004, 0.26)])
+            p.begin(p.at(CGFloat(x) + CGFloat(t) * 0.004 - 0.06, 0.26))
+            p.bow(p.at(CGFloat(x) + CGFloat(t) * 0.004, 0.10),
+                  p.at(CGFloat(x) + CGFloat(t) * 0.004 - 0.06, 0.16),
+                  p.at(CGFloat(x) + CGFloat(t) * 0.004 - 0.03, 0.10))
+            p.bow(p.at(CGFloat(x) + CGFloat(t) * 0.004 + 0.06, 0.26),
+                  p.at(CGFloat(x) + CGFloat(t) * 0.004 + 0.03, 0.10),
+                  p.at(CGFloat(x) + CGFloat(t) * 0.004 + 0.06, 0.16))
+            p.close()
+        }
+    },
+
+    // Lauch: lange Stange, unten weiß und dick, oben aufgefächert.
+    "lauch": { p in
+        p.begin(p.at(0.40, 0.90))
+        p.bow(p.at(0.60, 0.90), p.at(0.38, 0.96), p.at(0.62, 0.96))
+        p.to(p.at(0.58, 0.52))
+        p.to(p.at(0.42, 0.52))
+        p.close()
+        p.line([p.at(0.42, 0.52), p.at(0.26, 0.12)])
+        p.line([p.at(0.50, 0.52), p.at(0.50, 0.08)])
+        p.line([p.at(0.58, 0.52), p.at(0.74, 0.12)])
+        p.line([p.at(0.36, 0.70), p.at(0.64, 0.70)])
+    },
+
+    // Kohlrabi: Knolle mit zwei Stielen und Blatt.
+    "kohlrabi": { p in
+        p.circle(p.at(0.50, 0.66), 0.26)
+        p.line([p.at(0.42, 0.42), p.at(0.30, 0.16)])
+        p.line([p.at(0.58, 0.42), p.at(0.70, 0.16)])
+        blatt(&p, von: (0.30, 0.16), nach: (0.12, 0.06), bauch: 0.07)
+        blatt(&p, von: (0.70, 0.16), nach: (0.88, 0.06), bauch: -0.07)
+        p.line([p.at(0.32, 0.84), p.at(0.30, 0.92)])
     },
 ]
 

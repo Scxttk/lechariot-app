@@ -28,7 +28,7 @@ Ansehen sind sie das, was sie hier sind: eine Messlatte für den Umfang.
 | Artikel bei Bring! (gelesen) | **750** |
 | davon kennt unser Wörterbuch schon | 267 |
 | **neu** | **483** |
-| gezeichnet (`ItemGlyphs.swift`) | **203** |
+| gezeichnet (`ItemGlyphs.swift`) | **226** |
 
 ### Fortschritt
 
@@ -39,7 +39,8 @@ Ansehen sind sie das, was sie hier sind: eine Messlatte für den Umfang.
 | 2 | Obst, Gemüse, Kräuter | +24 | 127 | **98,1 %** |
 | 3 | Brot, Milch, Fleisch & Fisch | +23 | 150 | 98,1 % |
 | 4 | Getränke, Süßwaren, Getreide | +25 | 175 | **98,3 %** |
-| 5 | Zutaten, Gewürze, Tiefkühl | +28 | **203** | 98,3 % |
+| 5 | Zutaten, Gewürze, Tiefkühl | +28 | 203 | 98,3 % |
+| 6 | Rest aus Obst & Gemüse | +23 | **226** | 98,3 % |
 
 **Erfahrungswert aus fünf Runden:** rund 25 Zeichen je Runde, davon lesen **etwa
 ein Drittel beim ersten Wurf etwas anderes** und brauchen einen zweiten Durchgang.
@@ -54,6 +55,7 @@ Prüfbogens.
 - Geneigte Kapseln, die unten zusammenlaufen, sind ein **Buchstabe**.
 - Senkrechte Striche mit Querbalken sind ein **Zaun**.
 - Kreis im Kreis mit Kreuz ist ein **Wappen**.
+- Drei Punkte im Dreieck auf einer Kugel sind ein **Gesicht** (Kokosnuss).
 - `capsule` wird **gestrichen**: bei 0,095 Strichstärke deckt der Strich eine
   0,10 breite Kapsel voll zu. Ein dünner Gegenstand ist eine **Linie**.
 

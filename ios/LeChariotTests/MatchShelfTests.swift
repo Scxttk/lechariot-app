@@ -40,6 +40,30 @@ final class MatchShelfTests: XCTestCase {
     /// `milch` gesperrt), „Putenbrustfilet" (bei `fisch` gesperrt) — sie
     /// gehören zu einem anderen Begriff und müssen dort auch bleiben.
     private static let regal: [String: String] = [
+        // Tranche 6 (2026-08-07): der Rest aus Obst & Gemüse.
+        "artischocken": "Artischockenherzen 240 g",
+        "blutorangen": "Blutorangen Moro 1 kg",
+        "chicorée": "Chicorée 500 g",
+        "drachenfrucht": "Drachenfrucht, Stück",
+        "guave": "Maracuja 3 Stück",
+        "haselnüsse": "Haselnusskerne 200 g",
+        "kastanien": "Maronen vorgegart 200 g",
+        "kiwi": "Kiwi Zespri 6 Stück",
+        "kohlrabi": "Kohlrabi Klasse I",
+        "kokosnuss": "Kokosnuss, Stück",
+        "kresse": "Gartenkresse im Schälchen",
+        "lauch": "Porree Klasse I",
+        "maiskolben": "Zuckermais 2 Kolben",
+        "mangold": "Mangold Bund",
+        "portulak": "Postelein 100 g",
+        "preiselbeeren": "Getrocknete Cranberries 200 g",
+        "quinoa": "Quinoa weiß 500 g",
+        "römersalat": "Römersalatherzen 2 Stück",
+        "schwarzwurzel": "Schwarzwurzeln 500 g",
+        "snacktomaten": "Snacktomaten 250 g",
+        "spargel": "Grüner Spargel 500 g",
+        "weizengras": "Weizengras Pulver 100 g",
+        "zitronengras": "Zitronengras 2 Stangen",
         // Tranche 5 (2026-08-07): Zutaten, Gewürze, Tiefkühl.
         "ahornsirup": "Ahornsirup Grade A 250 ml",
         "backpulver": "Backpulver 10 x 17 g",
