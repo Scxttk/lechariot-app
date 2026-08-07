@@ -28,7 +28,34 @@ Ansehen sind sie das, was sie hier sind: eine Messlatte für den Umfang.
 | Artikel bei Bring! (gelesen) | **750** |
 | davon kennt unser Wörterbuch schon | 267 |
 | **neu** | **483** |
-| heute gezeichnet (`ItemGlyphs.swift`) | 80 |
+| gezeichnet (`ItemGlyphs.swift`) | **203** |
+
+### Fortschritt
+
+| Tranche | Thema | Begriffe | Zeichen gesamt | Abdeckung |
+|---|---|---:|---:|---:|
+| — | Ausgangslage | 85 | 80 | 97,8 % |
+| 1 | Gesperrte Wörter ohne Begriff | +23 | 103 | 97,8 % |
+| 2 | Obst, Gemüse, Kräuter | +24 | 127 | **98,1 %** |
+| 3 | Brot, Milch, Fleisch & Fisch | +23 | 150 | 98,1 % |
+| 4 | Getränke, Süßwaren, Getreide | +25 | 175 | **98,3 %** |
+| 5 | Zutaten, Gewürze, Tiefkühl | +28 | **203** | 98,3 % |
+
+**Erfahrungswert aus fünf Runden:** rund 25 Zeichen je Runde, davon lesen **etwa
+ein Drittel beim ersten Wurf etwas anderes** und brauchen einen zweiten Durchgang.
+Die Fehllesungen stehen jeweils am Rezept — sie sind der eigentliche Wert des
+Prüfbogens.
+
+**Wiederkehrende Fallen**, in fünf Runden gesammelt:
+
+- Ein konisches Gefäß mit etwas Rundem darüber ist ein **Blumentopf**.
+- Zwei Löcher über einem Strich sind ein **Gesicht**.
+- Ein Ballen auf einem Stiel ist ein **Baum**.
+- Geneigte Kapseln, die unten zusammenlaufen, sind ein **Buchstabe**.
+- Senkrechte Striche mit Querbalken sind ein **Zaun**.
+- Kreis im Kreis mit Kreuz ist ein **Wappen**.
+- `capsule` wird **gestrichen**: bei 0,095 Strichstärke deckt der Strich eine
+  0,10 breite Kapsel voll zu. Ein dünner Gegenstand ist eine **Linie**.
 
 **Zwei Dinge fehlen, nicht eines.** Ein Artikel braucht einen **Begriff** im
 `matching-woerterbuch.json` (sonst löst `ItemGlyphTerm` ihn nicht auf und die Zeile
