@@ -31,7 +31,7 @@ final class ItemGlyphTests: XCTestCase {
     /// Test, welche Zeichnung ins Leere zeigt.
     func testEveryDictionaryTermIsDrawnOrNamedAsAnException() {
         let wörterbuch = Set(MatchDictionary.allTerms)
-        XCTAssertEqual(wörterbuch.count, 256,
+        XCTAssertEqual(wörterbuch.count, 284,
                        "Das Wörterbuch hat sich geändert — die Zahl hier ist nur der Wecker, "
                        + "die Arbeit steht in den Meldungen darunter.")
 
@@ -178,7 +178,7 @@ final class ItemGlyphTests: XCTestCase {
         XCTAssertEqual(ItemGlyphTerm.term(for: "Erdnussbutter"), "erdnussbutter")
         // Ein Wort, das der Wortschatz weiterhin nicht kennt — die
         // Rückfallleiter muss geprüft bleiben.
-        XCTAssertNil(ItemGlyphTerm.term(for: "Zahnstocher"))
+        XCTAssertNil(ItemGlyphTerm.term(for: "Schnürsenkel"))
         // **Eine Sperre gilt aber nur für den Begriff, der sie aufstellt.**
         // „Buttermilch" ist in `butter` gesperrt und steht zugleich in der
         // exact-Liste von `milch`; sie bekommt die Milchtüte. „Milchreis" ist

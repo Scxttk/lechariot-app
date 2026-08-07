@@ -102,15 +102,15 @@ final class QueryUnderstandingTests: XCTestCase {
     /// **Das Beispielwort war bis zum 07.08. „Schnitzel".** Seit Tranche 3
     /// steht es im Wörterbuch, und der Test prüfte damit den Gegenfall. Wer
     /// hier ein Wort einsetzt, muss eines nehmen, das der Wortschatz **nicht**
-    /// kennt — „Zahnstocher" ist der Handgriff, den auch die Journeys dafür
+    /// kennt — „Schnürsenkel" ist der Handgriff, den auch die Journeys dafür
     /// benutzen.
     func testAWordTheDictionaryDoesNotKnowSaysSo() {
-        let reading = QueryUnderstanding.of(query: "Zahnstocher", in: regal)
+        let reading = QueryUnderstanding.of(query: "Schnürsenkel", in: regal)
         XCTAssertEqual(reading.words.map(\.reading), [.unknown])
         XCTAssertNil(reading.headline)
         XCTAssertEqual(
             reading.unknownNote,
-            "\u{201E}Zahnstocher\u{201C} steht nicht im Wörterbuch — "
+            "\u{201E}Schnürsenkel\u{201C} steht nicht im Wörterbuch — "
                 + "gesucht wird das Wort genau so im Angebotstitel."
         )
     }
@@ -123,11 +123,11 @@ final class QueryUnderstandingTests: XCTestCase {
     /// bekannt. Der gemeldete Fall lebt davon, dass ein Wort abgeleitet und
     /// das andere unbekannt ist — nicht davon, welches Wort es ist.
     func testAMixedQuerySaysBothThings() {
-        let reading = QueryUnderstanding.of(query: "vegan Zahnstocher", in: regal)
+        let reading = QueryUnderstanding.of(query: "vegan Schnürsenkel", in: regal)
         XCTAssertEqual(reading.headline, "\u{201E}Vegan\u{201C} als Tofu")
         XCTAssertEqual(
             reading.unknownNote,
-            "\u{201E}Zahnstocher\u{201C} steht nicht im Wörterbuch — "
+            "\u{201E}Schnürsenkel\u{201C} steht nicht im Wörterbuch — "
                 + "gesucht wird das Wort genau so im Angebotstitel."
         )
     }

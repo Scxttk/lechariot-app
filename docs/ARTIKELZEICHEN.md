@@ -28,7 +28,7 @@ Ansehen sind sie das, was sie hier sind: eine Messlatte für den Umfang.
 | Artikel bei Bring! (gelesen) | **750** |
 | davon kennt unser Wörterbuch schon | 267 |
 | **neu** | **483** |
-| gezeichnet (`ItemGlyphs.swift`) | **251** |
+| gezeichnet (`ItemGlyphs.swift`) | **279** |
 
 ### Die Zahl, die zählt — und die, die ich sechs Runden lang falsch berichtet habe
 
@@ -44,9 +44,9 @@ Gemessen mit `tools/artikelzeichen-stand.py` (liest `docs/bring-katalog.txt`, l�
 | | |
 |---|---:|
 | Bring!-Artikel, Rauschen abgezogen | 664 |
-| lösen bei uns auf einen Begriff auf | 450 (68 %) |
-| **bekommen ein gezeichnetes Zeichen** | **435 (66 %)** |
-| unsere Zeichen | 251 |
+| lösen bei uns auf einen Begriff auf | 518 (78 %) |
+| **bekommen ein gezeichnetes Zeichen** | **506 (76 %)** |
+| unsere Zeichen | 279 |
 
 **Die 750 aus der ersten Messung waren zu hoch:** Die Texterkennung hat Kopfzeilen,
 Marken und abgeschnittene Zeilen mitgelesen. Nach Abzug bleiben 664 echte Artikel.
@@ -62,7 +62,8 @@ Marken und abgeschnittene Zeilen mitgelesen. Nach Abzug bleiben 664 echte Artike
 | 4 | Getränke, Süßwaren, Getreide | +25 | 175 | **98,3 %** |
 | 5 | Zutaten, Gewürze, Tiefkühl | +28 | 203 | 98,3 % |
 | 6 | Rest aus Obst & Gemüse | +23 | 226 | 98,3 % |
-| 7 | die letzten Lebensmittel | +25 | **251** | 98,3 % |
+| 7 | die letzten Lebensmittel | +25 | 251 | 98,3 % |
+| 8 | Haushalt und Pflege (erstes Non-Food) | +28 | **279** | 98,3 % |
 
 **Erfahrungswert aus fünf Runden:** rund 25 Zeichen je Runde, davon lesen **etwa
 ein Drittel beim ersten Wurf etwas anderes** und brauchen einen zweiten Durchgang.
@@ -94,7 +95,26 @@ Bauart: Unser Wörterbuch ist für den Angebots-Zuordner gebaut und kennt, was i
 Prospekten steht. Daraus folgt eine Entscheidung, die vor der Arbeit steht — siehe
 unten.
 
-## Die Entscheidung, die vor dem Zeichnen kommt
+## Die Entscheidung, die vor dem Zeichnen zu kommen schien — und es nicht tat
+
+**Aufgelöst am 07.08., Tranche 8.** Die Sorge war: Ein Begriff im Wörterbuch
+heißt automatisch ein Posten im Angebotsvergleich, und am 06.08. wurde Non-Food
+dort bewusst herausgefiltert (Kindersessel −88 %, Werkstattfeilen −72 % standen
+ganz oben).
+
+**Nachgemessen stimmt das nicht.** `windeln/hygiene` ist längst ein
+Non-Food-Begriff — Zahnpasta, Küchenrolle und Waschmittel sind darüber
+auffindbar —, und `NONFOOD_CAT` / `NONFOOD_TERMS` sortieren echte
+Nicht-Lebensmittel weiter vorher aus (Staubsauger bleibt `nonfood`). Von 669
+Angeboten wechselten nach 28 neuen Non-Food-Begriffen **zwei** die Seite:
+Zahnbürsten und Mundspülung von `nonfood` zu `zahnpasta` — und das ist richtig.
+
+Die Entscheidung vom 06.08. bleibt unberührt: Die Aktionsware fliegt in der
+**Anzeige** aus den Top-Angeboten (`Categories.middleAisle`), nicht im
+Wörterbuch. Die beiden Fragen waren nie dasselbe Feld; ich hatte es nur
+angenommen, statt nachzusehen.
+
+## Die alte Fassung dieser Sorge
 
 Am 06.08. wurde Non-Food **absichtlich** aus den Top-Angeboten gefiltert
 (`Categories.middleAisle`: Kindersessel −88 %, Werkstattfeilen −72 % standen ganz

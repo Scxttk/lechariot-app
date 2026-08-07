@@ -68,7 +68,7 @@ enum ItemGlyph {
     private static let recipes: [String: Rezept] = {
         var alle: [String: Rezept] = [:]
         for teil in [obstUndGemuese, molkereiUndBackwaren, fleischUndFisch,
-                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4, tranche5, tranche6, tranche7] {
+                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4, tranche5, tranche6, tranche7, tranche8] {
             alle.merge(teil) { erstes, _ in erstes }
         }
         return alle
@@ -3615,6 +3615,326 @@ private let tranche7: [String: ItemGlyph.Rezept] = [
         p.line([p.at(0.50, 0.58), p.at(0.50, 0.84)])
         p.line([p.at(0.32, 0.86), p.at(0.68, 0.86)])
         p.line([p.at(0.31, 0.34), p.at(0.69, 0.34)])
+    },
+]
+
+// MARK: - Tranche 8: Haushalt und Pflege
+
+/// **Achtundzwanzig Zeichen zu Tranche 8** (2026-08-07) — das erste Non-Food.
+///
+/// Hier gilt eine andere Regel als bei Lebensmitteln: Ein Apfel ist ein Apfel,
+/// aber Duschgel, Shampoo und Handcreme sind **dieselbe Flasche**. Getrennt
+/// sind sie über das, was oben draufsitzt — Pumpe, Klappdeckel, Sprühkopf,
+/// Tube ohne Kopf — und über die Proportion. Wo auch das nicht trägt, stehen
+/// verwandte Dinge unter einem Begriff (`allzweckreiniger` trägt Glas-, Bad-
+/// und WC-Reiniger).
+private let tranche8: [String: ItemGlyph.Rezept] = [
+
+    // Müllbeutel: Rolle mit abgerissenem Beutel.
+    "müllbeutel": { p in
+        // **Eine Rolle mit Loch über einem Trichter ist eine Kamera.** Der
+        // Müllbeutel braucht seine eigene Form: oben offen und gerafft, unten
+        // ausgebeult — ein Sack, kein Gerät.
+        p.begin(p.at(0.26, 0.30))
+        p.bow(p.at(0.74, 0.30), p.at(0.34, 0.22), p.at(0.66, 0.22))
+        p.bow(p.at(0.78, 0.72), p.at(0.78, 0.44), p.at(0.82, 0.58))
+        p.bow(p.at(0.50, 0.92), p.at(0.74, 0.86), p.at(0.62, 0.92))
+        p.bow(p.at(0.22, 0.72), p.at(0.38, 0.92), p.at(0.26, 0.86))
+        p.bow(p.at(0.26, 0.30), p.at(0.18, 0.58), p.at(0.22, 0.44))
+        p.close()
+        p.line([p.at(0.26, 0.30), p.at(0.20, 0.18)])
+        p.line([p.at(0.42, 0.26), p.at(0.40, 0.14)])
+        p.line([p.at(0.58, 0.26), p.at(0.62, 0.14)])
+        p.line([p.at(0.74, 0.30), p.at(0.80, 0.18)])
+    },
+
+    // Alufolie: Schachtel mit herausgezogener Bahn und Zackenkante.
+    "alufolie": { p in
+        p.line([p.at(0.12, 0.52), p.at(0.72, 0.52), p.at(0.72, 0.82),
+                p.at(0.12, 0.82)], closed: true)
+        p.line([p.at(0.12, 0.52), p.at(0.24, 0.38), p.at(0.84, 0.38),
+                p.at(0.72, 0.52)])
+        p.line([p.at(0.84, 0.38), p.at(0.84, 0.68), p.at(0.72, 0.82)])
+        p.line([p.at(0.20, 0.52), p.at(0.26, 0.60), p.at(0.34, 0.52),
+                p.at(0.42, 0.60), p.at(0.50, 0.52)])
+    },
+
+    // Geschirrtab: Würfel mit Kern.
+    "geschirrtabs": { p in
+        p.line([p.at(0.20, 0.36), p.at(0.68, 0.36), p.at(0.68, 0.80),
+                p.at(0.20, 0.80)], closed: true)
+        p.line([p.at(0.68, 0.36), p.at(0.84, 0.26), p.at(0.84, 0.70),
+                p.at(0.68, 0.80)])
+        p.line([p.at(0.20, 0.36), p.at(0.36, 0.26), p.at(0.84, 0.26)])
+        p.circle(p.at(0.44, 0.58), 0.10)
+    },
+
+    // Schwamm: Quader mit rauer Oberseite.
+    "putzlappen": { p in
+        p.line([p.at(0.14, 0.48), p.at(0.72, 0.48), p.at(0.72, 0.80),
+                p.at(0.14, 0.80)], closed: true)
+        p.line([p.at(0.72, 0.48), p.at(0.88, 0.36), p.at(0.88, 0.68),
+                p.at(0.72, 0.80)])
+        p.line([p.at(0.14, 0.48), p.at(0.30, 0.36), p.at(0.88, 0.36)])
+        p.line([p.at(0.14, 0.62), p.at(0.72, 0.62)])
+        p.dot(p.at(0.28, 0.72), 0.03)
+        p.dot(p.at(0.48, 0.70), 0.03)
+    },
+
+    // Reiniger: Sprühflasche mit Pistolengriff.
+    "allzweckreiniger": { p in
+        p.line([p.at(0.32, 0.36), p.at(0.30, 0.88), p.at(0.70, 0.88),
+                p.at(0.68, 0.36)], closed: true)
+        p.line([p.at(0.42, 0.36), p.at(0.42, 0.22), p.at(0.58, 0.22),
+                p.at(0.58, 0.36)])
+        p.line([p.at(0.42, 0.26), p.at(0.24, 0.14)])
+        p.line([p.at(0.24, 0.14), p.at(0.12, 0.18)])
+        p.line([p.at(0.34, 0.56), p.at(0.66, 0.56)])
+    },
+
+    // Servietten: gefalteter Stapel mit Diagonale.
+    "servietten": { p in
+        p.line([p.at(0.18, 0.30), p.at(0.82, 0.30), p.at(0.82, 0.74),
+                p.at(0.18, 0.74)], closed: true)
+        p.line([p.at(0.18, 0.30), p.at(0.82, 0.74)])
+        p.line([p.at(0.18, 0.80), p.at(0.82, 0.80)])
+        p.line([p.at(0.20, 0.86), p.at(0.80, 0.86)])
+    },
+
+    // Kerze: Stumpf mit Docht und Flamme.
+    "kerzen": { p in
+        p.line([p.at(0.34, 0.42), p.at(0.34, 0.90), p.at(0.66, 0.90),
+                p.at(0.66, 0.42)], closed: true)
+        p.line([p.at(0.50, 0.42), p.at(0.50, 0.34)])
+        p.begin(p.at(0.50, 0.34))
+        p.bow(p.at(0.50, 0.10), p.at(0.38, 0.28), p.at(0.42, 0.14))
+        p.bow(p.at(0.50, 0.34), p.at(0.58, 0.14), p.at(0.62, 0.28))
+        p.close()
+    },
+
+    // Streichholz: Schachtel mit einem Holz davor.
+    "streichhölzer": { p in
+        p.line([p.at(0.14, 0.50), p.at(0.62, 0.50), p.at(0.62, 0.84),
+                p.at(0.14, 0.84)], closed: true)
+        p.line([p.at(0.14, 0.62), p.at(0.62, 0.62)])
+        p.line([p.at(0.66, 0.78), p.at(0.86, 0.34)])
+        p.dot(p.at(0.88, 0.28), 0.07)
+    },
+
+    // Batterie: Zelle mit Pluspol.
+    "batterien": { p in
+        p.line([p.at(0.28, 0.24), p.at(0.62, 0.24), p.at(0.62, 0.88),
+                p.at(0.28, 0.88)], closed: true)
+        p.line([p.at(0.38, 0.24), p.at(0.38, 0.16), p.at(0.52, 0.16),
+                p.at(0.52, 0.24)])
+        p.line([p.at(0.34, 0.44), p.at(0.56, 0.44)])
+        p.line([p.at(0.45, 0.36), p.at(0.45, 0.52)])
+        p.line([p.at(0.34, 0.70), p.at(0.56, 0.70)])
+    },
+
+    // Glühbirne: Kolben mit Sockelgewinde.
+    "glühbirne": { p in
+        p.begin(p.at(0.36, 0.56))
+        p.bow(p.at(0.64, 0.56), p.at(0.20, 0.14), p.at(0.80, 0.14))
+        p.close()
+        p.line([p.at(0.38, 0.62), p.at(0.62, 0.62)])
+        p.line([p.at(0.38, 0.72), p.at(0.62, 0.72)])
+        p.line([p.at(0.42, 0.82), p.at(0.58, 0.82)])
+    },
+
+    // Strohhalm: zwei geknickte Halme.
+    "strohhalme": { p in
+        p.line([p.at(0.28, 0.90), p.at(0.40, 0.32), p.at(0.22, 0.16)])
+        p.line([p.at(0.56, 0.90), p.at(0.66, 0.36), p.at(0.86, 0.24)])
+    },
+
+    // Geschenkpapier: Rolle mit Schleife.
+    "geschenkpapier": { p in
+        p.line([p.at(0.36, 0.30), p.at(0.36, 0.92)])
+        p.line([p.at(0.60, 0.30), p.at(0.60, 0.92)])
+        p.begin(p.at(0.36, 0.30))
+        p.bow(p.at(0.60, 0.30), p.at(0.36, 0.20), p.at(0.60, 0.20))
+        p.bow(p.at(0.36, 0.30), p.at(0.60, 0.40), p.at(0.36, 0.40))
+        p.close()
+        p.begin(p.at(0.62, 0.56))
+        p.bow(p.at(0.90, 0.44), p.at(0.76, 0.62), p.at(0.90, 0.56))
+        p.bow(p.at(0.62, 0.56), p.at(0.90, 0.32), p.at(0.74, 0.44))
+    },
+
+    // Stift: Bleistift mit Spitze und Radierkappe.
+    "stifte": { p in
+        p.line([p.at(0.24, 0.86), p.at(0.36, 0.90), p.at(0.74, 0.22),
+                p.at(0.62, 0.16)], closed: true)
+        p.line([p.at(0.24, 0.86), p.at(0.14, 0.94), p.at(0.36, 0.90)])
+        p.line([p.at(0.62, 0.16), p.at(0.74, 0.22)])
+        p.line([p.at(0.58, 0.26), p.at(0.70, 0.32)])
+    },
+
+    // Notizblock: Block mit Spirale und Zeilen.
+    "notizblock": { p in
+        p.line([p.at(0.24, 0.26), p.at(0.76, 0.26), p.at(0.76, 0.88),
+                p.at(0.24, 0.88)], closed: true)
+        for x in [0.34, 0.50, 0.66] {
+            p.line([p.at(CGFloat(x), 0.20), p.at(CGFloat(x), 0.32)])
+        }
+        p.line([p.at(0.32, 0.50), p.at(0.68, 0.50)])
+        p.line([p.at(0.32, 0.64), p.at(0.68, 0.64)])
+        p.line([p.at(0.32, 0.78), p.at(0.54, 0.78)])
+    },
+
+    // Seife: Stück mit Schaumblasen.
+    "seife": { p in
+        // **Zwei Blasen über einem Körper sind Augen.** Dieselbe Falle wie
+        // bei Kokosnuss und Brezel. Die Blasen liegen jetzt **seitlich
+        // versetzt** und in drei Größen — eine Reihe, kein Paar.
+        p.begin(p.at(0.12, 0.54))
+        p.bow(p.at(0.72, 0.54), p.at(0.12, 0.40), p.at(0.72, 0.40))
+        p.to(p.at(0.72, 0.78))
+        p.bow(p.at(0.12, 0.78), p.at(0.72, 0.92), p.at(0.12, 0.92))
+        p.close()
+        p.circle(p.at(0.74, 0.32), 0.11)
+        p.circle(p.at(0.88, 0.16), 0.07)
+        p.circle(p.at(0.62, 0.16), 0.05)
+    },
+
+    // Duschgel: Flasche mit Klappdeckel.
+    "duschgel": { p in
+        p.line([p.at(0.38, 0.12), p.at(0.62, 0.12), p.at(0.62, 0.24),
+                p.at(0.38, 0.24)], closed: true)
+        p.line([p.at(0.34, 0.24), p.at(0.32, 0.88), p.at(0.68, 0.88),
+                p.at(0.66, 0.24)], closed: true)
+        p.line([p.at(0.36, 0.46), p.at(0.64, 0.46)])
+        p.line([p.at(0.36, 0.62), p.at(0.64, 0.62)])
+    },
+
+    // Shampoo: Flasche mit Pumpe — der Kopf ist der Unterschied zum Duschgel.
+    "shampoo": { p in
+        p.line([p.at(0.34, 0.36), p.at(0.32, 0.88), p.at(0.68, 0.88),
+                p.at(0.66, 0.36)], closed: true)
+        p.line([p.at(0.46, 0.36), p.at(0.46, 0.22), p.at(0.56, 0.22)])
+        p.line([p.at(0.56, 0.22), p.at(0.56, 0.14), p.at(0.74, 0.14)])
+        p.line([p.at(0.74, 0.14), p.at(0.74, 0.24)])
+        p.line([p.at(0.36, 0.58), p.at(0.64, 0.58)])
+    },
+
+    // Deo: schlanke Dose mit Sprühkopf.
+    "deo": { p in
+        p.line([p.at(0.38, 0.30), p.at(0.38, 0.88), p.at(0.62, 0.88),
+                p.at(0.62, 0.30)], closed: true)
+        p.line([p.at(0.42, 0.30), p.at(0.42, 0.18), p.at(0.58, 0.18),
+                p.at(0.58, 0.30)])
+        p.dot(p.at(0.72, 0.14), 0.03)
+        p.dot(p.at(0.80, 0.22), 0.03)
+        p.dot(p.at(0.70, 0.26), 0.03)
+    },
+
+    // Zahnpasta: Tube mit Schraubkappe und gequetschtem Ende.
+    "zahnpasta": { p in
+        p.line([p.at(0.44, 0.10), p.at(0.56, 0.10), p.at(0.56, 0.20),
+                p.at(0.44, 0.20)], closed: true)
+        p.line([p.at(0.40, 0.20), p.at(0.32, 0.82)])
+        p.line([p.at(0.60, 0.20), p.at(0.68, 0.82)])
+        p.line([p.at(0.32, 0.82), p.at(0.68, 0.82)])
+        p.line([p.at(0.32, 0.82), p.at(0.30, 0.90), p.at(0.70, 0.90),
+                p.at(0.68, 0.82)])
+    },
+
+    // Handcreme: flache Tube, breiter als die Zahnpasta, mit Klappdeckel.
+    "handcreme": { p in
+        p.line([p.at(0.40, 0.14), p.at(0.60, 0.14), p.at(0.60, 0.26),
+                p.at(0.40, 0.26)], closed: true)
+        p.line([p.at(0.30, 0.26), p.at(0.28, 0.86), p.at(0.72, 0.86),
+                p.at(0.70, 0.26)], closed: true)
+        p.begin(p.at(0.38, 0.56))
+        p.bow(p.at(0.62, 0.56), p.at(0.42, 0.44), p.at(0.58, 0.44))
+    },
+
+    // Sonnencreme: Tube mit Sonne.
+    "sonnencreme": { p in
+        p.line([p.at(0.42, 0.14), p.at(0.58, 0.14), p.at(0.58, 0.24),
+                p.at(0.42, 0.24)], closed: true)
+        p.line([p.at(0.32, 0.24), p.at(0.30, 0.88), p.at(0.70, 0.88),
+                p.at(0.68, 0.24)], closed: true)
+        p.circle(p.at(0.50, 0.56), 0.11)
+        for i in 0..<6 {
+            let w = Double(i) / 6 * 2 * Double.pi
+            p.line([p.at(0.50 + 0.16 * CGFloat(cos(w)), 0.56 + 0.16 * CGFloat(sin(w))),
+                    p.at(0.50 + 0.22 * CGFloat(cos(w)), 0.56 + 0.22 * CGFloat(sin(w)))])
+        }
+    },
+
+    // Rasierer: Griff mit Klingenkopf.
+    "rasierer": { p in
+        p.line([p.at(0.30, 0.20), p.at(0.70, 0.20), p.at(0.70, 0.34),
+                p.at(0.30, 0.34)], closed: true)
+        p.line([p.at(0.32, 0.27), p.at(0.68, 0.27)])
+        p.line([p.at(0.44, 0.34), p.at(0.44, 0.90)])
+        p.line([p.at(0.56, 0.34), p.at(0.56, 0.90)])
+        p.line([p.at(0.44, 0.90), p.at(0.56, 0.90)])
+    },
+
+    // Wattepads: gestapelte Scheiben.
+    "wattepads": { p in
+        p.begin(p.at(0.18, 0.44))
+        p.bow(p.at(0.82, 0.44), p.at(0.18, 0.26), p.at(0.82, 0.26))
+        p.bow(p.at(0.18, 0.44), p.at(0.82, 0.62), p.at(0.18, 0.62))
+        p.close()
+        p.begin(p.at(0.18, 0.58))
+        p.bow(p.at(0.82, 0.58), p.at(0.18, 0.76), p.at(0.82, 0.76))
+        p.begin(p.at(0.18, 0.70))
+        p.bow(p.at(0.82, 0.70), p.at(0.18, 0.88), p.at(0.82, 0.88))
+    },
+
+    // Pflaster: Streifen mit Wundkissen.
+    "pflaster": { p in
+        p.begin(p.at(0.18, 0.34))
+        p.bow(p.at(0.30, 0.22), p.at(0.10, 0.26), p.at(0.20, 0.18))
+        p.to(p.at(0.82, 0.66))
+        p.bow(p.at(0.70, 0.78), p.at(0.90, 0.74), p.at(0.80, 0.82))
+        p.close()
+        p.line([p.at(0.36, 0.38), p.at(0.64, 0.62)])
+        p.line([p.at(0.30, 0.48), p.at(0.58, 0.70)])
+    },
+
+    // Schmerzmittel: Blister mit Tabletten.
+    "schmerzmittel": { p in
+        p.line([p.at(0.18, 0.32), p.at(0.82, 0.32), p.at(0.82, 0.78),
+                p.at(0.18, 0.78)], closed: true)
+        p.circle(p.at(0.34, 0.46), 0.08)
+        p.circle(p.at(0.58, 0.46), 0.08)
+        p.circle(p.at(0.34, 0.64), 0.08)
+        p.circle(p.at(0.58, 0.64), 0.08)
+    },
+
+    // Vitamine: Dose mit Deckel und Tablette.
+    "vitamine": { p in
+        p.line([p.at(0.30, 0.24), p.at(0.70, 0.24), p.at(0.70, 0.34),
+                p.at(0.30, 0.34)], closed: true)
+        p.line([p.at(0.30, 0.34), p.at(0.30, 0.86), p.at(0.70, 0.86),
+                p.at(0.70, 0.34)])
+        p.circle(p.at(0.50, 0.60), 0.12)
+        p.line([p.at(0.38, 0.60), p.at(0.62, 0.60)])
+    },
+
+    // Tampon: Hülse mit Rückholband.
+    "tampons": { p in
+        // Breiter als der erste Wurf: bei 0,26 fiel die Hülse durch die
+        // Schwelle gegen entartete Zeichnungen — dieselbe wie beim
+        // Müsliriegel.
+        p.capsule(0.50, 0.46, 0.34, 0.58, tilt: 0)
+        p.line([p.at(0.50, 0.75), p.at(0.50, 0.94)])
+        p.line([p.at(0.33, 0.38), p.at(0.67, 0.38)])
+    },
+
+    // Lippenstift: ausgefahrene Mine im Hülsenkörper.
+    "makeup": { p in
+        p.line([p.at(0.36, 0.44), p.at(0.36, 0.90), p.at(0.64, 0.90),
+                p.at(0.64, 0.44)], closed: true)
+        p.line([p.at(0.40, 0.44), p.at(0.40, 0.20)])
+        p.line([p.at(0.60, 0.44), p.at(0.60, 0.20)])
+        p.begin(p.at(0.40, 0.20))
+        p.bow(p.at(0.60, 0.20), p.at(0.44, 0.08), p.at(0.62, 0.12))
+        p.close()
     },
 ]
 
