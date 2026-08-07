@@ -68,7 +68,7 @@ enum ItemGlyph {
     private static let recipes: [String: Rezept] = {
         var alle: [String: Rezept] = [:]
         for teil in [obstUndGemuese, molkereiUndBackwaren, fleischUndFisch,
-                     vorratUndGetraenke] {
+                     vorratUndGetraenke, tranche1] {
             alle.merge(teil) { erstes, _ in erstes }
         }
         return alle
@@ -1413,6 +1413,368 @@ private func quer(_ p: inout Pen, mitte: (CGFloat, CGFloat), hoehe: CGFloat,
     let (x, y) = achse(mitte: mitte, hoehe: hoehe, neigung: neigung, bei: t)
     let dx = laenge / 2 * CGFloat(cos(w)), dy = laenge / 2 * CGFloat(sin(w))
     p.line([p.at(x - dx, y - dy), p.at(x + dx, y + dy)])
+}
+
+// MARK: - Tranche 1: Wörter, die bisher nichts trafen
+
+/// **Dreiundzwanzig Zeichen zu den Begriffen aus Tranche 1** (2026-08-07).
+///
+/// Die Begriffe kamen im Backend dazu (`9792df2`): Wörter, die auf Blocklisten
+/// standen und keinem Begriff gehörten — „Kartoffelsalat", „Röstzwiebeln",
+/// „Müsliriegel". Ohne Zeichnung fiele jeder von ihnen auf sein
+/// Kategoriezeichen zurück, und `ItemGlyphTests` wird genau dafür rot.
+///
+/// **Vier Salate, vier verschiedene Bilder.** Der naheliegende Weg wäre
+/// viermal dieselbe Schüssel mit anderem Inhalt gewesen — und bei 13 pt ist
+/// der Inhalt weg, dann stehen vier gleiche Schüsseln nebeneinander. Genau
+/// der Fehler, der das ganze Vorhaben ausgelöst hat (fünfmal derselbe Apfel).
+/// Deshalb trägt jeder Salat ein **eigenes Gefäß oder Motiv**: Schüssel mit
+/// Knolle, Gabel mit Nudel, halber Kohlkopf, Feinkostbecher.
+///
+/// **Und die drei Säfte sind absichtlich ein System.** Glas plus Frucht
+/// darüber — Traube, Zitrone, Tomate. Wer eines gelernt hat, liest die
+/// anderen beiden ohne Nachdenken.
+private let tranche1: [String: ItemGlyph.Rezept] = [
+
+    // Süßkartoffel: länger als die Kartoffel, an beiden Enden spitz, mit
+    // einem Trieb. Ohne den Trieb ist sie bei 13 pt von der Kartoffel nicht
+    // zu unterscheiden — beides ist dann ein Oval.
+    "süßkartoffeln": { p in
+        p.begin(p.at(0.10, 0.66))
+        p.bow(p.at(0.90, 0.44), p.at(0.26, 0.30), p.at(0.72, 0.28))
+        p.bow(p.at(0.10, 0.66), p.at(0.76, 0.74), p.at(0.30, 0.86))
+        p.close()
+        // Zwei Blätter an kurzem Trieb. Der erste Entwurf hatte eine
+        // gerollte Ranke, und die war auf dem Prüfbogen eine Schnecke.
+        p.line([p.at(0.78, 0.34), p.at(0.80, 0.18)])
+        p.begin(p.at(0.80, 0.18))
+        p.bow(p.at(0.62, 0.10), p.at(0.74, 0.10), p.at(0.64, 0.16))
+        p.bow(p.at(0.80, 0.18), p.at(0.62, 0.04), p.at(0.74, 0.08))
+        p.begin(p.at(0.80, 0.18))
+        p.bow(p.at(0.96, 0.10), p.at(0.86, 0.10), p.at(0.94, 0.16))
+        p.bow(p.at(0.80, 0.18), p.at(0.96, 0.04), p.at(0.86, 0.08))
+    },
+
+    // Einmachglas mit Bügelverschluss, darin zwei Gurken. Der Deckelrand ist
+    // das, was es vom Trinkglas trennt.
+    "essiggurken": { p in
+        p.line([p.at(0.24, 0.24), p.at(0.76, 0.24)])
+        p.line([p.at(0.28, 0.16), p.at(0.72, 0.16)])
+        p.line([p.at(0.28, 0.16), p.at(0.24, 0.24)])
+        p.line([p.at(0.72, 0.16), p.at(0.76, 0.24)])
+        p.begin(p.at(0.24, 0.24))
+        p.to(p.at(0.24, 0.86))
+        p.bow(p.at(0.76, 0.86), p.at(0.24, 0.94), p.at(0.76, 0.94))
+        p.to(p.at(0.76, 0.24))
+        p.capsule(0.40, 0.58, 0.14, 0.42, tilt: -8)
+        p.capsule(0.60, 0.60, 0.14, 0.38, tilt: 9)
+    },
+
+    // Kartoffelsalat: Schüssel, und darüber die Knolle, um die es geht.
+    "kartoffelsalat": { p in
+        p.begin(p.at(0.12, 0.58))
+        p.bow(p.at(0.88, 0.58), p.at(0.18, 0.92), p.at(0.82, 0.92))
+        p.close()
+        p.begin(p.at(0.34, 0.44))
+        p.bow(p.at(0.66, 0.40), p.at(0.36, 0.24), p.at(0.66, 0.24))
+        p.bow(p.at(0.34, 0.44), p.at(0.66, 0.52), p.at(0.38, 0.54))
+        p.close()
+    },
+
+    // Nudelsalat: Gabel mit aufgedrehter Nudel. Kein Teller — der wäre
+    // wieder eine Schüssel.
+    "nudelsalat": { p in
+        p.line([p.at(0.50, 0.10), p.at(0.50, 0.54)])
+        p.line([p.at(0.38, 0.10), p.at(0.38, 0.30)])
+        p.line([p.at(0.62, 0.10), p.at(0.62, 0.30)])
+        p.line([p.at(0.38, 0.30), p.at(0.62, 0.30)])
+        p.begin(p.at(0.24, 0.66))
+        p.bow(p.at(0.76, 0.70), p.at(0.30, 0.46), p.at(0.74, 0.48))
+        p.bow(p.at(0.26, 0.80), p.at(0.78, 0.88), p.at(0.28, 0.92))
+        p.bow(p.at(0.70, 0.82), p.at(0.30, 0.70), p.at(0.66, 0.70))
+    },
+
+    // Krautsalat: halbierter Kohlkopf. Die inneren Bögen sind der ganze
+    // Witz — sie machen aus einer Kugel einen Schnitt.
+    "krautsalat": { p in
+        p.circle(p.at(0.50, 0.52), 0.38)
+        p.begin(p.at(0.16, 0.60))
+        p.bow(p.at(0.84, 0.60), p.at(0.34, 0.30), p.at(0.66, 0.30))
+        p.begin(p.at(0.26, 0.70))
+        p.bow(p.at(0.74, 0.70), p.at(0.38, 0.48), p.at(0.62, 0.48))
+        p.line([p.at(0.50, 0.62), p.at(0.50, 0.90)])
+    },
+
+    // Fleischsalat: Feinkostbecher mit Deckelrand und Etikett.
+    "fleischsalat": { p in
+        p.line([p.at(0.18, 0.30), p.at(0.82, 0.30)])
+        p.begin(p.at(0.22, 0.30))
+        p.to(p.at(0.30, 0.88))
+        p.to(p.at(0.70, 0.88))
+        p.to(p.at(0.78, 0.30))
+        p.line([p.at(0.34, 0.52), p.at(0.66, 0.52)])
+        p.line([p.at(0.36, 0.66), p.at(0.64, 0.66)])
+    },
+
+    // Röstzwiebeln: drei Ringe, locker gestreut.
+    "röstzwiebeln": { p in
+        p.circle(p.at(0.34, 0.36), 0.20)
+        p.circle(p.at(0.34, 0.36), 0.09)
+        p.circle(p.at(0.66, 0.54), 0.17)
+        p.circle(p.at(0.66, 0.54), 0.07)
+        p.circle(p.at(0.40, 0.76), 0.14)
+        p.circle(p.at(0.40, 0.76), 0.06)
+    },
+
+    // Tomatensauce: bauchiges Glas mit Schraubdeckel, Tomate auf dem Bauch.
+    "tomatensauce": { p in
+        p.line([p.at(0.34, 0.12), p.at(0.66, 0.12)])
+        p.line([p.at(0.34, 0.12), p.at(0.34, 0.22)])
+        p.line([p.at(0.66, 0.12), p.at(0.66, 0.22)])
+        p.begin(p.at(0.34, 0.22))
+        p.bow(p.at(0.20, 0.46), p.at(0.24, 0.26), p.at(0.20, 0.34))
+        p.to(p.at(0.20, 0.86))
+        p.bow(p.at(0.80, 0.86), p.at(0.20, 0.94), p.at(0.80, 0.94))
+        p.to(p.at(0.80, 0.46))
+        p.bow(p.at(0.66, 0.22), p.at(0.80, 0.34), p.at(0.76, 0.26))
+        p.circle(p.at(0.50, 0.64), 0.15)
+        p.line([p.at(0.50, 0.49), p.at(0.50, 0.44)])
+    },
+
+    // Die drei Säfte: dasselbe Glas, darüber die Frucht. Traube.
+    "traubensaft": { p in
+        saftkarton(&p)
+        p.circle(p.at(0.38, 0.58), 0.075)
+        p.circle(p.at(0.54, 0.58), 0.075)
+        p.circle(p.at(0.46, 0.74), 0.075)
+    },
+
+    // Zitrone: Oval mit Zipfeln an beiden Enden — dasselbe Motiv wie beim
+    // Begriff „zitronen", damit man es wiedererkennt.
+    "zitronensaft": { p in
+        saftkarton(&p)
+        p.begin(p.at(0.32, 0.64))
+        p.bow(p.at(0.62, 0.64), p.at(0.37, 0.52), p.at(0.57, 0.52))
+        p.bow(p.at(0.32, 0.64), p.at(0.57, 0.76), p.at(0.37, 0.76))
+        p.line([p.at(0.32, 0.64), p.at(0.28, 0.64)])
+        p.line([p.at(0.62, 0.64), p.at(0.66, 0.64)])
+    },
+
+    // Tomate: Kreis mit Kelchblatt.
+    "tomatensaft": { p in
+        saftkarton(&p)
+        p.circle(p.at(0.47, 0.66), 0.13)
+        p.line([p.at(0.41, 0.53), p.at(0.53, 0.53)])
+        p.line([p.at(0.47, 0.50), p.at(0.47, 0.56)])
+    },
+
+    // Vanillezucker: Tütchen mit gezacktem Aufriss und der Schote darauf.
+    "vanillezucker": { p in
+        p.line([p.at(0.26, 0.22), p.at(0.74, 0.22), p.at(0.74, 0.86),
+                p.at(0.26, 0.86)], closed: true)
+        p.line([p.at(0.26, 0.22), p.at(0.34, 0.14), p.at(0.42, 0.22),
+                p.at(0.50, 0.14), p.at(0.58, 0.22), p.at(0.66, 0.14),
+                p.at(0.74, 0.22)])
+        p.capsule(0.50, 0.56, 0.12, 0.42, tilt: 14)
+    },
+
+    // Traubenzucker: Rolle aus Täfelchen, wie sie im Regal liegt.
+    // **Drei Täfelchen übereinander, mit angerissener Hülle.** Anlauf 1 war
+    // eine geneigte Kapsel mit Schrägstrichen (ein Brötchen), Anlauf 2 eine
+    // Rolle mit eingedrehten Enden (eine Garnrolle). Gestapelte Scheiben sind
+    // das, woran man Täfelchen erkennt — und die Hülle sagt, dass sie
+    // verpackt sind.
+    "traubenzucker": { p in
+        p.begin(p.at(0.20, 0.28))
+        p.bow(p.at(0.80, 0.28), p.at(0.27, 0.14), p.at(0.73, 0.14))
+        p.bow(p.at(0.20, 0.28), p.at(0.73, 0.42), p.at(0.27, 0.42))
+        p.close()
+        p.begin(p.at(0.20, 0.48))
+        p.bow(p.at(0.80, 0.48), p.at(0.27, 0.34), p.at(0.73, 0.34))
+        p.begin(p.at(0.20, 0.68))
+        p.bow(p.at(0.80, 0.68), p.at(0.27, 0.54), p.at(0.73, 0.54))
+        p.line([p.at(0.20, 0.28), p.at(0.20, 0.70)])
+        p.line([p.at(0.80, 0.28), p.at(0.80, 0.70)])
+        p.begin(p.at(0.20, 0.70))
+        p.bow(p.at(0.80, 0.70), p.at(0.27, 0.88), p.at(0.73, 0.88))
+    },
+
+    // Brühe: Würfel mit aufgerissener Ecke, darüber zwei Fäden Dampf.
+    "brühe": { p in
+        p.line([p.at(0.24, 0.44), p.at(0.76, 0.44), p.at(0.76, 0.90),
+                p.at(0.24, 0.90)], closed: true)
+        p.line([p.at(0.60, 0.44), p.at(0.76, 0.60)])
+        p.begin(p.at(0.40, 0.32))
+        p.bow(p.at(0.40, 0.08), p.at(0.30, 0.24), p.at(0.50, 0.18))
+        p.begin(p.at(0.60, 0.32))
+        p.bow(p.at(0.60, 0.12), p.at(0.50, 0.26), p.at(0.70, 0.20))
+    },
+
+    // Salatdressing: Flasche mit langem Hals, leicht gekippt, mit Ausguss.
+    "salatdressing": { p in
+        p.line([p.at(0.38, 0.10), p.at(0.54, 0.10)])
+        p.begin(p.at(0.38, 0.10))
+        p.to(p.at(0.36, 0.36))
+        p.bow(p.at(0.24, 0.56), p.at(0.34, 0.44), p.at(0.26, 0.48))
+        p.to(p.at(0.24, 0.88))
+        p.bow(p.at(0.72, 0.88), p.at(0.24, 0.94), p.at(0.72, 0.94))
+        p.to(p.at(0.70, 0.56))
+        p.bow(p.at(0.54, 0.36), p.at(0.68, 0.48), p.at(0.58, 0.44))
+        p.to(p.at(0.54, 0.10))
+        p.line([p.at(0.28, 0.66), p.at(0.68, 0.66)])
+    },
+
+    // Eiswürfel: zwei Würfel, der hintere versetzt. Die Deckfläche macht aus
+    // dem Quadrat einen Körper.
+    "eiswürfel": { p in
+        p.line([p.at(0.12, 0.48), p.at(0.30, 0.34), p.at(0.62, 0.34),
+                p.at(0.62, 0.48)], closed: true)
+        p.line([p.at(0.12, 0.48), p.at(0.12, 0.82), p.at(0.44, 0.82),
+                p.at(0.44, 0.48)])
+        p.line([p.at(0.44, 0.82), p.at(0.62, 0.68), p.at(0.62, 0.34)])
+        p.line([p.at(0.44, 0.48), p.at(0.62, 0.34)])
+        p.line([p.at(0.56, 0.62), p.at(0.70, 0.52), p.at(0.90, 0.52),
+                p.at(0.90, 0.62)], closed: true)
+        p.line([p.at(0.56, 0.62), p.at(0.56, 0.88), p.at(0.78, 0.88),
+                p.at(0.78, 0.62)])
+        p.line([p.at(0.78, 0.88), p.at(0.90, 0.78), p.at(0.90, 0.62)])
+    },
+
+    // Chips: Tüte mit gezacktem Aufriss oben, ein Chip davor.
+    "kartoffelchips": { p in
+        p.line([p.at(0.24, 0.26), p.at(0.28, 0.18), p.at(0.36, 0.26),
+                p.at(0.44, 0.18), p.at(0.52, 0.26), p.at(0.60, 0.18),
+                p.at(0.64, 0.26)])
+        p.line([p.at(0.24, 0.26), p.at(0.24, 0.88), p.at(0.64, 0.88),
+                p.at(0.64, 0.26)])
+        // Der Chip steht **frei** neben dem Beutel. Am Beutel klebend las er
+        // sich als Henkel.
+        p.begin(p.at(0.74, 0.62))
+        p.bow(p.at(0.96, 0.76), p.at(0.86, 0.50), p.at(0.98, 0.62))
+        p.bow(p.at(0.74, 0.62), p.at(0.94, 0.90), p.at(0.76, 0.80))
+    },
+
+    // Kartoffelknödel: Kugel auf einem Teller. Der Teller ist nur ein Strich
+    // mit zwei Enden — mehr trägt bei 13 pt nicht.
+    "kartoffelknödel": { p in
+        p.circle(p.at(0.50, 0.44), 0.28)
+        p.begin(p.at(0.34, 0.34))
+        p.bow(p.at(0.52, 0.28), p.at(0.38, 0.28), p.at(0.46, 0.26))
+        p.begin(p.at(0.12, 0.76))
+        p.bow(p.at(0.88, 0.76), p.at(0.28, 0.90), p.at(0.72, 0.90))
+    },
+
+    // Müsliriegel: Balken mit gestreuten Körnern.
+    "müsliriegel": { p in
+        // Höher als der erste Wurf: bei 0,24 Höhe fiel er durch die Schwelle
+        // gegen entartete Zeichnungen — ein Riegel, der nur noch ein Strich
+        // ist, sagt nichts mehr.
+        p.line([p.at(0.10, 0.34), p.at(0.90, 0.34), p.at(0.90, 0.68),
+                p.at(0.10, 0.68)], closed: true)
+        p.dot(p.at(0.26, 0.44), 0.04)
+        p.dot(p.at(0.46, 0.58), 0.04)
+        p.dot(p.at(0.64, 0.44), 0.04)
+        p.dot(p.at(0.80, 0.58), 0.04)
+    },
+
+    // Brezel: der eine Fall, in dem drei Bögen ein Wort sind.
+    // **Vier Anläufe Brezel, vier Fehllesungen — jetzt Salzstangen.**
+    //
+    // Der Reihe nach, weil zusammen eine Regel daraus wird: geschlossener
+    // Umriss → ein **Apfel**. Zwei gekreuzte Bögen → eine **Glühbirne**.
+    // Umriss plus zwei Ringe plus ein X darin → eine **Eule**, weil zwei
+    // Löcher über einem Strich immer ein Gesicht sind. Ein Band, das sich
+    // selbst kreuzt → zwei **Haken**.
+    //
+    // Die Brezel lebt davon, dass man sieht, **welches Band über welchem
+    // liegt** — und genau das kann eine Monolinie ohne Überdeckung nicht
+    // zeigen. Das ist keine Frage von noch einem Versuch, sondern eine
+    // Eigenschaft des Zeichenstils.
+    //
+    // Der Begriff trägt „salzstangen" und „laugenbrezel" mit; gezeichnet ist
+    // deshalb das, was in derselben Tüte liegt und sich in einer Linie sagen
+    // lässt. **Lieber ein Bild, das stimmt, als eins, das das richtige Wort
+    // meint und falsch gelesen wird.**
+    "salzbrezeln": { p in
+        // **Der Strich ist die Stange, nicht ihr Umriss.** Zwei Anläufe mit
+        // `capsule` liefen zu einem Klumpen zusammen, und der Grund ist
+        // Arithmetik: Eine Kapsel wird **gestrichen**, und bei 0,095
+        // Strichstärke deckt der Strich eine 0,10 breite Kapsel vollständig
+        // zu. In einem Monolinien-Satz ist ein dünner Gegenstand eine Linie.
+        p.line([p.at(0.22, 0.84), p.at(0.36, 0.16)])
+        p.line([p.at(0.50, 0.88), p.at(0.50, 0.14)])
+        p.line([p.at(0.78, 0.84), p.at(0.64, 0.16)])
+        p.dot(p.at(0.30, 0.44), 0.035)
+        p.dot(p.at(0.70, 0.52), 0.035)
+        p.dot(p.at(0.42, 0.68), 0.035)
+    },
+
+    // **Der Wellenrand muss gezackt sein, nicht gewölbt.** Vier weiche Bögen
+    // ergeben wieder einen Kreis, und der war auf dem Prüfbogen ein Knopf.
+    // Acht kurze Bögen mit Gegenschwung sind als Rand zu erkennen.
+    "maiswaffeln": { p in
+        let n = 10
+        var punkte: [CGPoint] = []
+        for i in 0..<(n * 2) {
+            let winkel = Double(i) / Double(n * 2) * 2 * Double.pi
+            let r: CGFloat = i.isMultiple(of: 2) ? 0.40 : 0.33
+            punkte.append(p.at(0.50 + r * CGFloat(cos(winkel)),
+                               0.50 + r * CGFloat(sin(winkel))))
+        }
+        p.line(punkte, closed: true)
+        p.dot(p.at(0.40, 0.42), 0.05)
+        p.dot(p.at(0.62, 0.48), 0.05)
+        p.dot(p.at(0.46, 0.64), 0.05)
+    },
+
+    // Eis am Stiel. Der Stiel unterscheidet es vom Riegel darüber.
+    "milcheis": { p in
+        p.begin(p.at(0.30, 0.34))
+        p.bow(p.at(0.70, 0.34), p.at(0.30, 0.10), p.at(0.70, 0.10))
+        p.to(p.at(0.70, 0.70))
+        p.bow(p.at(0.30, 0.70), p.at(0.70, 0.80), p.at(0.30, 0.80))
+        p.close()
+        p.line([p.at(0.50, 0.76), p.at(0.50, 0.94)])
+    },
+
+    // Kuchenstück: Keil mit Boden, Guss und Kirsche.
+    // **Tortenstück von vorn, nicht als Dreieck.** Anlauf 1 war ein
+    // gleichschenkliges Dreieck mit Kirsche an der Spitze — ein Tannenbaum.
+    // Anlauf 2 ein liegender Keil — eine Rampe. Ein Stück steht auf seinem
+    // Boden, hat oben Guss und in der Mitte eine Schicht; erst das ist Kuchen.
+    "kuchen": { p in
+        p.line([p.at(0.14, 0.86), p.at(0.86, 0.86)])
+        p.line([p.at(0.14, 0.86), p.at(0.24, 0.44)])
+        p.line([p.at(0.86, 0.86), p.at(0.76, 0.44)])
+        p.begin(p.at(0.24, 0.44))
+        p.bow(p.at(0.42, 0.44), p.at(0.28, 0.34), p.at(0.38, 0.34))
+        p.bow(p.at(0.58, 0.44), p.at(0.46, 0.54), p.at(0.54, 0.54))
+        p.bow(p.at(0.76, 0.44), p.at(0.62, 0.34), p.at(0.72, 0.34))
+        p.line([p.at(0.18, 0.66), p.at(0.82, 0.66)])
+        p.dot(p.at(0.50, 0.30), 0.09)
+        p.line([p.at(0.52, 0.22), p.at(0.58, 0.12)])
+    },
+]
+
+/// Der Karton, den sich die drei Säfte teilen: Giebel links, Strohhalm rechts.
+///
+/// **Der erste Entwurf war ein konisches Glas mit der Frucht darüber — und
+/// las sich als Blumentopf mit Pflanze.** Alle drei. Ein sich nach unten
+/// verjüngendes Gefäß mit etwas Rundem obendrauf ist im Kopf ein Topf, egal
+/// was gemeint war. Der Strohhalm räumt das aus: Kein Blumentopf hat einen.
+///
+/// **Eine Funktion und nicht dreimal derselbe Block** — sonst laufen die drei
+/// beim ersten Nachziehen auseinander, und das Motiv lebt davon, dass sie es
+/// nicht tun. Die Frucht sitzt auf dem Bauch wie ein Etikett; dieselbe Lesart
+/// wie bei `tomatensauce`.
+private func saftkarton(_ p: inout Pen) {
+    p.line([p.at(0.24, 0.34), p.at(0.24, 0.92), p.at(0.70, 0.92),
+            p.at(0.70, 0.34)])
+    p.line([p.at(0.24, 0.34), p.at(0.38, 0.22), p.at(0.70, 0.22),
+            p.at(0.70, 0.34)])
+    p.line([p.at(0.38, 0.22), p.at(0.38, 0.34), p.at(0.70, 0.34)])
+    // Der Strohhalm, mit Knick.
+    p.line([p.at(0.60, 0.26), p.at(0.78, 0.14), p.at(0.90, 0.18)])
 }
 
 /// Eine Hälfte einer Artikelzeichnung als `Shape` — wie `CategoryGlyphShape`,

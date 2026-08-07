@@ -171,7 +171,14 @@ enum Werkzeug {
 
         if art == "artikel" {
             let stamm = ziel.hasSuffix(".png") ? String(ziel.dropLast(4)) : ziel
-            let alle = ItemGlyph.drawnTerms
+            // Dritter Parameter: eine Komma-Liste von Begriffen. Ohne ihn der
+            // ganze Satz. **Wer zwanzig neue Zeichnungen prüft, will nicht
+            // sechs Bögen mit hundert alten durchsehen** — und wer sie nicht
+            // ansieht, zeichnet blind.
+            let auswahl = CommandLine.arguments.count > 3
+                ? CommandLine.arguments[3].split(separator: ",").map(String.init)
+                : ItemGlyph.drawnTerms
+            let alle = auswahl
             for (nummer, teil) in stride(from: 0, to: alle.count, by: 20)
                 .map({ Array(alle[$0..<min($0 + 20, alle.count)]) }).enumerated() {
                 schreibe(ArtikelBogen(begriffe: teil, seite: nummer + 1,

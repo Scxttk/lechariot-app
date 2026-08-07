@@ -40,6 +40,32 @@ final class MatchShelfTests: XCTestCase {
     /// `milch` gesperrt), „Putenbrustfilet" (bei `fisch` gesperrt) — sie
     /// gehören zu einem anderen Begriff und müssen dort auch bleiben.
     private static let regal: [String: String] = [
+        // Tranche 1 (2026-08-07): Begriffe für Wörter, die bisher gesperrt
+        // waren und nichts trafen. Titel wie im Regal darüber — echte
+        // Produktnamen, nicht aus den Synonymlisten zusammengesetzt.
+        "brühe": "Knorr Gemüsebrühe 12 Würfel",
+        "eiswürfel": "Eiswürfel 1 kg Beutel",
+        "essiggurken": "Kühne Gewürzgurken 720 ml",
+        "fleischsalat": "Homann Fleischsalat 200 g",
+        "kartoffelchips": "funny-frisch Chipsfrisch ungarisch",
+        "kartoffelknödel": "Pfanni Kartoffelknödel halb & halb",
+        "kartoffelsalat": "Homann Kartoffelsalat 400 g",
+        "krautsalat": "Kühne Weinsauerkraut 500 g",
+        "kuchen": "Coppenrath & Wiese Käsekuchen",
+        "maiswaffeln": "Maiswaffeln ungesalzen 100 g",
+        "milcheis": "Langnese Cremissimo Eis am Stiel",
+        "müsliriegel": "Corny Big Schoko 6 x 50 g",
+        "nudelsalat": "Popp Nudelsalat 400 g",
+        "röstzwiebeln": "Röstzwiebeln 150 g Beutel",
+        "salatdressing": "Kühne Salatdressing Kräuter 500 ml",
+        "salzbrezeln": "Lorenz Saltletts Sticks 250 g",
+        "süßkartoffeln": "Süßkartoffeln lose, 1 kg",
+        "tomatensaft": "Hohes C Tomatensaft 1 l",
+        "tomatensauce": "Barilla Napoletana 400 g",
+        "traubensaft": "Rotbäckchen Traubensaft 0,7 l",
+        "traubenzucker": "Dextro Energy Classic 6 Täfelchen",
+        "vanillezucker": "Dr. Oetker Vanillezucker 10er",
+        "zitronensaft": "Zitronensaft 200 ml Flasche",
         "aubergine": "Aubergine Klasse I, Stück",
         "avocado": "Avocado Hass, 2 Stück",
         "backwaren": "Mohn-Croissant 4 Stück",
