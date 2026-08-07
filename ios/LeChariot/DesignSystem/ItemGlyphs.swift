@@ -68,7 +68,7 @@ enum ItemGlyph {
     private static let recipes: [String: Rezept] = {
         var alle: [String: Rezept] = [:]
         for teil in [obstUndGemuese, molkereiUndBackwaren, fleischUndFisch,
-                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4, tranche5, tranche6, tranche7, tranche8, tranche9] {
+                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4, tranche5, tranche6, tranche7, tranche8, tranche9, tranche10, tranche11] {
             alle.merge(teil) { erstes, _ in erstes }
         }
         return alle
@@ -4254,6 +4254,348 @@ private let tranche9: [String: ItemGlyph.Rezept] = [
         p.bow(p.at(0.50, 0.86), p.at(0.70, 0.82), p.at(0.60, 0.88))
         p.bow(p.at(0.52, 0.66), p.at(0.42, 0.84), p.at(0.50, 0.72))
         p.close()
+    },
+]
+
+// MARK: - Tranche 10: der Rest
+
+/// **Einundzwanzig Zeichen zu Tranche 10** (2026-08-07) — was nach neun
+/// Runden übrig war: Kosmetik-Detail, Tiefkühl-Varianten, Einzelstücke.
+private let tranche10: [String: ItemGlyph.Rezept] = [
+
+    // Haargel: Tiegel mit Schraubdeckel und Wirbel.
+    "haargel": { p in
+        p.line([p.at(0.22, 0.36), p.at(0.78, 0.36), p.at(0.78, 0.48),
+                p.at(0.22, 0.48)], closed: true)
+        p.line([p.at(0.24, 0.48), p.at(0.26, 0.84), p.at(0.74, 0.84),
+                p.at(0.76, 0.48)])
+        p.begin(p.at(0.38, 0.66))
+        p.bow(p.at(0.62, 0.66), p.at(0.42, 0.56), p.at(0.58, 0.56))
+        p.line([p.at(0.40, 0.28), p.at(0.44, 0.14)])
+        p.line([p.at(0.56, 0.28), p.at(0.60, 0.14)])
+    },
+
+    // Gesichtsmaske: Tuchmaske mit Augen- und Mundöffnung.
+    "gesichtsmaske": { p in
+        p.begin(p.at(0.50, 0.14))
+        p.bow(p.at(0.22, 0.56), p.at(0.28, 0.16), p.at(0.20, 0.34))
+        p.bow(p.at(0.50, 0.90), p.at(0.24, 0.78), p.at(0.36, 0.90))
+        p.bow(p.at(0.78, 0.56), p.at(0.64, 0.90), p.at(0.76, 0.78))
+        p.bow(p.at(0.50, 0.14), p.at(0.80, 0.34), p.at(0.72, 0.16))
+        p.close()
+        p.line([p.at(0.34, 0.44), p.at(0.44, 0.44)])
+        p.line([p.at(0.56, 0.44), p.at(0.66, 0.44)])
+        p.begin(p.at(0.42, 0.68))
+        p.bow(p.at(0.58, 0.68), p.at(0.46, 0.74), p.at(0.54, 0.74))
+    },
+
+    // Nagelfeile: schmales Blatt mit Griff und Riffelung.
+    "nagelfeile": { p in
+        p.line([p.at(0.26, 0.88), p.at(0.36, 0.90), p.at(0.66, 0.16),
+                p.at(0.52, 0.12)], closed: true)
+        p.line([p.at(0.30, 0.78), p.at(0.42, 0.82)])
+        p.line([p.at(0.36, 0.62), p.at(0.48, 0.66)])
+        p.line([p.at(0.42, 0.46), p.at(0.54, 0.50)])
+        p.line([p.at(0.48, 0.30), p.at(0.60, 0.34)])
+    },
+
+    // Parfüm: Flakon mit Zerstäuber.
+    "parfüm": { p in
+        p.line([p.at(0.30, 0.44), p.at(0.30, 0.88), p.at(0.70, 0.88),
+                p.at(0.70, 0.44)], closed: true)
+        p.line([p.at(0.42, 0.44), p.at(0.42, 0.28), p.at(0.58, 0.28),
+                p.at(0.58, 0.44)])
+        p.begin(p.at(0.58, 0.32))
+        p.bow(p.at(0.78, 0.24), p.at(0.68, 0.34), p.at(0.76, 0.30))
+        p.dot(p.at(0.86, 0.18), 0.035)
+        p.dot(p.at(0.92, 0.28), 0.03)
+    },
+
+    // Mückenschutz: Sprühflasche mit Mücke.
+    "mückenschutz": { p in
+        p.line([p.at(0.28, 0.42), p.at(0.28, 0.88), p.at(0.60, 0.88),
+                p.at(0.60, 0.42)], closed: true)
+        p.line([p.at(0.36, 0.42), p.at(0.36, 0.28), p.at(0.52, 0.28),
+                p.at(0.52, 0.42)])
+        p.capsule(0.80, 0.36, 0.10, 0.24, tilt: 20)
+        p.line([p.at(0.74, 0.26), p.at(0.66, 0.14)])
+        p.line([p.at(0.84, 0.26), p.at(0.92, 0.14)])
+    },
+
+    // Muskelcreme: Tube mit Wärmestrahlen.
+    "muskelcreme": { p in
+        p.line([p.at(0.42, 0.36), p.at(0.58, 0.36), p.at(0.58, 0.46),
+                p.at(0.42, 0.46)], closed: true)
+        p.line([p.at(0.34, 0.46), p.at(0.32, 0.90), p.at(0.68, 0.90),
+                p.at(0.66, 0.46)], closed: true)
+        for x in [0.36, 0.50, 0.64] {
+            p.begin(p.at(CGFloat(x), 0.28))
+            p.bow(p.at(CGFloat(x), 0.10), p.at(CGFloat(x) - 0.07, 0.22),
+                  p.at(CGFloat(x) + 0.07, 0.16))
+        }
+    },
+
+    // Kohletabletten: Röhrchen mit Tabletten.
+    "kohletabletten": { p in
+        p.line([p.at(0.36, 0.24), p.at(0.64, 0.24), p.at(0.64, 0.34),
+                p.at(0.36, 0.34)], closed: true)
+        p.line([p.at(0.36, 0.34), p.at(0.36, 0.88), p.at(0.64, 0.88),
+                p.at(0.64, 0.34)])
+        p.circle(p.at(0.50, 0.50), 0.09)
+        p.circle(p.at(0.50, 0.70), 0.09)
+    },
+
+    // Kondome: Packung mit Ring.
+    "kondome": { p in
+        // **Ein breites Rechteck mit Kreis in der Mitte ist ein Geldschein.**
+        // Die Packung steht hochkant, hat eine Zackenkante zum Abreißen und
+        // den Ring als Umriss statt als Scheibe.
+        p.line([p.at(0.30, 0.26), p.at(0.70, 0.26), p.at(0.70, 0.86),
+                p.at(0.30, 0.86)], closed: true)
+        p.line([p.at(0.30, 0.36), p.at(0.36, 0.30), p.at(0.44, 0.36),
+                p.at(0.52, 0.30), p.at(0.60, 0.36), p.at(0.70, 0.30)])
+        p.circle(p.at(0.50, 0.62), 0.13)
+        p.circle(p.at(0.50, 0.62), 0.05)
+    },
+
+    // Kontaktlinsen: Blister mit Linse.
+    "kontaktlinsen": { p in
+        p.begin(p.at(0.20, 0.50))
+        p.bow(p.at(0.72, 0.50), p.at(0.20, 0.26), p.at(0.72, 0.26))
+        p.bow(p.at(0.20, 0.50), p.at(0.72, 0.74), p.at(0.20, 0.74))
+        p.close()
+        p.line([p.at(0.72, 0.36), p.at(0.90, 0.30)])
+        p.line([p.at(0.72, 0.64), p.at(0.90, 0.70)])
+        p.begin(p.at(0.34, 0.50))
+        p.bow(p.at(0.58, 0.50), p.at(0.36, 0.38), p.at(0.56, 0.38))
+        p.bow(p.at(0.34, 0.50), p.at(0.56, 0.62), p.at(0.36, 0.62))
+    },
+
+    // Klobürste: Bürstenkopf am Stiel im Ständer.
+    "klobürste": { p in
+        p.line([p.at(0.50, 0.12), p.at(0.50, 0.46)])
+        p.begin(p.at(0.34, 0.46))
+        p.bow(p.at(0.66, 0.46), p.at(0.34, 0.68), p.at(0.66, 0.68))
+        p.close()
+        p.line([p.at(0.32, 0.72), p.at(0.36, 0.90), p.at(0.64, 0.90),
+                p.at(0.68, 0.72)], closed: true)
+    },
+
+    // Möbelpolitur: Dose mit Sprühkopf und Glanzsternen.
+    "möbelpolitur": { p in
+        p.line([p.at(0.32, 0.34), p.at(0.32, 0.88), p.at(0.64, 0.88),
+                p.at(0.64, 0.34)], closed: true)
+        p.line([p.at(0.40, 0.34), p.at(0.40, 0.20), p.at(0.56, 0.20),
+                p.at(0.56, 0.34)])
+        p.line([p.at(0.76, 0.24), p.at(0.88, 0.36)])
+        p.line([p.at(0.88, 0.24), p.at(0.76, 0.36)])
+        p.line([p.at(0.78, 0.54), p.at(0.86, 0.62)])
+        p.line([p.at(0.86, 0.54), p.at(0.78, 0.62)])
+    },
+
+    // Aufbackbrötchen: zwei Rohlinge auf dem Blech.
+    "aufbackbrötchen": { p in
+        p.begin(p.at(0.14, 0.56))
+        p.bow(p.at(0.46, 0.56), p.at(0.14, 0.30), p.at(0.46, 0.30))
+        p.close()
+        p.begin(p.at(0.54, 0.56))
+        p.bow(p.at(0.86, 0.56), p.at(0.54, 0.30), p.at(0.86, 0.30))
+        p.close()
+        p.line([p.at(0.24, 0.44), p.at(0.36, 0.44)])
+        p.line([p.at(0.64, 0.44), p.at(0.76, 0.44)])
+        p.line([p.at(0.08, 0.62), p.at(0.92, 0.62), p.at(0.86, 0.76),
+                p.at(0.14, 0.76)], closed: true)
+    },
+
+    // Schokobrötchen: Brötchen mit Tropfen.
+    "schokobrötchen": { p in
+        p.begin(p.at(0.16, 0.68))
+        p.bow(p.at(0.84, 0.68), p.at(0.18, 0.26), p.at(0.82, 0.26))
+        p.close()
+        p.dot(p.at(0.36, 0.48), 0.055)
+        p.dot(p.at(0.56, 0.42), 0.055)
+        p.dot(p.at(0.64, 0.58), 0.055)
+        p.dot(p.at(0.42, 0.62), 0.055)
+    },
+
+    // Knoblauchpulver: Streuer mit Knolle.
+    "knoblauchpulver": { p in
+        p.line([p.at(0.30, 0.38), p.at(0.30, 0.88), p.at(0.70, 0.88),
+                p.at(0.70, 0.38)], closed: true)
+        p.line([p.at(0.34, 0.28), p.at(0.66, 0.28), p.at(0.70, 0.38)])
+        p.line([p.at(0.34, 0.28), p.at(0.30, 0.38)])
+        p.begin(p.at(0.50, 0.52))
+        p.bow(p.at(0.36, 0.70), p.at(0.40, 0.54), p.at(0.36, 0.62))
+        p.bow(p.at(0.64, 0.70), p.at(0.36, 0.80), p.at(0.64, 0.80))
+        p.bow(p.at(0.50, 0.52), p.at(0.64, 0.62), p.at(0.60, 0.54))
+        p.close()
+    },
+
+    // Backaroma: Fläschchen mit Tropfer.
+    "mandelaroma": { p in
+        // Breiter als der erste Wurf — bei 0,24 fiel das Fläschchen durch die
+        // Schwelle gegen entartete Zeichnungen.
+        p.line([p.at(0.32, 0.48), p.at(0.32, 0.88), p.at(0.68, 0.88),
+                p.at(0.68, 0.48)], closed: true)
+        p.line([p.at(0.38, 0.48), p.at(0.38, 0.32), p.at(0.62, 0.32),
+                p.at(0.62, 0.48)])
+        p.line([p.at(0.34, 0.32), p.at(0.66, 0.32)])
+        p.begin(p.at(0.42, 0.24))
+        p.bow(p.at(0.58, 0.24), p.at(0.42, 0.08), p.at(0.58, 0.08))
+        p.close()
+    },
+
+    // Vanillesoße: Kännchen mit Ausguss.
+    "vanillesoße": { p in
+        p.begin(p.at(0.22, 0.44))
+        p.to(p.at(0.28, 0.84))
+        p.bow(p.at(0.68, 0.84), p.at(0.34, 0.92), p.at(0.62, 0.92))
+        p.to(p.at(0.74, 0.44))
+        p.close()
+        p.line([p.at(0.74, 0.50), p.at(0.92, 0.40)])
+        p.line([p.at(0.26, 0.58), p.at(0.70, 0.58)])
+    },
+
+    // Krabbenchips: gewellte Chips im Häufchen.
+    "krabbenchips": { p in
+        for (cx, cy, t) in [(0.32, 0.42, -20.0), (0.62, 0.38, 25.0), (0.48, 0.68, 5.0)] {
+            p.begin(p.at(CGFloat(cx) - 0.16, CGFloat(cy)))
+            p.bow(p.at(CGFloat(cx) + 0.16, CGFloat(cy) + CGFloat(t) * 0.002),
+                  p.at(CGFloat(cx) - 0.06, CGFloat(cy) - 0.16),
+                  p.at(CGFloat(cx) + 0.06, CGFloat(cy) + 0.10))
+            p.bow(p.at(CGFloat(cx) - 0.16, CGFloat(cy)),
+                  p.at(CGFloat(cx) + 0.06, CGFloat(cy) + 0.20),
+                  p.at(CGFloat(cx) - 0.06, CGFloat(cy) + 0.06))
+            p.close()
+        }
+    },
+
+    // Geschenk: Päckchen mit Band und Schleife.
+    "geschenk": { p in
+        p.line([p.at(0.16, 0.44), p.at(0.84, 0.44), p.at(0.84, 0.88),
+                p.at(0.16, 0.88)], closed: true)
+        p.line([p.at(0.50, 0.44), p.at(0.50, 0.88)])
+        p.line([p.at(0.16, 0.58), p.at(0.84, 0.58)])
+        p.begin(p.at(0.50, 0.44))
+        p.bow(p.at(0.26, 0.24), p.at(0.36, 0.44), p.at(0.26, 0.34))
+        p.bow(p.at(0.50, 0.44), p.at(0.26, 0.14), p.at(0.42, 0.28))
+        p.begin(p.at(0.50, 0.44))
+        p.bow(p.at(0.74, 0.24), p.at(0.64, 0.44), p.at(0.74, 0.34))
+        p.bow(p.at(0.50, 0.44), p.at(0.74, 0.14), p.at(0.58, 0.28))
+    },
+
+    // Kostüm: Maske am Stab.
+    "kostüme": { p in
+        p.begin(p.at(0.50, 0.18))
+        p.bow(p.at(0.18, 0.44), p.at(0.26, 0.18), p.at(0.16, 0.30))
+        p.bow(p.at(0.50, 0.72), p.at(0.20, 0.62), p.at(0.32, 0.72))
+        p.bow(p.at(0.82, 0.44), p.at(0.68, 0.72), p.at(0.80, 0.62))
+        p.bow(p.at(0.50, 0.18), p.at(0.84, 0.30), p.at(0.74, 0.18))
+        p.close()
+        p.dot(p.at(0.38, 0.40), 0.05)
+        p.dot(p.at(0.62, 0.40), 0.05)
+        p.line([p.at(0.50, 0.72), p.at(0.50, 0.94)])
+    },
+
+    // Reflektor: Dreieck mit Strahlen.
+    "reflektoren": { p in
+        p.line([p.at(0.50, 0.28), p.at(0.80, 0.76), p.at(0.20, 0.76)], closed: true)
+        p.line([p.at(0.50, 0.42), p.at(0.66, 0.68), p.at(0.34, 0.68)], closed: true)
+        p.line([p.at(0.16, 0.24), p.at(0.26, 0.34)])
+        p.line([p.at(0.84, 0.24), p.at(0.74, 0.34)])
+        p.line([p.at(0.50, 0.14), p.at(0.50, 0.22)])
+    },
+
+    // Pestizide: Sprühflasche mit Verbotszeichen über dem Käfer.
+    "pestizide": { p in
+        p.line([p.at(0.20, 0.42), p.at(0.20, 0.88), p.at(0.52, 0.88),
+                p.at(0.52, 0.42)], closed: true)
+        p.line([p.at(0.28, 0.42), p.at(0.28, 0.28), p.at(0.44, 0.28),
+                p.at(0.44, 0.42)])
+        p.circle(p.at(0.74, 0.52), 0.20)
+        p.line([p.at(0.60, 0.38), p.at(0.88, 0.66)])
+    },
+]
+
+// MARK: - Tranche 11: die letzten Lücken
+
+/// **Sechs Zeichen zu Tranche 11** (2026-08-07) — was nach zehn Runden noch
+/// fehlte.
+private let tranche11: [String: ItemGlyph.Rezept] = [
+
+    // Lippenpflege: Stift mit abgenommener Kappe.
+    "lippenpflege": { p in
+        // Breiter als der erste Wurf — dieselbe Schwelle wie beim Müsliriegel.
+        p.line([p.at(0.32, 0.40), p.at(0.32, 0.88), p.at(0.68, 0.88),
+                p.at(0.68, 0.40)], closed: true)
+        p.line([p.at(0.36, 0.40), p.at(0.36, 0.22), p.at(0.64, 0.22),
+                p.at(0.64, 0.40)])
+        p.begin(p.at(0.36, 0.22))
+        p.bow(p.at(0.64, 0.22), p.at(0.38, 0.08), p.at(0.62, 0.08))
+        p.close()
+    },
+
+    // Rindfleisch: Stück mit Knochen und Maserung.
+    "rindfleisch": { p in
+        p.begin(p.at(0.30, 0.28))
+        p.bow(p.at(0.84, 0.50), p.at(0.62, 0.22), p.at(0.84, 0.34))
+        p.bow(p.at(0.36, 0.84), p.at(0.84, 0.72), p.at(0.60, 0.86))
+        p.bow(p.at(0.30, 0.28), p.at(0.16, 0.80), p.at(0.12, 0.40))
+        p.close()
+        p.circle(p.at(0.34, 0.52), 0.09)
+        p.line([p.at(0.54, 0.42), p.at(0.66, 0.68)])
+    },
+
+    // Tofu: Block mit angeschnittener Ecke und Sojabohne.
+    "naturtofu": { p in
+        p.line([p.at(0.16, 0.38), p.at(0.68, 0.38), p.at(0.68, 0.82),
+                p.at(0.16, 0.82)], closed: true)
+        p.line([p.at(0.68, 0.38), p.at(0.84, 0.28), p.at(0.84, 0.72),
+                p.at(0.68, 0.82)])
+        p.line([p.at(0.16, 0.38), p.at(0.32, 0.28), p.at(0.84, 0.28)])
+        p.begin(p.at(0.34, 0.56))
+        p.bow(p.at(0.50, 0.56), p.at(0.34, 0.46), p.at(0.50, 0.46))
+        p.bow(p.at(0.34, 0.56), p.at(0.50, 0.66), p.at(0.34, 0.66))
+        p.close()
+    },
+
+    // Speisemöhren: Bund mit drei Wurzeln und Grün.
+    "speisemöhren": { p in
+        for (x, t) in [(0.32, -14.0), (0.50, 0.0), (0.68, 14.0)] {
+            p.begin(p.at(CGFloat(x) - 0.09, 0.42))
+            p.bow(p.at(CGFloat(x) + CGFloat(t) * 0.004, 0.90),
+                  p.at(CGFloat(x) - 0.06, 0.68), p.at(CGFloat(x) - 0.01, 0.82))
+            p.bow(p.at(CGFloat(x) + 0.09, 0.42),
+                  p.at(CGFloat(x) + 0.03, 0.82), p.at(CGFloat(x) + 0.08, 0.68))
+            p.close()
+        }
+        p.line([p.at(0.20, 0.36), p.at(0.80, 0.36)])
+        p.line([p.at(0.32, 0.36), p.at(0.24, 0.14)])
+        p.line([p.at(0.50, 0.36), p.at(0.50, 0.10)])
+        p.line([p.at(0.68, 0.36), p.at(0.76, 0.14)])
+    },
+
+    // Fruchtsaft: Flasche mit Fruchtscheibe auf dem Etikett.
+    "fruchtsaft": { p in
+        p.line([p.at(0.42, 0.08), p.at(0.58, 0.08), p.at(0.58, 0.20),
+                p.at(0.42, 0.20)], closed: true)
+        p.line([p.at(0.44, 0.20), p.at(0.42, 0.36)])
+        p.line([p.at(0.56, 0.20), p.at(0.58, 0.36)])
+        p.line([p.at(0.42, 0.36), p.at(0.32, 0.50), p.at(0.32, 0.90),
+                p.at(0.68, 0.90), p.at(0.68, 0.50), p.at(0.58, 0.36)])
+        p.circle(p.at(0.50, 0.66), 0.12)
+        p.line([p.at(0.38, 0.66), p.at(0.62, 0.66)])
+    },
+
+    // Cola: Dose mit Lasche und Wellenband.
+    "cola": { p in
+        p.line([p.at(0.32, 0.24), p.at(0.68, 0.24), p.at(0.68, 0.86),
+                p.at(0.32, 0.86)], closed: true)
+        p.begin(p.at(0.32, 0.24))
+        p.bow(p.at(0.68, 0.24), p.at(0.32, 0.14), p.at(0.68, 0.14))
+        p.circle(p.at(0.50, 0.21), 0.045)
+        p.begin(p.at(0.32, 0.56))
+        p.bow(p.at(0.68, 0.56), p.at(0.44, 0.44), p.at(0.56, 0.68))
     },
 ]
 

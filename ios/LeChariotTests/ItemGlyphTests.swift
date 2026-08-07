@@ -31,7 +31,7 @@ final class ItemGlyphTests: XCTestCase {
     /// Test, welche Zeichnung ins Leere zeigt.
     func testEveryDictionaryTermIsDrawnOrNamedAsAnException() {
         let wörterbuch = Set(MatchDictionary.allTerms)
-        XCTAssertEqual(wörterbuch.count, 310,
+        XCTAssertEqual(wörterbuch.count, 337,
                        "Das Wörterbuch hat sich geändert — die Zahl hier ist nur der Wecker, "
                        + "die Arbeit steht in den Meldungen darunter.")
 
@@ -162,7 +162,12 @@ final class ItemGlyphTests: XCTestCase {
     func testTheTermResolverAnswersFromTheDictionary() {
         XCTAssertEqual(ItemGlyphTerm.term(for: "Erdbeeren"), "beeren")
         XCTAssertEqual(ItemGlyphTerm.term(for: "Vollmilch"), "milch")
-        XCTAssertEqual(ItemGlyphTerm.term(for: "Zahnpasta"), "windeln/hygiene")
+        // **Der grobe Begriff hat den feinen bis zum 07.08. verdeckt.**
+        // „Zahnpasta" stand in der exact-Liste von `windeln/hygiene` — einer
+        // der fünf **ungezeichneten Ausnahmen** —, und wer das Wort tippte,
+        // bekam deshalb kein Zeichen, sondern das Kategoriezeichen. Seit
+        // Tranche 11 sind die verdeckenden Wörter dort raus.
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Zahnpasta"), "zahnpasta")
         // Mehrwortig: als Wendung, nicht als Einzelwort — „creme" allein ist
         // kein Begriff.
         XCTAssertEqual(ItemGlyphTerm.term(for: "Crème fraîche"), "sahne")

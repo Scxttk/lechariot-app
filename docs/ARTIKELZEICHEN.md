@@ -28,7 +28,7 @@ Ansehen sind sie das, was sie hier sind: eine Messlatte für den Umfang.
 | Artikel bei Bring! (gelesen) | **750** |
 | davon kennt unser Wörterbuch schon | 267 |
 | **neu** | **483** |
-| gezeichnet (`ItemGlyphs.swift`) | **305** |
+| gezeichnet (`ItemGlyphs.swift`) | **332** |
 
 ### Die Zahl, die zählt — und die, die ich sechs Runden lang falsch berichtet habe
 
@@ -43,10 +43,10 @@ Gemessen mit `tools/artikelzeichen-stand.py` (liest `docs/bring-katalog.txt`, l�
 
 | | |
 |---|---:|
-| Bring!-Artikel, Rauschen abgezogen | 664 |
-| lösen bei uns auf einen Begriff auf | 568 (86 %) |
-| **bekommen ein gezeichnetes Zeichen** | **559 (84 %)** |
-| unsere Zeichen | 305 |
+| Bring!-Artikel, Rauschen abgezogen | 623 |
+| lösen bei uns auf einen Begriff auf | **623 (100 %)** |
+| **bekommen ein gezeichnetes Zeichen** | **623 (100 %)** |
+| unsere Zeichen | 332 |
 
 **Die 750 aus der ersten Messung waren zu hoch:** Die Texterkennung hat Kopfzeilen,
 Marken und abgeschnittene Zeilen mitgelesen. Nach Abzug bleiben 664 echte Artikel.
@@ -64,7 +64,21 @@ Marken und abgeschnittene Zeilen mitgelesen. Nach Abzug bleiben 664 echte Artike
 | 6 | Rest aus Obst & Gemüse | +23 | 226 | 98,3 % |
 | 7 | die letzten Lebensmittel | +25 | 251 | 98,3 % |
 | 8 | Haushalt und Pflege (erstes Non-Food) | +28 | 279 | 98,3 % |
-| 9 | Baumarkt, Garten, Tierbedarf | +26 | **305** | 98,3 % |
+| 9 | Baumarkt, Garten, Tierbedarf | +26 | 305 | 98,3 % |
+| 10 | der Rest | +21 | 326 | 98,3 % |
+| 11 | die letzten Lücken + Verdeckung | +6 | **332** | 98,3 % |
+
+**Erreicht am 07.08.: 623 von 623.** Jeder Artikel aus Bring!s Katalog löst bei
+uns auf einen Begriff auf, der ein eigenes, gezeichnetes Zeichen hat.
+
+### Der Fund, der die letzten Prozent gebracht hat
+
+**Grobe Begriffe verdeckten die feinen.** `windeln/hygiene`, `soßen` und
+`fertiggericht` sind **benannte Ausnahmen ohne Zeichnung** — und sie führten
+„zahnpasta", „küchenrolle", „bbq sauce", „dip" und „ravioli" in ihrer
+`exact`-Liste. Wer eines dieser Wörter tippte, löste auf die Ausnahme auf und
+bekam das Kategoriezeichen, **obwohl das feine Zeichen längst da war**. Nicht
+die Zeichnungen fehlten, sondern der Weg zu ihnen.
 
 **Erfahrungswert aus fünf Runden:** rund 25 Zeichen je Runde, davon lesen **etwa
 ein Drittel beim ersten Wurf etwas anderes** und brauchen einen zweiten Durchgang.

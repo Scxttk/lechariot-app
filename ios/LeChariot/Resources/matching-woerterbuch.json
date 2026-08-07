@@ -1361,7 +1361,12 @@
     "spinat",
     "erbsen",
     "gemüsemix",
-    "kaidergemüse"
+    "kaidergemüse",
+    "kaisergemüse",
+    "buttergemüse",
+    "gemüse gefroren",
+    "tiefkühl brokoli",
+    "tk gemüse"
    ],
    "suffix": [
     "gemüse"
@@ -1454,7 +1459,6 @@
     "mayo",
     "senf",
     "grillsauce",
-    "bbq sauce",
     "sriracha",
     "sojasauce",
     "dressing",
@@ -1465,7 +1469,6 @@
     "ajvar",
     "zaziki",
     "tsatsiki",
-    "dip",
     "dips",
     "hummus",
     "meerrettich"
@@ -1544,28 +1547,14 @@
   "windeln/hygiene": {
    "exact": [
     "windeln",
-    "toilettenpapier",
-    "küchenrolle",
-    "taschentücher",
-    "zahnpasta",
-    "duschgel",
-    "shampoo",
-    "deo",
-    "deodorant",
-    "waschmittel",
-    "spülmittel",
     "vanish",
     "lenor",
     "zewa",
-    "mundspülung",
-    "zahncreme",
-    "weichspüler",
     "wasserenthärter",
     "calgon"
    ],
    "suffix": [
     "papier",
-    "waschmittel",
     "spülmittel"
    ],
    "prefix": [],
@@ -1680,7 +1669,6 @@
     "tortelloni",
     "maultaschen",
     "bowl",
-    "ravioli",
     "mikrowellengericht",
     "instant",
     "gyoza",
@@ -2231,7 +2219,8 @@
     "sellerie",
     "staudensellerie",
     "stangensellerie",
-    "knollensellerie"
+    "knollensellerie",
+    "stangenselerie"
    ],
    "suffix": [],
    "prefix": [],
@@ -2334,7 +2323,9 @@
     "blätterteig",
     "hefeteig",
     "kuchenteig",
-    "mürbeteig"
+    "mürbeteig",
+    "mini pizzen",
+    "mini pizza"
    ],
    "suffix": [],
    "prefix": [],
@@ -3066,7 +3057,10 @@
     "bratensoße",
     "rahmsoße",
     "rahmsauce",
-    "preiselbeersauce"
+    "preiselbeersauce",
+    "preiselbeer sauce",
+    "pasta sauce",
+    "vanille sauce"
    ],
    "suffix": [],
    "prefix": [],
@@ -3469,7 +3463,9 @@
     "bbq sauce",
     "barbecuesauce",
     "grillsauce",
-    "steaksauce"
+    "steaksauce",
+    "dip",
+    "dips"
    ],
    "suffix": [],
    "prefix": [],
@@ -3601,7 +3597,8 @@
    "exact": [
     "kräuterfrischkäse",
     "frischkäse",
-    "doppelrahmstufe"
+    "doppelrahmstufe",
+    "kochcreme"
    ],
    "suffix": [],
    "prefix": [],
@@ -4308,6 +4305,301 @@
     "mütze",
     "schal",
     "handschuhe wolle"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "haargel": {
+   "exact": [
+    "haargel",
+    "haarspray",
+    "haaröl",
+    "haarwachs",
+    "haarschaum",
+    "bartöl"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "gesichtsmaske": {
+   "exact": [
+    "gesichtsmaske",
+    "peeling",
+    "scrub",
+    "gesichtswasser",
+    "serum"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "nagelfeile": {
+   "exact": [
+    "nagelfeile",
+    "nagelknipser",
+    "nagelschere",
+    "nagelzange"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "parfüm": {
+   "exact": [
+    "parfüm",
+    "eau de toilette",
+    "duftwasser",
+    "bodyspray"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "mückenschutz": {
+   "exact": [
+    "mückenschutz",
+    "insektenschutz",
+    "mückenspray",
+    "zeckenschutz"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "muskelcreme": {
+   "exact": [
+    "muskelcreme",
+    "kühlgel",
+    "wärmesalbe",
+    "sportsalbe",
+    "nasensalbe"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "kohletabletten": {
+   "exact": [
+    "kohletabletten",
+    "kohlekompretten",
+    "elektrolytpulver"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "kondome": {
+   "exact": [
+    "kondom",
+    "kondome",
+    "gleitgel"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "kontaktlinsen": {
+   "exact": [
+    "kontaktlinsen",
+    "linsenmittel",
+    "kontaktlinsenflüssigkeit"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "klobürste": {
+   "exact": [
+    "klobürste",
+    "toilettenbürste",
+    "wc-bürste",
+    "wc-stein"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "möbelpolitur": {
+   "exact": [
+    "möbelpolitur",
+    "holzpflege",
+    "lederpflege",
+    "politur"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "aufbackbrötchen": {
+   "exact": [
+    "aufbackbrötchen",
+    "aufbackbaguette",
+    "kräuterbaguette",
+    "knoblauchbaguette"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "schokobrötchen": {
+   "exact": [
+    "schokobrötchen",
+    "milchbrötchen",
+    "rosinenbrötchen"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "knoblauchpulver": {
+   "exact": [
+    "knoblauchpulver",
+    "zwiebelpulver",
+    "knoblauchgranulat"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "mandelaroma": {
+   "exact": [
+    "mandelaroma",
+    "rumaroma",
+    "backaroma",
+    "zitronenaroma"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "vanillesoße": {
+   "exact": [
+    "vanillesoße",
+    "vanillesauce",
+    "vanillepudding"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "krabbenchips": {
+   "exact": [
+    "krabbenchips",
+    "reischips",
+    "gemüsechips"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "geschenk": {
+   "exact": [
+    "geschenk",
+    "geschenkkarte",
+    "gutschein",
+    "tischbombe deko"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "kostüme": {
+   "exact": [
+    "kostüm",
+    "kostüme",
+    "kinderschminke",
+    "faschingsartikel"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "reflektoren": {
+   "exact": [
+    "reflektor",
+    "reflektoren",
+    "warnweste",
+    "fahrradlicht"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "pestizide": {
+   "exact": [
+    "pestizide",
+    "schneckenkorn",
+    "unkrautvernichter",
+    "insektizid"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "lippenpflege": {
+   "exact": [
+    "lippenpflege",
+    "lippenbalsam",
+    "labello",
+    "lippenstift pflege"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "rindfleisch": {
+   "exact": [
+    "rindfleisch",
+    "kalbfleisch",
+    "wildfleisch",
+    "gulaschfleisch",
+    "grillfleisch"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "naturtofu": {
+   "exact": [
+    "naturtofu",
+    "seidentofu",
+    "räuchertofu"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "speisemöhren": {
+   "exact": [
+    "speisemöhren",
+    "bundmöhren",
+    "karottensaft"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "fruchtsaft": {
+   "exact": [
+    "fruchtsaft",
+    "mehrfruchtsaft",
+    "direktsaft",
+    "nektar"
+   ],
+   "suffix": [],
+   "prefix": [],
+   "block": []
+  },
+  "cola": {
+   "exact": [
+    "cola",
+    "cola light",
+    "cola zero",
+    "spezi",
+    "koffeingetränk",
+    "energydrink"
    ],
    "suffix": [],
    "prefix": [],

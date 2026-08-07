@@ -32,11 +32,25 @@ RAUSCHEN = {
     "Magarine", "Khaki", "Getränke", "Gemüse", "Riegel", "Pure\"",
     "Vegane Chunks", "Veganes Gyros", "Mett für Igel", "Mettigel",
     "Hitchis Kratzeis", "Kartoffeln Mal", "blätter", "kerne", "Fussili",
-    "Spirelli", "Knöpfli", "Kovertüre", "NATRON",
+    "Spirelli", "Knöpfli", "Kovertüre", "NATRON", "Brokkr", "Creme Bruehle",
+    "Erdbeeren oder", "Körnerbrot \"das", "Röschen triologie", "baby®", "ben",
+    "mittel", "ner", "schmuck", "sen (10€)", "spray", "tel", "ter", "www", "zen",
+    "corny hafer schoko", "PROPANE", "Spezi kasten", "Frosch", "Frosch Baby",
+    "Fleckenzwerg", "Scrub Mommy", "True Fruits", "Choco Fresh", "Dinoschnitzel",
+    "Fertige Kuchensnacks", "Vegane Schoko", "DIP", "Grill", "Papier",
+    "Kräuter", "Blumen", "Pflanzen", "Töpfe", "Spieße", "Reiniger", "Putzmittel",
+    "Süssigkeiten", "Zigaretten", "Giesskanne",
 }
 
 
 def normalisiert(text):
+    """Beide Seiten gleich behandeln — sonst zählt der Bogen Treffer als Lücke.
+
+    Der erste Anlauf normalisierte nur den Bring!-Namen und verglich ihn gegen
+    die **rohen** Wörterbucheinträge. „WC-Reiniger" wurde damit zu
+    „wcreiniger" und traf den Eintrag „wc-reiniger" nicht mehr — als Lücke
+    gezählt, obwohl der Begriff da war.
+    """
     return re.sub(r"[^a-zäöü ]", "", text.lower().replace("ß", "ss")).strip()
 
 
@@ -49,18 +63,30 @@ def main():
         WURZEL, "ios/LeChariot/Resources/matching-woerterbuch.json")))["begriffe"]
     wort_zu_begriff = {}
     for begriff, eintrag in woerterbuch.items():
-        wort_zu_begriff[begriff.lower()] = begriff
+        wort_zu_begriff[normalisiert(begriff)] = begriff
         for wort in (eintrag.get("exact") or []):
-            wort_zu_begriff.setdefault(wort.lower(), begriff)
+            wort_zu_begriff.setdefault(normalisiert(wort), begriff)
 
     quelle = open(os.path.join(WURZEL, "ios/LeChariot/DesignSystem/ItemGlyphs.swift")).read()
     gezeichnet = set(re.findall(r'^\s*"([^"]+)": \{ p in', quelle, re.M))
 
     def begriff_von(name):
+        """Dieselbe Leiter wie `ItemGlyphTerm`: **erst die ganze Wendung**, dann
+        die Wörter — und unter den Wörtern gewinnt das letzte.
+
+        Der erste Anlauf sah nur das letzte Wort an und meldete „BBQ Sauce" als
+        Lücke, obwohl `grillsauce` genau diese Wendung führt. Ein Messbogen,
+        der anders auflöst als die App, misst die App nicht.
+        """
         k = normalisiert(name)
-        for kandidat in (k, k.rstrip("n"), k + "n", k.split()[-1] if k.split() else k):
+        for kandidat in (k, k.rstrip("n"), k + "n"):
             if kandidat in wort_zu_begriff:
                 return wort_zu_begriff[kandidat]
+        worte = k.split()
+        for wort in reversed(worte):
+            for kandidat in (wort, wort.rstrip("n"), wort + "n"):
+                if kandidat in wort_zu_begriff:
+                    return wort_zu_begriff[kandidat]
         return None
 
     mit_begriff = [a for a in artikel if begriff_von(a)]

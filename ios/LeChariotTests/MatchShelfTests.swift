@@ -40,6 +40,35 @@ final class MatchShelfTests: XCTestCase {
     /// `milch` gesperrt), „Putenbrustfilet" (bei `fisch` gesperrt) — sie
     /// gehören zu einem anderen Begriff und müssen dort auch bleiben.
     private static let regal: [String: String] = [
+        // Tranche 11 (2026-08-07): die letzten Lücken.
+        "cola": "Coca-Cola 1,25 l",
+        "fruchtsaft": "Multivitaminsaft 1 l",
+        "lippenpflege": "Labello Classic",
+        "naturtofu": "Naturtofu 200 g",
+        "rindfleisch": "Rindergulasch 500 g",
+        "speisemöhren": "Bundmöhren 1 kg",
+        // Tranche 10 (2026-08-07): der Rest.
+        "aufbackbrötchen": "Aufbackbrötchen 6 Stück",
+        "geschenk": "Geschenkgutschein 25 €",
+        "gesichtsmaske": "Tuchmaske Aloe Vera",
+        "haargel": "Haargel starker Halt 150 ml",
+        "klobürste": "WC-Bürste mit Ständer",
+        "knoblauchpulver": "Knoblauchgranulat 50 g",
+        "kohletabletten": "Kohle-Kompretten 30 Stück",
+        "kondome": "Kondome 8 Stück",
+        "kontaktlinsen": "Kontaktlinsenflüssigkeit 360 ml",
+        "kostüme": "Faschingsmaske",
+        "krabbenchips": "Krabbenchips 100 g",
+        "mandelaroma": "Backaroma Mandel 4 x 2 ml",
+        "muskelcreme": "Wärmesalbe 100 ml",
+        "möbelpolitur": "Möbelpolitur 300 ml",
+        "mückenschutz": "Mückenspray 100 ml",
+        "nagelfeile": "Nagelfeilen 6 Stück",
+        "parfüm": "Eau de Toilette 50 ml",
+        "pestizide": "Schneckenkorn 300 g",
+        "reflektoren": "Reflektorband 2 Stück",
+        "schokobrötchen": "Schokobrötchen 4 Stück",
+        "vanillesoße": "Vanillesoße 500 ml",
         // Tranche 9 (2026-08-07): Baumarkt, Garten, Tierbedarf.
         "backform": "Springform 26 cm",
         "besteck": "Einweggabeln 20 Stück",
