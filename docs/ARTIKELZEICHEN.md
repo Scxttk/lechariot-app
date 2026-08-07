@@ -28,7 +28,7 @@ Ansehen sind sie das, was sie hier sind: eine Messlatte für den Umfang.
 | Artikel bei Bring! (gelesen) | **750** |
 | davon kennt unser Wörterbuch schon | 267 |
 | **neu** | **483** |
-| gezeichnet (`ItemGlyphs.swift`) | **226** |
+| gezeichnet (`ItemGlyphs.swift`) | **251** |
 
 ### Die Zahl, die zählt — und die, die ich sechs Runden lang falsch berichtet habe
 
@@ -44,9 +44,9 @@ Gemessen mit `tools/artikelzeichen-stand.py` (liest `docs/bring-katalog.txt`, l�
 | | |
 |---|---:|
 | Bring!-Artikel, Rauschen abgezogen | 664 |
-| lösen bei uns auf einen Begriff auf | 436 (66 %) |
-| **bekommen ein gezeichnetes Zeichen** | **408 (61 %)** |
-| unsere Zeichen | 226 |
+| lösen bei uns auf einen Begriff auf | 450 (68 %) |
+| **bekommen ein gezeichnetes Zeichen** | **435 (66 %)** |
+| unsere Zeichen | 251 |
 
 **Die 750 aus der ersten Messung waren zu hoch:** Die Texterkennung hat Kopfzeilen,
 Marken und abgeschnittene Zeilen mitgelesen. Nach Abzug bleiben 664 echte Artikel.
@@ -61,7 +61,8 @@ Marken und abgeschnittene Zeilen mitgelesen. Nach Abzug bleiben 664 echte Artike
 | 3 | Brot, Milch, Fleisch & Fisch | +23 | 150 | 98,1 % |
 | 4 | Getränke, Süßwaren, Getreide | +25 | 175 | **98,3 %** |
 | 5 | Zutaten, Gewürze, Tiefkühl | +28 | 203 | 98,3 % |
-| 6 | Rest aus Obst & Gemüse | +23 | **226** | 98,3 % |
+| 6 | Rest aus Obst & Gemüse | +23 | 226 | 98,3 % |
+| 7 | die letzten Lebensmittel | +25 | **251** | 98,3 % |
 
 **Erfahrungswert aus fünf Runden:** rund 25 Zeichen je Runde, davon lesen **etwa
 ein Drittel beim ersten Wurf etwas anderes** und brauchen einen zweiten Durchgang.
@@ -77,6 +78,8 @@ Prüfbogens.
 - Senkrechte Striche mit Querbalken sind ein **Zaun**.
 - Kreis im Kreis mit Kreuz ist ein **Wappen**.
 - Drei Punkte im Dreieck auf einer Kugel sind ein **Gesicht** (Kokosnuss).
+- Ein breites Rechteck mit Deckel und Querlinien ist ein **Notizblock** (Mayonnaise).
+- Senkrechte Rillen in einem sich verjüngenden Behälter sind ein **Papierkorb** (Panettone).
 - `capsule` wird **gestrichen**: bei 0,095 Strichstärke deckt der Strich eine
   0,10 breite Kapsel voll zu. Ein dünner Gegenstand ist eine **Linie**.
 

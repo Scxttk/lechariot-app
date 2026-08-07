@@ -40,6 +40,32 @@ final class MatchShelfTests: XCTestCase {
     /// `milch` gesperrt), „Putenbrustfilet" (bei `fisch` gesperrt) — sie
     /// gehören zu einem anderen Begriff und müssen dort auch bleiben.
     private static let regal: [String: String] = [
+        // Tranche 7 (2026-08-07): die letzten Lebensmittel.
+        "babynahrung": "Hipp Karottenbrei 190 g",
+        "chili": "Chiliflocken 35 g",
+        "erdnussbutter": "Erdnussmus crunchy 500 g",
+        "getreideriegel": "Hafer-Riegel 6 x 25 g",
+        "grillsauce": "BBQ Sauce Hickory 450 ml",
+        "hamburger": "Rinderfrikadellen 4 Stück",
+        "hartkäse": "Manchego am Stück 200 g",
+        "hummus": "Hummus Classic 200 g",
+        "ingwer": "Ingwerknolle lose",
+        "ketchup": "Heinz Tomato Ketchup 500 ml",
+        "kokoswasser": "Kokoswasser 330 ml",
+        "koriander": "Koriander im Bund",
+        "kräuterfrischkäse": "Frischkäse Kräuter 175 g",
+        "maultaschen": "Maultaschen 400 g",
+        "mayonnaise": "Thomy Mayonnaise 250 ml",
+        "panettone": "Panettone Classico 500 g",
+        "paprikapulver": "Paprika edelsüß 45 g",
+        "pesto": "Pesto alla Genovese 190 g",
+        "pfeffer": "Schwarzer Pfeffer gemahlen 50 g",
+        "pfefferminztee": "Pfefferminztee 20 Beutel",
+        "senf": "Löwensenf mittelscharf 250 ml",
+        "sojasauce": "Kikkoman Sojasauce 250 ml",
+        "trüffel": "Trüffelöl 100 ml",
+        "weißwein": "Riesling trocken 0,75 l",
+        "wraps": "Weizen-Tortillas 6 Stück",
         // Tranche 6 (2026-08-07): der Rest aus Obst & Gemüse.
         "artischocken": "Artischockenherzen 240 g",
         "blutorangen": "Blutorangen Moro 1 kg",

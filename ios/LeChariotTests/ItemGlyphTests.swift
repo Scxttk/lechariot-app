@@ -31,7 +31,7 @@ final class ItemGlyphTests: XCTestCase {
     /// Test, welche Zeichnung ins Leere zeigt.
     func testEveryDictionaryTermIsDrawnOrNamedAsAnException() {
         let wörterbuch = Set(MatchDictionary.allTerms)
-        XCTAssertEqual(wörterbuch.count, 231,
+        XCTAssertEqual(wörterbuch.count, 256,
                        "Das Wörterbuch hat sich geändert — die Zahl hier ist nur der Wecker, "
                        + "die Arbeit steht in den Meldungen darunter.")
 
@@ -168,11 +168,17 @@ final class ItemGlyphTests: XCTestCase {
         XCTAssertEqual(ItemGlyphTerm.term(for: "Crème fraîche"), "sahne")
         // Kopf-final: das letzte Wort ist der Artikel, das erste die Sorte.
         XCTAssertEqual(ItemGlyphTerm.term(for: "Erdbeer Joghurt"), "joghurt")
-        // Die Sperrlisten gelten mit: „Erdnussbutter" ist in `butter` gesperrt
-        // und steht in keiner anderen exact-Liste — also kein Begriff und
-        // damit das Kategoriezeichen. Das ist der Fall, für den es die
-        // Rückfallleiter gibt.
-        XCTAssertNil(ItemGlyphTerm.term(for: "Erdnussbutter"))
+        // **Der Fall hat sich gedreht, und das ist die Pointe des ganzen
+        // Vorhabens.** „Erdnussbutter" war hier das Beispiel für ein Wort ohne
+        // Begriff: in `butter` gesperrt, in keiner anderen exact-Liste, also
+        // Kategoriezeichen. Seit Tranche 7 hat es einen eigenen Begriff — die
+        // Sperre bei `butter` gilt unverändert, aber die Rückfallleiter wird
+        // nicht mehr gebraucht. Genau darum ging es: **Nicht mehr Bilder,
+        // sondern mehr Wörter, die eines verdienen.**
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Erdnussbutter"), "erdnussbutter")
+        // Ein Wort, das der Wortschatz weiterhin nicht kennt — die
+        // Rückfallleiter muss geprüft bleiben.
+        XCTAssertNil(ItemGlyphTerm.term(for: "Zahnstocher"))
         // **Eine Sperre gilt aber nur für den Begriff, der sie aufstellt.**
         // „Buttermilch" ist in `butter` gesperrt und steht zugleich in der
         // exact-Liste von `milch`; sie bekommt die Milchtüte. „Milchreis" ist
