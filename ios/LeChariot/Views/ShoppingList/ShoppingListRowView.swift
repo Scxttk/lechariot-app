@@ -1,7 +1,11 @@
 import SwiftUI
 
-/// One shopping-list entry: check circle, item text, and (for open items with
-/// a match) the cheapest current offer as a suggestion line.
+/// One shopping-list entry: check circle, das gezeichnete Zeichen des
+/// Artikels, sein Name, und (für offene Zeilen mit Treffer) das billigste
+/// Angebot als Vorschlagszeile.
+///
+/// **Bilder gibt es hier keine mehr** — siehe `itemGlyph`. Die Liste zeichnet,
+/// die Angebote fotografieren.
 struct ShoppingListRowView: View {
     let item: ShoppingItem
     /// Das Angebot der Zeile — und ob es die eigene Wahl ist. Siehe
@@ -41,7 +45,12 @@ struct ShoppingListRowView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.md) {
+        // **Kein Abstand im Rumpf, die Teile bringen ihren eigenen mit.** Der
+        // Kreis sitzt in einer 44-pt-Trefferfläche und hat darin schon rund 12
+        // pt Luft; noch einmal `Spacing.md` davor **und** hinter dem Zeichen
+        // schob die Namensspalte um 38 pt nach rechts — am gerenderten Bild
+        // gemessen, und der Marktname fiel dabei aus der Angebotszeile.
+        HStack(alignment: .top, spacing: 0) {
             Button(action: onToggle) {
                 Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
@@ -54,6 +63,8 @@ struct ShoppingListRowView: View {
             .accessibilityLabel(item.isChecked ? "Als offen markieren" : "Als erledigt markieren")
             .tutorialAnchor(.rowCheck, when: carriesTutorialAnchors)
 
+            itemGlyph
+
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 name
 
@@ -65,6 +76,46 @@ struct ShoppingListRowView: View {
 
             Spacer(minLength: 0)
         }
+    }
+
+    /// **Das Zeichen des Artikels — und der Grund, warum in der Liste kein
+    /// Foto mehr steht** (07.08.).
+    ///
+    /// Bis heute trug die Zeile das **Produktfoto des Angebots**. Das ist ein
+    /// Bild des Prospekts, nicht des Artikels: Wer „Milch" aufschreibt, sah
+    /// eine bestimmte Packung, und die wechselte mit dem Angebot der Woche.
+    /// Beim Einkaufen ist das die falsche Auskunft — man sucht die Ware, nicht
+    /// die Marke, auf die der Zuordner gerade zeigt.
+    ///
+    /// Jetzt steht hier das **eigene Zeichen**, aufgelöst über dasselbe
+    /// Wörterbuch, das der Zuordner benutzt (`ItemGlyphTerm` → `ItemGlyph`).
+    /// Es hängt am getippten Wort und ist damit auch dann da, wenn diese Woche
+    /// nichts im Angebot ist — die Zeile „Zahnpasta" war vorher bildlos.
+    ///
+    /// **Die Fotos bleiben, wo sie hingehören:** in den Angeboten und im
+    /// Trefferblatt, das ein Tipp auf die Zeile öffnet. Dort ist das Foto die
+    /// Antwort auf „welches Produkt ist das", und dort ist es auch rechtlich
+    /// unser gutes Recht — es kommt mit dem Angebot.
+    ///
+    /// Feste Breite auch ohne Zeichen (`ItemGlyphView` liefert dann eine leere
+    /// Fläche): Sonst rückt die Namensspalte je Zeile woandershin.
+    @ViewBuilder
+    private var itemGlyph: some View {
+        ItemGlyphView(
+            term: ItemGlyphTerm.term(for: item.text),
+            // Rückfall auf das Kategoriezeichen — die Kategorie weiß nur der
+            // Treffer, deshalb kommt sie von dort und nicht aus dem Artikel.
+            category: suggestion.match?.offer.category,
+            size: 26
+        )
+        .foregroundStyle(item.isChecked ? Theme.secondaryText : Theme.accent)
+        // Auf der Höhe des Kreises daneben, nicht auf der der ersten Textzeile:
+        // Die zwei runden Dinge am linken Rand sind das Paar, das das Auge
+        // zuerst sieht.
+        .frame(width: 26, height: 44)
+        .padding(.trailing, Theme.Spacing.sm)
+        .opacity(item.isChecked ? 0.5 : 1)
+        .accessibilityHidden(true)
     }
 
     /// The item name, with its detail underneath.
@@ -302,13 +353,6 @@ struct ShoppingListRowView: View {
         if typeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 HStack(spacing: Theme.Spacing.sm) {
-                    OfferThumbnail(
-                        imageUrl: offer.imageUrl, emoji: offer.emoji,
-                        category: offer.category, title: offer.product, size: 32,
-                        // Fläche nur unter einem Foto — das Kategoriezeichen
-                        // steht ohne, siehe `OfferThumbnail.framed`.
-                        framed: offer.imageUrl != nil
-                    )
                     offerText(offer, lineLimit: nil, isPinned: isPinned)
                     Spacer(minLength: 0)
                 }
@@ -323,17 +367,18 @@ struct ShoppingListRowView: View {
             }
         } else {
             HStack(spacing: Theme.Spacing.sm) {
-                OfferThumbnail(
-                        imageUrl: offer.imageUrl, emoji: offer.emoji,
-                        category: offer.category, title: offer.product, size: 32,
-                        // Fläche nur unter einem Foto — das Kategoriezeichen
-                        // steht ohne, siehe `OfferThumbnail.framed`.
-                        framed: offer.imageUrl != nil
-                    )
                 // Two lines: real product names ("Landliebe Butter Original")
                 // truncated to "Landliebe B…" at one line, which is not enough
                 // to tell whether the match is right.
+                //
+                // **Der Textblock nimmt, was übrig ist** — sonst verhandelt der
+                // `Spacer` ihn auf seine ideale Breite herunter, und in der
+                // Zeile unter dem Produktnamen blieb neben dem Chip „Deine
+                // Wahl" (der sich per `fixedSize` seine Breite nimmt) nichts
+                // mehr für den Marktnamen. Der Chip sagte dann, dass es die
+                // eigene Wahl ist, und verschwieg ausgerechnet, *wo*.
                 offerText(offer, lineLimit: 2, isPinned: isPinned)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer(minLength: Theme.Spacing.sm)
                 if let discount = offer.discountPercent {
                     DiscountBadge(percent: discount)
@@ -364,6 +409,9 @@ struct ShoppingListRowView: View {
                 Text(offer.market)
                     .font(.caption2)
                     .foregroundStyle(Theme.secondaryText)
+                    // Einzeilig: Ein umgebrochener Marktname neben dem Chip
+                    // liest sich wie zwei Märkte.
+                    .lineLimit(1)
             }
         }
     }

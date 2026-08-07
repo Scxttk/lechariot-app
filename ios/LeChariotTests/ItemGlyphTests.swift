@@ -31,7 +31,7 @@ final class ItemGlyphTests: XCTestCase {
     /// Test, welche Zeichnung ins Leere zeigt.
     func testEveryDictionaryTermIsDrawnOrNamedAsAnException() {
         let wörterbuch = Set(MatchDictionary.allTerms)
-        XCTAssertEqual(wörterbuch.count, 85,
+        XCTAssertEqual(wörterbuch.count, 337,
                        "Das Wörterbuch hat sich geändert — die Zahl hier ist nur der Wecker, "
                        + "die Arbeit steht in den Meldungen darunter.")
 
@@ -162,17 +162,28 @@ final class ItemGlyphTests: XCTestCase {
     func testTheTermResolverAnswersFromTheDictionary() {
         XCTAssertEqual(ItemGlyphTerm.term(for: "Erdbeeren"), "beeren")
         XCTAssertEqual(ItemGlyphTerm.term(for: "Vollmilch"), "milch")
-        XCTAssertEqual(ItemGlyphTerm.term(for: "Zahnpasta"), "windeln/hygiene")
+        // **Der grobe Begriff hat den feinen bis zum 07.08. verdeckt.**
+        // „Zahnpasta" stand in der exact-Liste von `windeln/hygiene` — einer
+        // der fünf **ungezeichneten Ausnahmen** —, und wer das Wort tippte,
+        // bekam deshalb kein Zeichen, sondern das Kategoriezeichen. Seit
+        // Tranche 11 sind die verdeckenden Wörter dort raus.
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Zahnpasta"), "zahnpasta")
         // Mehrwortig: als Wendung, nicht als Einzelwort — „creme" allein ist
         // kein Begriff.
         XCTAssertEqual(ItemGlyphTerm.term(for: "Crème fraîche"), "sahne")
         // Kopf-final: das letzte Wort ist der Artikel, das erste die Sorte.
         XCTAssertEqual(ItemGlyphTerm.term(for: "Erdbeer Joghurt"), "joghurt")
-        // Die Sperrlisten gelten mit: „Erdnussbutter" ist in `butter` gesperrt
-        // und steht in keiner anderen exact-Liste — also kein Begriff und
-        // damit das Kategoriezeichen. Das ist der Fall, für den es die
-        // Rückfallleiter gibt.
-        XCTAssertNil(ItemGlyphTerm.term(for: "Erdnussbutter"))
+        // **Der Fall hat sich gedreht, und das ist die Pointe des ganzen
+        // Vorhabens.** „Erdnussbutter" war hier das Beispiel für ein Wort ohne
+        // Begriff: in `butter` gesperrt, in keiner anderen exact-Liste, also
+        // Kategoriezeichen. Seit Tranche 7 hat es einen eigenen Begriff — die
+        // Sperre bei `butter` gilt unverändert, aber die Rückfallleiter wird
+        // nicht mehr gebraucht. Genau darum ging es: **Nicht mehr Bilder,
+        // sondern mehr Wörter, die eines verdienen.**
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Erdnussbutter"), "erdnussbutter")
+        // Ein Wort, das der Wortschatz weiterhin nicht kennt — die
+        // Rückfallleiter muss geprüft bleiben.
+        XCTAssertNil(ItemGlyphTerm.term(for: "Schnürsenkel"))
         // **Eine Sperre gilt aber nur für den Begriff, der sie aufstellt.**
         // „Buttermilch" ist in `butter` gesperrt und steht zugleich in der
         // exact-Liste von `milch`; sie bekommt die Milchtüte. „Milchreis" ist
@@ -183,6 +194,37 @@ final class ItemGlyphTests: XCTestCase {
         XCTAssertEqual(ItemGlyphTerm.term(for: "Milchreis"), "pudding")
         XCTAssertNil(ItemGlyphTerm.term(for: "Bauchschläferkissen"))
         XCTAssertNil(ItemGlyphTerm.term(for: "   "))
+    }
+
+    /// **Wenn ein Wort auf zwei Begriffe zeigt, entscheidet nicht das
+    /// Alphabet.**
+    ///
+    /// Beim ersten Bau war das Wörterbuch hier eindeutig — 730 Synonyme, keins
+    /// mehrdeutig —, und die Auflösung durfte alphabetisch aus dem `Set`
+    /// greifen. Nach den elf Tranchen sind es 1531 Synonyme und **95
+    /// mehrdeutige**, und damit hing das Bild einer Zeile am Anfangsbuchstaben:
+    /// Chicorée, Porree, Staudensellerie und Zuckermais bekamen alle den
+    /// **Brokkoli**, weil `brokkoli` sie als Sorten mitführt und im Alphabet
+    /// vorn steht.
+    ///
+    /// Die Fälle hier sind die Regel in ihren zwei Hälften: Der Begriff, der
+    /// wie das Wort heißt, gewinnt (`kuchen`, `pfeffer`); sonst der mit den
+    /// wenigsten Synonymen, also der feinere (`lauch` statt `brokkoli`).
+    func testAnAmbiguousWordPicksTheNarrowerTerm() {
+        // Sorten, die eine Warengruppe mitführt.
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Porree"), "lauch")
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Chicorée"), "chicorée")
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Staudensellerie"), "sellerie")
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Zuckermais"), "maiskolben")
+        // Der Begriff, der wie das Wort heißt — auch wenn eine Warengruppe ihn
+        // in ihrer Synonymliste führt.
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Kuchen"), "kuchen")
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Croissant"), "croissant")
+        // `gewürze` ist eine der benannten Ausnahmen **ohne** Zeichnung und
+        // sammelt zwei Dutzend Gewürznamen ein. Wer „Pfeffer" tippt, muss den
+        // Pfeffer bekommen, nicht das Kategoriezeichen.
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Pfeffer"), "pfeffer")
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Petersilie"), "petersilie")
     }
 
     /// Und der Weg bis zur Zeichnung, für die Wörter aus Scotts eigener Liste:

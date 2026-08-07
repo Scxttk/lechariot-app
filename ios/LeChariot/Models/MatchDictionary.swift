@@ -30,6 +30,8 @@ enum MatchDictionary {
     /// normalisierte Anfrage geprüft. Einzeln tokenisiert wären sie nutzlos:
     /// „creme" allein ist kein Begriff.
     private static let byPhrase: [String: Set<String>] = loaded.byPhrase
+    /// Begriff → Zahl seiner Synonyme, siehe `synonymCount(for:)`.
+    private static let counts: [String: Int] = loaded.counts
 
     /// Die Begriffe, die dieses einzelne Suchwort meinen kann. Leer, wenn das
     /// Wörterbuch es nicht kennt — dann bleibt nur der Titeltreffer.
@@ -44,6 +46,16 @@ enum MatchDictionary {
 
     /// Wie viele Suchwörter das Wörterbuch kennt — nur für Tests und Diagnose.
     static var wordCount: Int { byWord.count }
+
+    /// Wie viele Synonyme dieser Begriff führt — **das Maß dafür, wie grob er
+    /// ist.**
+    ///
+    /// `brokkoli` trägt Chicorée, Chinakohl, Porree, Staudensellerie und
+    /// Zuckermais mit, `chicorée` trägt Chicorée. Wenn ein Wort auf beide
+    /// zeigt, ist der mit der kürzeren Liste der gemeinte. Gebraucht von
+    /// `ItemGlyphTerm`, wo aus dem Begriff ein Bild wird und ein grober
+    /// Begriff sichtbar falsch ist.
+    static func synonymCount(for term: String) -> Int { counts[term] ?? 0 }
 
     /// Alle Begriffe des Wörterbuchs — nur für Tests und Diagnose.
     static var allTerms: [String] { Array(Set(byWord.values.flatMap { $0 })).sorted() }
@@ -76,7 +88,9 @@ enum MatchDictionary {
 
     private final class BundleToken {}
 
-    private static let loaded: (byWord: [String: Set<String>], byPhrase: [String: Set<String>]) = {
+    private static let loaded: (
+        byWord: [String: Set<String>], byPhrase: [String: Set<String>], counts: [String: Int]
+    ) = {
         // Im Test-Bundle liegt die Datei nicht in `Bundle.main`, in der App
         // schon — beide Wege, damit dieselbe Klasse in beiden Fällen lädt.
         let bundles = [Bundle.main, Bundle(for: BundleToken.self)]
@@ -89,11 +103,12 @@ enum MatchDictionary {
             // Ohne Wörterbuch verhält sich die Suche wie vorher: Titeltreffer
             // und Tag-Gleichheit. Eine fehlende Datei darf die Suche nicht
             // abschalten.
-            return ([:], [:])
+            return ([:], [:], [:])
         }
 
         var byWord: [String: Set<String>] = [:]
         var byPhrase: [String: Set<String>] = [:]
+        var counts: [String: Int] = [:]
 
         for (term, entry) in file.begriffe {
             // Gesperrte Wörter dieses Begriffs: „milchreis" darf nie auf
@@ -110,9 +125,10 @@ enum MatchDictionary {
                 } else {
                     byWord[key, default: []].insert(term)
                 }
+                counts[term, default: 0] += 1
             }
         }
-        return (byWord, byPhrase)
+        return (byWord, byPhrase, counts)
     }()
 
     /// Dieselbe Normalisierung wie in `OfferMatcher`, damit Suchwort und

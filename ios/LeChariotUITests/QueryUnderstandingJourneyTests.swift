@@ -52,7 +52,13 @@ final class QueryUnderstandingJourneyTests: XCTestCase {
     /// kennt das Wörterbuch nicht" genauso aus wie „diese Woche gibt es dazu
     /// nichts" — und es gab keinen Weg, nachzusehen.
     func testAWordWithoutADictionaryEntrySaysSoOnTheListItself() {
-        addItem("Schnitzel")
+        // **Das Beispiel musste weichen, weil der Wortschatz es eingeholt
+        // hat.** „Schnitzel" war hier das unbekannte Wort; seit Tranche 3 hat
+        // es einen eigenen Begriff samt Zeichnung, und der Bogen prüfte
+        // seitdem einen Fall, den es nicht mehr gibt. Ein Beispiel für „kennt
+        // das Wörterbuch nicht" ist naturgemäß auf Zeit gebaut — dieselbe
+        // Korrektur wie in `ItemGlyphTests` und `QueryUnderstandingTests`.
+        addItem("Schnürsenkel")
 
         let hinweis = app.buttons["list.matches.empty"]
         XCTAssertTrue(hinweis.waitForExistence(timeout: 10),
