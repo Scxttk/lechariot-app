@@ -39,7 +39,12 @@ final class ListDirectionShots: XCTestCase {
     }
 
     func testWriteTheThreeDirections() throws {
-        let dir = try XCTUnwrap(outDir, "ohne LECHARIOT_LIST_SHOTS wird nichts geschrieben")
+        // **Übersprungen, nicht rot.** `XCTUnwrap` hat diesen Bogen bei jedem
+        // normalen Lauf durchfallen lassen — eine Suite, in der immer ein Test
+        // rot ist, hört auf, etwas zu bedeuten.
+        guard let dir = outDir else {
+            throw XCTSkip("ohne LECHARIOT_LIST_SHOTS wird nichts geschrieben")
+        }
         try FileManager.default.createDirectory(
             atPath: dir, withIntermediateDirectories: true
         )
