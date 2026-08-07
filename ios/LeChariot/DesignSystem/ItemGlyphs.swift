@@ -68,7 +68,7 @@ enum ItemGlyph {
     private static let recipes: [String: Rezept] = {
         var alle: [String: Rezept] = [:]
         for teil in [obstUndGemuese, molkereiUndBackwaren, fleischUndFisch,
-                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4] {
+                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4, tranche5] {
             alle.merge(teil) { erstes, _ in erstes }
         }
         return alle
@@ -2685,6 +2685,344 @@ private let tranche4: [String: ItemGlyph.Rezept] = [
         p.close()
         p.line([p.at(0.34, 0.50), p.at(0.66, 0.50)])
         p.line([p.at(0.34, 0.66), p.at(0.66, 0.66)])
+    },
+]
+
+// MARK: - Tranche 5: Zutaten, Gewürze, Tiefkühl
+
+/// **Achtundzwanzig Zeichen zu Tranche 5** (2026-08-07).
+///
+/// Gewürze sind die härteste Gruppe überhaupt: Kurkuma, Safran und Muskat
+/// sind alle „braunes Pulver in einem Glas". Getrennt sind sie hier über das
+/// **Gefäß und die Form, in der man sie kauft** — Streuer, Mühle, Fäden im
+/// Röhrchen, ganze Nuss mit Reibe. Wo auch das nicht trägt, stehen mehrere
+/// verwandte Gewürze bewusst unter **einem** Begriff (`oregano` trägt auch
+/// Rosmarin und Salbei), statt fünf gleiche Gläser zu zeichnen.
+private let tranche5: [String: ItemGlyph.Rezept] = [
+
+    // Ahornsirup: Kanne mit Henkel und schmalem Hals.
+    "ahornsirup": { p in
+        p.line([p.at(0.40, 0.10), p.at(0.56, 0.10)])
+        p.line([p.at(0.40, 0.10), p.at(0.38, 0.30)])
+        p.line([p.at(0.56, 0.10), p.at(0.58, 0.30)])
+        p.begin(p.at(0.38, 0.30))
+        p.bow(p.at(0.24, 0.52), p.at(0.34, 0.42), p.at(0.24, 0.46))
+        p.to(p.at(0.24, 0.88))
+        p.to(p.at(0.72, 0.88))
+        p.to(p.at(0.72, 0.52))
+        p.bow(p.at(0.58, 0.30), p.at(0.72, 0.46), p.at(0.62, 0.42))
+        p.begin(p.at(0.72, 0.58))
+        p.bow(p.at(0.72, 0.76), p.at(0.90, 0.58), p.at(0.90, 0.76))
+    },
+
+    // Backpulver: Tütchen mit Aufriss und Häufchen davor.
+    "backpulver": { p in
+        p.line([p.at(0.24, 0.28), p.at(0.64, 0.28), p.at(0.64, 0.84),
+                p.at(0.24, 0.84)], closed: true)
+        p.line([p.at(0.24, 0.28), p.at(0.32, 0.18), p.at(0.44, 0.26),
+                p.at(0.56, 0.18), p.at(0.64, 0.28)])
+        p.begin(p.at(0.68, 0.84))
+        p.bow(p.at(0.94, 0.84), p.at(0.74, 0.64), p.at(0.90, 0.64))
+        p.close()
+    },
+
+    // Hefe: Würfel mit Bruchkante.
+    "hefe": { p in
+        p.line([p.at(0.20, 0.36), p.at(0.62, 0.36), p.at(0.62, 0.82),
+                p.at(0.20, 0.82)], closed: true)
+        p.line([p.at(0.62, 0.36), p.at(0.82, 0.24), p.at(0.82, 0.70),
+                p.at(0.62, 0.82)])
+        p.line([p.at(0.20, 0.36), p.at(0.40, 0.24), p.at(0.82, 0.24)])
+        p.line([p.at(0.30, 0.52), p.at(0.52, 0.52)])
+    },
+
+    // Speisestärke: Schachtel mit Ausgussecke.
+    "speisestärke": { p in
+        p.line([p.at(0.24, 0.26), p.at(0.68, 0.26), p.at(0.68, 0.86),
+                p.at(0.24, 0.86)], closed: true)
+        p.line([p.at(0.68, 0.26), p.at(0.82, 0.36), p.at(0.82, 0.86),
+                p.at(0.68, 0.86)])
+        p.line([p.at(0.24, 0.26), p.at(0.38, 0.16), p.at(0.82, 0.16),
+                p.at(0.82, 0.36)])
+        p.line([p.at(0.32, 0.48), p.at(0.60, 0.48)])
+    },
+
+    // Semmelbrösel: Streuer mit Löchern und rieselndem Korn.
+    "semmelbrösel": { p in
+        p.begin(p.at(0.32, 0.34))
+        p.to(p.at(0.28, 0.86))
+        p.to(p.at(0.72, 0.86))
+        p.to(p.at(0.68, 0.34))
+        p.close()
+        p.line([p.at(0.34, 0.24), p.at(0.66, 0.24)])
+        p.line([p.at(0.34, 0.24), p.at(0.32, 0.34)])
+        p.line([p.at(0.66, 0.24), p.at(0.68, 0.34)])
+        p.dot(p.at(0.44, 0.18), 0.03)
+        p.dot(p.at(0.56, 0.18), 0.03)
+    },
+
+    // Vanille: zwei Schoten mit Blüte.
+    "vanille": { p in
+        // **Zwei geneigte Kapseln, die sich unten treffen, sind ein „V".**
+        // Parallel gelegt und leicht versetzt bleiben es zwei Schoten. Die
+        // Blüte sitzt daneben, nicht darüber.
+        p.capsule(0.34, 0.56, 0.11, 0.68, tilt: -6)
+        p.capsule(0.52, 0.60, 0.11, 0.62, tilt: 4)
+        p.circle(p.at(0.76, 0.40), 0.11)
+        p.dot(p.at(0.76, 0.40), 0.04)
+    },
+
+    // Zimt: zwei Stangen, eine gerollt gedacht.
+    "zimt": { p in
+        // Dasselbe wie bei der Vanille, nur ein „W": Drei zusammenlaufende
+        // Kapseln lesen sich als Buchstabe. Zwei parallele Stangen mit
+        // sichtbarer Rollnaht am Kopf bleiben Zimt.
+        p.capsule(0.36, 0.54, 0.17, 0.74, tilt: -4)
+        p.capsule(0.60, 0.56, 0.17, 0.68, tilt: 5)
+        p.circle(p.at(0.36, 0.22), 0.055)
+        p.circle(p.at(0.60, 0.26), 0.05)
+    },
+
+    // Muskatnuss: ganze Nuss neben der Reibe.
+    "muskatnuss": { p in
+        p.begin(p.at(0.30, 0.44))
+        p.bow(p.at(0.30, 0.80), p.at(0.12, 0.50), p.at(0.12, 0.74))
+        p.bow(p.at(0.30, 0.44), p.at(0.48, 0.74), p.at(0.48, 0.50))
+        p.close()
+        p.line([p.at(0.60, 0.20), p.at(0.86, 0.28), p.at(0.72, 0.86),
+                p.at(0.46, 0.78)], closed: true)
+        p.dot(p.at(0.64, 0.40), 0.03)
+        p.dot(p.at(0.74, 0.44), 0.03)
+        p.dot(p.at(0.62, 0.56), 0.03)
+        p.dot(p.at(0.72, 0.60), 0.03)
+    },
+
+    // Kurkuma: Streuer mit Lochdeckel — das Standardglas der Gewürzreihe.
+    "kurkuma": { p in
+        p.line([p.at(0.30, 0.30), p.at(0.70, 0.30), p.at(0.72, 0.88),
+                p.at(0.28, 0.88)], closed: true)
+        p.line([p.at(0.34, 0.20), p.at(0.66, 0.20), p.at(0.70, 0.30)])
+        p.line([p.at(0.34, 0.20), p.at(0.30, 0.30)])
+        p.dot(p.at(0.44, 0.14), 0.03)
+        p.dot(p.at(0.56, 0.14), 0.03)
+        p.line([p.at(0.34, 0.56), p.at(0.66, 0.56)])
+    },
+
+    // Safran: Fäden im Röhrchen — die Fäden sind sein einziges Merkmal.
+    "safran": { p in
+        p.line([p.at(0.36, 0.24), p.at(0.64, 0.24), p.at(0.64, 0.88),
+                p.at(0.36, 0.88)], closed: true)
+        p.line([p.at(0.36, 0.36), p.at(0.64, 0.36)])
+        p.line([p.at(0.42, 0.48), p.at(0.50, 0.68)])
+        p.line([p.at(0.52, 0.46), p.at(0.46, 0.72)])
+        p.line([p.at(0.58, 0.52), p.at(0.54, 0.78)])
+    },
+
+    // Oregano: getrockneter Zweig — steht für die ganze Kräutergruppe.
+    "oregano": { p in
+        p.line([p.at(0.22, 0.86), p.at(0.74, 0.20)])
+        for t in [0.25, 0.45, 0.65] {
+            let x = 0.22 + (0.74 - 0.22) * CGFloat(t)
+            let y = 0.86 - (0.86 - 0.20) * CGFloat(t)
+            blatt(&p, von: (x, y), nach: (x - 0.22, y - 0.08), bauch: 0.07)
+            blatt(&p, von: (x, y), nach: (x + 0.14, y + 0.16), bauch: 0.07)
+        }
+    },
+
+    // Pfefferkörner: Mühle mit Kurbel.
+    "pfefferkörner": { p in
+        p.begin(p.at(0.34, 0.34))
+        p.to(p.at(0.30, 0.88))
+        p.to(p.at(0.70, 0.88))
+        p.to(p.at(0.66, 0.34))
+        p.close()
+        p.begin(p.at(0.34, 0.34))
+        p.bow(p.at(0.66, 0.34), p.at(0.38, 0.18), p.at(0.62, 0.18))
+        p.line([p.at(0.50, 0.22), p.at(0.50, 0.10)])
+        p.line([p.at(0.50, 0.10), p.at(0.64, 0.08)])
+        p.line([p.at(0.32, 0.60), p.at(0.68, 0.60)])
+    },
+
+    // Kapern: Glas mit kleinen Kugeln.
+    "kapern": { p in
+        p.line([p.at(0.32, 0.20), p.at(0.68, 0.20), p.at(0.68, 0.30),
+                p.at(0.32, 0.30)], closed: true)
+        p.line([p.at(0.30, 0.30), p.at(0.28, 0.88), p.at(0.72, 0.88),
+                p.at(0.70, 0.30)])
+        p.circle(p.at(0.42, 0.54), 0.08)
+        p.circle(p.at(0.58, 0.60), 0.08)
+        p.circle(p.at(0.46, 0.74), 0.08)
+    },
+
+    // Pinienkerne: drei Tropfenkerne, gestreut.
+    "pinienkerne": { p in
+        for (cx, cy, tilt) in [(0.32, 0.36, -30.0), (0.62, 0.48, 25.0), (0.42, 0.72, 60.0)] {
+            p.capsule(CGFloat(cx), CGFloat(cy), 0.16, 0.30, tilt: tilt)
+        }
+    },
+
+    // Kokosflocken: halbe Nuss mit Flocken davor.
+    "kokosflocken": { p in
+        p.begin(p.at(0.16, 0.44))
+        p.bow(p.at(0.72, 0.44), p.at(0.24, 0.14), p.at(0.64, 0.14))
+        p.bow(p.at(0.16, 0.44), p.at(0.64, 0.74), p.at(0.24, 0.74))
+        p.close()
+        p.begin(p.at(0.26, 0.44))
+        p.bow(p.at(0.62, 0.44), p.at(0.32, 0.28), p.at(0.56, 0.28))
+        p.line([p.at(0.30, 0.84), p.at(0.46, 0.80)])
+        p.line([p.at(0.52, 0.86), p.at(0.68, 0.82)])
+        p.line([p.at(0.72, 0.72), p.at(0.88, 0.68)])
+    },
+
+    // Mandelmus: Glas mit Löffel darin.
+    "mandelmus": { p in
+        p.line([p.at(0.26, 0.24), p.at(0.62, 0.24), p.at(0.64, 0.34),
+                p.at(0.24, 0.34)], closed: true)
+        p.line([p.at(0.24, 0.34), p.at(0.24, 0.88), p.at(0.64, 0.88),
+                p.at(0.64, 0.34)])
+        p.line([p.at(0.56, 0.30), p.at(0.80, 0.12)])
+        p.begin(p.at(0.80, 0.12))
+        p.bow(p.at(0.90, 0.24), p.at(0.90, 0.10), p.at(0.94, 0.18))
+        p.bow(p.at(0.80, 0.12), p.at(0.86, 0.28), p.at(0.78, 0.22))
+    },
+
+    // Marzipan: Brot mit abgeschnittener Scheibe.
+    "marzipan": { p in
+        p.line([p.at(0.16, 0.42), p.at(0.66, 0.42), p.at(0.66, 0.76),
+                p.at(0.16, 0.76)], closed: true)
+        p.line([p.at(0.66, 0.42), p.at(0.82, 0.32), p.at(0.82, 0.66),
+                p.at(0.66, 0.76)])
+        p.line([p.at(0.16, 0.42), p.at(0.32, 0.32), p.at(0.82, 0.32)])
+        p.line([p.at(0.30, 0.42), p.at(0.30, 0.76)])
+    },
+
+    // Schokodrops: drei Tropfen mit Spitze.
+    "schokodrops": { p in
+        for (cx, cy, r) in [(0.32, 0.42, 0.16), (0.64, 0.38, 0.14), (0.48, 0.70, 0.17)] {
+            p.begin(p.at(CGFloat(cx), CGFloat(cy) - CGFloat(r) * 1.7))
+            p.bow(p.at(CGFloat(cx) + CGFloat(r), CGFloat(cy) + CGFloat(r) * 0.5),
+                  p.at(CGFloat(cx) + CGFloat(r) * 0.4, CGFloat(cy) - CGFloat(r)),
+                  p.at(CGFloat(cx) + CGFloat(r), CGFloat(cy) - CGFloat(r) * 0.2))
+            p.bow(p.at(CGFloat(cx) - CGFloat(r), CGFloat(cy) + CGFloat(r) * 0.5),
+                  p.at(CGFloat(cx) + CGFloat(r), CGFloat(cy) + CGFloat(r) * 1.4),
+                  p.at(CGFloat(cx) - CGFloat(r), CGFloat(cy) + CGFloat(r) * 1.4))
+            p.bow(p.at(CGFloat(cx), CGFloat(cy) - CGFloat(r) * 1.7),
+                  p.at(CGFloat(cx) - CGFloat(r), CGFloat(cy) - CGFloat(r) * 0.2),
+                  p.at(CGFloat(cx) - CGFloat(r) * 0.4, CGFloat(cy) - CGFloat(r)))
+            p.close()
+        }
+    },
+
+    // Lebensmittelfarbe: Fläschchen mit Pipette.
+    "lebensmittelfarbe": { p in
+        p.line([p.at(0.34, 0.44), p.at(0.34, 0.88), p.at(0.66, 0.88),
+                p.at(0.66, 0.44)], closed: true)
+        p.line([p.at(0.42, 0.44), p.at(0.42, 0.30), p.at(0.58, 0.30),
+                p.at(0.58, 0.44)])
+        p.begin(p.at(0.42, 0.30))
+        p.bow(p.at(0.58, 0.30), p.at(0.42, 0.16), p.at(0.58, 0.16))
+        p.line([p.at(0.38, 0.62), p.at(0.62, 0.62)])
+    },
+
+    // Dosentomaten: Konservendose mit Tomate darauf.
+    "dosentomaten": { p in
+        p.begin(p.at(0.24, 0.34))
+        p.bow(p.at(0.76, 0.34), p.at(0.24, 0.20), p.at(0.76, 0.20))
+        p.bow(p.at(0.24, 0.34), p.at(0.76, 0.48), p.at(0.24, 0.48))
+        p.close()
+        p.line([p.at(0.24, 0.34), p.at(0.24, 0.82)])
+        p.line([p.at(0.76, 0.34), p.at(0.76, 0.82)])
+        p.begin(p.at(0.24, 0.82))
+        p.bow(p.at(0.76, 0.82), p.at(0.30, 0.92), p.at(0.70, 0.92))
+        p.circle(p.at(0.50, 0.64), 0.13)
+        p.line([p.at(0.44, 0.51), p.at(0.56, 0.51)])
+    },
+
+    // Bratensauce: Sauciere mit Ausguss.
+    "bratensauce": { p in
+        p.begin(p.at(0.18, 0.44))
+        p.to(p.at(0.24, 0.82))
+        p.bow(p.at(0.68, 0.82), p.at(0.30, 0.92), p.at(0.62, 0.92))
+        p.to(p.at(0.74, 0.44))
+        p.close()
+        p.line([p.at(0.74, 0.50), p.at(0.94, 0.38)])
+        p.begin(p.at(0.18, 0.52))
+        p.bow(p.at(0.18, 0.72), p.at(0.02, 0.52), p.at(0.02, 0.72))
+    },
+
+    // Fischsauce: schlanke Flasche mit Ausgussverschluss.
+    "fischsauce": { p in
+        p.line([p.at(0.44, 0.08), p.at(0.58, 0.08), p.at(0.58, 0.20),
+                p.at(0.44, 0.20)], closed: true)
+        p.line([p.at(0.46, 0.20), p.at(0.44, 0.36)])
+        p.line([p.at(0.56, 0.20), p.at(0.58, 0.36)])
+        p.line([p.at(0.44, 0.36), p.at(0.32, 0.48), p.at(0.32, 0.90),
+                p.at(0.70, 0.90), p.at(0.70, 0.48), p.at(0.58, 0.36)])
+        p.line([p.at(0.34, 0.60), p.at(0.68, 0.60)])
+    },
+
+    // Marinade: Beutel mit Zipper und Zweig darin.
+    "marinade": { p in
+        p.line([p.at(0.22, 0.26), p.at(0.78, 0.26), p.at(0.74, 0.88),
+                p.at(0.26, 0.88)], closed: true)
+        p.line([p.at(0.22, 0.36), p.at(0.78, 0.36)])
+        p.line([p.at(0.50, 0.78), p.at(0.50, 0.50)])
+        p.line([p.at(0.50, 0.60), p.at(0.36, 0.50)])
+        p.line([p.at(0.50, 0.60), p.at(0.64, 0.50)])
+    },
+
+    // Tütensuppe: Tüte mit Tellersymbol.
+    "tütensuppe": { p in
+        p.line([p.at(0.26, 0.24), p.at(0.74, 0.24), p.at(0.74, 0.88),
+                p.at(0.26, 0.88)], closed: true)
+        p.line([p.at(0.26, 0.24), p.at(0.34, 0.14), p.at(0.50, 0.22),
+                p.at(0.66, 0.14), p.at(0.74, 0.24)])
+        p.begin(p.at(0.34, 0.52))
+        p.bow(p.at(0.66, 0.52), p.at(0.38, 0.72), p.at(0.62, 0.72))
+        p.close()
+    },
+
+    // Kartoffelpüree: Klecks auf dem Teller mit Kuhle.
+    "kartoffelpüree": { p in
+        p.begin(p.at(0.14, 0.72))
+        p.bow(p.at(0.86, 0.72), p.at(0.24, 0.88), p.at(0.76, 0.88))
+        p.begin(p.at(0.22, 0.70))
+        p.bow(p.at(0.50, 0.34), p.at(0.24, 0.48), p.at(0.34, 0.34))
+        p.bow(p.at(0.78, 0.70), p.at(0.66, 0.34), p.at(0.76, 0.48))
+        p.begin(p.at(0.40, 0.48))
+        p.bow(p.at(0.60, 0.48), p.at(0.44, 0.58), p.at(0.56, 0.58))
+    },
+
+    // Knödel: zwei Kugeln auf dem Teller.
+    "knödel": { p in
+        p.circle(p.at(0.36, 0.46), 0.20)
+        p.circle(p.at(0.64, 0.52), 0.18)
+        p.begin(p.at(0.12, 0.74))
+        p.bow(p.at(0.88, 0.74), p.at(0.24, 0.90), p.at(0.76, 0.90))
+    },
+
+    // Kohlroulade: gewickelte Rolle mit Faden.
+    "kohlrouladen": { p in
+        p.begin(p.at(0.18, 0.42))
+        p.bow(p.at(0.82, 0.42), p.at(0.26, 0.24), p.at(0.74, 0.24))
+        p.to(p.at(0.82, 0.72))
+        p.bow(p.at(0.18, 0.72), p.at(0.74, 0.90), p.at(0.26, 0.90))
+        p.close()
+        p.begin(p.at(0.18, 0.42))
+        p.bow(p.at(0.82, 0.42), p.at(0.26, 0.60), p.at(0.74, 0.60))
+        p.line([p.at(0.50, 0.24), p.at(0.50, 0.88)])
+    },
+
+    // Frikassee: Topf mit Deckel und Griffen.
+    "hühnerfrikassee": { p in
+        p.line([p.at(0.20, 0.44), p.at(0.24, 0.86), p.at(0.76, 0.86),
+                p.at(0.80, 0.44)], closed: true)
+        p.line([p.at(0.14, 0.40), p.at(0.86, 0.40)])
+        p.begin(p.at(0.34, 0.40))
+        p.bow(p.at(0.66, 0.40), p.at(0.38, 0.24), p.at(0.62, 0.24))
+        p.line([p.at(0.50, 0.24), p.at(0.50, 0.14)])
+        p.begin(p.at(0.14, 0.46))
+        p.bow(p.at(0.14, 0.62), p.at(0.02, 0.46), p.at(0.02, 0.62))
     },
 ]
 
