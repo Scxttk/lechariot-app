@@ -20,7 +20,7 @@ final class ItemDetailJourneyTests: XCTestCase {
         waitForList()
         addItem("Vollmilch")
 
-        app.buttons["list.item.detail"].firstMatch.tap()
+        app.tapInTileMenu("list.item.detail")
         XCTAssertTrue(app.buttons["itemDetail.done"].waitForExistence(timeout: 10),
                       "Das Blatt mit den Angaben ist nicht aufgegangen")
 
@@ -44,7 +44,7 @@ final class ItemDetailJourneyTests: XCTestCase {
         waitForList()
         addItem("Vollmilch")
 
-        app.buttons["list.item.detail"].firstMatch.tap()
+        app.tapInTileMenu("list.item.detail")
         XCTAssertTrue(app.buttons["itemDetail.cancel"].waitForExistence(timeout: 10))
         tapChip("Bio")
         app.buttons["itemDetail.cancel"].tap()
@@ -99,7 +99,10 @@ final class ItemDetailJourneyTests: XCTestCase {
         let kachel = app.buttons["Angaben zu Butter"]
         XCTAssertTrue(kachel.waitForExistence(timeout: 10))
 
-        let zeile = app.buttons["list.item.detail"].firstMatch
+        // Seit dem Raster (07.08.) ist die Kachel selbst das bedienbare Ding
+        // unter der Schicht — sie hakt ab. Der Weg zu den Angaben liegt in
+        // ihrem Kontextmenü.
+        let zeile = app.buttons["list.tile"].firstMatch
         XCTAssertTrue(zeile.exists && zeile.isHittable,
                       "Die Liste unter der Schicht muss bedienbar bleiben\n"
                       + app.debugDescription)

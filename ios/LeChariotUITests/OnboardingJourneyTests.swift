@@ -66,10 +66,17 @@ final class OnboardingJourneyTests: XCTestCase {
         dismissQuantitySheet()
         XCTAssertTrue(app.buttons["Vollmilch"].waitForExistence(timeout: 10),
                       "Artikel müssen auch ohne Filiale auf die Liste gehen")
-        XCTAssertTrue(
-            app.staticTexts["Sobald du Filialen gewählt hast, steht hier das günstigste Angebot."].exists,
-            "und an der Stelle des Treffers steht der Grund, keine Leere"
-        )
+        // **Der Grund steht jetzt einmal statt unter jedem Artikel.** Bis zum
+        // 07.08. trug jede Zeile ohne Filiale den Satz „Sobald du Filialen
+        // gewählt hast …"; im Raster gibt es keine Zeile mehr, die ihn tragen
+        // könnte. Verloren ist er nicht — die Karte oben sagt dasselbe und
+        // trägt zusätzlich den Weg dorthin, geprüft eine Zusicherung weiter
+        // oben („Noch keine Filiale gewählt").
+        // Und die Kachel behauptet nichts, was ohne Filiale niemand wissen
+        // kann: kein Preis, kein Angebot.
+        let kachel = app.buttons["Vollmilch"].firstMatch
+        XCTAssertFalse(((kachel.value as? String) ?? "").contains("Angebot"),
+                       "Ohne Filiale darf keine Kachel ein Angebot behaupten: \(kachel.value ?? "–")")
     }
 
     /// Und der Weg aus dem Leerzustand heraus führt wirklich irgendwohin.

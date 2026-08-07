@@ -44,8 +44,8 @@ final class AddressSuggestionJourneyTests: XCTestCase {
             "-uiTestingCityLookup", "Dresden|01219|Sachsen",
         ]
         app.launch()
-        app.buttons["onboarding.primary"].tap()   // Willkommen
-        app.buttons["onboarding.skip"].tap()      // Ohne Namen weiter
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")   // Willkommen
+        app.tippe(app.buttons["onboarding.skip"], "Überspringen im Assistenten")      // Ohne Namen weiter
         XCTAssertTrue(app.textFields["region.input"].waitForExistence(timeout: 20))
     }
 

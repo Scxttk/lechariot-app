@@ -77,8 +77,23 @@ final class OfferHitsJourneyTests: XCTestCase {
 
         app.buttons["hits.done"].tap()
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Deine Wahl"].waitForExistence(timeout: 10),
-                      "Die Wahl steht nach dem Schließen nicht auf der Liste")
+        // **Seit dem Raster (07.08.) trägt die Kachel die Heftung, kein Chip.**
+        // Auf der Zeile stand dafür „Deine Wahl" als eigenes Textstück; in
+        // einer 76-pt-Kachel ist dafür kein Platz. Sichtbar ist sie als
+        // Reißzwecke in der Preisfahne, hörbar im Wert der Kachel — und genau
+        // den prüft dieser Bogen, weil er die Aussage prüft und nicht die
+        // Fläche.
+        // **Über alle Kacheln, nicht über die erste.** Der erste Anlauf nahm
+        // `firstMatch` und prüfte damit „Milch", während geheftet bei
+        // „Orangen" wurde — der Bogen meldete einen Fehler, den es nicht gab.
+        // Der Vorgänger prüfte einen Text *irgendwo* auf der Liste; genau das
+        // muss die Kachel-Fassung auch tun.
+        let geheftet = app.buttons.matching(
+            NSPredicate(format: "identifier == %@ AND value CONTAINS %@", "list.tile", "Deine Wahl")
+        ).firstMatch
+        XCTAssertTrue(geheftet.waitForExistence(timeout: 10),
+                      "Die Wahl steht nach dem Schließen nicht auf der Liste:\n"
+                      + app.debugDescription)
     }
 
     /// Die Ketten-Reiter filtern — dieselbe Bedienung wie in den Angeboten.

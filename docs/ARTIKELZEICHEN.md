@@ -4,11 +4,16 @@
 mehr. Das Zuordnen und die beste Filiale bleiben der Kern der App — die Zeichen
 sind Oberfläche, aber sie entscheiden, ob das Raster (Richtung D) trägt.
 
-## Wo die Zeichen stehen (Stand 07.08.)
+## Wo die Zeichen stehen (Stand 07.08., abends)
 
-In der **Einkaufsliste**, je Zeile links neben dem Namen (`ShoppingListRowView.itemGlyph`).
-Aufgelöst über `ItemGlyphTerm` aus dem getippten Wort, mit dem Kategoriezeichen als
-Rückfall.
+In der **Einkaufsliste**, und die ist seit heute Abend ein **Raster** statt einer
+Zeilenliste (`ShoppingGridTile`, Scott: „i want the list to look like bring").
+Jede Kachel trägt das Zeichen über dem Wort; aufgelöst über `ItemGlyphTerm` aus dem
+getippten Wort, mit dem Kategoriezeichen als Rückfall und einem **Fragezeichen**,
+wenn das Wörterbuch das Wort gar nicht kennt.
+
+Das ist der Grund, warum es diesen Satz gibt: Ein Raster aus Kategoriezeichen wäre
+fünfmal derselbe Apfel gewesen.
 
 **Und nur dort.** Die Liste zeichnet, die Angebote fotografieren:
 

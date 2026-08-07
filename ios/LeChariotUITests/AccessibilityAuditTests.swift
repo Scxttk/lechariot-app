@@ -47,8 +47,8 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(app.buttons["onboarding.primary"].waitForExistence(timeout: 15))
         try audit("Willkommen")
 
-        app.buttons["onboarding.primary"].tap()
-        app.buttons["onboarding.skip"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter auf Willkommen")
+        app.tippe(app.buttons["onboarding.skip"], "Überspringen auf der Profilseite")
         // Erst die PLZ tippen: „Weiter" ist bis dahin deaktiviert, und ein
         // ausgegrauter Knopf ist von der Kontrastanforderung ausgenommen.
         // Ungetippt misst der Audit einen Zustand, den niemand benutzt.
@@ -57,7 +57,7 @@ final class AccessibilityAuditTests: XCTestCase {
         plz.tap()
         plz.typeText("01219")
         try audit("Ort oder Postleitzahl")
-        app.buttons["onboarding.primary"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter nach der Postleitzahl")
         // Erst eine Kette antippen, dann messen — dieselbe Regel wie oben:
         // Der gewählte Zustand (Akzent auf Akzentfläche) ist der, den Nutzer
         // sehen; ungewählt misst der Audit nur die halbe Palette. Auf den
@@ -68,9 +68,9 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(chip.waitForExistence(timeout: 15), "Ketten-Chips nicht geladen")
         chip.tap()
         try audit("Welche Märkte magst du")
-        app.buttons["onboarding.skip"].tap()
+        app.tippe(app.buttons["onboarding.skip"], "Später auf der Kettenseite")
         try audit("Belohnung")
-        app.buttons["onboarding.primary"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter auf der Belohnung")
         try audit("Einwilligung")
 
         // Der Assistent endet seit dem 2026-07-31 in der Liste — **ohne
@@ -78,7 +78,7 @@ final class AccessibilityAuditTests: XCTestCase {
         // wird hier mitgemessen: Er ist der erste Bildschirm, den ein Tester zu
         // sehen bekommt, und er trägt einen Knopf und zwei Absätze, die es
         // vorher nirgends gab.
-        app.buttons["onboarding.primary"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter auf der Einwilligung")
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
         try audit("Einkaufsliste ohne Filiale")
 
@@ -118,7 +118,7 @@ final class AccessibilityAuditTests: XCTestCase {
         addItem("Vollmilch")
         try audit("Einkaufsliste")
 
-        app.buttons["list.matches"].firstMatch.tap()
+        app.tapInTileMenu("list.matches")
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
         try audit("Treffer-Sheet")
 
@@ -264,12 +264,12 @@ final class AccessibilityAuditTests: XCTestCase {
     func testTheTutorialPassesTheAudit() throws {
         launch(behindOnboarding: false, arguments: ["-uiTestingTutorial"])
 
-        app.buttons["onboarding.primary"].tap()
-        app.buttons["onboarding.skip"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter auf Willkommen")
+        app.tippe(app.buttons["onboarding.skip"], "Überspringen auf der Profilseite")
         enterPLZ()
-        app.buttons["onboarding.skip"].tap()      // Ketten: „Später"
-        app.buttons["onboarding.primary"].tap()   // Belohnung
-        app.buttons["onboarding.primary"].tap()   // Einwilligung
+        app.tippe(app.buttons["onboarding.skip"], "Später auf der Kettenseite")
+        app.tippe(app.buttons["onboarding.primary"], "Weiter auf der Belohnung")
+        app.tippe(app.buttons["onboarding.primary"], "Weiter auf der Einwilligung")
 
         XCTAssertTrue(app.staticTexts["Alles bereit. Einmal kurz zeigen?"]
             .waitForExistence(timeout: 15))
@@ -277,7 +277,7 @@ final class AccessibilityAuditTests: XCTestCase {
         // wird deshalb wie alle anderen scharf geprüft.
         try audit("Rundgang-Angebot")
 
-        app.buttons["onboarding.primary"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")
         XCTAssertTrue(app.buttons["tutorial.next"].waitForExistence(timeout: 15))
         try audit("Rundgang", failOnContrast: false)
     }
@@ -292,12 +292,16 @@ final class AccessibilityAuditTests: XCTestCase {
         launch(behindOnboarding: true)
         addItem("Vollmilch")
 
-        let tile = app.buttons["list.matches"].firstMatch
+        // Seit dem Raster (07.08.) trägt die Kachel den Artikel im **Label**
+        // und alles Wechselnde im **Wert** — die Falle bleibt dieselbe, nur
+        // das Feld ist ein anderes.
+        let tile = app.buttons["list.tile"].firstMatch
         XCTAssertTrue(tile.waitForExistence(timeout: 15))
-        let label = tile.label
-        XCTAssertTrue(label.contains("Bio Vollmilch"), "Produkt fehlt in der Äußerung: \(label)")
-        XCTAssertTrue(label.contains("Lidl"), "Markt fehlt in der Äußerung: \(label)")
-        XCTAssertTrue(label.count > 20, "klingt nach Bruchstück statt Satz: \(label)")
+        let satz = (tile.value as? String) ?? ""
+        XCTAssertEqual(tile.label, "Vollmilch", "Der Artikel gehört ins Label: \(tile.label)")
+        XCTAssertTrue(satz.contains("Bio Vollmilch"), "Produkt fehlt in der Äußerung: \(satz)")
+        XCTAssertTrue(satz.contains("Lidl"), "Markt fehlt in der Äußerung: \(satz)")
+        XCTAssertTrue(satz.count > 20, "klingt nach Bruchstück statt Satz: \(satz)")
     }
 
     /// Dieselbe Falle, zweite Stelle: Die Angebotszeile ist jetzt ein Button,
@@ -822,7 +826,7 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(plz.waitForExistence(timeout: 15))
         plz.tap()
         plz.typeText("01219")
-        app.buttons["onboarding.primary"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")
         // **Und warten, bis der Ort wirklich weg ist.** Die Ortssuche ist
         // asynchron; ohne diese Zeile lief die Kette der Tipps danach an ihr
         // vorbei — am 07.08. gemessen: Ort, Ketten, Belohnung und Einwilligung

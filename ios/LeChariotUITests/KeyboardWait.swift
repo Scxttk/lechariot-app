@@ -60,3 +60,70 @@ extension XCUIApplication {
         von.press(forDuration: 0.05, thenDragTo: nach)
     }
 }
+
+// MARK: - Das Kontextmenü der Kachel
+
+/// **Seit dem 07.08. ist die Liste ein Raster** (`ShoppingGridTile`), und eine
+/// Kachel von 76 pt trägt genau eine Trefferfläche: den Tipp, der abhakt.
+/// Alles andere — Angebote, Angaben, Löschen — liegt im Kontextmenü.
+///
+/// Die Journeys tippten vorher direkt auf `list.matches` und
+/// `list.item.detail`. Beide gibt es weiterhin, nur eine Geste später. Dieser
+/// Helfer ist die eine Stelle, an der das steht — sonst stünde der lange Druck
+/// zwanzigmal im Testbestand und wäre beim nächsten Umbau zwanzigmal falsch.
+extension XCUIApplication {
+    /// Öffnet das Menü der Kachel mit diesem Namen und tippt den Punkt.
+    ///
+    /// `press(forDuration:)` statt `tap()`: Ein kurzer Tipp würde den Artikel
+    /// abhaken — genau die Handlung, die die Kachel im Laden können muss.
+    func tapInTileMenu(
+        _ menuIdentifier: String,
+        ofItem itemLabel: String? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let kachel = itemLabel.map { label in
+            buttons.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
+        } ?? buttons["list.tile"].firstMatch
+        XCTAssertTrue(kachel.waitForExistence(timeout: 15),
+                      "Keine Kachel \(itemLabel ?? "list.tile") gefunden", file: file, line: line)
+        kachel.press(forDuration: 1.0)
+
+        let punkt = buttons[menuIdentifier].firstMatch
+        XCTAssertTrue(punkt.waitForExistence(timeout: 10),
+                      "Der Menüpunkt \(menuIdentifier) steht nicht im Kachelmenü",
+                      file: file, line: line)
+        punkt.tap()
+    }
+}
+
+// MARK: - Tippen im Assistenten
+
+extension XCUIApplication {
+    /// Tippt erst, wenn das Element **erreichbar** ist — nicht schon, wenn es
+    /// im Baum steht.
+    ///
+    /// Der Unterschied hat am 07.08. zwei Läufe gekostet, und beim zweiten Mal
+    /// an drei anderen Stellen als beim ersten. Der Assistent fährt den neuen
+    /// Bildschirm über 0,3 s herein (siehe `Theme.Motion`); währenddessen
+    /// existiert `onboarding.skip` bereits, sitzt aber noch halb außerhalb.
+    /// Ein `tap()` darauf geht ins Leere, die Seite bleibt stehen, und der
+    /// nächste Schritt sucht die Postleitzahl auf der Profilseite.
+    ///
+    /// **Erst als es das zweite Mal woanders aufschlug, war klar, dass es kein
+    /// Einzelfall ist**, sondern jeder blinde Tipp im Assistenten. Deshalb
+    /// steht das hier und nicht in einem Bogen.
+    ///
+    /// `isHittable` ist die Wartebedingung, die `waitForExistence` nicht hat.
+    func tippe(_ element: XCUIElement, _ was: String,
+               file: StaticString = #filePath, line: UInt = #line) {
+        let erreichbar = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"), object: element
+        )
+        XCTAssertEqual(XCTWaiter().wait(for: [erreichbar], timeout: 15), .completed,
+                       "\(was) ist nicht antippbar", file: file, line: line)
+        element.tap()
+    }
+
+
+}

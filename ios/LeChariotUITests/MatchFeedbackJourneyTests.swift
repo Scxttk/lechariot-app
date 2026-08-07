@@ -88,10 +88,9 @@ final class MatchFeedbackJourneyTests: XCTestCase {
         input.typeText(item + "\n")
         dismissQuantitySheet()
 
-        let matches = app.buttons["list.matches"].firstMatch
-        XCTAssertTrue(matches.waitForExistence(timeout: 15),
+        XCTAssertTrue(app.buttons["list.tile"].firstMatch.waitForExistence(timeout: 15),
                       "\(item) must match a fixture offer — see MockFixtures")
-        matches.tap()
+        app.tapInTileMenu("list.matches")
         XCTAssertTrue(app.staticTexts[fixtureOffer].waitForExistence(timeout: 10))
     }
 

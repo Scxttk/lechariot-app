@@ -86,17 +86,17 @@ final class RestartJourneyTests: XCTestCase {
 
     private func completeOnboarding(name: String) {
         XCTAssertTrue(app.buttons["onboarding.primary"].waitForExistence(timeout: 20))
-        app.buttons["onboarding.primary"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")
         let nameField = app.textFields["Vorname"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 15))
         nameField.tap()
         nameField.typeText(name)
-        app.buttons["onboarding.primary"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")
         let plz = app.textFields["region.input"]
         XCTAssertTrue(plz.waitForExistence(timeout: 15))
         plz.tap()
         plz.typeText("01219")
-        app.buttons["onboarding.primary"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")
         // **Warten, bis der Ort-Schritt wirklich weg ist.** Die Ortssuche ist
         // asynchron; ohne diese Zeile liefen die drei Tipps danach an ihr
         // vorbei, der Assistent stand am Ende einen Bildschirm zu früh, und
@@ -110,8 +110,8 @@ final class RestartJourneyTests: XCTestCase {
             XCTWaiter().wait(for: [weg], timeout: 15), .completed,
             "Der Ort-Schritt steht noch: die Suche ist nicht durch"
         )
-        app.buttons["onboarding.skip"].tap()      // Ketten: „Später"
-        app.buttons["onboarding.primary"].tap()   // Belohnung
-        app.buttons["onboarding.primary"].tap()   // Einwilligung
+        app.tippe(app.buttons["onboarding.skip"], "Überspringen im Assistenten")      // Ketten: „Später"
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")   // Belohnung
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")   // Einwilligung
     }
 }

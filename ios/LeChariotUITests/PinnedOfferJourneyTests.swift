@@ -43,15 +43,15 @@ final class PinnedOfferJourneyTests: XCTestCase {
 
         alsoPinTheCheapestOffer()
 
-        // Beide Wahlen stehen als eigene Kacheln auf der Zeile.
-        let zweite = app.buttons["list.matches.more"].firstMatch
-        XCTAssertTrue(zweite.waitForExistence(timeout: 10),
-                      "Der zweite Pin hat den ersten ersetzt statt danebenzustehen")
-        let beide = rowLabel() + " " + zweite.label
-        XCTAssertTrue(beide.contains(billigstes) && beide.contains(gewaehltes),
-                      "Beide Produkte müssen auf der Zeile stehen: \(beide)")
-        XCTAssertTrue(app.staticTexts["2 Produkte"].exists,
-                      "Ohne Abzeichen sehen zwei Kacheln nach einem Fehler aus")
+        // **Beide Wahlen hängen an einer Kachel.** Die Zeile zeigte zwei
+        // Angebotskacheln nebeneinander samt Abzeichen „2 Produkte"; im Raster
+        // hat ein Artikel genau eine Kachel, und ihre Fahne trägt einen Preis.
+        // Was zählt, bleibt prüfbar: dass der zweite Pin den ersten **nicht
+        // ersetzt** hat.
+        XCTAssertTrue(waitForRowLabel(containing: billigstes),
+                      "Der zweite Pin steht nicht an der Kachel: \(rowLabel())")
+        XCTAssertTrue(rowLabel().contains(gewaehltes),
+                      "Der zweite Pin hat den ersten ersetzt statt danebenzustehen: \(rowLabel())")
     }
 
 
@@ -62,10 +62,10 @@ final class PinnedOfferJourneyTests: XCTestCase {
         launch()
         addItem("Vollmilch")
 
-        let zeile = app.buttons["list.matches"].firstMatch
-        XCTAssertTrue(zeile.waitForExistence(timeout: 15))
-        XCTAssertTrue(zeile.label.contains(billigstes),
-                      "Ohne Heftung steht das billigste da: \(zeile.label)")
+        let kachel = app.buttons["list.tile"].firstMatch
+        XCTAssertTrue(kachel.waitForExistence(timeout: 15))
+        XCTAssertTrue(rowLabel().contains(billigstes),
+                      "Ohne Heftung steht das billigste da: \(rowLabel())")
 
         pinTheDearerOffer()
 
@@ -79,7 +79,7 @@ final class PinnedOfferJourneyTests: XCTestCase {
         // Zurück ins Blatt und die Heftung lösen — der Weg dahin ist derselbe,
         // den man zum Heften gegangen ist. Wäre er es nicht, hätte man eine
         // Einbahnstraße gebaut.
-        app.buttons["list.matches"].firstMatch.tap()
+        app.tapInTileMenu("list.matches")
         let loesen = app.buttons.matching(identifier: "matches.pin").element(boundBy: 1)
         XCTAssertTrue(loesen.waitForExistence(timeout: 10))
         XCTAssertEqual(loesen.label, "Heftung lösen", "Derselbe Knopf muss die Heftung zurücknehmen")
@@ -123,9 +123,7 @@ final class PinnedOfferJourneyTests: XCTestCase {
         launch(allBranches: true)
         addItem("Orangen")
 
-        let zeile = app.buttons["list.matches"].firstMatch
-        XCTAssertTrue(zeile.waitForExistence(timeout: 15))
-        zeile.tap()
+        app.tapInTileMenu("list.matches")
         let heften = app.buttons.matching(identifier: "matches.pin").firstMatch
         XCTAssertTrue(heften.waitForExistence(timeout: 10))
         heften.tap()
@@ -136,25 +134,32 @@ final class PinnedOfferJourneyTests: XCTestCase {
         app.terminate()
         launch(keepState: true)
 
-        let hinweis = app.buttons["list.pin.dormant"]
-        XCTAssertTrue(hinweis.waitForExistence(timeout: 15),
-                      "Die Zeile muss sagen, dass die geheftete Wahl gerade fehlt")
-        XCTAssertEqual(hinweis.label,
-                       "Spanische Orangen ist diese Woche nicht im Angebot — und sonst passt diese Woche nichts.")
+        // **Die schlafende Wahl sagt sich jetzt zweifach**: als durchgestrichene
+        // Reißzwecke auf der Kachel (sichtbar) und im Wert der Kachel
+        // (hörbar). Der ganze Satz stand bis zum 07.08. auf der Zeile; eine
+        // Kachel trägt keinen Satz, die Auskunft darf aber nicht verschwinden
+        // — ein stiller Rückfall aufs billigste ist genau die unsichtbare
+        // Ableitung, gegen die am 2026-07-31 entschieden wurde.
+        let kachel = app.buttons["list.tile"].firstMatch
+        XCTAssertTrue(kachel.waitForExistence(timeout: 15))
+        XCTAssertTrue(
+            waitForRowLabel(containing: "Spanische Orangen ist diese Woche nicht im Angebot"),
+            "Die Kachel muss sagen, dass die geheftete Wahl gerade fehlt: \(rowLabel())"
+        )
 
         // **Und der Weg aus der Heftung heraus bleibt offen**, obwohl das
         // Produkt in keiner Trefferliste mehr auftaucht und die Zeile gar keine
         // Angebotskachel mehr trägt. Ohne diesen Weg wäre die Heftung eine
         // Sackgasse — der Hinweis selbst ist deshalb der Knopf.
-        hinweis.tap()
+        app.tapInTileMenu("list.matches.empty")
         let loesen = app.buttons["matches.unpin.dormant"]
         XCTAssertTrue(loesen.waitForExistence(timeout: 10),
                       "Das Blatt muss die schlafende Heftung zeigen und lösen lassen")
         loesen.tap()
         app.buttons["Fertig"].firstMatch.tap()
 
-        XCTAssertFalse(app.buttons["list.pin.dormant"].waitForExistence(timeout: 5),
-                       "Nach dem Lösen darf der Hinweis nicht stehen bleiben")
+        XCTAssertFalse(rowLabel().contains("nicht im Angebot"),
+                       "Nach dem Lösen darf der Hinweis nicht stehen bleiben: \(rowLabel())")
     }
 
     // MARK: Helfer
@@ -198,7 +203,7 @@ final class PinnedOfferJourneyTests: XCTestCase {
     /// steht also an zweiter Stelle. Wäre das einmal nicht so, fällt die
     /// Zusicherung danach mit dem Produktnamen im Text auf.
     private func pinTheDearerOffer() {
-        app.buttons["list.matches"].firstMatch.tap()
+        app.tapInTileMenu("list.matches")
         XCTAssertTrue(app.staticTexts[gewaehltes].waitForExistence(timeout: 10),
                       "Die teurere Alternative fehlt im Blatt — siehe MockFixtures")
         let heften = app.buttons.matching(identifier: "matches.pin").element(boundBy: 1)
@@ -208,13 +213,21 @@ final class PinnedOfferJourneyTests: XCTestCase {
         app.buttons["Fertig"].firstMatch.tap()
     }
 
+    /// **Was die Kachel über ihr Angebot sagt.**
+    ///
+    /// Bis zum 07.08. war das die Beschriftung der Angebotskachel auf der
+    /// Zeile. Im Raster hat ein Artikel genau eine Kachel; der Artikelname
+    /// steht in ihrem Label, alles Wechselnde — Angebot, Heftung, schlafende
+    /// Wahl — in ihrem **Wert**. Diese Trennung ist der Grund, warum der Name
+    /// weiterhin auffindbar ist.
     private func rowLabel() -> String {
-        app.buttons["list.matches"].firstMatch.label
+        let kachel = app.buttons["list.tile"].firstMatch
+        return (kachel.value as? String) ?? ""
     }
 
     /// Heftet zusätzlich das billigste Angebot — der zweite Pin.
     private func alsoPinTheCheapestOffer() {
-        app.buttons["list.matches"].firstMatch.tap()
+        app.tapInTileMenu("list.matches")
         let heften = app.buttons.matching(identifier: "matches.pin").firstMatch
         XCTAssertTrue(heften.waitForExistence(timeout: 10))
         XCTAssertEqual(heften.label, "Auf die Liste heften",
@@ -224,11 +237,11 @@ final class PinnedOfferJourneyTests: XCTestCase {
     }
 
     private func waitForRowLabel(containing text: String) -> Bool {
-        let zeile = app.buttons["list.matches"].firstMatch
-        guard zeile.waitForExistence(timeout: 15) else { return false }
+        let kachel = app.buttons["list.tile"].firstMatch
+        guard kachel.waitForExistence(timeout: 15) else { return false }
         let treffer = expectation(
-            for: NSPredicate(format: "label CONTAINS %@", text),
-            evaluatedWith: zeile
+            for: NSPredicate(format: "value CONTAINS %@", text),
+            evaluatedWith: kachel
         )
         return XCTWaiter().wait(for: [treffer], timeout: 10) == .completed
     }

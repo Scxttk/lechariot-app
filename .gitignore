@@ -13,5 +13,11 @@ xcuserdata/
 # state of whichever project the CLI is linked to, not part of the source.
 supabase/.temp/
 
+# Der Trailer wird gebaut, nicht gepflegt: `tools/trailer-build.sh` erzeugt
+# Karten und Film aus dem Simulator neu. Ungetrackt liegengeblieben haben sie
+# den Baum schmutzig gehalten, und `release.sh` lehnt den ab — der Build vom
+# 07.08. lief deshalb mit `--dirty`.
+assets/trailer/
+
 # Secrets
 APIKeys.plist

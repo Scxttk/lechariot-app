@@ -33,8 +33,8 @@ final class LocatedPLZJourneyTests: XCTestCase {
     }
 
     func testTheDetectedPostcodeIsShownAndTheStepWaits() {
-        app.buttons["onboarding.primary"].tap()   // Willkommen
-        app.buttons["onboarding.skip"].tap()      // Name
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")   // Willkommen
+        app.tippe(app.buttons["onboarding.skip"], "Überspringen im Assistenten")      // Name
 
         let feld = app.textFields["region.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15))
@@ -60,7 +60,7 @@ final class LocatedPLZJourneyTests: XCTestCase {
         )
 
         // 4. Weiter geht es, wenn der Mensch es sagt.
-        app.buttons["onboarding.primary"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")
         XCTAssertFalse(
             app.textFields["region.input"].waitForExistence(timeout: 10),
             "Nach „Weiter“ muss der Schritt wechseln"
@@ -70,8 +70,8 @@ final class LocatedPLZJourneyTests: XCTestCase {
     /// Wer die erkannte Zahl überschreibt, bekommt den Hinweis nicht mehr —
     /// dann ist es wieder seine eigene Eingabe und nichts Abgeleitetes.
     func testOverwritingTheDetectedCodeRetiresTheHint() {
-        app.buttons["onboarding.primary"].tap()
-        app.buttons["onboarding.skip"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")
+        app.tippe(app.buttons["onboarding.skip"], "Überspringen im Assistenten")
 
         let feld = app.textFields["region.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15))

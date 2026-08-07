@@ -40,7 +40,7 @@ final class ReviewNoteJourneyTests: XCTestCase {
         XCTAssertTrue(name.waitForExistence(timeout: 15), "Schritt 1: keine Namenseingabe")
         name.tap()
         name.typeText("Alex")
-        app.buttons["onboarding.primary"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")
 
         // Der Weg der abgelehnten Standortfreigabe: die PLZ von Hand.
         let plz = app.textFields["region.input"]
@@ -49,7 +49,7 @@ final class ReviewNoteJourneyTests: XCTestCase {
                       "Die Anmerkung warnt vor diesem Knopf — er muss auch da sein")
         plz.tap()
         plz.typeText("01219")
-        app.buttons["onboarding.primary"].tap()
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")
 
         // 2. Die Frage nach den Lieblingsmärkten kann übersprungen werden,
         //    danach zeigt die App, was es in der Gegend gibt.
@@ -61,8 +61,8 @@ final class ReviewNoteJourneyTests: XCTestCase {
             app.staticTexts["4 Ketten, 5 Filialen in deiner Nähe."].waitForExistence(timeout: 15),
             "Schritt 2: nach der Marktfrage fehlt der Bildschirm mit den Zahlen der Gegend"
         )
-        app.buttons["onboarding.primary"].tap()   // Belohnung
-        app.buttons["onboarding.primary"].tap()   // Einwilligung
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")   // Belohnung
+        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")   // Einwilligung
 
         // 3. Der Assistent endet in der Einkaufsliste — **ohne** Filialauswahl.
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 20),
