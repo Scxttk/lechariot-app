@@ -40,6 +40,33 @@ final class MatchShelfTests: XCTestCase {
     /// `milch` gesperrt), „Putenbrustfilet" (bei `fisch` gesperrt) — sie
     /// gehören zu einem anderen Begriff und müssen dort auch bleiben.
     private static let regal: [String: String] = [
+        // Tranche 9 (2026-08-07): Baumarkt, Garten, Tierbedarf.
+        "backform": "Springform 26 cm",
+        "besteck": "Einweggabeln 20 Stück",
+        "blumenerde": "Blumenerde 20 l",
+        "blumentopf": "Übertopf 14 cm",
+        "büroklammern": "Büroklammern 100 Stück",
+        "gartenwerkzeug": "Gartenschere Bypass",
+        "grillzubehör": "Grillzange 40 cm",
+        "handschuhe": "Putzhandschuhe Gr. M",
+        "holzkohle": "Grillkohle 3 kg",
+        "hundefutter": "Hundefutter Rind 800 g",
+        "katzenfutter": "Katzenfutter Adult 400 g",
+        "küchenhelfer": "Schneebesen 30 cm",
+        "luftballon": "Luftballons bunt 20 Stück",
+        "pfanne": "Bratpfanne 28 cm",
+        "pinsel": "Malerpinsel 50 mm",
+        "schere": "Küchenschere",
+        "schrauben": "Spanplattenschrauben 4x40",
+        "socken": "Wollsocken Gr. 42",
+        "sonnenschirm": "Sonnenschirm 200 cm",
+        "spülmittel": "Spülmittel Zitrone 500 ml",
+        "streusalz": "Auftausalz 10 kg",
+        "taschenlampe": "LED-Taschenlampe",
+        "toilettenpapier": "Toilettenpapier 3-lagig 10 Rollen",
+        "vogelfutter": "Meisenknödel 6 Stück",
+        "waschmittel": "Vollwaschmittel 20 WL",
+        "zimmerpflanze": "Grünpflanze im Topf",
         // Tranche 8 (2026-08-07): Haushalt und Pflege — das erste Non-Food.
         "allzweckreiniger": "Frosch Allzweckreiniger 1 l",
         "alufolie": "Alufolie 30 m",

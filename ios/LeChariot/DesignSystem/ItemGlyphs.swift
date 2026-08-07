@@ -68,7 +68,7 @@ enum ItemGlyph {
     private static let recipes: [String: Rezept] = {
         var alle: [String: Rezept] = [:]
         for teil in [obstUndGemuese, molkereiUndBackwaren, fleischUndFisch,
-                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4, tranche5, tranche6, tranche7, tranche8] {
+                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4, tranche5, tranche6, tranche7, tranche8, tranche9] {
             alle.merge(teil) { erstes, _ in erstes }
         }
         return alle
@@ -3934,6 +3934,325 @@ private let tranche8: [String: ItemGlyph.Rezept] = [
         p.line([p.at(0.60, 0.44), p.at(0.60, 0.20)])
         p.begin(p.at(0.40, 0.20))
         p.bow(p.at(0.60, 0.20), p.at(0.44, 0.08), p.at(0.62, 0.12))
+        p.close()
+    },
+]
+
+// MARK: - Tranche 9: Baumarkt, Garten, Tierbedarf
+
+/// **Sechsundzwanzig Zeichen zu Tranche 9** (2026-08-07) — der Rest des
+/// Katalogs.
+///
+/// Hier zeigt sich die Arbeitsteilung, um die es die ganze Zeit ging: Diese
+/// Begriffe arbeiten **für die Liste**, nicht für den Angebotsvergleich.
+/// Tierfutter bleibt im Vergleich `nonfood` (der Riegel greift vor dem
+/// Wörterbuch), bekommt auf der Kachel aber sein Zeichen — weil
+/// `ItemGlyphTerm` das Wörterbuch direkt fragt.
+private let tranche9: [String: ItemGlyph.Rezept] = [
+
+    // Toilettenpapier: Rolle mit Hülse und abgerissener Bahn.
+    "toilettenpapier": { p in
+        p.circle(p.at(0.44, 0.52), 0.32)
+        p.circle(p.at(0.44, 0.52), 0.11)
+        p.line([p.at(0.72, 0.42), p.at(0.90, 0.36), p.at(0.90, 0.72),
+                p.at(0.74, 0.68)])
+    },
+
+    // Waschmittel: Karton mit Griffloch und Messbecher.
+    "waschmittel": { p in
+        p.line([p.at(0.16, 0.34), p.at(0.66, 0.34), p.at(0.66, 0.86),
+                p.at(0.16, 0.86)], closed: true)
+        p.line([p.at(0.28, 0.44), p.at(0.54, 0.44)])
+        p.begin(p.at(0.70, 0.62))
+        p.to(p.at(0.74, 0.86))
+        p.to(p.at(0.92, 0.86))
+        p.to(p.at(0.94, 0.62))
+        p.close()
+    },
+
+    // Spülmittel: Flasche mit Kappe und Schaumblasen.
+    "spülmittel": { p in
+        p.line([p.at(0.42, 0.10), p.at(0.58, 0.10), p.at(0.58, 0.22),
+                p.at(0.42, 0.22)], closed: true)
+        p.line([p.at(0.36, 0.22), p.at(0.34, 0.88), p.at(0.66, 0.88),
+                p.at(0.64, 0.22)], closed: true)
+        p.circle(p.at(0.80, 0.34), 0.08)
+        p.circle(p.at(0.88, 0.52), 0.05)
+    },
+
+    // Besteck: Gabel und Messer gekreuzt.
+    "besteck": { p in
+        p.line([p.at(0.30, 0.90), p.at(0.30, 0.42)])
+        p.line([p.at(0.22, 0.10), p.at(0.22, 0.32), p.at(0.38, 0.32),
+                p.at(0.38, 0.10)])
+        p.line([p.at(0.30, 0.42), p.at(0.22, 0.32)])
+        p.line([p.at(0.30, 0.42), p.at(0.38, 0.32)])
+        p.line([p.at(0.68, 0.90), p.at(0.68, 0.46)])
+        p.begin(p.at(0.68, 0.46))
+        p.bow(p.at(0.68, 0.12), p.at(0.82, 0.42), p.at(0.82, 0.16))
+        p.close()
+    },
+
+    // Pfanne: Topf von der Seite mit Stiel.
+    "pfanne": { p in
+        p.begin(p.at(0.14, 0.44))
+        p.to(p.at(0.18, 0.76))
+        p.bow(p.at(0.62, 0.76), p.at(0.24, 0.88), p.at(0.56, 0.88))
+        p.to(p.at(0.66, 0.44))
+        p.close()
+        p.line([p.at(0.66, 0.50), p.at(0.94, 0.42)])
+        p.line([p.at(0.10, 0.42), p.at(0.70, 0.42)])
+    },
+
+    // Backform: Springform mit Rand und Boden.
+    "backform": { p in
+        p.begin(p.at(0.14, 0.42))
+        p.bow(p.at(0.86, 0.42), p.at(0.14, 0.26), p.at(0.86, 0.26))
+        p.bow(p.at(0.14, 0.42), p.at(0.86, 0.58), p.at(0.14, 0.58))
+        p.close()
+        p.line([p.at(0.14, 0.42), p.at(0.18, 0.72)])
+        p.line([p.at(0.86, 0.42), p.at(0.82, 0.72)])
+        p.begin(p.at(0.18, 0.72))
+        p.bow(p.at(0.82, 0.72), p.at(0.24, 0.86), p.at(0.76, 0.86))
+        p.circle(p.at(0.50, 0.42), 0.11)
+    },
+
+    // Küchenhelfer: Schneebesen mit Bügeln.
+    "küchenhelfer": { p in
+        p.line([p.at(0.50, 0.14), p.at(0.50, 0.44)])
+        p.line([p.at(0.42, 0.10), p.at(0.58, 0.10)])
+        p.begin(p.at(0.50, 0.44))
+        p.bow(p.at(0.50, 0.90), p.at(0.20, 0.56), p.at(0.22, 0.84))
+        p.begin(p.at(0.50, 0.44))
+        p.bow(p.at(0.50, 0.90), p.at(0.80, 0.56), p.at(0.78, 0.84))
+        p.begin(p.at(0.50, 0.44))
+        p.bow(p.at(0.50, 0.90), p.at(0.36, 0.60), p.at(0.36, 0.86))
+        p.begin(p.at(0.50, 0.44))
+        p.bow(p.at(0.50, 0.90), p.at(0.64, 0.60), p.at(0.64, 0.86))
+    },
+
+    // Schere: zwei Blätter und zwei Ringe.
+    "schere": { p in
+        p.line([p.at(0.28, 0.16), p.at(0.62, 0.62)])
+        p.line([p.at(0.72, 0.16), p.at(0.38, 0.62)])
+        p.circle(p.at(0.32, 0.78), 0.14)
+        p.circle(p.at(0.68, 0.78), 0.14)
+    },
+
+    // Handschuh: Stulpe mit Daumen und vier Fingern.
+    "handschuhe": { p in
+        p.line([p.at(0.26, 0.90), p.at(0.24, 0.50)])
+        p.line([p.at(0.74, 0.90), p.at(0.76, 0.50)])
+        p.line([p.at(0.26, 0.90), p.at(0.74, 0.90)])
+        for x in [0.34, 0.48, 0.62] {
+            p.begin(p.at(CGFloat(x) - 0.05, 0.50))
+            p.bow(p.at(CGFloat(x) + 0.05, 0.50), p.at(CGFloat(x) - 0.05, 0.18),
+                  p.at(CGFloat(x) + 0.05, 0.18))
+        }
+        p.begin(p.at(0.76, 0.56))
+        p.bow(p.at(0.88, 0.40), p.at(0.90, 0.56), p.at(0.92, 0.44))
+        p.bow(p.at(0.76, 0.44), p.at(0.84, 0.34), p.at(0.76, 0.36))
+    },
+
+    // Luftballon: Ballon mit Knoten und Schnur.
+    "luftballon": { p in
+        p.begin(p.at(0.50, 0.14))
+        p.bow(p.at(0.50, 0.62), p.at(0.18, 0.20), p.at(0.20, 0.58))
+        p.bow(p.at(0.50, 0.14), p.at(0.80, 0.58), p.at(0.82, 0.20))
+        p.close()
+        p.line([p.at(0.44, 0.62), p.at(0.56, 0.62), p.at(0.50, 0.70)], closed: true)
+        p.begin(p.at(0.50, 0.70))
+        p.bow(p.at(0.56, 0.94), p.at(0.42, 0.80), p.at(0.62, 0.84))
+    },
+
+    // Taschenlampe: Griff mit Reflektorkopf und Strahlen.
+    "taschenlampe": { p in
+        // **Senkrecht mit Strahlen nach oben war eine Giraffe.** Eine
+        // Taschenlampe liegt schräg und leuchtet **zur Seite**; der Kegel
+        // sagt, dass sie an ist, und trennt sie von jedem Rohr.
+        p.line([p.at(0.16, 0.66), p.at(0.20, 0.46), p.at(0.52, 0.54),
+                p.at(0.48, 0.74)], closed: true)
+        p.line([p.at(0.52, 0.50), p.at(0.60, 0.52), p.at(0.56, 0.78),
+                p.at(0.48, 0.76)], closed: true)
+        p.line([p.at(0.60, 0.52), p.at(0.90, 0.30)])
+        p.line([p.at(0.56, 0.78), p.at(0.92, 0.72)])
+        p.line([p.at(0.72, 0.42), p.at(0.86, 0.50)])
+    },
+
+    // Büroklammer: gebogener Draht.
+    "büroklammern": { p in
+        p.begin(p.at(0.36, 0.86))
+        p.to(p.at(0.36, 0.30))
+        p.bow(p.at(0.64, 0.30), p.at(0.36, 0.14), p.at(0.64, 0.14))
+        p.to(p.at(0.64, 0.74))
+        p.bow(p.at(0.48, 0.74), p.at(0.64, 0.86), p.at(0.48, 0.86))
+        p.to(p.at(0.48, 0.34))
+    },
+
+    // Hundefutter: Napf mit Knochen.
+    "hundefutter": { p in
+        p.begin(p.at(0.12, 0.58))
+        p.bow(p.at(0.88, 0.58), p.at(0.20, 0.90), p.at(0.80, 0.90))
+        p.close()
+        p.line([p.at(0.32, 0.36), p.at(0.68, 0.30)])
+        p.circle(p.at(0.28, 0.32), 0.08)
+        p.circle(p.at(0.28, 0.42), 0.08)
+        p.circle(p.at(0.72, 0.26), 0.08)
+        p.circle(p.at(0.72, 0.36), 0.08)
+    },
+
+    // Katzenfutter: Dose mit Ring und Fischgräte.
+    "katzenfutter": { p in
+        p.begin(p.at(0.22, 0.40))
+        p.bow(p.at(0.78, 0.40), p.at(0.22, 0.26), p.at(0.78, 0.26))
+        p.bow(p.at(0.22, 0.40), p.at(0.78, 0.54), p.at(0.22, 0.54))
+        p.close()
+        p.line([p.at(0.22, 0.40), p.at(0.22, 0.82)])
+        p.line([p.at(0.78, 0.40), p.at(0.78, 0.82)])
+        p.begin(p.at(0.22, 0.82))
+        p.bow(p.at(0.78, 0.82), p.at(0.28, 0.92), p.at(0.72, 0.92))
+        p.line([p.at(0.38, 0.66), p.at(0.62, 0.66)])
+        p.line([p.at(0.44, 0.60), p.at(0.44, 0.72)])
+        p.line([p.at(0.54, 0.60), p.at(0.54, 0.72)])
+    },
+
+    // Vogelfutter: Knödel im Netz am Haken.
+    "vogelfutter": { p in
+        p.circle(p.at(0.50, 0.62), 0.28)
+        p.line([p.at(0.50, 0.34), p.at(0.50, 0.16)])
+        p.begin(p.at(0.50, 0.16))
+        p.bow(p.at(0.66, 0.16), p.at(0.50, 0.06), p.at(0.66, 0.06))
+        p.line([p.at(0.28, 0.50), p.at(0.72, 0.74)])
+        p.line([p.at(0.28, 0.74), p.at(0.72, 0.50)])
+    },
+
+    // Blumenerde: Sack mit Erde und Trieb.
+    "blumenerde": { p in
+        p.line([p.at(0.20, 0.44), p.at(0.80, 0.44), p.at(0.76, 0.90),
+                p.at(0.24, 0.90)], closed: true)
+        p.line([p.at(0.20, 0.44), p.at(0.28, 0.34), p.at(0.50, 0.42),
+                p.at(0.72, 0.34), p.at(0.80, 0.44)])
+        p.line([p.at(0.50, 0.76), p.at(0.50, 0.58)])
+        blatt(&p, von: (0.50, 0.64), nach: (0.32, 0.54), bauch: 0.06)
+        blatt(&p, von: (0.50, 0.64), nach: (0.68, 0.54), bauch: -0.06)
+    },
+
+    // Blumentopf: Topf mit Rand und Untersetzer.
+    "blumentopf": { p in
+        p.line([p.at(0.24, 0.36), p.at(0.76, 0.36)])
+        p.line([p.at(0.26, 0.36), p.at(0.34, 0.82), p.at(0.66, 0.82),
+                p.at(0.74, 0.36)])
+        p.line([p.at(0.26, 0.44), p.at(0.74, 0.44)])
+        p.begin(p.at(0.28, 0.86))
+        p.bow(p.at(0.72, 0.86), p.at(0.34, 0.94), p.at(0.66, 0.94))
+    },
+
+    // Zimmerpflanze: Topf mit drei Blättern.
+    "zimmerpflanze": { p in
+        p.line([p.at(0.30, 0.62), p.at(0.36, 0.90), p.at(0.64, 0.90),
+                p.at(0.70, 0.62)], closed: true)
+        p.line([p.at(0.50, 0.62), p.at(0.50, 0.34)])
+        blatt(&p, von: (0.50, 0.42), nach: (0.22, 0.26), bauch: 0.09)
+        blatt(&p, von: (0.50, 0.42), nach: (0.78, 0.26), bauch: -0.09)
+        blatt(&p, von: (0.50, 0.34), nach: (0.52, 0.08), bauch: 0.09)
+    },
+
+    // Gartenwerkzeug: Spaten mit Stiel und Griff.
+    "gartenwerkzeug": { p in
+        p.line([p.at(0.50, 0.28), p.at(0.50, 0.58)])
+        p.line([p.at(0.38, 0.16), p.at(0.62, 0.16)])
+        p.line([p.at(0.38, 0.16), p.at(0.38, 0.28), p.at(0.62, 0.28),
+                p.at(0.62, 0.16)])
+        p.line([p.at(0.34, 0.58), p.at(0.66, 0.58), p.at(0.62, 0.82),
+                p.at(0.50, 0.92), p.at(0.38, 0.82)], closed: true)
+    },
+
+    // Schraube: Kopf mit Schlitz und Gewinde.
+    "schrauben": { p in
+        p.line([p.at(0.30, 0.18), p.at(0.70, 0.18), p.at(0.70, 0.30),
+                p.at(0.30, 0.30)], closed: true)
+        p.line([p.at(0.40, 0.24), p.at(0.60, 0.24)])
+        p.line([p.at(0.42, 0.30), p.at(0.42, 0.76), p.at(0.50, 0.92),
+                p.at(0.58, 0.76), p.at(0.58, 0.30)])
+        p.line([p.at(0.42, 0.44), p.at(0.58, 0.50)])
+        p.line([p.at(0.42, 0.58), p.at(0.58, 0.64)])
+    },
+
+    // Pinsel: Stiel mit Zwinge und Borsten.
+    "pinsel": { p in
+        p.line([p.at(0.50, 0.10), p.at(0.50, 0.46)])
+        p.line([p.at(0.38, 0.46), p.at(0.62, 0.46), p.at(0.62, 0.58),
+                p.at(0.38, 0.58)], closed: true)
+        p.line([p.at(0.36, 0.58), p.at(0.32, 0.90), p.at(0.68, 0.90),
+                p.at(0.64, 0.58)], closed: true)
+        p.line([p.at(0.44, 0.62), p.at(0.42, 0.88)])
+        p.line([p.at(0.56, 0.62), p.at(0.58, 0.88)])
+    },
+
+    // Streusalz: Sack mit Schneeflocke.
+    "streusalz": { p in
+        p.line([p.at(0.22, 0.42), p.at(0.78, 0.42), p.at(0.74, 0.90),
+                p.at(0.26, 0.90)], closed: true)
+        p.line([p.at(0.22, 0.42), p.at(0.30, 0.30), p.at(0.70, 0.30),
+                p.at(0.78, 0.42)])
+        for i in 0..<3 {
+            let w = Double(i) / 3 * Double.pi
+            p.line([p.at(0.50 - 0.14 * CGFloat(cos(w)), 0.66 - 0.14 * CGFloat(sin(w))),
+                    p.at(0.50 + 0.14 * CGFloat(cos(w)), 0.66 + 0.14 * CGFloat(sin(w)))])
+        }
+    },
+
+    // Holzkohle: Sack mit Briketts davor.
+    "holzkohle": { p in
+        p.line([p.at(0.20, 0.34), p.at(0.72, 0.34), p.at(0.68, 0.76),
+                p.at(0.24, 0.76)], closed: true)
+        p.line([p.at(0.20, 0.34), p.at(0.28, 0.24), p.at(0.64, 0.24),
+                p.at(0.72, 0.34)])
+        p.begin(p.at(0.30, 0.82))
+        p.bow(p.at(0.56, 0.86), p.at(0.34, 0.74), p.at(0.54, 0.76))
+        p.bow(p.at(0.30, 0.82), p.at(0.50, 0.94), p.at(0.34, 0.92))
+        p.close()
+        p.begin(p.at(0.62, 0.80))
+        p.bow(p.at(0.86, 0.84), p.at(0.66, 0.72), p.at(0.86, 0.74))
+        p.bow(p.at(0.62, 0.80), p.at(0.82, 0.92), p.at(0.66, 0.90))
+        p.close()
+    },
+
+    // Grillzange: zwei Schenkel mit Gelenk.
+    "grillzubehör": { p in
+        p.begin(p.at(0.24, 0.16))
+        p.bow(p.at(0.40, 0.86), p.at(0.26, 0.48), p.at(0.34, 0.70))
+        p.begin(p.at(0.24, 0.16))
+        p.bow(p.at(0.62, 0.84), p.at(0.34, 0.44), p.at(0.54, 0.68))
+        p.begin(p.at(0.40, 0.86))
+        p.bow(p.at(0.30, 0.92), p.at(0.36, 0.92), p.at(0.32, 0.94))
+        p.begin(p.at(0.62, 0.84))
+        p.bow(p.at(0.74, 0.90), p.at(0.68, 0.90), p.at(0.72, 0.92))
+    },
+
+    // Sonnenschirm: Schirmdach mit Mast und Fuß.
+    "sonnenschirm": { p in
+        p.begin(p.at(0.10, 0.48))
+        p.bow(p.at(0.90, 0.48), p.at(0.20, 0.10), p.at(0.80, 0.10))
+        p.close()
+        p.line([p.at(0.30, 0.48), p.at(0.50, 0.14), p.at(0.70, 0.48)])
+        p.line([p.at(0.50, 0.14), p.at(0.50, 0.86)])
+        p.line([p.at(0.36, 0.90), p.at(0.64, 0.90)])
+    },
+
+    // Socken: Paar, eine leicht versetzt.
+    "socken": { p in
+        p.begin(p.at(0.16, 0.20))
+        p.to(p.at(0.34, 0.20))
+        p.to(p.at(0.34, 0.56))
+        p.bow(p.at(0.14, 0.76), p.at(0.34, 0.72), p.at(0.24, 0.78))
+        p.bow(p.at(0.16, 0.56), p.at(0.06, 0.74), p.at(0.14, 0.62))
+        p.close()
+        p.begin(p.at(0.52, 0.30))
+        p.to(p.at(0.70, 0.30))
+        p.to(p.at(0.70, 0.66))
+        p.bow(p.at(0.50, 0.86), p.at(0.70, 0.82), p.at(0.60, 0.88))
+        p.bow(p.at(0.52, 0.66), p.at(0.42, 0.84), p.at(0.50, 0.72))
         p.close()
     },
 ]
