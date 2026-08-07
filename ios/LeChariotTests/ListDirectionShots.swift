@@ -49,8 +49,12 @@ final class ListDirectionShots: XCTestCase {
             try write(DirectionB(), to: "\(dir)/liste-B-blatt-\(suffix).png", scheme: scheme)
             try write(DirectionA(), to: "\(dir)/liste-A-linien-\(suffix).png", scheme: scheme)
             try write(DirectionC(), to: "\(dir)/liste-C-preisspalte-\(suffix).png", scheme: scheme)
-            try write(DirectionD(mitEmoji: false), to: "\(dir)/liste-D1-kacheln-zeichen-\(suffix).png", scheme: scheme)
-            try write(DirectionD(mitEmoji: true), to: "\(dir)/liste-D2-kacheln-emoji-\(suffix).png", scheme: scheme)
+            // Das Raster ist seit dem 07.08. ein voller Einkauf und braucht
+            // mehr Höhe als eine Liste mit vier Zeilen — sonst schneidet der
+            // Ausschnitt genau die Abschnitte ab, um die es geht.
+            try write(DirectionD(zeichen: .kategorie), to: "\(dir)/liste-D1-kacheln-zeichen-\(suffix).png", scheme: scheme, hoehe: 1500)
+            try write(DirectionD(zeichen: .emoji), to: "\(dir)/liste-D2-kacheln-emoji-\(suffix).png", scheme: scheme, hoehe: 1500)
+            try write(DirectionD(zeichen: .artikel), to: "\(dir)/liste-D3-kacheln-artikelzeichen-\(suffix).png", scheme: scheme, hoehe: 1500)
         }
     }
 
@@ -58,7 +62,9 @@ final class ListDirectionShots: XCTestCase {
     /// schneidet genau die Zeile ab, um die es geht.
     private let size = CGSize(width: 393, height: 800)
 
-    private func write(_ view: some View, to path: String, scheme: ColorScheme) throws {
+    private func write(_ view: some View, to path: String, scheme: ColorScheme,
+                       hoehe: CGFloat? = nil) throws {
+        let size = CGSize(width: self.size.width, height: hoehe ?? self.size.height)
         let host = UIHostingController(
             rootView: view
                 .environment(\.colorScheme, scheme)
@@ -398,11 +404,19 @@ private struct DirectionC: View {
 /// 06.08. lief — das Zeichen hat eine eigene Silhouette und braucht keinen
 /// Rahmen, der ihm eine gibt.
 private struct DirectionD: View {
-    /// **Der Unterschied, an dem diese Richtung hängt.** Mit `false` trägt jede
-    /// Kachel das Zeichen ihrer *Kategorie* — und fünf Sorten Obst sehen dann
-    /// gleich aus. Mit `true` trägt sie das Emoji ihres *Angebots*, das die
-    /// Zeile ohnehin schon kennt (`Offer.emoji`). Siehe die Notiz am Ende.
-    let mitEmoji: Bool
+    /// **Der Unterschied, an dem diese Richtung hängt.**
+    ///
+    /// - `kategorie`: das Zeichen der *Kategorie* — fünf Sorten Obst sehen
+    ///   gleich aus. Der Stand vom 07.08.
+    /// - `emoji`: das Emoji des zugeordneten *Angebots* (`Offer.emoji`). Deckt
+    ///   nur ab, was diese Woche im Prospekt steht, und mischt Apples
+    ///   3-D-Emoji unter unsere Strichzeichnungen. War der Notbehelf.
+    /// - `artikel`: das **eigene Zeichen des Artikels** aus `ItemGlyph`,
+    ///   aufgelöst über dasselbe Wörterbuch, das der Zuordner benutzt. Das ist
+    ///   der Grund, warum es diesen Satz gibt.
+    enum Zeichenwahl { case kategorie, emoji, artikel }
+
+    let zeichen: Zeichenwahl
 
     /// Vier nebeneinander: Bei 393 pt bleiben je Kachel 81 pt, und darin steht
     /// ein Wort wie „Zahnpasta" noch einzeilig.
@@ -413,6 +427,8 @@ private struct DirectionD: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                 abschnitt("Obst & Gemüse", ShotGrid.obst)
                 abschnitt("Molkerei & Eier", ShotGrid.molkerei)
+                abschnitt("Fleisch & Wurst", ShotGrid.fleisch)
+                abschnitt("Vorräte & Kochen", ShotGrid.vorrat)
                 abschnitt("Backwaren", ShotGrid.backwaren)
                 abschnitt("Haushalt", ShotGrid.haushalt)
                 abschnitt("Erledigt", ShotGrid.erledigt)
@@ -439,9 +455,18 @@ private struct DirectionD: View {
         VStack(spacing: 6) {
             ZStack(alignment: .topTrailing) {
                 Group {
-                    if mitEmoji, let emoji = eintrag.emoji {
-                        Text(emoji).font(.system(size: 32))
-                    } else {
+                    switch zeichen {
+                    case .emoji where eintrag.emoji != nil:
+                        Text(eintrag.emoji!).font(.system(size: 32))
+                    case .artikel:
+                        // **Der Begriff wird aufgelöst, nicht eingetragen.**
+                        // Die Kachel bekommt den Artikeltext, so wie ihn
+                        // jemand getippt hat; welcher Begriff das ist, sagt
+                        // dasselbe Wörterbuch wie dem Zuordner.
+                        ItemGlyphView(term: ItemGlyphTerm.term(for: eintrag.name),
+                                      category: eintrag.kategorie, size: 40)
+                            .foregroundStyle(eintrag.erledigt ? Theme.secondaryText : Theme.accent)
+                    default:
                         CategoryGlyphView(category: eintrag.kategorie, size: 40)
                             .foregroundStyle(eintrag.erledigt ? Theme.secondaryText : Theme.accent)
                     }
@@ -507,13 +532,48 @@ private enum ShotGrid {
         Eintrag(name: "Tomaten", kategorie: "Obst & Gemüse", unterzeile: "500 g", emoji: "🍅"),
         Eintrag(name: "Zwiebeln", kategorie: "Obst & Gemüse", emoji: "🧅"),
         Eintrag(name: "Salat", kategorie: "Obst & Gemüse", emoji: "🥬"),
+        Eintrag(name: "Gurke", kategorie: "Obst & Gemüse"),
+        Eintrag(name: "Zucchini", kategorie: "Obst & Gemüse"),
+        Eintrag(name: "Paprika", kategorie: "Obst & Gemüse", unterzeile: "rot"),
     ]
 
+    /// **Die Becher.** Der härteste Fall des Satzes: Frischkäse, Quark,
+    /// Joghurt, Sahne und Margarine sind in Wirklichkeit derselbe Becher, und
+    /// im Raster stehen sie nebeneinander. Wenn das hier auseinanderfällt,
+    /// fällt es überall auseinander.
     static let molkerei: [Eintrag] = [
         Eintrag(name: "Milch", kategorie: "Molkerei & Eier", unterzeile: "2 l · Bio", emoji: "🥛", preis: 0.99),
         Eintrag(name: "Butter", kategorie: "Molkerei & Eier", emoji: "🧈", preis: 1.49),
         Eintrag(name: "Eier", kategorie: "Molkerei & Eier", unterzeile: "10er", emoji: "🥚"),
         Eintrag(name: "Joghurt", kategorie: "Molkerei & Eier", emoji: "🥣"),
+        Eintrag(name: "Quark", kategorie: "Molkerei & Eier"),
+        Eintrag(name: "Frischkäse", kategorie: "Molkerei & Eier"),
+        Eintrag(name: "Sahne", kategorie: "Molkerei & Eier"),
+        Eintrag(name: "Margarine", kategorie: "Molkerei & Eier"),
+    ]
+
+    /// **Die Fleischtheke.** Zehn Begriffe, die alle „Stück Tier" heißen.
+    static let fleisch: [Eintrag] = [
+        Eintrag(name: "Hackfleisch", kategorie: "Fleisch & Wurst", unterzeile: "500 g"),
+        Eintrag(name: "Hähnchen", kategorie: "Fleisch & Wurst"),
+        Eintrag(name: "Bratwurst", kategorie: "Fleisch & Wurst"),
+        Eintrag(name: "Salami", kategorie: "Fleisch & Wurst"),
+        Eintrag(name: "Fleisch", kategorie: "Fleisch & Wurst"),
+        Eintrag(name: "Putenschnitzel", kategorie: "Fleisch & Wurst"),
+        Eintrag(name: "Lachs", kategorie: "Fisch", unterzeile: "TK"),
+        Eintrag(name: "Tofu", kategorie: "Vorräte & Kochen"),
+    ]
+
+    /// **Die Flaschen und Dosen**, aus demselben Grund wie die Becher.
+    static let vorrat: [Eintrag] = [
+        Eintrag(name: "Olivenöl", kategorie: "Vorräte & Kochen"),
+        Eintrag(name: "Essig", kategorie: "Vorräte & Kochen"),
+        Eintrag(name: "Wein", kategorie: "Alkohol", preis: 4.99),
+        Eintrag(name: "Sprudel", kategorie: "Getränke", unterzeile: "6 × 1,5 l"),
+        Eintrag(name: "Cola", kategorie: "Getränke"),
+        Eintrag(name: "Mais", kategorie: "Vorräte & Kochen"),
+        Eintrag(name: "Nudeln", kategorie: "Vorräte & Kochen"),
+        Eintrag(name: "Reis", kategorie: "Vorräte & Kochen"),
     ]
 
     static let backwaren: [Eintrag] = [

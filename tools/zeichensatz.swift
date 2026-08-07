@@ -15,7 +15,20 @@
 //
 // Bauen und laufen lassen:
 //   swiftc -O tools/zeichensatz.swift ios/LeChariot/DesignSystem/CategoryGlyphs.swift \
+//     ios/LeChariot/DesignSystem/ItemGlyphs.swift \
 //     -o /tmp/zeichensatz && /tmp/zeichensatz /tmp/zeichensatz.png
+//
+// Zweites Argument `artikel`: derselbe Bogen für den **Artikel**-Zeichensatz,
+// achtzig Zeichnungen statt fünfzehn.
+//
+//   /tmp/zeichensatz /tmp/artikel.png artikel
+//
+// **Warum der in Seiten zerfällt und der Kategoriebogen nicht.** Achtzig
+// Zeichnungen auf einem Blatt ergeben ein Bild, das beim Ansehen kleingerechnet
+// wird — und dann ist die 13-pt-Fassung genau das, was man nicht mehr
+// beurteilen kann. Zwanzig je Seite halten das Blatt unter der Breite, ab der
+// skaliert wird; die kleinen Fassungen stehen damit so im Bild, wie sie das
+// Gerät zeigt.
 import AppKit
 import SwiftUI
 
@@ -103,12 +116,91 @@ struct Prüfbogen: View {
     }
 }
 
+// MARK: - Der Artikelbogen
+
+/// Eine Zelle: dieselbe Zeichnung dreimal — groß zum Beurteilen der Form,
+/// klein zum Beurteilen, ob sie das überhaupt überlebt.
+struct ArtikelZelle: View {
+    let begriff: String
+    let farbe: Color
+
+    var body: some View {
+        VStack(spacing: 3) {
+            ItemGlyphView(term: begriff, category: nil, size: 65.6)
+                .foregroundStyle(farbe)
+            HStack(alignment: .center, spacing: 12) {
+                ItemGlyphView(term: begriff, category: nil, size: 19.7)
+                    .foregroundStyle(farbe)
+                ItemGlyphView(term: begriff, category: nil, size: 13.1)
+                    .foregroundStyle(farbe)
+            }
+            .frame(height: 21)
+            Text(begriff).font(.system(size: 8)).foregroundStyle(farbe)
+        }
+        .frame(width: 92, height: 108)
+    }
+}
+
+struct ArtikelBogen: View {
+    let begriffe: [String]
+    let seite: Int
+    let farbe: Color
+    let flaeche: Color
+
+    private let spalten = Array(repeating: GridItem(.fixed(92), spacing: 4), count: 5)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Artikelzeichen · Seite \(seite) · 65,6 / 19,7 / 13,1 pt")
+                .font(.system(size: 9)).foregroundStyle(farbe)
+            LazyVGrid(columns: spalten, spacing: 4) {
+                ForEach(begriffe, id: \.self) { ArtikelZelle(begriff: $0, farbe: farbe) }
+            }
+        }
+        .padding(14)
+        .background(flaeche)
+    }
+}
+
 @main
 enum Werkzeug {
     @MainActor static func main() {
         let ziel = CommandLine.arguments.count > 1
             ? CommandLine.arguments[1] : "/tmp/zeichensatz.png"
-        let renderer = ImageRenderer(content: Prüfbogen())
+        let art = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "kategorien"
+
+        if art == "artikel" {
+            let stamm = ziel.hasSuffix(".png") ? String(ziel.dropLast(4)) : ziel
+            let alle = ItemGlyph.drawnTerms
+            for (nummer, teil) in stride(from: 0, to: alle.count, by: 20)
+                .map({ Array(alle[$0..<min($0 + 20, alle.count)]) }).enumerated() {
+                schreibe(ArtikelBogen(begriffe: teil, seite: nummer + 1,
+                                      farbe: gruenHell, flaeche: creme),
+                         nach: "\(stamm)-\(nummer + 1)-hell.png")
+                schreibe(ArtikelBogen(begriffe: teil, seite: nummer + 1,
+                                      farbe: gruenDunkel, flaeche: schiefer),
+                         nach: "\(stamm)-\(nummer + 1)-dunkel.png")
+            }
+            print("\(alle.count) Artikelzeichen, \(ItemGlyph.withoutDrawing.count) Ausnahmen")
+        } else if art == "masse" {
+            // Die Rahmen aller Artikelzeichen im 100er-Feld — die Zahlen, aus
+            // denen die Schwellen in `ItemGlyphTests` stammen. Geschätzte
+            // Schwellen haben beim Kategoriesatz sechs gesunde Zeichnungen
+            // durchfallen lassen.
+            let feld = CGRect(x: 0, y: 0, width: 100, height: 100)
+            for begriff in ItemGlyph.drawnTerms {
+                guard let z = ItemGlyph.drawing(for: begriff, in: feld) else { continue }
+                let r = z.stroke.boundingRect.union(z.fill.boundingRect)
+                print(String(format: "%@\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f",
+                             begriff, r.minX, r.minY, r.maxX, r.maxY, r.width, r.height))
+            }
+        } else {
+            schreibe(Prüfbogen(), nach: ziel)
+        }
+    }
+
+    @MainActor private static func schreibe(_ inhalt: some View, nach ziel: String) {
+        let renderer = ImageRenderer(content: inhalt)
         renderer.scale = 3
         guard let image = renderer.nsImage,
               let tiff = image.tiffRepresentation,
