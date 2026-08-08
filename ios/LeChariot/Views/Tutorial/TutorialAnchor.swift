@@ -8,6 +8,11 @@ import SwiftUI
 enum TutorialTarget: String, CaseIterable, Hashable {
     case inputBar
     case suggestions
+    /// Der Winkel-Knopf links im Eingabefeld. Seit dem 2026-08-08 startet die
+    /// Vorschlagsfläche beim Tippen zugeklappt (siehe `SuggestionSurface`) —
+    /// dann gibt es keine Kacheln, auf die `.suggestions` zeigen könnte, wohl
+    /// aber den Weg zu ihnen. Der neue Rundgang zeigt diesen Weg.
+    case suggestionsToggle
     /// Die Angaben-Schicht über der Eingabezeile — siehe `ItemDetailPanel`.
     case detailPanel
     case planCard

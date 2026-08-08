@@ -22,7 +22,14 @@ import Foundation
 /// 2. **Was der Nutzer zuletzt getan hat.** Eine Kachel antippen heißt „ich
 ///    benutze die Fläche", in die Zeile tippen heißt „ich weiß, was ich
 ///    brauche". Der Knopf links im Feld ist die ausdrückliche Fassung davon.
-/// 3. **Sonst die Liste selbst:** leer auf, gefüllt zu.
+/// 3. **Wer tippt, bekommt sie nicht ungefragt** (2026-08-08). Bis dahin zog
+///    die Fläche beim ersten Buchstaben von selbst auf — nicht über diese
+///    Regel, sondern an ihr vorbei: Das Wörterbuch-Raster stand
+///    bedingungslos, sobald etwas im Feld war. Damit lagen beim Tippen des
+///    zweiten Artikels **zwei** Flächen übereinander, das Raster über den
+///    Angaben des ersten, und von der Liste blieb ein Streifen. Bring! zeigt
+///    an dieser Stelle genau eine Schicht.
+/// 4. **Sonst die Liste selbst:** leer auf, gefüllt zu.
 ///
 /// Die Wahl gilt für die Sitzung und wird **nicht** gespeichert. Eine Fläche,
 /// die sich für immer merkt, dass sie einmal offen war, frisst dauerhaft ein
@@ -33,10 +40,13 @@ enum SuggestionSurface {
     ///   - choice: Was der Nutzer in dieser Sitzung zuletzt getan hat, oder
     ///     `nil`, solange er nichts getan hat.
     ///   - listIsEmpty: Ob die Einkaufsliste leer ist.
+    ///   - isTyping: Ob gerade etwas im Eingabefeld steht.
     ///   - tourIsRunning: Ob der Rundgang gerade läuft.
-    static func isExpanded(choice: Bool?, listIsEmpty: Bool, tourIsRunning: Bool) -> Bool {
+    static func isExpanded(choice: Bool?, listIsEmpty: Bool, isTyping: Bool,
+                           tourIsRunning: Bool) -> Bool {
         if tourIsRunning { return true }
         if let choice { return choice }
+        if isTyping { return false }
         return listIsEmpty
     }
 }
