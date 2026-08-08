@@ -95,7 +95,11 @@ final class AddFlowZonesJourneyTests: XCTestCase {
                       "Der zuletzt getippte Artikel steht nirgends\n" + app.debugDescription)
         let ruhe = settled(letzte)
 
-        let oben = app.navigationBars["Einkaufsliste"].frame.maxY
+        // **Nicht mehr die Titelleiste**: Die ist beim Tippen ausgeblendet
+        // (siehe `ShoppingListView`), und ein Test, der auf sie wartet, wartet
+        // auf etwas, das es in diesem Zustand nicht gibt. Oberkante ist die
+        // Statusleiste.
+        let oben: CGFloat = 44
         let unten = blockTop
         XCTAssertGreaterThanOrEqual(
             ruhe.minY, oben,
@@ -125,6 +129,57 @@ final class AddFlowZonesJourneyTests: XCTestCase {
                       "Nach dem Mitscrollen war die Tastatur weg")
     }
 
+
+    // MARK: Die Aufteilung selbst
+
+    /// **Die drei Zonen als Zahlen** — Scotts Nachrunde vom 08.08.: „Bring!
+    /// gibt dem Angaben-Panel ~45 %, du gibst ihm 25 % — genau deshalb liest
+    /// es sich nicht wie Bring!."
+    ///
+    /// Gemessen am Referenzvideo (604 × 1314): oben **20,5 %**, Mitte
+    /// **44,8 %**, Tastatur **34,7 %**. Geprüft wird mit ±5 Punkten — der Test
+    /// bewacht die Aufteilung, nicht die Dezimalstelle.
+    func testTheThreeZonesMatchTheReference() {
+        waitForList()
+        input.tapAndAwaitKeyboard(in: app)
+        app.typeText("Haferflocken\n")
+        XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10))
+
+        let hoehe = app.windows.firstMatch.frame.height
+        let tastaturOben = app.keyboards.firstMatch.frame.minY
+        let oben = blockTop / hoehe
+        let mitte = (tastaturOben - blockTop) / hoehe
+        let tastatur = (hoehe - tastaturOben) / hoehe
+
+        XCTAssertEqual(mitte, 0.448, accuracy: 0.05,
+                       "Die Angaben-Schicht trifft Bring!s Anteil nicht: \(Int(mitte * 100)) %")
+        XCTAssertEqual(oben, 0.205, accuracy: 0.05,
+                       "Die App-Ansicht trifft Bring!s Anteil nicht: \(Int(oben * 100)) %")
+        XCTAssertEqual(tastatur, 0.347, accuracy: 0.05,
+                       "Die Tastatur ist nicht mehr ein Drittel: \(Int(tastatur * 100)) %")
+    }
+
+    /// **Der Boden unter der Aufteilung, und er ist die eigentliche Grenze.**
+    ///
+    /// Ein Anteil allein sagt nichts darüber, ob oben noch etwas *steht*. Seit
+    /// #91 ist eine Kachelreihe 112 pt hoch — passt sie nicht mehr über den
+    /// Block, ist die obere Zone Zierrat, und genau so sah der erste Anlauf
+    /// dieser Runde aus (73 pt übrig, keine ganze Kachel).
+    func testAWholeTileRowStaysAboveTheBlock() {
+        waitForList()
+        input.tapAndAwaitKeyboard(in: app)
+        app.typeText("Haferflocken\n")
+        let kachel = tile("Haferflocken")
+        XCTAssertTrue(kachel.waitForExistence(timeout: 10))
+        let ruhe = settled(kachel)
+
+        XCTAssertLessThanOrEqual(ruhe.maxY, blockTop,
+                                 "Die Kachelreihe ragt unter den Block")
+        // Unter der Statusleiste, nicht dahinter. Die Titelleiste ist beim
+        // Tippen weg — deshalb ist die Statusleiste die Oberkante.
+        XCTAssertGreaterThanOrEqual(ruhe.minY, 44,
+                                    "Die Kachel steht hinter der Statusleiste")
+    }
 
     // MARK: C-3 · „Fertig" unten links
 
@@ -269,9 +324,13 @@ final class AddFlowZonesJourneyTests: XCTestCase {
     /// Die Oberkante des Blocks unten: die Angaben-Schicht, wo sie steht,
     /// sonst die Eingabezeile. Dasselbe Maß wie in
     /// `AddFlowContractJourneyTests`, nur von der anderen Seite gebraucht.
+    /// **Die Oberkante des Blocks unten — an der Kachelzeile, nicht an
+    /// „Notiz …".** Seit dem Umbau auf ein hohes Panel steht die Notiz
+    /// **unten** im Block; sie als Oberkante zu nehmen maß den Block um seine
+    /// ganzen Chipreihen zu kurz.
     private var blockTop: CGFloat {
-        let panel = app.buttons["list.detailPanel.more"]
-        return panel.exists ? panel.frame.minY - 8 : input.frame.minY
+        let kacheln = app.buttons["list.detailPanel.recent"].firstMatch
+        return kacheln.exists ? kacheln.frame.minY - 8 : input.frame.minY - 8
     }
 
     private func waitForList() {

@@ -86,7 +86,7 @@ final class ContextTipJourneyTests: XCTestCase {
                       "Das Mengen-Menü geht beim Anlegen von selbst auf")
         XCTAssertFalse(tip.exists, "Während getippt wird, spricht niemand dazwischen")
 
-        app.swipeUp()
+        app.dragTheListUp()
         XCTAssertTrue(panel.waitForNonExistence(timeout: 5))
         XCTAssertTrue(tip.waitForExistence(timeout: 10),
                       "Die ruhende Liste mit einem Treffer ist der Moment")

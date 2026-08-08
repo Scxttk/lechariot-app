@@ -31,28 +31,54 @@ struct ItemDetailPanel: View {
     /// gereicht**, nicht kopiert: Ein Chip, den man antippt, muss im selben
     /// Durchgang eingefärbt zurückkommen.
     let item: ShoppingItem
+    /// Die Reihen für **diesen** Artikel — Menge, Größe, ggf. Sorte aus dem
+    /// Wörterbuch, Art, Anlass. Siehe `ItemDetailVocabulary.groups(for:)`.
+    let reihen: [ItemDetailVocabulary.Group]
     /// Die zuletzt angelegten Artikel, ältester zuerst.
     let recent: [ShoppingItem]
     let onFocus: (ShoppingItem) -> Void
     let onToggleChip: (String) -> Void
     let onOpenFull: () -> Void
 
-    /// Die Höhe des Wortschatz-Feldes. Fest, nicht mitwachsend: Ob ein Artikel
-    /// zwei Chips gewählt hat oder keinen, darf die Eingabezeile darunter nicht
-    /// bewegen — dieselbe Regel wie beim Wörterbuch-Streifen.
+    /// Die Höhe **einer** Reihe: Überschrift, kleiner Abstand, Chipreihe.
+    /// Skaliert mit der Schrift, aber immer als **ganze** Reihe.
+    @ScaledMetric(relativeTo: .subheadline) private var rowHeight: CGFloat = 60
+
+    /// Wie viele Reihen gleichzeitig dastehen.
     ///
-    /// **Genau eine Gruppe hoch** — Überschrift, Abstand, Chipreihe. Seit der
-    /// Wortschatz waagerecht liegt (siehe `vocabulary`) gibt es nichts mehr
-    /// abzuschneiden; 128 pt schnitten die zweite Reihe mittendurch.
-    @ScaledMetric(relativeTo: .subheadline) private var vocabularyHeight: CGFloat = 68
+    /// **Vier, und das ist die Zahl, um die es Scott ging** (08.08.): Bring!
+    /// gibt den Angaben rund 45 % des Bildschirms, wir gaben ihnen 25 % — und
+    /// genau daran las sich das Ergebnis nicht wie Bring!. Vier Reihen plus
+    /// Kachelzeile, Notizzeile und Eingabezeile ergeben gemessen 47 %.
+    private let visibleRows = 4
+
+    /// Die Höhe des Wortschatz-Feldes. Fest, nicht mitwachsend: Ob ein Artikel
+    /// zwei Chips gewählt hat oder keinen und ob das Wörterbuch eine Sorte
+    /// kennt oder nicht, darf die Eingabezeile darunter nicht bewegen —
+    /// dieselbe Regel wie beim Wörterbuch-Streifen.
+    ///
+    /// **Immer ein ganzes Vielfaches einer Reihe**, und darin steckt die
+    /// Lehre vom 03.08.: Damals stand hier eine senkrecht scrollende Spalte
+    /// auf fester Höhe, und der Schnitt landete **mitten in einer Chipreihe**
+    /// — „klein" lag halb über und halb unter der Kante der Eingabezeile. Der
+    /// Ausweg war seinerzeit, alles in **eine** waagerechte Reihe zu legen;
+    /// mit einem hohen Panel ist diese Not vorbei, aber die Lehre nicht: Die
+    /// Höhe ist heute ein Vielfaches der Reihenhöhe, und gescrollt wird
+    /// **reihenweise** (`.viewAligned`). Angeschnitten werden kann damit
+    /// nichts, in keiner Scroll-Lage und bei keinem Schriftgrad.
+    private var vocabularyHeight: CGFloat {
+        CGFloat(visibleRows) * rowHeight + CGFloat(visibleRows - 1) * Theme.Spacing.xs
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+        // Enge Abstände zwischen den drei Teilen, weite innerhalb: Was hier
+        // gespart wird, ist die Höhe, die oben die Liste bekommt.
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             header
             vocabulary
         }
         .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.top, Theme.Spacing.sm)
+        .padding(.top, Theme.Spacing.xs)
         .readableWidth()
         // **Kein Bezeichner auf dem Behälter.** Er erbt sich auf jedes Kind
         // und überschreibt dessen eigenen — am Simulator gemessen: „Notiz …"
@@ -70,6 +96,14 @@ struct ItemDetailPanel: View {
 
     // MARK: Kachelzeile
 
+    /// **„Notiz …" bleibt neben der Kachelzeile, und das ist gemessen.**
+    ///
+    /// Bring! führt sie als eigene Zeile unten im Panel, und so stand sie hier
+    /// auch einen Nachmittag lang. Der Preis dafür sind 48 pt, und die fehlen
+    /// genau dort, wo es an diesem Tag um jeden Punkt ging: Über dem Block
+    /// muss eine **ganze Kachelreihe** stehen bleiben (112 pt seit den drei
+    /// Spalten aus #91). Mit der Notizzeile blieben 73 pt — also keine
+    /// Kachel; ohne sie 121 pt — also eine ganze.
     private var header: some View {
         HStack(spacing: Theme.Spacing.sm) {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -82,7 +116,7 @@ struct ItemDetailPanel: View {
             // Vorrang, sonst nimmt die gierige Scroll-Ansicht daneben die ganze
             // Breite und drückt den Knopf auf null — am Simulator gemessen:
             // Die Kachelzeile stand, der Knopf war im Baum nicht auffindbar.
-            moreButton
+            noteRow
                 .fixedSize()
                 .layoutPriority(1)
         }
@@ -115,17 +149,20 @@ struct ItemDetailPanel: View {
     }
 
     /// Der Weg in die volle Fassung. **Benannt statt nur ein Zeichen:** Hier
-    /// liegt der Freitext, und ein Punkt-Punkt-Punkt-Knopf sagt niemandem, dass
-    /// man dahinter etwas schreiben kann.
-    private var moreButton: some View {
+    /// liegt der Freitext, und ein Punkt-Punkt-Punkt-Knopf sagt niemandem,
+    /// dass man dahinter etwas schreiben kann.
+    private var noteRow: some View {
         Button(action: onOpenFull) {
-            Text("Notiz …")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Theme.accent)
-                .padding(.horizontal, Theme.Spacing.md)
-                .frame(height: 32)
-                .background(Theme.surface, in: Capsule())
-                .overlay(Capsule().strokeBorder(Theme.stroke))
+            HStack(spacing: Theme.Spacing.xs) {
+                Image(systemName: "square.and.pencil")
+                Text("Notiz …")
+            }
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(Theme.accent)
+            .padding(.horizontal, Theme.Spacing.md)
+            .frame(height: 32)
+            .background(Theme.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(Theme.stroke))
         }
         .buttonStyle(TactileButtonStyle())
         .accessibilityLabel("Notiz und alle Angaben zu \(item.text)")
@@ -134,44 +171,62 @@ struct ItemDetailPanel: View {
 
     // MARK: Wortschatz
 
-    /// **Die Gruppen liegen nebeneinander, nicht übereinander** — und das ist
-    /// der Fix für Scotts Punkt 8, nicht eine kleinere Zahl.
+    /// **Die Reihen liegen wieder übereinander — und diesmal trägt die Höhe
+    /// sie** (2026-08-08, Scotts Nachrunde zu Punkt C).
     ///
-    /// Vorher: eine senkrecht scrollende Spalte von Gruppen, auf feste Höhe
-    /// geschnitten. Egal welche Höhe — der Schnitt landete **mitten in einer
-    /// Chipreihe**, weil eine Gruppe 65 pt hoch ist und der Rest des Panels
-    /// nicht. Am 03.08. gemessen: „klein" lag halb über und halb unter der
-    /// Kante der Eingabezeile. Ein halber Knopf ist keine Andeutung, dass es
-    /// weitergeht; er sieht aus wie ein Fehler.
+    /// Am 03.08. lagen sie schon einmal so, und es ging schief: eine senkrecht
+    /// scrollende Spalte in einem **niedrigen** Panel, auf feste Höhe
+    /// geschnitten. Egal welche Höhe — der Schnitt landete mitten in einer
+    /// Chipreihe, weil eine Gruppe 65 pt hoch ist und der Rest des Panels
+    /// nicht; „klein" lag halb über und halb unter der Kante der Eingabezeile.
+    /// Der Ausweg war, alles in **eine** waagerechte Reihe zu legen.
     ///
-    /// Waagerecht ist die Höhe **genau eine Gruppe**, und es gibt nichts mehr
-    /// abzuschneiden. Erreichbar bleibt alles: Was nicht dasteht, liegt einen
-    /// Wisch weiter — dieselbe Geste, mit der schon die Chips einer Gruppe
-    /// weitergehen. Der ganze Wortschatz mit Überschriften und Freitext liegt
+    /// **Was sich geändert hat, ist die Höhe, nicht die Meinung.** Bring! gibt
+    /// den Angaben rund 45 % des Bildschirms; wir gaben ihnen 25 %, und genau
+    /// daran las sich der Bildschirm nicht wie Bring!. Mit vier Reihen ist der
+    /// Zwang weg, alles in eine Zeile zu pressen — die Lehre von damals bleibt
+    /// trotzdem stehen und ist jetzt **eingebaut** statt umgangen:
+    ///
+    /// 1. Die Höhe ist ein **ganzes Vielfaches** der Reihenhöhe.
+    /// 2. Eine Reihe ist selbst unteilbar — Überschrift plus **eine**
+    ///    Chipzeile, die zur Seite scrollt, statt umzubrechen. Ein Umbruch
+    ///    machte die Reihe je Artikel verschieden hoch, und dann wanderte die
+    ///    Eingabezeile beim Weitertippen.
+    /// 3. Gescrollt wird **reihenweise** (`.viewAligned`), damit auch in
+    ///    jeder Zwischenlage eine ganze Reihe an der Kante steht.
+    ///
+    /// Der ganze Wortschatz mit Umbruch, Überschriften und Freitext liegt
     /// weiterhin hinter „Notiz …".
     private var vocabulary: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: Theme.Spacing.lg) {
-                ForEach(ItemDetailVocabulary.groups) { group in
-                    groupColumn(group)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                ForEach(reihen) { group in
+                    groupRow(group)
                 }
             }
+            .scrollTargetLayout()
         }
         .frame(height: vocabularyHeight)
+        .scrollTargetBehavior(.viewAligned)
         .scrollBounceBehavior(.basedOnSize)
     }
 
-    private func groupColumn(_ group: ItemDetailVocabulary.Group) -> some View {
+    private func groupRow(_ group: ItemDetailVocabulary.Group) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             Text(group.title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.secondaryText)
-            HStack(spacing: Theme.Spacing.sm) {
-                ForEach(group.chips, id: \.self) { chip in
-                    chipButton(chip)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Spacing.sm) {
+                    ForEach(group.chips, id: \.self) { chip in
+                        chipButton(chip)
+                    }
                 }
             }
+            .scrollBounceBehavior(.basedOnSize)
         }
+        .frame(height: rowHeight, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func chipButton(_ word: String) -> some View {
@@ -209,6 +264,7 @@ struct ItemDetailPanel: View {
         Spacer()
         ItemDetailPanel(
             item: milch,
+            reihen: ItemDetailVocabulary.groups(for: milch.text),
             recent: [ShoppingItem(text: "Butter"), ShoppingItem(text: "Kaffee"), milch],
             onFocus: { _ in },
             onToggleChip: { _ in },
