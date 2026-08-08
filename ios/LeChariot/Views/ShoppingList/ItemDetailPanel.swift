@@ -14,9 +14,12 @@ import SwiftUI
 ///
 /// 1. Sie liegt zwischen Liste und Eingabezeile, im selben Block wie die
 ///    Vorschläge. Kein Modal, keine sichere Fläche, kein Fokus.
-/// 2. Sie hat **keinen „Fertig"-Knopf**, weil es nichts zu bestätigen gibt:
-///    Jeder Chip schreibt sofort durch. Ein ignoriertes Panel speichert nichts
-///    und richtet nichts an — es wird beim nächsten Artikel schlicht ersetzt.
+/// 2. Sie hat **keinen eigenen Knopf zum Weglegen**, weil es nichts zu
+///    bestätigen gibt: Jeder Chip schreibt sofort durch. Ein ignoriertes Panel
+///    speichert nichts und richtet nichts an — es wird beim nächsten Artikel
+///    schlicht ersetzt. Bis zum 08.08. saß hier ein ✗ oben rechts; der Ausgang
+///    liegt seitdem als „Fertig" unten links an der Tastatur, wo der Daumen
+///    ohnehin ist (`ShoppingListView.doneButton`, Scotts Punkt C-3).
 /// 3. Die Kachelzeile oben zeigt, was gerade entstanden ist; der aktive Artikel
 ///    hervorgehoben, die vorigen ruhig. Man sieht seinen eigenen Fluss, ohne die
 ///    Liste zu verlassen.
@@ -33,9 +36,6 @@ struct ItemDetailPanel: View {
     let onFocus: (ShoppingItem) -> Void
     let onToggleChip: (String) -> Void
     let onOpenFull: () -> Void
-    /// Die Schicht weglegen — **ohne Tastatur und ohne etwas zu bestätigen.**
-    /// Siehe `dismissButton`.
-    let onDismiss: () -> Void
 
     /// Die Höhe des Wortschatz-Feldes. Fest, nicht mitwachsend: Ob ein Artikel
     /// zwei Chips gewählt hat oder keinen, darf die Eingabezeile darunter nicht
@@ -85,36 +85,7 @@ struct ItemDetailPanel: View {
             moreButton
                 .fixedSize()
                 .layoutPriority(1)
-            dismissButton
-                .fixedSize()
-                .layoutPriority(1)
         }
-    }
-
-    /// **Der Weg hinaus — und er ist kein „Fertig".**
-    ///
-    /// Scott, 03.08.: „Mengen-Menü nicht verlassbar, wenn der Eintrag aus
-    /// ‚Häufig gekauft' kam." Am Simulator nachgestellt: Auf diesem Weg steht
-    /// keine Tastatur, und die Schicht hing damit an einem Ausgang, den es
-    /// dort nicht gab — auch Scrollen half nicht, der Block blieb bei 482 pt
-    /// von 874.
-    ///
-    /// Der Unterschied zum alten Blatt-„Fertig" ist nicht die Größe des
-    /// Knopfes, sondern was er tut: Er **bestätigt nichts**. Jeder Chip ist
-    /// längst durchgeschrieben; hier wird nur die Schicht weggelegt. Deshalb
-    /// ein Zeichen und kein Wort — und ein Name für alle, die keins sehen.
-    private var dismissButton: some View {
-        Button(action: onDismiss) {
-            Image(systemName: "xmark")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(Theme.secondaryText)
-                .frame(width: 32, height: 32)
-                .background(Theme.surface, in: Circle())
-                .overlay(Circle().strokeBorder(Theme.stroke))
-        }
-        .buttonStyle(TactileButtonStyle())
-        .accessibilityLabel("Angaben schließen")
-        .accessibilityIdentifier("list.detailPanel.dismiss")
     }
 
     private func recentChip(_ entry: ShoppingItem) -> some View {
@@ -241,8 +212,7 @@ struct ItemDetailPanel: View {
             recent: [ShoppingItem(text: "Butter"), ShoppingItem(text: "Kaffee"), milch],
             onFocus: { _ in },
             onToggleChip: { _ in },
-            onOpenFull: {},
-            onDismiss: {}
+            onOpenFull: {}
         )
     }
     .background(.bar)

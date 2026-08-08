@@ -30,7 +30,11 @@ final class AddFlowContractJourneyTests: XCTestCase {
 
     private var input: XCUIElement { app.textFields["list.input"] }
     private var panel: XCUIElement { app.buttons["list.detailPanel.more"] }
-    private var dismiss: XCUIElement { app.buttons["list.detailPanel.dismiss"] }
+    /// **Der Ausgang liegt seit dem 08.08. unten links** (Punkt C-3): „Fertig"
+    /// an der Eingabezeile statt ✗ oben in der Schicht. Die Zusage dieser Datei
+    /// ist unverändert — auf jedem Weg gibt es einen Weg hinaus, auch ohne
+    /// Tastatur; nur der Knopf ist ein anderer.
+    private var dismiss: XCUIElement { app.buttons["list.input.done"] }
 
     /// Die Oberkante des Blocks unten — der Vorschlagsfläche, wo sie steht,
     /// sonst der Angaben-Schicht.
@@ -146,6 +150,10 @@ final class AddFlowContractJourneyTests: XCTestCase {
     func testADictionaryChipFollowsTheSameContract() {
         startTyping()
         app.typeText("Milc")
+        // Seit dem 08.08. startet die Fläche beim Tippen zugeklappt (Punkt
+        // C-1) — das Wörterbuch-Raster liegt hinter dem Winkel-Knopf. Der
+        // Vertrag dieser Datei gilt für den Weg dahinter unverändert.
+        app.buttons["list.suggestions.toggle"].tap()
         let kachel = app.buttons["Milch hinzufügen"]
         XCTAssertTrue(kachel.waitForExistence(timeout: 10),
                       "Das Wörterbuch schlägt zu „Milc“ nichts vor")
