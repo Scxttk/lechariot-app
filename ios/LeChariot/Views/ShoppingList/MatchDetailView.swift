@@ -415,9 +415,10 @@ struct PinnedBadge: View {
         .padding(.vertical, 2)
         .background(Theme.accent.opacity(0.15), in: Capsule())
         .foregroundStyle(Theme.accent)
-        // Dieselbe Regel wie bei `PinnedChip` — siehe dort. Das Abzeichen sitzt
-        // hier in einer breiteren Zeile, gemeldet wurde also der andere; ein
-        // Abzeichen, das nur an manchen Stellen nicht umbricht, ist keins.
+        // **„Dei ne Wa hl"**, gemeldet am 01.08.: In einer engen Spalte bekam
+        // das Abzeichen den Rest der Breite und brach mitten im Wort um. Beides
+        // zusammen hält es in einer Zeile — `lineLimit` allein ließe es noch
+        // auf „Deine W…" kürzen. `BadgeLayoutTests` misst das.
         .lineLimit(1)
         .fixedSize()
     }

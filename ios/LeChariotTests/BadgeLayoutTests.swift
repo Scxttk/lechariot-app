@@ -17,49 +17,54 @@ import XCTest
 /// Der Vergleich ist **relativ**: dieselbe Ansicht einmal mit reichlich und
 /// einmal mit knappem Platz. Eine absolute Höhe in Punkten wäre eine Zahl, die
 /// mit der nächsten Schriftgröße falsch wird, ohne dass etwas kaputt ist.
+///
+/// **Gemessen wird seit dem Raster nur noch `PinnedBadge`.** Die Liste trägt
+/// seit dem 07.08. gar kein Textabzeichen mehr — die Kachel setzt eine bloße
+/// Reißzwecke an die Preisfahne, und die kann nicht umbrechen. Mit der
+/// Zeilenansicht ist am 08.08. auch `PinnedChip` gegangen, der hier bis dahin
+/// geprüft wurde. Das Abzeichen mit Wortlaut steht jetzt im Angebotsdetail
+/// (`MatchDetailView`), also wird dort gemessen; der Fall ist derselbe
+/// geblieben: enge Spalte, Nachbartext daneben.
 @MainActor
 final class BadgeLayoutTests: XCTestCase {
-    /// Enger als jede Spalte, in der das Abzeichen je stehen kann — der Chip
-    /// selbst ist rund 80 pt breit.
+    /// Enger als jede Spalte, in der das Abzeichen je stehen kann — es selbst
+    /// ist rund 80 pt breit.
     private let squeezed: CGFloat = 44
     private let roomy: CGFloat = 400
-
-    func testThePinnedChipNeverWrapsMidWord() {
-        assertDoesNotGrowWhenSqueezed(PinnedChip(), name: "PinnedChip")
-    }
 
     func testThePinnedBadgeInTheDetailNeverWrapsMidWord() {
         assertDoesNotGrowWhenSqueezed(PinnedBadge(), name: "PinnedBadge")
     }
 
-    /// Die Zeile, in der der Chip auf dem Gerät wirklich steht: Abzeichen und
-    /// Marktname nebeneinander in einer schmalen Spalte — der Fall aus der
-    /// Meldung, nicht nur das Bauteil für sich.
+    /// Die Zeile, in der das Abzeichen auf dem Gerät wirklich steht: Abzeichen
+    /// und Marktname nebeneinander in einer schmalen Spalte — der Fall aus der
+    /// Meldung, nicht nur das Bauteil für sich. Bei einer Heftung ist der
+    /// Nachbar genau der Marktname (`MatchDetailView`).
     ///
     /// Der Marktname ist hier einzeilig festgehalten. Ohne das misst der Test
     /// **seinen** Umbruch mit (bei 110 pt wurde die Zeile 144 pt hoch, und
-    /// keine 8 pt davon gehörten dem Chip) — eine Zahl, die nichts über das
-    /// Abzeichen aussagt und beim ersten langen Kettennamen rot wird.
-    func testTheChipKeepsItsLineNextToTheMarketName() {
+    /// keine 8 pt davon gehörten dem Abzeichen) — eine Zahl, die nichts über
+    /// das Abzeichen aussagt und beim ersten langen Kettennamen rot wird.
+    func testTheBadgeKeepsItsLineNextToTheMarketName() {
         let row = HStack(spacing: 4) {
-            PinnedChip()
+            PinnedBadge()
             Text("Netto Marken-Discount")
-                .font(.caption2)
+                .font(.caption)
                 .lineLimit(1)
             Spacer(minLength: 0)
         }
-        assertDoesNotGrowWhenSqueezed(row, name: "Chip neben Marktname", squeezedWidth: 110)
+        assertDoesNotGrowWhenSqueezed(row, name: "Abzeichen neben Marktname", squeezedWidth: 110)
     }
 
-    /// Und die andere Hälfte derselben Aussage: Der Chip lässt sich nicht
+    /// Und die andere Hälfte derselben Aussage: Das Abzeichen lässt sich nicht
     /// schmaler drücken, als sein Text braucht. Wäre nur die Höhe geprüft,
-    /// ginge ein auf „Deine W…" gekürzter Chip als grün durch.
-    func testTheChipKeepsItsFullWidthWhenSqueezed() {
-        let wide = size(of: PinnedChip(), proposing: roomy)
-        let narrow = size(of: PinnedChip(), proposing: squeezed)
+    /// ginge ein auf „Deine W…" gekürztes Abzeichen als grün durch.
+    func testTheBadgeKeepsItsFullWidthWhenSqueezed() {
+        let wide = size(of: PinnedBadge(), proposing: roomy)
+        let narrow = size(of: PinnedBadge(), proposing: squeezed)
         XCTAssertEqual(
             narrow.width, wide.width, accuracy: 0.5,
-            "der Chip gibt bei \(squeezed) pt Angebot Breite ab (\(narrow.width) statt \(wide.width)) — dann kürzt er den Text"
+            "das Abzeichen gibt bei \(squeezed) pt Angebot Breite ab (\(narrow.width) statt \(wide.width)) — dann kürzt es den Text"
         )
     }
 

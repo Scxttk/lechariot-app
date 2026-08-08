@@ -443,20 +443,27 @@ enum ItemGlyph {
             p.line([p.at(0.54, 0.40), p.at(0.46, 0.60)])
         },
 
-        // Reisschale: Schale, Fuß, vier **kleine schräge** Körner.
+        // Reisschale: Schale, Fuß, gehäufter Reis, zwei Stäbchen.
         //
-        // Größer und waagerecht gelegt waren die Körner Früchte, und die
-        // Schale war damit die Obstschale von nebenan. Ein Reiskorn ist klein
-        // und liegt schräg; genau daran hängt hier der Unterschied.
+        // **Einzelne Körner sind zweimal gescheitert, und beide Male an
+        // derselben Stelle: an dem, was über dem Schalenrand steht.** Groß und
+        // waagerecht waren sie Früchte, also die Obstschale von nebenan; klein
+        // und schräg auf einem Häufchen wurden sie zu Zehen und die Schale zum
+        // Napf. Der Prüfbogen zeigte beides nebeneinander.
+        //
+        // Ein Haufen ist keine Zählung von Körnern, und bei 13 pt ist er
+        // ohnehin das Einzige, was von ihnen übrig bliebe. Was die Schale
+        // festlegt, sind die **Stäbchen** — sie sind im ganzen Satz einmalig,
+        // und sie überleben als zwei Striche bis in die kleinste Fassung.
         "reis": { p in
-            p.begin(p.at(0.12, 0.54))
-            p.bow(p.at(0.88, 0.54), p.at(0.16, 0.92), p.at(0.84, 0.92))
+            p.begin(p.at(0.12, 0.52))
+            p.bow(p.at(0.88, 0.52), p.at(0.16, 0.92), p.at(0.84, 0.92))
             p.close()
             p.line([p.at(0.36, 0.94), p.at(0.64, 0.94)])
-            for (cx, cy, neigung) in [(0.28, 0.44, -32.0), (0.50, 0.32, 24.0),
-                                      (0.72, 0.44, -22.0)] {
-                p.capsule(CGFloat(cx), CGFloat(cy), 0.15, 0.07, tilt: neigung)
-            }
+            p.begin(p.at(0.22, 0.52))
+            p.bow(p.at(0.78, 0.52), p.at(0.30, 0.24), p.at(0.70, 0.24))
+            p.line([p.at(0.60, 0.06), p.at(0.42, 0.40)])
+            p.line([p.at(0.74, 0.12), p.at(0.54, 0.44)])
         },
 
         // Mehltüte: Papiersack mit umgeschlagener Kante und einer Ähre.
@@ -590,19 +597,19 @@ enum ItemGlyph {
             p.line([p.at(0.18, 0.30), p.at(0.82, 0.30)])
         },
 
-        // Kaffee: zwei Bohnen mit Naht. Eine Tasse hätte hier neben Tee und
-        // Kakao gestanden und wäre die dritte gewesen.
+        // Kaffee: **eine** Bohne, aufrecht, mit geschwungener Naht. Eine Tasse
+        // hätte hier neben Tee und Kakao gestanden und wäre die dritte gewesen.
         "kaffee": { p in
-            // **Ovale, keine Linsen.** Spitz zulaufend waren die beiden Bohnen
-            // auf dem Prüfbogen ein Paar **Augen**. Eine Kaffeebohne ist rund
-            // und hat eine geschwungene Naht — die Naht macht sie, nicht die
-            // Form.
-            p.stroke.addEllipse(in: p.box(0.34, 0.32, 0.42, 0.50))
-            p.begin(p.at(0.34, 0.08))
-            p.bow(p.at(0.34, 0.56), p.at(0.22, 0.20), p.at(0.46, 0.44))
-            p.stroke.addEllipse(in: p.box(0.66, 0.70, 0.38, 0.44))
-            p.begin(p.at(0.66, 0.49))
-            p.bow(p.at(0.66, 0.91), p.at(0.55, 0.60), p.at(0.77, 0.80))
+            // **Eine statt zwei — und der Grund steht zwei Zeilen weiter unten
+            // im selben Satz.** Zwei versetzte Ovale mit einem Strich darin
+            // sind `nüsse`; auf dem Prüfbogen nebeneinander waren die beiden
+            // Zeichen kaum zu unterscheiden, bei 13 pt gar nicht. Eine einzelne
+            // aufrechte Bohne kollidiert mit nichts, und die Naht hat in der
+            // vollen Kachel Platz für ihren Schwung — sie macht die Bohne, nicht
+            // die Form.
+            p.stroke.addEllipse(in: p.box(0.50, 0.50, 0.46, 0.72))
+            p.begin(p.at(0.50, 0.16))
+            p.bow(p.at(0.50, 0.84), p.at(0.30, 0.36), p.at(0.70, 0.64))
         },
 
         // Tee: die **Kanne** — Körper, Tülle links, Henkel rechts, Deckelknauf.
@@ -628,18 +635,30 @@ enum ItemGlyph {
             p.bow(p.at(0.72, 0.76), p.at(0.94, 0.52), p.at(0.94, 0.76))
         },
 
-        // Wasser: ein Tropfen. Die Flasche wäre die vierte gewesen, und der
-        // Tropfen ist das einzige Zeichen des Satzes, das bei 13 pt noch
-        // genauso aussieht wie bei 66.
+        // Wasser: Glas mit Wasserspiegel und zwei Blasen.
+        //
+        // **Der Begriff heißt `wasser`, `mineralwasser` und `sprudel`** — und
+        // der Tropfen, der hier vorher stand, sagte nur das erste. Er war
+        // sauber gezeichnet und bei 13 pt tadellos; er sagte bloß nichts über
+        // das, was jemand tatsächlich in den Wagen legt.
+        //
+        // **Die Blasen sind gefüllt, nicht gestrichen** — genau wie beim Bier,
+        // und aus demselben Grund: Ein Ring von 0,05 Radius ist bei 13 pt ein
+        // grauer Fleck, ein Punkt bleibt ein Punkt. Die Welle statt eines
+        // geraden Spiegels ist der zweite Unterschied zum Saftglas, das gerade
+        // gefüllt ist und einen Halm hat; das Bierglas hat Henkel und Schaum.
+        // Eine Flasche wäre hier die **sechste** gewesen (Wein, Spirituosen,
+        // Öl, Essig, Milch) und bei 13 pt keine davon zu unterscheiden.
         "wasser": { p in
-            // **Unten rund, nicht spitz.** Zwei Bögen von Spitze zu Spitze
-            // ergaben eine Linse und damit das Blatt, das die Zitrone schon
-            // einmal war. Ein Tropfen hat genau **eine** Spitze.
-            p.begin(p.at(0.50, 0.06))
-            p.bow(p.at(0.88, 0.60), p.at(0.62, 0.22), p.at(0.88, 0.40))
-            p.bow(p.at(0.12, 0.60), p.at(0.88, 0.88), p.at(0.12, 0.88))
-            p.bow(p.at(0.50, 0.06), p.at(0.12, 0.40), p.at(0.38, 0.22))
+            p.begin(p.at(0.28, 0.16))
+            p.to(p.at(0.36, 0.92))
+            p.to(p.at(0.64, 0.92))
+            p.to(p.at(0.72, 0.16))
             p.close()
+            p.begin(p.at(0.303, 0.44))
+            p.bow(p.at(0.697, 0.44), p.at(0.43, 0.56), p.at(0.57, 0.32))
+            p.dot(p.at(0.44, 0.62), 0.055)
+            p.dot(p.at(0.57, 0.74), 0.045)
         },
 
         // Saft: Glas mit Strohhalm und einer Scheibe am Rand.
