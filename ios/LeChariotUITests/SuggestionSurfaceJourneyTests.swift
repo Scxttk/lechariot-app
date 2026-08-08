@@ -106,7 +106,7 @@ final class SuggestionSurfaceJourneyTests: XCTestCase {
         // einem Knopf. Ein Wisch ueber die Liste tut das.
         let panel = app.buttons["list.detailPanel.more"]
         guard panel.waitForExistence(timeout: 3) else { return }
-        app.swipeUp()
+        app.dragTheListUp()
         _ = panel.waitForNonExistence(timeout: 3)
     }
 

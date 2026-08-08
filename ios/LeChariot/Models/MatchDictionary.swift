@@ -32,6 +32,9 @@ enum MatchDictionary {
     private static let byPhrase: [String: Set<String>] = loaded.byPhrase
     /// Begriff → Zahl seiner Synonyme, siehe `synonymCount(for:)`.
     private static let counts: [String: Int] = loaded.counts
+    /// Begriff → seine Synonyme **in der Schreibweise der Datei**, siehe
+    /// `words(of:)`.
+    private static let byTerm: [String: [String]] = loaded.byTerm
 
     /// Die Begriffe, die dieses einzelne Suchwort meinen kann. Leer, wenn das
     /// Wörterbuch es nicht kennt — dann bleibt nur der Titeltreffer.
@@ -46,6 +49,22 @@ enum MatchDictionary {
 
     /// Wie viele Suchwörter das Wörterbuch kennt — nur für Tests und Diagnose.
     static var wordCount: Int { byWord.count }
+
+    /// **Die Synonyme eines Begriffs — die Rückrichtung von
+    /// `terms(forToken:)`.**
+    ///
+    /// Gebraucht für die Sorten-Zeile im Angaben-Panel: Was `tomaten` an
+    /// Sorten kennt, steht längst hier (Rispen-, Cherry-, Strauch-,
+    /// Roma-, Cocktailtomaten), und was `milch` kennt ebenso (Frisch-, Voll-,
+    /// Buttermilch, Mandel-, Hafer-, Sojadrink). **Ein zweiter Katalog wäre
+    /// die dritte Stelle, an der Warenkunde gepflegt wird** — und die erste,
+    /// die auseinanderläuft.
+    ///
+    /// Zurück kommt die **Schreibweise der Datei**, nicht die normalisierte
+    /// Form: „Brötchen" soll auf einem Chip nicht „Broetchen" heißen. Doppelt
+    /// geschriebene Synonyme („broetchen"/„brötchen") fallen über ihre
+    /// normalisierte Form zusammen; behalten wird die erste Schreibweise.
+    static func words(of term: String) -> [String] { byTerm[term] ?? [] }
 
     /// Wie viele Synonyme dieser Begriff führt — **das Maß dafür, wie grob er
     /// ist.**
@@ -89,7 +108,8 @@ enum MatchDictionary {
     private final class BundleToken {}
 
     private static let loaded: (
-        byWord: [String: Set<String>], byPhrase: [String: Set<String>], counts: [String: Int]
+        byWord: [String: Set<String>], byPhrase: [String: Set<String>], counts: [String: Int],
+        byTerm: [String: [String]]
     ) = {
         // Im Test-Bundle liegt die Datei nicht in `Bundle.main`, in der App
         // schon — beide Wege, damit dieselbe Klasse in beiden Fällen lädt.
@@ -103,12 +123,14 @@ enum MatchDictionary {
             // Ohne Wörterbuch verhält sich die Suche wie vorher: Titeltreffer
             // und Tag-Gleichheit. Eine fehlende Datei darf die Suche nicht
             // abschalten.
-            return ([:], [:], [:])
+            return ([:], [:], [:], [:])
         }
 
         var byWord: [String: Set<String>] = [:]
         var byPhrase: [String: Set<String>] = [:]
         var counts: [String: Int] = [:]
+        var byTerm: [String: [String]] = [:]
+        var seenPerTerm: [String: Set<String>] = [:]
 
         for (term, entry) in file.begriffe {
             // Gesperrte Wörter dieses Begriffs: „milchreis" darf nie auf
@@ -126,9 +148,14 @@ enum MatchDictionary {
                     byWord[key, default: []].insert(term)
                 }
                 counts[term, default: 0] += 1
+                // Für die Sorten-Zeile: die Schreibweise der Datei, einmal je
+                // normalisierter Form.
+                if seenPerTerm[term, default: []].insert(key).inserted {
+                    byTerm[term, default: []].append(raw)
+                }
             }
         }
-        return (byWord, byPhrase, counts)
+        return (byWord, byPhrase, counts, byTerm)
     }()
 
     /// Dieselbe Normalisierung wie in `OfferMatcher`, damit Suchwort und

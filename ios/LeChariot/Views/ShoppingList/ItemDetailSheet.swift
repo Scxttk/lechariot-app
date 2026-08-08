@@ -31,7 +31,7 @@ struct ItemDetailSheet: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
 
-                    ForEach(ItemDetailVocabulary.groups) { group in
+                    ForEach(reihen) { group in
                         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                             Text(group.title)
                                 .font(.caption.weight(.semibold))
@@ -113,8 +113,15 @@ struct ItemDetailSheet: View {
         .presentationDragIndicator(.visible)
     }
 
+    /// Dieselben Reihen wie im Panel — sonst fiele eine gewählte Sorte hier
+    /// unter „Sonst notiert", obwohl sie eine Zeile weiter oben ihre eigene
+    /// Reihe hat.
+    private var reihen: [ItemDetailVocabulary.Group] {
+        ItemDetailVocabulary.groups(for: item.text)
+    }
+
     private var strangers: [String] {
-        chosen.filter { ItemDetailVocabulary.group(of: $0) == nil }
+        chosen.filter { ItemDetailVocabulary.group(of: $0, in: reihen) == nil }
     }
 
     private func chips(of group: ItemDetailVocabulary.Group) -> some View {
@@ -131,7 +138,7 @@ struct ItemDetailSheet: View {
                 let isOn = chosen.contains(word)
                 Button {
                     withAnimation(.snappy) {
-                        chosen = ItemDetailVocabulary.toggling(word, in: chosen)
+                        chosen = ItemDetailVocabulary.toggling(word, in: chosen, reihen: reihen)
                     }
                 } label: {
                     Text(word)

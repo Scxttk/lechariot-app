@@ -259,4 +259,78 @@ final class ItemDetailTests: XCTestCase {
         XCTAssertNil(items[0].note)
         XCTAssertEqual(items[0].detailLine, "250 g")
     }
+
+    // MARK: Sorten aus dem Wörterbuch (2026-08-08)
+
+    /// **Bring!s Sortenreihe, aus Daten, die wir schon pflegen.**
+    ///
+    /// Bring! zeigt bei Tomaten Cherry/Rispen/Strauch. Unser
+    /// Matching-Wörterbuch führt genau diese Wörter als Synonyme von
+    /// `tomaten` — ein zweiter Katalog wäre die dritte Stelle, an der
+    /// Warenkunde gepflegt wird.
+    func testTheKindRowComesFromTheDictionary() {
+        let sorte = ItemDetailVocabulary.kinds(for: "Tomaten")
+        let chips = sorte?.chips ?? []
+        XCTAssertFalse(chips.isEmpty, "Zu Tomaten kennt das Wörterbuch keine Sorte")
+        for wort in ["Cherrytomaten", "Rispentomaten", "Strauchtomaten"] {
+            XCTAssertTrue(chips.contains(wort), "\(wort) fehlt in \(chips)")
+        }
+    }
+
+    /// **Der Artikel selbst ist keine Sorte.** „Tomate" neben „Tomaten" wäre
+    /// derselbe Artikel noch einmal — die Reihe soll etwas hinzufügen.
+    func testTheItemItselfIsNotOfferedAsAKind() {
+        let chips = ItemDetailVocabulary.kinds(for: "Tomaten")?.chips ?? []
+        XCTAssertFalse(chips.contains("Tomaten"))
+        XCTAssertFalse(chips.contains("Tomate"))
+    }
+
+    /// **Die Schreibweise der Datei, nicht die normalisierte Form.** Auf einem
+    /// Chip darf „Brötchen" nicht „Broetchen" heißen.
+    func testKindsKeepTheirUmlauts() {
+        let chips = ItemDetailVocabulary.kinds(for: "Brot")?.chips ?? []
+        XCTAssertFalse(chips.contains { $0.lowercased().contains("oe") },
+                       "Normalisierte Schreibweise auf einem Chip: \(chips)")
+    }
+
+    /// **Ohne Wörterbucheintrag keine Sortenreihe** — vier statt fünf. Das
+    /// Panel zeigt vier davon; die Höhe hängt an dieser Zahl und nicht an der
+    /// Zahl der Reihen.
+    func testAnUnknownWordHasNoKindRow() {
+        XCTAssertNil(ItemDetailVocabulary.kinds(for: "Grillfackeln"))
+        XCTAssertEqual(ItemDetailVocabulary.groups(for: "Grillfackeln").count, 4)
+        XCTAssertEqual(ItemDetailVocabulary.groups(for: "Tomaten").count, 5)
+    }
+
+    /// **Die Sorte verdrängt „Bio" nicht.** Der erste Anlauf ließ sie die Art
+    /// ersetzen — dann fehlte „Bio" bei jedem Artikel, den das Wörterbuch
+    /// kennt.
+    func testAKindRowDoesNotSwallowTheGeneralOnes() {
+        let chips = ItemDetailVocabulary.groups(for: "Tomaten").flatMap(\.chips)
+        XCTAssertTrue(chips.contains("Bio"), "\u{201E}Bio\u{201C} ist weg: \(chips)")
+        XCTAssertTrue(chips.contains("Dringend"))
+    }
+
+    /// Die Sortenreihe schließt sich aus: zwei Sorten gleichzeitig sagen im
+    /// Laden nichts, was jemand tun könnte.
+    func testTwoKindsCannotBeChosenAtOnce() {
+        let reihen = ItemDetailVocabulary.groups(for: "Tomaten")
+        let sorten = reihen.first { $0.title == "Sorte" }?.chips ?? []
+        XCTAssertGreaterThanOrEqual(sorten.count, 2)
+        var detail = ItemDetailVocabulary.toggling(sorten[0], in: [], reihen: reihen)
+        detail = ItemDetailVocabulary.toggling(sorten[1], in: detail, reihen: reihen)
+        XCTAssertEqual(detail, [sorten[1]])
+    }
+
+    /// **Der Anlass ist Bring!s dritte Reihe**, und „Dringend" schließt
+    /// „Wenn's passt" aus.
+    func testTheOccasionRowIsExclusive() {
+        let reihen = ItemDetailVocabulary.groups(for: "Milch")
+        // Unter den ersten vier — den Reihen, die das Panel zeigt.
+        XCTAssertTrue(reihen.prefix(4).contains { $0.title == "Anlass" },
+                      "Der Anlass steht nicht im sichtbaren Teil: \(reihen.map(\.title))")
+        var detail = ItemDetailVocabulary.toggling("Dringend", in: [], reihen: reihen)
+        detail = ItemDetailVocabulary.toggling("Wenn's passt", in: detail, reihen: reihen)
+        XCTAssertFalse(detail.contains("Dringend"), "Zwei Anlässe gleichzeitig: \(detail)")
+    }
 }

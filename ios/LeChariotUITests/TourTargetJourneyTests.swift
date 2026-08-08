@@ -136,8 +136,14 @@ final class TourTargetJourneyTests: XCTestCase {
         // Ein Wort, zu dem der Vorrat garantiert nichts hat — und das damit
         // der erste offene Artikel ohne Treffer ist.
         field.typeText("Zahnstocher\n")
-        Thread.sleep(forTimeInterval: 0.8)
-        app.swipeDown()
+        // **Den Fluss über „Fertig" beenden, nicht über einen Wisch.** Ein
+        // `swipeDown` in die Bildschirmmitte traf seit dem 08.08. die
+        // Angaben-Schicht — die ist dort Bring!-hoch, ihre waagerecht
+        // scrollenden Chipreihen schlucken den senkrechten Zug, und die
+        // Tastatur blieb stehen. Der benannte Knopf trifft immer.
+        let fertig = app.buttons["list.input.done"]
+        XCTAssertTrue(fertig.waitForExistence(timeout: 10))
+        fertig.tap()
 
         openTab("Einstellungen")
         // **Scrollen, nicht suchen.** Seit die Einstellungen am 06.08. neu
