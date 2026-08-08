@@ -443,7 +443,94 @@ struct ShoppingListView: View {
 
     // MARK: List
 
+    /// **Die Abschnitte der offenen Artikel — an einer Stelle**, weil zwei
+    /// Stellen sie verschieden ausrechnen würden und das Mitscrollen dann auf
+    /// einen Abschnitt zielte, den die Liste gar nicht zeichnet.
+    ///
+    /// **Ohne Überschriften auch ohne Abschnitte.** Am 06.08. am Gerät
+    /// gesehen: Die Überschriften waren weg, die Abschnitte standen aber
+    /// weiter als eigene Blöcke da — drei Artikel, drei Karten, dazwischen je
+    /// rund 40 pt Luft, und der Bildschirm war voll.
+    ///
+    /// Dazu kommt der zweite Grund, und der wiegt schwerer: Abschnitte
+    /// sortieren die Liste um. Mit Überschrift ist das erklärt, ohne sie ist es
+    /// eine Umsortierung, die niemand angefordert hat und die aussieht wie ein
+    /// Fehler. Dann gilt die eigene Reihenfolge.
+    private func openGroups(plan: [MarketListRank]) -> (groups: [ShoppingSection], showsHeaders: Bool) {
+        let byQuery = ShoppingSections.categories(from: plan)
+        let sections = ShoppingSections.build(items: list.uncheckedItems) { byQuery[$0.query] }
+        guard ShoppingSections.needsHeaders(sections) else {
+            return ([ShoppingSection(category: "", items: list.uncheckedItems)], false)
+        }
+        return (sections, true)
+    }
+
+    private var openGroups: [ShoppingSection] { openGroups(plan: ranks).groups }
+
     private var itemList: some View {
+        ScrollViewReader { proxy in
+            listBody
+                // **Der obere Rest folgt dem zuletzt angelegten Artikel**
+                // (2026-08-08, Scotts Punkt C-2).
+                //
+                // Beim Tippen bleibt von der Liste ein Streifen von rund 250
+                // pt übrig — die Tastatur nimmt ein Drittel, die Angaben und
+                // die Eingabezeile ein knappes Viertel, die Navigationsleiste
+                // den Rest oben. Was in diesem Streifen stand, war bisher der
+                // Anfang der Liste: richtige Auskunft, falscher Moment.
+                // Bring! zeigt dort, was gerade entstanden ist.
+                //
+                // **Das Ziel ist der Abschnitt, nicht die Kachel — gemessen,
+                // nicht gewählt.** Der erste Anlauf hängte `.id` an die Kachel
+                // selbst; am Simulator stand die zuletzt getippte danach
+                // unverändert unter dem Bildschirm (y = 861 von 874). Eine
+                // `List` ist UIKit-getragen, und `ScrollViewReader` erreicht
+                // ihre **Zeilen**; das ganze Raster eines Abschnitts ist eine
+                // einzige davon. `.bottom` ist damit genau richtig: Der neue
+                // Artikel steht immer als letzter in seinem Abschnitt, also
+                // in dessen unterster Kachelreihe.
+                //
+                // **Nur der frisch angelegte zieht den Blick.** Ein Tipp auf
+                // eine ältere Kachel der Angaben-Zeile wechselt den aktiven
+                // Artikel auch — dort wäre der Abschnitt aber das falsche
+                // Maß, weil der Artikel irgendwo mittendrin steht. Die Zusage
+                // lautet „die Liste folgt dem zuletzt **angelegten** Artikel",
+                // und genau die wird hier eingelöst.
+                .onChange(of: addFlow.activeID) { _, id in
+                    guard let id, id == list.lastAdded?.id,
+                          let abschnitt = openGroups.first(
+                              where: { $0.items.contains { $0.id == id } }
+                          ) else { return }
+                    // **Einen Durchgang später, und das ist die ganze
+                    // Zeile.** Im selben Durchgang gibt es die neue Zeile noch
+                    // nicht: Der Aufruf zielte dann auf den Abschnitt in
+                    // seiner alten Höhe, und die frische Kachel blieb hinter
+                    // dem Block stehen. Dieselbe Sorte Umweg wie `keepTyping`,
+                    // aus demselben Grund.
+                    //
+                    // **Ein ganzer Umbau hing an dieser Pause, und er war
+                    // falsch.** Weil der erste Anlauf ohne sie nichts bewegte,
+                    // sah es aus, als reiche die Scroll-Fläche der `List` beim
+                    // Tippen bis unter den Block — gebaut war schon ein
+                    // gemessenes `safeAreaPadding`, das den Bezug „korrigiert"
+                    // hätte. Eine Messreihe über die Randstärke (0 / 100 / 200
+                    // / 260 pt) hat es widerlegt: **Ohne jeden Rand steht die
+                    // Kachel richtig** (Unterkante 343 bei einem Block ab 363),
+                    // jeder Punkt Rand schiebt sie um genau einen Punkt zu
+                    // weit nach oben. `safeAreaInset` hatte die ganze Zeit
+                    // recht; falsch war nur der Zeitpunkt des Aufrufs.
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(80))
+                        guard !Task.isCancelled else { return }
+                        withAnimation(.snappy) {
+                            proxy.scrollTo(abschnitt.id, anchor: .bottom)
+                        }
+                    }
+                }
+        }
+    }
+
+    private var listBody: some View {
         List {
             let plan = ranks
             if !plan.isEmpty {
@@ -520,28 +607,20 @@ struct ShoppingListView: View {
 
 
             // **Kategorie-Abschnitte wie bei Bring!** — einsortiert wird über
-            // den Treffer, den die Zeile ohnehin zeigt.
-            let byQuery = ShoppingSections.categories(from: plan)
-            let sections = ShoppingSections.build(items: list.uncheckedItems) { byQuery[$0.query] }
-            let showsHeaders = ShoppingSections.needsHeaders(sections)
+            // den Treffer, den die Zeile ohnehin zeigt. Die Rechnung selbst
+            // steht in `openGroups`, damit das Mitscrollen denselben Abschnitt
+            // trifft, den die Liste zeichnet.
+            let abschnitte = openGroups(plan: plan)
+            let showsHeaders = abschnitte.showsHeaders
             let firstOpenItem = list.uncheckedItems.first?.id
 
-            // **Ohne Überschriften auch ohne Abschnitte.** Am 06.08. am Gerät
-            // gesehen: Die Überschriften waren weg, die Abschnitte standen
-            // aber weiter als eigene Blöcke da — drei Artikel, drei Karten,
-            // dazwischen je rund 40 pt Luft, und der Bildschirm war voll.
-            //
-            // Dazu kommt der zweite Grund, und der wiegt schwerer: Abschnitte
-            // sortieren die Liste um. Mit Überschrift ist das erklärt, ohne
-            // sie ist es eine Umsortierung, die niemand angefordert hat und
-            // die aussieht wie ein Fehler. Dann gilt die eigene Reihenfolge.
-            let groups = showsHeaders
-                ? sections
-                : [ShoppingSection(category: "", items: list.uncheckedItems)]
-
-            ForEach(groups) { section in
+            ForEach(abschnitte.groups) { section in
                 Section {
                     raster(section.items, plan: plan, firstOpenItem: firstOpenItem)
+                        // Das Ziel des Mitscrollens — siehe `followTheFlow`
+                        // oben. Eine `List`-Zeile ist die feinste Auflösung,
+                        // die `ScrollViewReader` hier hergibt.
+                        .id(section.id)
                 } header: {
                     if showsHeaders {
                         // **Das gezeichnete Zeichen trägt hier die Identität.**
@@ -753,12 +832,18 @@ struct ShoppingListView: View {
         )
     }
 
+    /// Ob gerade etwas im Feld steht.
+    private var isTyping: Bool {
+        !newItemText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     /// Ob die Fläche gerade offen steht. Die Regel steht in
-    /// `SuggestionSurface`, hier stehen nur die drei Eingaben.
+    /// `SuggestionSurface`, hier stehen nur die vier Eingaben.
     private var surfaceIsExpanded: Bool {
         SuggestionSurface.isExpanded(
             choice: suggestionChoice,
             listIsEmpty: list.items.isEmpty,
+            isTyping: isTyping,
             tourIsRunning: tutorial?.isRunning == true
         )
     }
@@ -793,7 +878,16 @@ struct ShoppingListView: View {
         TermSuggestions.words(for: newItemText, in: offerStore.offers)
     }
 
-    /// **Beim Tippen zeigt dieselbe Fläche etwas anderes.**
+    /// **Beim Tippen zeigt dieselbe Fläche etwas anderes — aber nur auf
+    /// Verlangen** (2026-08-08, Scotts Punkt C-1).
+    ///
+    /// Bis heute stand das Wörterbuch-Raster **bedingungslos** da, sobald ein
+    /// Buchstabe im Feld war: Der Zweig hier fragte `surfaceIsExpanded` gar
+    /// nicht. Beim zweiten Artikel lagen damit zwei Flächen übereinander — das
+    /// Raster über den Angaben des ersten — und die Liste, in die man gerade
+    /// etwas einträgt, war ein Streifen. Der Winkel-Knopf links im Feld holt
+    /// das Raster zurück; er war schon der Weg zurück zu „Häufig gekauft" und
+    /// ist jetzt der Weg zu beiden Fassungen.
     ///
     /// **Eine feste Höhe, und der Grund dafür ist nachgemessen ein anderer als
     /// der naheliegende.** Die Vermutung war: Wächst die Fläche, schiebt sie
@@ -811,8 +905,8 @@ struct ShoppingListView: View {
     /// Leerfläche unter einer einzelnen Kachel.
     @ViewBuilder
     private var suggestionSurface: some View {
-        if !newItemText.trimmingCharacters(in: .whitespaces).isEmpty {
-            termSurface
+        if isTyping {
+            if surfaceIsExpanded { termSurface }
         } else {
             stapleSurface
         }
@@ -1110,8 +1204,7 @@ struct ShoppingListView: View {
                 onOpenFull: {
                     editingItem = item
                     tips?.detailsUsed()
-                },
-                onDismiss: { endFlow() }
+                }
             )
             .tutorialAnchor(.detailPanel)
         }
@@ -1139,14 +1232,30 @@ struct ShoppingListView: View {
         list.items.isEmpty ? "Was brauchst du?" : "Nächster Artikel …"
     }
 
+    /// Ob es überhaupt etwas aufzuklappen gäbe — beim Tippen sind das die
+    /// Wörterbuchwörter, sonst die Vorschläge. **Zwei Quellen, ein Knopf:**
+    /// Welche der beiden Fassungen die Fläche zeigt, entscheidet
+    /// `suggestionSurface` an derselben Frage.
+    private var surfaceHasContent: Bool {
+        isTyping ? !typedTerms.isEmpty : !suggestions.isEmpty
+    }
+
     /// Der Knopf, der die Vorschlagsfläche auf- und zuklappt.
     ///
     /// Links im Feld, weil er zu dem gehört, was darüber liegt. Er fehlt, wenn
     /// es nichts vorzuschlagen gibt — ein Knopf, der eine leere Fläche öffnet,
-    /// ist ein kaputter Knopf.
+    /// ist ein kaputter Knopf. **Solange sie offen steht, bleibt er trotzdem**,
+    /// sonst verschwände beim ersten Buchstaben ohne Wörterbuchtreffer der
+    /// einzige Weg, sie wieder zuzumachen.
+    ///
+    /// **Seit dem 08.08. ist er der einzige Weg zu den Vorschlägen, solange
+    /// jemand tippt** (Punkt C-1) — und damit die Stelle, die der neue
+    /// Rundgang zeigen muss. Deshalb trägt er einen eigenen Anker: Der bisherige
+    /// (`.suggestions`) hängt an den Kacheln, und die stehen im neuen
+    /// Vorgabefall gerade nicht da.
     @ViewBuilder
     private var surfaceToggle: some View {
-        if !suggestions.isEmpty {
+        if surfaceHasContent || surfaceIsExpanded {
             let open = surfaceIsExpanded
             Button {
                 withAnimation(.snappy) { suggestionChoice = !open }
@@ -1162,11 +1271,44 @@ struct ShoppingListView: View {
             // Der Zustand steckt im Namen und nicht in einem `value`: Ein
             // gedrehtes Winkelzeichen sagt einem Screenreader nichts.
             .accessibilityLabel(open ? "Vorschläge ausblenden" : "Vorschläge einblenden")
+            .tutorialAnchor(.suggestionsToggle)
+        }
+    }
+
+    /// **Fertig — unten links an der Tastatur** (2026-08-08, Scotts Punkt C-3).
+    ///
+    /// Der Ausgang aus dem Tipp-Fluss stand bisher als ✗ oben rechts in der
+    /// Angaben-Schicht: an der Schicht, die er wegräumt, und damit am oberen
+    /// Ende des Blocks — der weiteste Weg für den Daumen, der gerade auf der
+    /// Tastatur liegt. Er sitzt jetzt am unteren linken Ende, direkt über der
+    /// Tastatur, und heißt, was er tut.
+    ///
+    /// **Er bestätigt weiterhin nichts.** Jeder Chip ist längst durchgeschrieben
+    /// (siehe `ItemDetailPanel`); „Fertig" beendet das Aufschreiben, es speichert
+    /// es nicht. Deshalb steht er auch dann da, wenn nur die Tastatur oben ist
+    /// und noch gar kein Artikel angelegt wurde.
+    ///
+    /// **Und er ist der einzige Ausgang ohne Tastatur.** Auf dem Weg über
+    /// „Häufig gekauft" steht keine — genau Scotts Punkt 9 vom 03.08., den bis
+    /// heute das ✗ der Schicht getragen hat.
+    @ViewBuilder
+    private var doneButton: some View {
+        if inputFocused || addFlow.isActive {
+            Button(action: endFlow) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(TactileButtonStyle())
+            .accessibilityLabel("Fertig")
+            .accessibilityIdentifier("list.input.done")
         }
     }
 
     private var inputBar: some View {
         HStack(spacing: Theme.Spacing.sm) {
+            doneButton
             surfaceToggle
 
             TextField(inputPlaceholder, text: $newItemText)

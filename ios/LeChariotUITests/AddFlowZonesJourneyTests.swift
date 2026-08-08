@@ -1,0 +1,282 @@
+import XCTest
+
+/// **Die drei Zonen beim Tippen** — Scotts Punkt C vom 2026-08-08, nach dem
+/// Bring!-Video Bild für Bild ausgewertet.
+///
+/// > „in bring you got 3 views if you type in a product"
+///
+/// Am Referenzvideo gemessen (604 × 1314, Bilder bei 0:18–0:44): Tastatur
+/// **33 %** von unten, Angaben plus Eingabezeile **46 %**, und der Rest oben —
+/// **21 %** — ist die laufende App. Dort steht bei Bring! die Kachelreihe mit
+/// dem gerade angelegten Artikel.
+///
+/// Drei Änderungen daraus, und jede hat hier ihre Journey:
+///
+/// 1. Die Vorschlagsfläche startet beim Tippen **zugeklappt**, bleibt aber
+///    einen Knopf weit weg.
+/// 2. Der obere Rest **folgt dem zuletzt angelegten Artikel**.
+/// 3. „Fertig" sitzt **unten links** an der Tastatur.
+///
+/// **Der Fokus ist der Preis, auf den hier zu achten ist.** Alle drei fassen
+/// den Block an, in dem seit dem 03.08. `keepTyping` den Fokus im Feld hält
+/// (siehe `AddFlowJourneyTests`) — deshalb prüft jede Journey hier am Ende,
+/// dass weitergetippt werden kann, ohne das Feld neu anzufassen.
+final class AddFlowZonesJourneyTests: XCTestCase {
+    private var app: XCUIApplication!
+
+    override func setUp() {
+        super.setUp()
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded"]
+        app.launch()
+    }
+
+    private var input: XCUIElement { app.textFields["list.input"] }
+    private var toggle: XCUIElement { app.buttons["list.suggestions.toggle"] }
+    private var done: XCUIElement { app.buttons["list.input.done"] }
+
+    // MARK: C-1 · Die Fläche startet zugeklappt
+
+    /// **Vorher stand sie beim ersten Buchstaben offen** — und zwar nicht über
+    /// die Regel in `SuggestionSurface`, sondern an ihr vorbei: Das
+    /// Wörterbuch-Raster hing bedingungslos an „steht etwas im Feld".
+    ///
+    /// Geprüft wird beides in einem Test, weil eine zugeklappte Fläche allein
+    /// nicht von einer abgeschafften zu unterscheiden ist.
+    func testTypingStartsWithTheSurfaceCollapsedAndTheChevronOpensIt() {
+        waitForList()
+        XCTAssertTrue(app.buttons["Milch hinzufügen"].waitForExistence(timeout: 10),
+                      "Vor dem ersten Buchstaben steht die Fläche offen")
+
+        input.tapAndAwaitKeyboard(in: app)
+        app.typeText("Mil")
+
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5),
+                      "Ohne Knopf wäre die Fläche beim Tippen unerreichbar")
+        XCTAssertEqual(toggle.label, "Vorschläge einblenden",
+                       "Der Zustand gehört in den Namen")
+        XCTAssertFalse(app.staticTexts["list.terms.title"].exists,
+                       "Das Wörterbuch-Raster zieht beim Tippen wieder von selbst auf\n"
+                       + app.debugDescription)
+
+        toggle.tap()
+        XCTAssertTrue(app.staticTexts["list.terms.title"].waitForExistence(timeout: 5),
+                      "Der Knopf holt die Wörter nicht zurück")
+        XCTAssertTrue(app.buttons["Milch hinzufügen"].exists)
+
+        // Und der Fokus hat das überstanden: Weitertippen ohne Tipp ins Feld.
+        app.typeText("ch\n")
+        XCTAssertTrue(app.buttons["Milch"].waitForExistence(timeout: 10),
+                      "Nach dem Aufklappen war die Tastatur weg")
+    }
+
+    // MARK: C-2 · Der obere Rest folgt dem letzten Artikel
+
+    /// **Die Liste scrollt mit, statt an ihrem Anfang stehen zu bleiben.**
+    ///
+    /// Zwölf Artikel füllen den sichtbaren Streifen über der Angaben-Schicht
+    /// mehrfach. Ohne das Mitscrollen stünde dort weiter die Plan-Karte samt
+    /// den ersten Kacheln — richtige Auskunft, falscher Moment.
+    ///
+    /// **Die Gegenprobe steht dabei**, sonst hieße „der letzte ist sichtbar"
+    /// nur, dass alles auf einen Bildschirm passt: Der **erste** Artikel muss
+    /// aus dem Streifen heraus sein.
+    func testTheVisibleStripFollowsTheItemJustTyped() {
+        waitForList()
+        input.tapAndAwaitKeyboard(in: app)
+
+        let wörter = ["Butter", "Milch", "Kaffee", "Brot", "Eier", "Käse",
+                      "Nudeln", "Reis", "Salat", "Gurke", "Zwiebeln", "Joghurt"]
+        for wort in wörter { app.typeText("\(wort)\n") }
+
+        let letzte = tile(wörter.last!)
+        XCTAssertTrue(letzte.waitForExistence(timeout: 15),
+                      "Der zuletzt getippte Artikel steht nirgends\n" + app.debugDescription)
+        let ruhe = settled(letzte)
+
+        let oben = app.navigationBars["Einkaufsliste"].frame.maxY
+        let unten = blockTop
+        XCTAssertGreaterThanOrEqual(
+            ruhe.minY, oben,
+            "Der zuletzt angelegte Artikel liegt über der sichtbaren Fläche: "
+            + "\(ruhe) | \(lageAller(wörter))"
+        )
+        XCTAssertLessThanOrEqual(
+            ruhe.maxY, unten,
+            "Der zuletzt angelegte Artikel liegt unter der sichtbaren Fläche "
+            + "(Block ab \(unten)): \(lageAller(wörter))"
+        )
+
+        // **Die Gegenprobe.** Ohne sie hieße „der letzte ist sichtbar" nur,
+        // dass zwölf Kacheln auf einen Bildschirm passen — der Test wäre auch
+        // gegen den Stand von gestern grün. Geprüft wird die **Oberkante** der
+        // ersten Kachel: Ihre Unterkante ragte bei zwölf Artikeln um 3 pt in
+        // den Streifen hinein, und daran wäre eine richtige Messung
+        // gescheitert.
+        let erste = tile(wörter.first!)
+        XCTAssertTrue(!erste.exists || erste.frame.minY < oben,
+                      "Nichts ist gescrollt — die Probe misst nichts: \(erste.frame)")
+
+        // Der Fluss hat das überlebt: das dreizehnte Wort geht ohne einen Tipp
+        // ins Feld durch.
+        app.typeText("Zucker\n")
+        XCTAssertTrue(tile("Zucker").waitForExistence(timeout: 10),
+                      "Nach dem Mitscrollen war die Tastatur weg")
+    }
+
+
+    // MARK: C-3 · „Fertig" unten links
+
+    /// **Die Lage, nicht die Existenz** — der Knopf gab es vorher auch, nur
+    /// oben rechts in der Angaben-Schicht.
+    func testDoneSitsAtTheBottomLeftAndEndsTheTyping() {
+        waitForList()
+        input.tapAndAwaitKeyboard(in: app)
+        app.typeText("Butter\n")
+
+        XCTAssertTrue(done.waitForExistence(timeout: 10),
+                      "Kein Weg hinaus\n" + app.debugDescription)
+        XCTAssertLessThanOrEqual(done.frame.maxX, input.frame.minX + 1,
+                                 "\u{201E}Fertig\u{201C} geh\u{00F6}rt links neben das Feld")
+        XCTAssertLessThanOrEqual(done.frame.minX, toggle.frame.minX,
+                                 "\u{201E}Fertig\u{201C} steht ganz au\u{00DF}en links")
+        XCTAssertEqual(done.frame.midY, input.frame.midY, accuracy: 4,
+                       "\u{201E}Fertig\u{201C} geh\u{00F6}rt auf die H\u{00F6}he der Eingabezeile, an die Tastatur")
+        XCTAssertGreaterThan(done.frame.minY, app.frame.midY,
+                             "Der Daumen liegt unten, nicht in der Bildschirmmitte")
+
+        XCTAssertFalse(app.buttons["list.detailPanel.dismiss"].exists,
+                       "Das alte ✗ steht noch in der Schicht")
+
+        done.tap()
+        XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForNonExistence(timeout: 5),
+                      "\u{201E}Fertig\u{201C} r\u{00E4}umt die Angaben-Schicht nicht weg")
+        XCTAssertEqual(app.keyboards.count, 0, "Die Tastatur bleibt stehen")
+        XCTAssertTrue(app.buttons["Butter"].exists,
+                      "\u{201E}Fertig\u{201C} ist kein Abbrechen \u{2014} der Artikel bleibt")
+    }
+
+    /// **Und ohne Tastatur genauso.** Der Weg über „Häufig gekauft" war
+    /// Scotts Punkt 9 vom 03.08.; bis heute trug ihn das ✗ der Schicht.
+    func testDoneIsTheWayOutWithoutAnyKeyboardToo() {
+        waitForList()
+        app.buttons["Milch hinzufügen"].tap()
+
+        XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.keyboards.count, 0,
+                       "Dieser Weg soll ohne Tastatur laufen — sonst prüft die Journey den anderen")
+        XCTAssertTrue(done.exists, "Ohne Tastatur gibt es keinen Weg hinaus")
+
+        done.tap()
+        XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Milch"].exists)
+    }
+
+    // MARK: Der Bilderbogen
+
+    /// **Ein Bild des Tipp-Bildschirms, so wie er läuft** — für den Vergleich
+    /// mit dem Bring!-Video nebeneinander.
+    ///
+    /// Läuft nur auf Zuruf, sonst schreibt jeder Testlauf ein PNG:
+    ///
+    ///     TEST_RUNNER_LECHARIOT_ZONES_SHOT=/pfad/bild.png xcodebuild test …
+    ///
+    /// **Das Präfix `TEST_RUNNER_` gehört dazu** — `xcodebuild` reicht nur so
+    /// präfigierte Variablen an den Prozess weiter, in dem die Tests laufen.
+    /// Ohne es wird der Bogen still übersprungen (derselbe Nebenfund wie am
+    /// 08.08. bei `ListDirectionShots`).
+    ///
+    /// Ein Bildschirmfoto und kein Nachbau: Was hier zu vergleichen ist, sind
+    /// **Anteile** — und die entstehen aus Tastatur, Schicht und Liste
+    /// zusammen, also genau aus dem, was nur die laufende App hat.
+    func testWriteTheThreeZones() throws {
+        // **Übersprungen, nicht rot** — eine Suite, in der immer ein Test rot
+        // ist, hört auf, etwas zu bedeuten.
+        guard let ziel = ProcessInfo.processInfo.environment["LECHARIOT_ZONES_SHOT"] else {
+            throw XCTSkip("ohne LECHARIOT_ZONES_SHOT wird nichts geschrieben")
+        }
+        waitForList()
+        input.tapAndAwaitKeyboard(in: app)
+        for wort in ["Butter", "Milch", "Kaffee", "Brot", "Eier", "Käse",
+                     "Nudeln", "Reis", "Joghurt", "Haferflocken"] {
+            app.typeText("\(wort)\n")
+        }
+        XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10))
+        let ruhe = settled(tile("Haferflocken"))
+        print("ZONEN letzte=\(ruhe)")
+
+        let bild = XCUIScreen.main.screenshot()
+        try bild.pngRepresentation.write(to: URL(fileURLWithPath: ziel))
+
+        // Die Kanten, aus denen die Anteile gerechnet werden — im Protokoll,
+        // damit die Zahlen im Bild nicht abgelesen werden müssen.
+        print("ZONEN fenster=\(app.windows.firstMatch.frame)")
+        print("ZONEN block=\(blockTop)")
+        print("ZONEN tastatur=\(app.keyboards.firstMatch.frame)")
+    }
+
+    // MARK: Helfer
+
+    /// Wo alle Kacheln stehen — nur für die Fehlermeldung, und deshalb als
+    /// Funktion: Die Meldung eines `XCTAssert` wird erst im Fehlerfall
+    /// ausgewertet, zwölf Abfragen an den Elementbaum kosten sonst jeden Lauf.
+    private func lageAller(_ namen: [String]) -> String {
+        namen.map { name in
+            let k = tile(name)
+            return "\(name)=\(k.exists ? "\(k.frame)" : "-")"
+        }.joined(separator: " ")
+    }
+
+    /// **Warten, bis das Mitscrollen zu Ende ist** — und zwar am Bild, nicht
+    /// an einer Wartezeit. Zwölf Artikel hintereinander heißen zwölf
+    /// Scroll-Bewegungen; wer gleich nach dem letzten Wort misst, misst eine
+    /// davon mitten in der Fahrt (gemessen: y = −3, während die Kachel
+    /// hinterher bei 236 stand).
+    ///
+    /// Zwei gleiche Messungen hintereinander sind das Signal. Ein festes
+    /// `sleep` wäre die andere Möglichkeit und die schlechtere: Es ist auf
+    /// einem langsamen Rechner zu kurz und auf jedem anderen zu lang.
+    private func settled(_ element: XCUIElement) -> CGRect {
+        var vorher = element.frame
+        var ruhig = 0
+        for _ in 0..<60 {
+            usleep(100_000)
+            let jetzt = element.frame
+            ruhig = jetzt == vorher ? ruhig + 1 : 0
+            vorher = jetzt
+            // Vier gleiche Messungen, nicht zwei: Zwölf Artikel heißen zwölf
+            // aneinandergereihte Bewegungen, und zwischen zweien davon steht
+            // das Bild kurz still.
+            if ruhig >= 4 { return jetzt }
+        }
+        return vorher
+    }
+
+    /// Die Kachel eines Artikels. Ihre Beschriftung trägt Angaben und Angebot
+    /// mit, deshalb `BEGINSWITH` — siehe `ShoppingGridTile`.
+    ///
+    /// **Der Bezeichner gehört dazu, und das ist gemessen.** Ohne ihn traf
+    /// `firstMatch` mal die Kachel (84 pt breit) und mal die Rasterzeile, die
+    /// sie enthält (402 pt) — und damit maß derselbe Test zweimal etwas
+    /// anderes.
+    private func tile(_ name: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label BEGINSWITH %@", "list.tile", name
+        )).firstMatch
+    }
+
+    /// Die Oberkante des Blocks unten: die Angaben-Schicht, wo sie steht,
+    /// sonst die Eingabezeile. Dasselbe Maß wie in
+    /// `AddFlowContractJourneyTests`, nur von der anderen Seite gebraucht.
+    private var blockTop: CGFloat {
+        let panel = app.buttons["list.detailPanel.more"]
+        return panel.exists ? panel.frame.minY - 8 : input.frame.minY
+    }
+
+    private func waitForList() {
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 20),
+                      "Der Start hinter dem Assistenten landet nicht in der Liste")
+        XCTAssertTrue(input.waitForExistence(timeout: 15), "Keine Eingabezeile")
+    }
+}
