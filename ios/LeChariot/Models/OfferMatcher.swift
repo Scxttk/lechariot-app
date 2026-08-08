@@ -19,10 +19,11 @@ struct OfferMatch: Equatable, Identifiable {
 ///
 /// Stage 1 (direct): every query token must hit a product-title token —
 /// exactly, or with Levenshtein distance ≤ 1 when both tokens have ≥ 5
-/// characters and different lengths (catches dropped letters and
-/// singular/plural, but keeps short words strict so "Käse" never
-/// fuzzy-matches "Kekse", and same-length words exact so "Butter" never
-/// hits "Bitter").
+/// characters, different lengths, and the same first three letters (catches
+/// dropped letters and singular/plural, but keeps short words strict so
+/// "Käse" never fuzzy-matches "Kekse", same-length words exact so "Butter"
+/// never hits "Bitter", and a changed word start out so "Fisch" never hits
+/// "Frisch").
 ///
 /// Stage 2 (category): a query token that the title does not carry may still
 /// be satisfied by the offer's `match_key` tags — either by tag equality, or
@@ -56,14 +57,40 @@ enum OfferMatcher {
         normalize(text).split(separator: " ").map(String.init).filter { $0.count >= 2 }
     }
 
+    /// Wie viele Zeichen am Wortanfang übereinstimmen müssen, damit ein
+    /// eingefügter Buchstabe noch als Tippfehler durchgeht.
+    private static let sharedPrefixForTypo = 3
+
     /// Token equality with typo tolerance for longer tokens. Fuzziness only
     /// applies when the lengths differ (a dropped or doubled letter, or
     /// singular/plural) — a same-length substitution turns one word into
     /// another ("Butter" is not "Bitter", real user report 2026-07-21).
+    ///
+    /// **Und der Anfang muss stehen.** Verschiedene Länge bei Distanz 1 heißt
+    /// genau ein eingefügter Buchstabe; wo er steht, entscheidet alles. Hinten
+    /// ist es der Plural („Tomate"/„Tomaten"), in der Mitte ein verschluckter
+    /// Buchstabe („limbuger"/„Limburger") — **vorn ist es ein anderes Wort**.
+    /// „fisch"/„frisch" hat neun Fehltreffer der Feedback-Runde vom 2026-08-05
+    /// erzeugt (Sensodyne „Extra Frisch", Gutfried, Bettine, FUNNY-FRISCH,
+    /// WC-FRISCH), „lachs"/„flachs" ist dieselbe Form. Drei gemeinsame
+    /// Anfangszeichen sperren das, ohne einen der gewollten Fälle zu kosten.
     static func tokensMatch(_ a: String, _ b: String) -> Bool {
         if a == b { return true }
         guard a.count >= 5, b.count >= 5, a.count != b.count else { return false }
+        guard sharedPrefixLength(a, b) >= sharedPrefixForTypo else { return false }
         return levenshtein(a, b) <= 1
+    }
+
+    /// Länge des gemeinsamen Wortanfangs, gedeckelt bei
+    /// `sharedPrefixForTypo` — mehr will niemand wissen.
+    private static func sharedPrefixLength(_ a: String, _ b: String) -> Int {
+        var n = 0
+        for (x, y) in zip(a, b) {
+            if x != y { break }
+            n += 1
+            if n == sharedPrefixForTypo { break }
+        }
+        return n
     }
 
     /// Plain Levenshtein distance; early-outs when lengths differ by > 1

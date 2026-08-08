@@ -45,6 +45,27 @@ final class OfferMatcherTests: XCTestCase {
         XCTAssertEqual(direct.map(\.offer.product), ["Limburger"])
     }
 
+    func testFischDoesNotFuzzyMatchFrisch() {
+        // Echte match_feedback-Zeilen der Runde vom 2026-08-05: „fisch"
+        // lieferte Direkttreffer auf drei Titel mit „frisch". Der eingefügte
+        // Buchstabe steht **vorn** — das ist kein Tippfehler, sondern ein
+        // anderes Wort. Vgl. „Butter"/„Bitter" (21.07.).
+        let offers = [
+            offer("Sensodyne Zahncreme Sensitiv Fluorid oder Extra Frisch", matchKey: ["nonfood"]),
+            offer("Gutfried Hähnchen-Fleischwurst würzig-frisch", matchKey: ["wurst"]),
+            offer("Bettine Ziegenkäse holl. Frisch- oder Weichkäse", matchKey: ["käse"]),
+            offer("FUNNY-FRISCH Knuspersnack", matchKey: ["chips"]),
+            offer("WC-FRISCH Kraft Aktiv", matchKey: ["nonfood"]),
+        ]
+        XCTAssertTrue(OfferMatcher.matches(for: "Fisch", in: offers).isEmpty)
+    }
+
+    func testLachsDoesNotFuzzyMatchFlachs() {
+        // Dieselbe Form wie fisch/frisch: ein Buchstabe vorn dazu.
+        let offers = [offer("Flachs Deko-Bund", matchKey: ["nonfood"])]
+        XCTAssertTrue(OfferMatcher.matches(for: "Lachs", in: offers).isEmpty)
+    }
+
     func testShortTokensAreNotFuzzyMatched() {
         // "Käse" (4 letters) must never fuzzy-hit "Kekse" — fuzziness starts at 5.
         let offers = [offer("Kekse Auswahl", matchKey: ["kekse"])]
