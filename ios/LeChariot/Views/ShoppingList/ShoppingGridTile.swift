@@ -197,8 +197,9 @@ struct ShoppingGridTile: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
 
-            // Was die Angabe sagt, bleibt nach dem Abhaken wahr — deshalb
-            // nicht mit durchgestrichen. Siehe `ShoppingListRowView`.
+            // Was die Angabe sagt, bleibt nach dem Abhaken wahr — „2 l, Bio"
+            // wird nicht falsch, weil der Artikel im Wagen liegt. Deshalb
+            // trägt nur der Name den Strich, die Zeile darunter nicht.
             if let unten = item.detailLine {
                 Text(unten)
                     .font(.system(size: 9))

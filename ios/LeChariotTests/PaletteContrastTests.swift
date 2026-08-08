@@ -125,6 +125,57 @@ final class PaletteContrastTests: XCTestCase {
         }
     }
 
+    /// **Die Hinweiszeile der nächsten Woche, auf ihrer eigenen Tönung.**
+    ///
+    /// `warningSurface` ist **durchscheinend** (14 % hell, 16 % dunkel) — die
+    /// Farbe, gegen die dort wirklich gemessen werden muss, ist die Tönung
+    /// **über der Seite**, nicht die Tönung für sich. Genau daran hing die
+    /// Entscheidung vom 08.08.: Die naheliegende Fassung hätte den zweiten Satz
+    /// in `secondaryText` stehen lassen, und der misst dort im hellen Modus
+    /// **3,71:1** — schlechter als die graue Fußnote, die ersetzt werden
+    /// sollte. Deshalb stehen beide Zeilen in `warning`.
+    ///
+    /// Dieselbe Zeile trägt das Veraltet-Banner der laufenden Woche
+    /// (`OffersView.staleBanner`), also gilt die Messung für beide.
+    func testTheNextWeekNoticeIsReadableOnItsTint() {
+        for (modeName, mode) in Self.modes {
+            let plane = warningSurfaceOverBackground(mode)
+            let value = ratio(Theme.warning, on: plane, mode)
+            XCTAssertGreaterThanOrEqual(
+                value, 4.5,
+                "warning auf der getönten Zeile (\(modeName)): \(String(format: "%.2f", value)):1"
+            )
+            // Die Gegenprobe zur Entscheidung: Bleibt `secondaryText` dort
+            // durchgefallen, ist die Begründung im Code noch wahr. Wird sie
+            // eines Tages grün, darf der zweite Satz wieder leiser werden.
+            let sekundär = ratio(Theme.secondaryText, on: plane, mode)
+            if mode == .light {
+                XCTAssertLessThan(
+                    sekundär, 4.5,
+                    "secondaryText besteht auf der Tönung jetzt (\(String(format: "%.2f", sekundär)):1) — "
+                    + "dann darf der zweite Satz der Hinweiszeile wieder zurückgenommen werden"
+                )
+            }
+        }
+    }
+
+    /// Die durchscheinende Warnzeile, aufgelöst über der Seite, auf der sie
+    /// liegt. `UIColor` rechnet das beim Zeichnen; für eine Messung muss es
+    /// hier stehen.
+    private func warningSurfaceOverBackground(_ style: UIUserInterfaceStyle) -> Color {
+        let traits = UITraitCollection(userInterfaceStyle: style)
+        let tint = UIColor(Theme.warningSurface).resolvedColor(with: traits)
+        let page = UIColor(Theme.background).resolvedColor(with: traits)
+        var tr: CGFloat = 0, tg: CGFloat = 0, tb: CGFloat = 0, ta: CGFloat = 0
+        var pr: CGFloat = 0, pg: CGFloat = 0, pb: CGFloat = 0, pa: CGFloat = 0
+        tint.getRed(&tr, green: &tg, blue: &tb, alpha: &ta)
+        page.getRed(&pr, green: &pg, blue: &pb, alpha: &pa)
+        return Color(uiColor: UIColor(red: ta * tr + (1 - ta) * pr,
+                                      green: ta * tg + (1 - ta) * pg,
+                                      blue: ta * tb + (1 - ta) * pb,
+                                      alpha: 1))
+    }
+
     /// „Erledigt" darf nicht wie „antippbar" aussehen — der Satz stand seit
     /// jeher im Kommentar an `success` und war nie umgesetzt: Gemessen war
     /// `success` **heller** als der Akzent, bei praktisch gleichem Farbton.

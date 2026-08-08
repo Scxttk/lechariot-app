@@ -235,13 +235,44 @@ struct NextWeekView: View {
     }
 
     /// Sagt in einem Satz, was der Bildschirm ist — und was er nicht ist.
+    ///
+    /// **Fett in grauer Fußnote trug die Unterscheidung nicht** (Scott,
+    /// 08.08.). Bis dahin stand hier ein `.footnote` in `secondaryText` mit
+    /// `**noch nicht**` darin — und Fett ist genau die Auszeichnung, die
+    /// verschwindet, sobald die Schrift klein und die Farbe zurückgenommen
+    /// ist. Der ganze Bildschirm hängt an diesem einen Wort: Diese Preise
+    /// gelten **noch nicht**.
+    ///
+    /// Jetzt trägt es dasselbe Gewand wie das Veraltet-Banner in der laufenden
+    /// Woche — Warnfarbe, getönte Zeile, Zeichen davor. Das ist ein bestehendes,
+    /// gemessenes Muster und keine neue Erfindung.
+    ///
+    /// **Beide Zeilen stehen in `warning`, und das ist gemessen, nicht
+    /// gewählt:** `secondaryText` auf der getönten Zeile erreicht im hellen
+    /// Modus nur **3,71:1** und wäre dort schlechter lesbar als vorher.
+    /// `warning` misst dort 4,95:1 und im dunklen 7,36:1
+    /// (`PaletteContrastTests.testTheNextWeekNoticeIsReadableOnItsTint`).
     private var explainer: some View {
         Section {
-            Text("Diese Preise gelten **noch nicht**. Sie zeigen, was demnächst günstig wird — damit du es heute stehen lassen kannst.")
-                .font(.footnote)
-                .foregroundStyle(Theme.secondaryText)
-                .listRowBackground(Theme.background)
-                .accessibilityIdentifier("nextWeek.explainer")
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
+                Image(systemName: "clock.badge.exclamationmark")
+                    .font(.subheadline)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    // Der Satz steht ohne `**` — die Auszeichnung sitzt jetzt in
+                    // Farbe, Gewicht und Größe, nicht im Markdown.
+                    Text("Diese Preise gelten noch nicht.")
+                        .font(.subheadline.weight(.semibold))
+                        // Die Kennung bleibt auf einem `Text`: Die Rundgänge
+                        // suchen sie als `staticTexts`, und ein zusammengefasstes
+                        // Element wäre dort keins mehr.
+                        .accessibilityIdentifier("nextWeek.explainer")
+                    Text("Sie zeigen, was demnächst günstig wird — damit du es heute stehen lassen kannst.")
+                        .font(.footnote)
+                }
+            }
+            .foregroundStyle(Theme.warning)
+            .listRowBackground(Theme.warningSurface)
         }
     }
 

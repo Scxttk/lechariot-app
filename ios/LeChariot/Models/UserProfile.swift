@@ -19,6 +19,18 @@ enum DietTag: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// Das Zeichen des Chips im Ernährungsprofil.
+    ///
+    /// **Jeder Name hier muss ein echtes SF Symbol sein.** `Image(systemName:)`
+    /// zeichnet bei einem unbekannten Namen **nichts** und sagt nichts — der
+    /// Chip steht dann ohne Bild da, und niemandem fällt auf, warum. Genau das
+    /// ist mit `glutenfrei` passiert: Dort stand `wheat`, und ein solches
+    /// Symbol gibt es nicht (Scott, 08.08.: „glutenfrei has no drawing??" —
+    /// nachgezählt: 0 von 8302 Namen des Katalogs). Der Wächter dagegen ist
+    /// `DietSymbolTests`.
+    ///
+    /// `allergens` statt einer Ähre: Eine Ähre gibt der Katalog nicht her, und
+    /// „Allergene" ist die Sache, um die es bei glutenfrei geht.
     var symbol: String {
         switch self {
         case .vegetarisch: "carrot"
@@ -26,7 +38,7 @@ enum DietTag: String, Codable, CaseIterable, Identifiable, Sendable {
         case .keinSchwein: "xmark.circle"
         case .bio: "sparkles"
         case .laktosefrei: "drop"
-        case .glutenfrei: "wheat"
+        case .glutenfrei: "allergens"
         }
     }
 }
