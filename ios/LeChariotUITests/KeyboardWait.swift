@@ -53,10 +53,21 @@ extension XCUIApplication {
     /// Navigationsleiste (y ≈ 0,32 → 0,16 der Fensterhöhe) — über der
     /// Schicht in **jeder** Tastaturlage, unter der Navigationsleiste auf
     /// iPhone wie iPad.
+    /// **Am 08.08. noch einmal nach oben gerückt, und aus demselben Grund wie
+    /// beim ersten Mal.** Seit die Angaben-Schicht Bring!s Höhe hat, fängt der
+    /// Block unten bei y = 183 von 874 an — der bisherige Startpunkt (0,32 →
+    /// y = 280) lag damit **auf der Schicht**, deren waagerecht scrollende
+    /// Chipreihen den senkrechten Zug schluckten, und der Fluss endete nie.
+    /// Dieselbe Falle, dieselbe Lehre: Der Zug muss die **Liste** treffen, und
+    /// wo die liegt, hat sich verschoben.
+    ///
+    /// 0,16 → 0,09 (y = 140 → 79) liegt in **jeder** Lage im Listenstreifen:
+    /// beim Tippen im Streifen zwischen Statusleiste (62) und Block (183),
+    /// ohne Tipp-Fluss unter der Titelleiste (116).
     func dragTheListUp() {
         let fenster = windows.firstMatch
-        let von = fenster.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.32))
-        let nach = fenster.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.16))
+        let von = fenster.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.16))
+        let nach = fenster.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.09))
         von.press(forDuration: 0.05, thenDragTo: nach)
     }
 }
