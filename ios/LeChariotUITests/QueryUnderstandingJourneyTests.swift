@@ -24,7 +24,7 @@ final class QueryUnderstandingJourneyTests: XCTestCase {
     /// das Tag gefunden wurde, dass sie darüber gefunden wurde.
     func testTheSheetSaysWhatTheTypedWordWasUnderstoodAs() {
         addItem("Vollmilch")
-        app.tapInTileMenu("list.matches")
+        app.openTileMatches()
 
         let kopf = app.staticTexts["matches.understanding"]
         XCTAssertTrue(kopf.waitForExistence(timeout: 10),
@@ -76,7 +76,7 @@ final class QueryUnderstandingJourneyTests: XCTestCase {
 
         // Und der Weg ins Trefferblatt steht weiter offen, wo derselbe Satz
         // noch einmal steht — dort mit dem Weg zur Rückmeldung.
-        app.tapInTileMenu("list.matches.empty", ofItem: "Schnürsenkel")
+        app.openTileMatches(ofItem: "Schnürsenkel")
         XCTAssertTrue(
             app.staticTexts["matches.understanding.unknown"].waitForExistence(timeout: 10),
             "Das leere Trefferblatt sagt nicht, dass das Wort unbekannt ist"
@@ -108,7 +108,7 @@ final class QueryUnderstandingJourneyTests: XCTestCase {
         // Schicht ueber der Eingabezeile — sie geht mit dem Fokus, nicht mit
         // einem Knopf. Ein Zug ueber die **Liste** tut das; die
         // Bildschirmmitte liegt mit voller Software-Tastatur auf der Schicht
-        // selbst, und der Tipp auf `list.matches.empty` landete dann auf dem
+        // selbst, und der lange Druck auf die Kachel landete dann auf dem
         // Wortschatz statt auf der Zeile (Screenshot im Merge-PR). Siehe
         // `dragTheListUp`.
         let panel = app.buttons["list.detailPanel.more"]

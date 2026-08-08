@@ -61,37 +61,63 @@ extension XCUIApplication {
     }
 }
 
-// MARK: - Das Kontextmenü der Kachel
+// MARK: - Die zwei Griffe an einer Kachel
 
-/// **Seit dem 07.08. ist die Liste ein Raster** (`ShoppingGridTile`), und eine
-/// Kachel von 76 pt trägt genau eine Trefferfläche: den Tipp, der abhakt.
-/// Alles andere — Angebote, Angaben, Löschen — liegt im Kontextmenü.
+/// **Seit dem 07.08. ist die Liste ein Raster** (`ShoppingGridTile`), und die
+/// Kachel trägt genau eine Trefferfläche: den Tipp, der abhakt.
 ///
-/// Die Journeys tippten vorher direkt auf `list.matches` und
-/// `list.item.detail`. Beide gibt es weiterhin, nur eine Geste später. Dieser
-/// Helfer ist die eine Stelle, an der das steht — sonst stünde der lange Druck
-/// zwanzigmal im Testbestand und wäre beim nächsten Umbau zwanzigmal falsch.
+/// **Seit dem 08.08. führt das Halten direkt ins Trefferblatt** (Scotts „ein
+/// Griff weniger"). Vorher ging es über das Kontextmenü, und die Journeys
+/// tippten dort auf `list.matches`. Dieser Punkt ist damit weg — der lange
+/// Druck *ist* er. Angaben und Löschen liegen jetzt im ⋯-Menü desselben
+/// Blattes.
+///
+/// Beides steht hier und nur hier: Sonst stünde der lange Druck zwanzigmal im
+/// Testbestand und wäre beim nächsten Umbau zwanzigmal falsch.
 extension XCUIApplication {
-    /// Öffnet das Menü der Kachel mit diesem Namen und tippt den Punkt.
+    /// Hält die Kachel und wartet, bis das Trefferblatt oben steht.
     ///
     /// `press(forDuration:)` statt `tap()`: Ein kurzer Tipp würde den Artikel
     /// abhaken — genau die Handlung, die die Kachel im Laden können muss.
-    func tapInTileMenu(
-        _ menuIdentifier: String,
+    @discardableResult
+    func openTileMatches(
         ofItem itemLabel: String? = nil,
         file: StaticString = #filePath,
         line: UInt = #line
-    ) {
+    ) -> XCUIElement {
         let kachel = itemLabel.map { label in
             buttons.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
         } ?? buttons["list.tile"].firstMatch
         XCTAssertTrue(kachel.waitForExistence(timeout: 15),
                       "Keine Kachel \(itemLabel ?? "list.tile") gefunden", file: file, line: line)
-        kachel.press(forDuration: 1.0)
+        kachel.press(forDuration: 0.6)
+
+        let blatt = navigationBars.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "Treffer für")
+        ).firstMatch
+        XCTAssertTrue(blatt.waitForExistence(timeout: 15),
+                      "Das Halten hat das Trefferblatt nicht geöffnet", file: file, line: line)
+        return blatt
+    }
+
+    /// Öffnet das Trefferblatt und darin den Punkt aus dem ⋯-Menü —
+    /// `matches.item.detail` oder `matches.item.delete`.
+    func tapInItemMenu(
+        _ menuIdentifier: String,
+        ofItem itemLabel: String? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        openTileMatches(ofItem: itemLabel, file: file, line: line)
+
+        let mehr = buttons["matches.more"].firstMatch
+        XCTAssertTrue(mehr.waitForExistence(timeout: 10),
+                      "Im Trefferblatt fehlt das ⋯-Menü", file: file, line: line)
+        mehr.tap()
 
         let punkt = buttons[menuIdentifier].firstMatch
         XCTAssertTrue(punkt.waitForExistence(timeout: 10),
-                      "Der Menüpunkt \(menuIdentifier) steht nicht im Kachelmenü",
+                      "Der Punkt \(menuIdentifier) steht nicht im ⋯-Menü",
                       file: file, line: line)
         punkt.tap()
     }

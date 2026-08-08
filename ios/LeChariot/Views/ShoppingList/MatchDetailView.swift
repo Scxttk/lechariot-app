@@ -29,6 +29,49 @@ struct MatchDetailView: View {
     /// The match whose rejection is currently being asked about, if any.
     @State private var askingAbout: OfferMatch?
 
+    /// Ob das Angaben-Blatt über diesem hier steht.
+    @State private var editingDetails = false
+
+    /// **Die übrigen Handgriffe am Artikel — hier, seit das Halten die Treffer
+    /// öffnet** (08.08.).
+    ///
+    /// Bis heute lagen Angebote, Angaben und Löschen zusammen im Kontextmenü
+    /// der Kachel. Scott wollte das Halten selbst als Weg zu den Treffern („ein
+    /// Griff weniger"), und **gemessen** ist: Sobald der lange Druck dieses
+    /// Blatt öffnet, kommt das Kontextmenü nicht mehr — bei 0,4 s nicht, bei
+    /// 0,7 s nicht und bei 1,2 s nicht (`TileGestureJourneyTests`). Zwei
+    /// Erkenner auf einer Geste, einer gewinnt; die Fläche darunter ist weg,
+    /// sobald ein Blatt darüberliegt.
+    ///
+    /// Damit brauchten Angaben und Löschen einen Weg, den ein Finger
+    /// **sicher** erreicht, und der liegt jetzt dort, wo das Halten ohnehin
+    /// hinführt. Das Kontextmenü der Kachel bleibt trotzdem stehen, weil es
+    /// nichts kostet. Für den Finger ist dieses Menü hier der Weg — und nur
+    /// der ist geprüft.
+    @ViewBuilder
+    private var artikelmenü: some View {
+        Menu {
+            Button {
+                editingDetails = true
+            } label: {
+                Label("Angaben", systemImage: "square.and.pencil")
+            }
+            .accessibilityIdentifier("matches.item.detail")
+
+            Button(role: .destructive) {
+                list?.remove(item)
+                dismiss()
+            } label: {
+                Label("Löschen", systemImage: "trash")
+            }
+            .accessibilityIdentifier("matches.item.delete")
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .accessibilityLabel("Weitere Handlungen für \(item.text)")
+        .accessibilityIdentifier("matches.more")
+    }
+
     private var allMatches: [OfferMatch] {
         ShoppingListMatcher.matches(for: item.query, in: offers)
     }
@@ -131,8 +174,14 @@ struct MatchDetailView: View {
             .navigationTitle("Treffer für „\(item.text)\u{201C}")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) { artikelmenü }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Fertig") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $editingDetails) {
+                ItemDetailSheet(item: item) { detail, note in
+                    list?.setDetail(detail, note: note, for: item)
                 }
             }
             .sheet(item: $askingAbout) { match in

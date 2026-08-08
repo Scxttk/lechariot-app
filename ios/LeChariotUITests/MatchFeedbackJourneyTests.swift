@@ -90,7 +90,7 @@ final class MatchFeedbackJourneyTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["list.tile"].firstMatch.waitForExistence(timeout: 15),
                       "\(item) must match a fixture offer — see MockFixtures")
-        app.tapInTileMenu("list.matches")
+        app.openTileMatches()
         XCTAssertTrue(app.staticTexts[fixtureOffer].waitForExistence(timeout: 10))
     }
 

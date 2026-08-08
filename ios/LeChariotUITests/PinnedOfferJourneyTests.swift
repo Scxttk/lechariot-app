@@ -79,7 +79,7 @@ final class PinnedOfferJourneyTests: XCTestCase {
         // Zurück ins Blatt und die Heftung lösen — der Weg dahin ist derselbe,
         // den man zum Heften gegangen ist. Wäre er es nicht, hätte man eine
         // Einbahnstraße gebaut.
-        app.tapInTileMenu("list.matches")
+        app.openTileMatches()
         let loesen = app.buttons.matching(identifier: "matches.pin").element(boundBy: 1)
         XCTAssertTrue(loesen.waitForExistence(timeout: 10))
         XCTAssertEqual(loesen.label, "Heftung lösen", "Derselbe Knopf muss die Heftung zurücknehmen")
@@ -123,7 +123,7 @@ final class PinnedOfferJourneyTests: XCTestCase {
         launch(allBranches: true)
         addItem("Orangen")
 
-        app.tapInTileMenu("list.matches")
+        app.openTileMatches()
         let heften = app.buttons.matching(identifier: "matches.pin").firstMatch
         XCTAssertTrue(heften.waitForExistence(timeout: 10))
         heften.tap()
@@ -151,7 +151,7 @@ final class PinnedOfferJourneyTests: XCTestCase {
         // Produkt in keiner Trefferliste mehr auftaucht und die Zeile gar keine
         // Angebotskachel mehr trägt. Ohne diesen Weg wäre die Heftung eine
         // Sackgasse — der Hinweis selbst ist deshalb der Knopf.
-        app.tapInTileMenu("list.matches.empty")
+        app.openTileMatches()
         let loesen = app.buttons["matches.unpin.dormant"]
         XCTAssertTrue(loesen.waitForExistence(timeout: 10),
                       "Das Blatt muss die schlafende Heftung zeigen und lösen lassen")
@@ -203,7 +203,7 @@ final class PinnedOfferJourneyTests: XCTestCase {
     /// steht also an zweiter Stelle. Wäre das einmal nicht so, fällt die
     /// Zusicherung danach mit dem Produktnamen im Text auf.
     private func pinTheDearerOffer() {
-        app.tapInTileMenu("list.matches")
+        app.openTileMatches()
         XCTAssertTrue(app.staticTexts[gewaehltes].waitForExistence(timeout: 10),
                       "Die teurere Alternative fehlt im Blatt — siehe MockFixtures")
         let heften = app.buttons.matching(identifier: "matches.pin").element(boundBy: 1)
@@ -227,7 +227,7 @@ final class PinnedOfferJourneyTests: XCTestCase {
 
     /// Heftet zusätzlich das billigste Angebot — der zweite Pin.
     private func alsoPinTheCheapestOffer() {
-        app.tapInTileMenu("list.matches")
+        app.openTileMatches()
         let heften = app.buttons.matching(identifier: "matches.pin").firstMatch
         XCTAssertTrue(heften.waitForExistence(timeout: 10))
         XCTAssertEqual(heften.label, "Auf die Liste heften",
