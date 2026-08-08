@@ -13,11 +13,18 @@ import SwiftUI
 /// Abhaken — beim Einkaufen ist das die einzige Handlung, die man im Gehen
 /// macht, und sie darf keinen Umweg haben.
 ///
-/// Nicht von dort: **keine Kärtchen.** Bring! setzt jede Kachel auf eine weiße
-/// Fläche mit Schatten. Genau der Container, gegen den Scotts Runde am 06.08.
-/// lief — das Zeichen hat eine eigene Silhouette und braucht keinen Rahmen,
-/// der ihm eine gibt. Was eine Kachel als Kachel lesbar macht, ist der
-/// gemeinsame Rhythmus des Rasters, nicht ein Rechteck um jede.
+/// Auch von dort: **die Fläche unter der Kachel** (Scott am 08.08., „i also
+/// want a little border around the products in list like in bring").
+///
+/// **Das dreht eine Begründung um, die hier stand.** Bis gestern Abend stand an
+/// dieser Stelle „keine Kärtchen", mit Berufung auf Scotts Runde vom 06.08.
+/// („i dont like that everything is in containers"). Der Satz war richtig — für
+/// **Zeilen**. Dort steckten drei Rechtecke ineinander: Zeilenfläche, darin die
+/// Angebotskachel, darin das Bildchen, zwei davon mit derselben Füllung. Im
+/// **Raster** gibt es diese Schachtelung nicht; hier ist die Fläche das
+/// einzige, was sagt, wo eine Kachel aufhört und die nächste anfängt. Am
+/// gerenderten Blatt gegen die Fassung „nur Strich" gehalten und so entschieden
+/// — Umriss allein verschwindet auf der Creme.
 ///
 /// **Und der Preis, den Bring! nicht hat.** Er sitzt als kleine Fahne an der
 /// Ecke des Zeichens, nicht als eigene Zeile: Wer nur einkaufen will, sieht
@@ -49,6 +56,18 @@ struct ShoppingGridTile: View {
                 beschriftung
             }
             .frame(maxWidth: .infinity)
+            // Der Innenabstand gehört zur Fläche: Ohne ihn klebt das Zeichen
+            // an der Kante.
+            .padding(.vertical, Theme.Spacing.sm)
+            .padding(.horizontal, 4)
+            .background(
+                Theme.surface,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                    .strokeBorder(Theme.stroke)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(TactileButtonStyle())
@@ -154,11 +173,13 @@ struct ShoppingGridTile: View {
         .padding(.horizontal, 4)
         .padding(.vertical, 2)
         .background(Theme.accent, in: Capsule())
-        // Weit genug nach außen, dass sie über der Ecke des Zeichens hängt
-        // statt darauf: Bei `x: 6` lag sie dem Erdbeerkelch und dem Deckel der
-        // Milchtüte im Gesicht — am gerenderten Raster gesehen. Die Kachel ist
-        // 76 pt breit und der Zeichenkasten 52, also ist draußen Platz.
-        .offset(x: 11, y: -5)
+        // **Innerhalb der Fläche, seit die Kachel eine hat** (08.08.). Ohne
+        // Fläche durfte die Fahne weit nach außen hängen, damit sie dem
+        // Erdbeerkelch und dem Deckel der Milchtüte aus dem Gesicht geht. Mit
+        // Fläche schnitt genau dieser Überstand über die Kante — und was über
+        // eine Kante ragt, liest sich als Fehler, nicht als Sticker. Jetzt
+        // knapp nach außen versetzt, aber innerhalb des Randes.
+        .offset(x: 4, y: 0)
         .accessibilityHidden(true)
     }
 
