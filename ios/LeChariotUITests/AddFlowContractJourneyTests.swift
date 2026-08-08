@@ -40,9 +40,14 @@ final class AddFlowContractJourneyTests: XCTestCase {
     /// sonst der Angaben-Schicht.
     private var blockTop: CGFloat {
         let surface = app.staticTexts["Häufig gekauft"]
+        // **Die Kachelzeile, nicht „Notiz …".** Seit dem 08.08. steht die
+        // Notiz **unten** im hohen Panel; sie als Oberkante zu nehmen maß den
+        // Block um seine ganzen Chipreihen zu kurz — der Deckel hätte dann
+        // gerade dann nichts gemerkt, wenn der Block wirklich wächst.
+        let kacheln = app.buttons["list.detailPanel.recent"].firstMatch
         let candidates = [
             surface.exists ? surface.frame.minY : nil,
-            panel.exists ? panel.frame.minY - 8 : nil,
+            kacheln.exists ? kacheln.frame.minY - 8 : nil,
         ].compactMap { $0 }
         return candidates.min() ?? app.windows.firstMatch.frame.maxY
     }
@@ -79,14 +84,47 @@ final class AddFlowContractJourneyTests: XCTestCase {
     /// das Anlegen *eines* Artikels, ohne dass überhaupt eine Tastatur im Spiel
     /// war. Von der Liste, in die man gerade etwas einträgt, blieb eine Zeile.
     ///
-    /// 45 % ist bewusst großzügiger als der gemessene neue Wert (39 %): Der
-    /// Deckel bewacht die Klasse Fehler, nicht die Dezimalstelle.
-    private let ceiling = 0.45
+    /// **Am 08.08. bewusst angehoben, und der Grund gehört dazu.** Der Block
+    /// ist seitdem absichtlich groß: Bring! gibt den Angaben rund 45 % des
+    /// Bildschirms, wir gaben ihnen 25 %, und genau daran las sich der
+    /// Bildschirm nicht wie Bring!. Gemessen liegt der Block jetzt bei 44 %
+    /// dieser Rechnung (ohne Tastatur), vorher bei 39 %.
+    ///
+    /// **Der Deckel bewacht damit nicht mehr die interessante Grenze** — das
+    /// tut seit dem 08.08. der Boden über der Liste in
+    /// `AddFlowZonesJourneyTests`: Über dem Block muss eine **ganze
+    /// Kachelreihe** stehen bleiben. Diese Zahl hier bleibt als grobe
+    /// Reißleine gegen den 55-%-Fall vom 03.08., der ohne Tastatur dastand
+    /// und auch heute risse.
+    ///
+    /// **Ohne Tastatur ist die Zahl eine andere Geschichte** (08.08.): Auf dem
+    /// Weg über „Häufig gekauft" steht keine Tastatur, der Block misst dann
+    /// 58 % — und lässt trotzdem **mehr** Liste stehen als der Tastaturweg
+    /// (rund 300 pt gegen 121). Genau daran zeigt sich, dass ein Anteil die
+    /// falsche Frage ist; die richtige stellt `assertATileRowFits`.
+    private let ceiling = 0.60
 
     private func assertBlockFits(_ weg: String) {
         XCTAssertLessThan(
             blockShare, ceiling,
             "Der Block unten frisst \(Int(blockShare * 100)) % des Bildschirms (\(weg))"
+        )
+        assertATileRowFits(weg)
+    }
+
+    /// **Die Frage, die wirklich zählt: Steht über dem Block noch eine ganze
+    /// Kachelreihe?**
+    ///
+    /// Ein Anteil sagt nichts darüber, ob oben etwas *steht*. Eine Kachelreihe
+    /// ist seit #91 112 pt hoch; passt sie nicht mehr, ist die obere Zone
+    /// Zierrat — und genau so sah der erste Anlauf der Nachrunde vom 08.08.
+    /// aus (73 pt übrig).
+    private func assertATileRowFits(_ weg: String) {
+        let oben: CGFloat = 44   // Unterkante der Statusleiste; die Titelleiste ist beim Tippen weg
+        let streifen = blockTop - oben
+        XCTAssertGreaterThanOrEqual(
+            streifen, 112,
+            "Über dem Block bleiben nur \(Int(streifen)) pt — keine ganze Kachelreihe (\(weg))"
         )
     }
 

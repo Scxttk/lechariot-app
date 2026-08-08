@@ -277,6 +277,24 @@ struct ShoppingListView: View {
             // Platz — vor der Entschlackung am 06.08. fing der erste Artikel
             // der Liste bei 535 von 874 pt an.
             .navigationBarTitleDisplayMode(.inline)
+            // **Beim Tippen gibt die Titelleiste ihren Platz ab**
+            // (2026-08-08, Scotts Nachrunde zu Punkt C).
+            //
+            // Der Vergleich mit Bring! hing an einer Zahl, die nicht im Panel
+            // steckt: **Bring! hat über der Liste gar nichts.** Ihre obere
+            // Zone ist Statusleiste plus genau eine Kachelreihe. Bei uns
+            // liegen dort zusätzlich 54 pt Titelleiste — mit ihr bleiben vom
+            // Zwanzig-Prozent-Streifen keine 60 pt übrig, und darin steht
+            // keine einzige Kachel. Die Leiste zu behalten hieße, den oberen
+            // Bereich als Zierrat zu führen.
+            //
+            // Verloren geht dabei nichts, was jetzt gebraucht wird: Der Titel
+            // sagt „Einkaufsliste", was die Tab-Leiste ohnehin sagt, und das
+            // Menü dahinter trägt „Liste leeren" — den einen Knopf, der
+            // wirklich Schaden anrichtet, und der beim Aufschreiben nichts zu
+            // suchen hat. Sobald „Fertig" den Fluss beendet, ist die Leiste
+            // zurück.
+            .toolbar(flowIsUp ? .hidden : .visible, for: .navigationBar)
             .toolbar { toolbarMenu }
             .safeAreaInset(edge: .bottom) { bottomBar }
         }
@@ -533,7 +551,7 @@ struct ShoppingListView: View {
     private var listBody: some View {
         List {
             let plan = ranks
-            if !plan.isEmpty {
+            if !plan.isEmpty, !planCardStandsBack {
                 Section {
                     ShoppingPlanCard(
                         ranks: plan,
@@ -547,7 +565,7 @@ struct ShoppingListView: View {
                         ))
                 }
                 .listRowBackground(Color.clear)
-            } else if guidance == .noMarkets {
+            } else if guidance == .noMarkets, !planCardStandsBack {
                 // Der Platz der Plan-Karte bleibt besetzt, statt leer zu
                 // bleiben: Was hier fehlt, ist die Antwort, für die es die App
                 // gibt — und dass sie fehlt, ist das Argument, Filialen zu
@@ -622,7 +640,14 @@ struct ShoppingListView: View {
                         // die `ScrollViewReader` hier hergibt.
                         .id(section.id)
                 } header: {
-                    if showsHeaders {
+                    // **Beim Tippen ohne Überschriften.** Der Streifen über
+                    // dem Block ist dann rund eine Kachelreihe hoch; eine
+                    // Überschrift kostete davon 40 pt und schob genau den
+                    // Artikel hinaus, den man gerade angelegt hat (gemessen:
+                    // bei einem einzigen Artikel stand er 7 pt unter der
+                    // Kante). Die Einteilung selbst bleibt — nur ihre
+                    // Beschriftung ruht, solange getippt wird.
+                    if showsHeaders, !flowIsUp {
                         // **Das gezeichnete Zeichen trägt hier die Identität.**
                         // `CategoryGlyphView` hatte in der ganzen App genau
                         // eine Aufrufstelle — als Rückfall eines Rückfalls.
@@ -659,7 +684,9 @@ struct ShoppingListView: View {
         // Standardluft, die eine gruppierte `List` über ihren ersten Abschnitt
         // legt. Auf dem Bildschirm, für den es die App gibt, ist das der
         // teuerste Platz.
-        .contentMargins(.top, Theme.Spacing.sm, for: .scrollContent)
+        // Beim Tippen fällt auch diese Luft weg: Der Streifen über dem Block
+        // ist dann rund eine Kachelreihe hoch, und 8 pt davon sind 8 pt.
+        .contentMargins(.top, flowIsUp ? 0 : Theme.Spacing.sm, for: .scrollContent)
         // **Wer die Liste anfasst, ist mit dem Aufschreiben fertig.** Der
         // zweite Ausgang aus dem Tipp-Fluss neben „Tastatur weg": Ohne ihn
         // bliebe die Angaben-Schicht stehen, während man schon durch die Liste
@@ -832,6 +859,27 @@ struct ShoppingListView: View {
         )
     }
 
+    /// Ob der Tipp-Fluss gerade läuft — Tastatur oben **oder** eine
+    /// Angaben-Schicht, die über „Häufig gekauft" entstanden ist.
+    private var flowIsUp: Bool { inputFocused || addFlow.isActive }
+
+    /// **Die Plan-Karte tritt beim Tippen zurück** (2026-08-08, Punkt C-2,
+    /// wörtlich): „Wir zeigen dort den besten Markt — die Auskunft ist
+    /// richtig, aber im Moment des Tippens die falsche."
+    ///
+    /// Bis heute stand sie auch dann oben, wenn vom Bildschirm nur noch ein
+    /// Streifen übrig war — und schob den Artikel, den man gerade angelegt
+    /// hatte, aus genau diesem Streifen heraus. Bei **einem** Artikel war er
+    /// damit gar nicht zu sehen: 324 pt gemessen, bei einem Block ab 183.
+    ///
+    /// **Während des Rundgangs bleibt sie.** Sein Plan-Rahmen hängt an ihrem
+    /// Anker, und wer der Einladung „Probier es gleich aus" folgt, hätte den
+    /// Rahmen sonst nie gesehen — dieselbe Rücksicht, die `activeFlowItem`
+    /// schon nimmt.
+    private var planCardStandsBack: Bool {
+        tutorial?.isRunning != true && flowIsUp
+    }
+
     /// Ob gerade etwas im Feld steht.
     private var isTyping: Bool {
         !newItemText.trimmingCharacters(in: .whitespaces).isEmpty
@@ -927,7 +975,13 @@ struct ShoppingListView: View {
     /// nicht mehr zu kennen.
     private var showsStapleSurface: Bool {
         guard surfaceIsExpanded else { return false }
-        return !detailPanelIsUp || suggestionChoice == true
+        guard detailPanelIsUp else { return true }
+        // **Neben der Schicht nur ohne Tastatur.** Die Regel „der nächste
+        // Vorschlag bleibt einen Tipp weit weg" stammt vom Weg über „Häufig
+        // gekauft", und dort steht keine Tastatur. Mit Tastatur ist der
+        // nächste Artikel ohnehin ein getipptes Wort weit weg — und der
+        // geschrumpfte Streifen kostete dort die letzte Kachelreihe der Liste.
+        return !inputFocused && suggestionChoice == true
     }
 
     @ViewBuilder
@@ -1176,14 +1230,31 @@ struct ShoppingListView: View {
     /// darunter — und zwei Sätze gleich beschrifteter Chips auf einem
     /// Bildschirm sind für eine Journey nicht auseinanderzuhalten.
     private var detailPanelIsUp: Bool {
-        activeFlowItem != nil && editingItem == nil && detailItem == nil
+        activeFlowItem != nil && editingItem == nil && detailItem == nil && !surfaceTakesOver
     }
+
+    /// **Beim Tippen tritt die Angaben-Schicht hinter die Vorschläge zurück**
+    /// (2026-08-08) — und damit tut die App endlich, was das Referenzvideo
+    /// zeigt: Bring! hat an dieser Stelle **eine** Schicht, nie zwei.
+    /// Während getippt wird, steht dort der Katalog; sobald der Artikel
+    /// angelegt ist, stehen dort seine Angaben.
+    ///
+    /// **Gemessen, warum es jetzt sein muss:** Mit dem hohen Panel (vier
+    /// Chipreihen) blieben über beidem zusammen noch 72 pt Liste — keine
+    /// ganze Kachelreihe. Vorher, mit einer Chipreihe, ging das Stapeln
+    /// gerade so durch.
+    ///
+    /// Ohne Tastatur (Weg über „Häufig gekauft") bleibt es beim Nebeneinander:
+    /// Dort ist der Bildschirm nicht geteilt, und der nächste Vorschlag soll
+    /// **einen Tipp** weit weg bleiben — genau der Fehler vom 26.07.
+    private var surfaceTakesOver: Bool { isTyping && surfaceIsExpanded }
 
     @ViewBuilder
     private var detailPanel: some View {
         if let item = activeFlowItem, editingItem == nil, detailItem == nil {
             ItemDetailPanel(
                 item: item,
+                reihen: ItemDetailVocabulary.groups(for: item.query),
                 recent: recentFlowItems(active: item),
                 onFocus: { addFlow.focus($0.id) },
                 onToggleChip: { word in
@@ -1193,7 +1264,10 @@ struct ShoppingListView: View {
                     // stattdessen weitertippt.
                     withAnimation(.snappy) {
                         list.setDetail(
-                            ItemDetailVocabulary.toggling(word, in: item.detail ?? []),
+                            ItemDetailVocabulary.toggling(
+                                word, in: item.detail ?? [],
+                                reihen: ItemDetailVocabulary.groups(for: item.query)
+                            ),
                             for: item
                         )
                     }
@@ -1293,7 +1367,7 @@ struct ShoppingListView: View {
     /// heute das ✗ der Schicht getragen hat.
     @ViewBuilder
     private var doneButton: some View {
-        if inputFocused || addFlow.isActive {
+        if flowIsUp {
             Button(action: endFlow) {
                 Image(systemName: "checkmark")
                     .font(.system(size: 17, weight: .semibold))

@@ -107,11 +107,16 @@ final class ItemDetailJourneyTests: XCTestCase {
                       "Die Liste unter der Schicht muss bedienbar bleiben\n"
                       + app.debugDescription)
 
-        let screen = app.windows.firstMatch.frame
-        XCTAssertGreaterThan(
-            kachel.frame.minY, screen.height * 0.3,
-            "Die Angaben-Schicht frisst die Liste — Oberkante bei "
-            + "\(kachel.frame.minY) von \(screen.height)"
+        // **Nicht mehr „ein Drittel", sondern „eine ganze Kachelreihe".**
+        // Seit dem 08.08. ist der Block absichtlich groß (Bring!s 45 %), und
+        // ein Anteil sagt nichts darüber, ob oben noch etwas *steht*. Die
+        // Frage, um die es hier geht, ist unverändert — nur schärfer gestellt:
+        // Bleibt über der Schicht Liste übrig, die man auch sieht?
+        let streifen = kachel.frame.minY - 44   // Unterkante der Statusleiste
+        XCTAssertGreaterThanOrEqual(
+            streifen, 112,
+            "Die Angaben-Schicht frisst die Liste — über ihr bleiben "
+            + "\(Int(streifen)) pt, eine Kachelreihe braucht 112"
         )
     }
 
