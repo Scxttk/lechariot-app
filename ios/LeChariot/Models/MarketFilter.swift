@@ -154,7 +154,9 @@ enum MarketFilter {
     /// Reichweite sind, wie weit die nächste ist, wie viele davon gewählt.
     ///
     /// Die Wahl steht zuletzt: Wer die Kette antippt, sucht eine Filiale — was
-    /// er schon hat, steht oben unter „Deine Filialen".
+    /// er schon hat, steht am Ende des Wählers unter „Deine Filialen". Das
+    /// „n gewählt" hier ist seit dem 08.08. die Stelle, an der die Auswahl auf
+    /// der ersten Bildschirmhöhe **abzulesen** ist, ohne sie auszubreiten.
     static func chainSubtitle(
         branchCount: Int, selectedCount: Int, nearestKm: Double?
     ) -> String {

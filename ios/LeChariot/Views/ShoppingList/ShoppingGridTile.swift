@@ -29,11 +29,34 @@ import SwiftUI
 /// **Und der Preis, den Bring! nicht hat.** Er sitzt als kleine Fahne an der
 /// Ecke des Zeichens, nicht als eigene Zeile: Wer nur einkaufen will, sieht
 /// das Raster; wer den Preis sucht, findet ihn, ohne dass er die Fläche
-/// beherrscht. Die Fahne ist **Anzeige, kein Knopf** — in 81 pt Kachelbreite
-/// gibt es keine zweite 44-pt-Trefferfläche neben dem Abhaken. Der Weg zu den
-/// Angeboten liegt im Kontextmenü und, prominenter, in der Plan-Karte über dem
+/// beherrscht. Die Fahne ist **Anzeige, kein Knopf** — eine zweite
+/// Trefferfläche auf einer Kachel, deren einzige Handlung das Abhaken im Gehen
+/// ist, wäre der eine Fehlgriff, den man sich dabei nicht leisten will. Der Weg
+/// zu den Angeboten ist seit dem 08.08. **das Halten selbst** (vorher ein
+/// Umweg über das Kontextmenü) und, prominenter, die Plan-Karte über dem
 /// Raster.
 struct ShoppingGridTile: View {
+    /// **Die Spalten des Rasters — drei je Reihe auf dem iPhone** (08.08.).
+    ///
+    /// Bis heute stand hier `.adaptive(minimum: 76)`, und daraus wurden auf
+    /// 393 pt vier Spalten zu je 81 pt. Scott am 08.08.: „Bring! nimmt drei,
+    /// die Kacheln sind entsprechend größer."
+    ///
+    /// **Warum weiter `.adaptive` und keine feste Drei.** Eine feste Zahl ist
+    /// auf dem iPad falsch: Dort wären drei Kacheln über 300 pt breit — ein
+    /// Zeichen von 40 pt in einem Feld von 300, mit dem Wort verloren darunter.
+    /// `.adaptive` hält stattdessen die **Kachelgröße** und lässt die Spaltenzahl
+    /// mit dem Bildschirm wachsen; das iPhone bekommt dann drei, weil auf keiner
+    /// iPhone-Breite eine vierte hineinpasst.
+    ///
+    /// **Die 100 ist gerechnet und nachgemessen** (`ShoppingGridColumnTests`):
+    /// Bei Rand `lg` (16) und Spalte `md` (12) muss die Zahl über 93 liegen,
+    /// damit auf der breitesten iPhone-Fläche (440 pt) keine vierte Spalte mehr
+    /// passt, und höchstens 106 betragen, damit auf der schmalsten (375 pt) noch
+    /// drei passen. 100 liegt in der Mitte dieses Fensters. Wer sie anfasst,
+    /// bekommt es vom Test gesagt.
+    static let columns = [GridItem(.adaptive(minimum: 100), spacing: Theme.Spacing.md)]
+
     let item: ShoppingItem
     var suggestion: ItemSuggestion = ItemSuggestion(match: nil)
     /// Trägt die Anker für den Rundgang. Nur die erste offene Kachel setzt das.
@@ -85,6 +108,30 @@ struct ShoppingGridTile: View {
         .accessibilityIdentifier("list.tile")
         .tutorialAnchor(.rowCheck, when: carriesTutorialAnchors)
         .contextMenu { menü }
+        .simultaneousGesture(haltenÖffnetDieTreffer)
+    }
+
+    /// **Halten führt zu den Treffern** (08.08., Scott: „ein Griff weniger").
+    ///
+    /// `simultaneousGesture` und nicht `onLongPressGesture`: Letzteres schiebt
+    /// sich vor den Tipp des Knopfes, und der Tipp ist die eine Handlung, die
+    /// diese Kachel im Gehen können muss. Gemessen ist beides — Tipp bis
+    /// „erledigt" vorher 0,74 s, nachher 0,74 s (`TileGestureJourneyTests`).
+    ///
+    /// **0,35 s ist Apples eigene Schwelle für langes Drücken** — dieselbe, die
+    /// `onLongPressGesture` ohne Angabe nimmt. Deutlich kürzer würde ein Tipp
+    /// mit etwas Nachdruck zum Halten erklären; deutlich länger geriete in die
+    /// Nähe des Kontextmenüs, das auf derselben Kachel liegt.
+    ///
+    /// **Was daran gemessen ist und was nicht:** Gemessen ist das *Ergebnis* —
+    /// bei 0,4 s, 0,7 s und 1,2 s öffnet das Trefferblatt und das Kontextmenü
+    /// bleibt weg (`testEveryHoldLengthOpensTheMatchesAndNotTheContextMenu`).
+    /// Die Schwelle des Kontextmenüs selbst ist **nicht** nachgemessen; sie ist
+    /// hier auch nicht nötig, weil der Test das Ergebnis festhält statt die
+    /// Rechnung dahinter.
+    private var haltenÖffnetDieTreffer: some Gesture {
+        LongPressGesture(minimumDuration: 0.35)
+            .onEnded { _ in onShowMatches?() }
     }
 
     // MARK: Zeichen und Fahne
@@ -214,9 +261,17 @@ struct ShoppingGridTile: View {
 
     // MARK: Das Menü
 
-    /// **Alles außer dem Abhaken liegt hier.** Eine Kachel von 81 pt trägt
-    /// genau eine Trefferfläche; jede weitere wäre kleiner als die 44 pt, die
-    /// der Barrierefreiheits-Audit verlangt, und läge im Gehen ohnehin daneben.
+    /// **Der Weg für Zeigegerät und Hilfstechnik.** Für den Finger ist er seit
+    /// dem 08.08. tot, und das ist gemessen: Sobald der lange Druck das
+    /// Trefferblatt öffnet, erscheint dieses Menü nicht mehr — bei 0,4 s
+    /// nicht, bei 0,7 s nicht, bei 1,2 s nicht (`TileGestureJourneyTests`).
+    /// Es bleibt trotzdem stehen, weil es nichts kostet und Zeigegerät und
+    /// Hilfstechnik es über andere Wege als den Fingerdruck ansteuern —
+    /// **nachgemessen ist das nicht**, deshalb hängt nichts daran.
+    ///
+    /// **Was der Finger stattdessen erreicht:** Angebote über das Halten,
+    /// Angaben und Löschen über das ⋯-Menü in genau dem Blatt, das dabei
+    /// aufgeht (`MatchDetailView.artikelmenü`). Nur dieser Weg ist geprüft.
     ///
     /// Das Trefferblatt bleibt darüber hinaus über die Plan-Karte erreichbar —
     /// die Angebote sind der Kern der App und dürfen nicht nur hinter einem

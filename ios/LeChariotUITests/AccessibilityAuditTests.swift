@@ -118,7 +118,7 @@ final class AccessibilityAuditTests: XCTestCase {
         addItem("Vollmilch")
         try audit("Einkaufsliste")
 
-        app.tapInTileMenu("list.matches")
+        app.openTileMatches()
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
         try audit("Treffer-Sheet")
 

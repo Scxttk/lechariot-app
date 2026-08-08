@@ -28,9 +28,9 @@ final class MultiRegionJourneyTests: XCTestCase {
         addRegion("17419")
         openBranchPicker()
 
-        // Die Filiale der ersten Region ist gewählt und steht deshalb oben
-        // unter „Deine Filialen"; die der zweiten liegt seit dem 2026-08-01
-        // hinter ihrer Kettenzeile.
+        // Die Filiale der ersten Region ist gewählt und steht deshalb unter
+        // „Deine Filialen" — seit dem 08.08. am Ende des Wählers statt oben;
+        // die der zweiten liegt seit dem 2026-08-01 hinter ihrer Kettenzeile.
         XCTAssertTrue(
             app.buttons["Lidl, Dresden Reick"].waitForExistence(timeout: 15),
             "Die Filialen der ersten Region sind verschwunden"

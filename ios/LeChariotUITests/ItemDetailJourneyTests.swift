@@ -20,7 +20,7 @@ final class ItemDetailJourneyTests: XCTestCase {
         waitForList()
         addItem("Vollmilch")
 
-        app.tapInTileMenu("list.item.detail")
+        app.tapInItemMenu("matches.item.detail")
         XCTAssertTrue(app.buttons["itemDetail.done"].waitForExistence(timeout: 10),
                       "Das Blatt mit den Angaben ist nicht aufgegangen")
 
@@ -44,7 +44,7 @@ final class ItemDetailJourneyTests: XCTestCase {
         waitForList()
         addItem("Vollmilch")
 
-        app.tapInTileMenu("list.item.detail")
+        app.tapInItemMenu("matches.item.detail")
         XCTAssertTrue(app.buttons["itemDetail.cancel"].waitForExistence(timeout: 10))
         tapChip("Bio")
         app.buttons["itemDetail.cancel"].tap()

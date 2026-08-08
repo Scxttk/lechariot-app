@@ -146,7 +146,6 @@ struct MarketPickerView: View {
                     }
                 }
             } else {
-                chosenSection
                 chainSection
             }
 
@@ -159,6 +158,8 @@ struct MarketPickerView: View {
                     Text("Filiale unbekannt – Angebote gelten deutschlandweit")
                 }
             }
+
+            if !isSearching { chosenSection }
 
             // Hier stand bis zum 2026-07-30 die Konsum-Zeile („keine Daten
             // verfügbar", nicht wählbar). Scotts Entscheidung, sie ganz zu
@@ -296,8 +297,28 @@ struct MarketPickerView: View {
 
     /// Die schon gewählten Filialen, quer über alle Ketten.
     ///
-    /// Sie stehen oben, damit man eine Wahl wieder los wird, ohne erst zu
-    /// erraten, hinter welcher Kettenseite sie liegt.
+    /// **Sie stehen unten, seit dem 08.08.** Bis dahin standen sie oben, mit
+    /// der Begründung, man solle eine Wahl wieder los werden, ohne zu erraten,
+    /// hinter welcher Kettenseite sie liegt. Erreichbar sind sie dort
+    /// weiterhin — der Abschnitt ist nur ans Ende gewandert. Was die alte
+    /// Reihenfolge übersah: Der Abschnitt **wächst mit jeder Wahl**, und was
+    /// er wegschiebt, sind genau die Ketten, die man als Nächstes dazunehmen
+    /// will. Scott am 08.08.: „the markets we already decided should go down
+    /// so i dont have to scroll down to reach penny rewe etc."
+    ///
+    /// **Am Bild gemessen** (Wähler mit **zwei** gewählten Filialen, die vier
+    /// Kettenzeilen am Monogramm abgezählt): Sie standen bei **53/60/68/76 %**
+    /// der Bildschirmhöhe, jetzt bei **31/39/46/54 %**. Eine Zeile ist rund
+    /// 8 % hoch — **jede weitere Wahl schob die Ketten um weitere 8 % nach
+    /// unten**, und genau das ist der Fall, den Scott hat.
+    ///
+    /// Dieselbe Ordnung wie „Erledigt" in der Einkaufsliste: Was erledigt ist,
+    /// steht unten. Die Kettenzeile trägt „1 gewählt" und ein Häkchen, die
+    /// Auswahl ist oben also weiterhin **abzulesen** — nur nicht mehr
+    /// auszubreiten.
+    ///
+    /// Beim Suchen entfällt der Abschnitt: Dann stehen die Treffer flach da,
+    /// und eine gewählte Filiale wäre zweimal im Bild.
     @ViewBuilder
     private var chosenSection: some View {
         let chosen = rows(for: filtered.filter { store.isFavorite($0) })

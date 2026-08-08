@@ -19,48 +19,58 @@ import XCTest
 /// Bildschirm zeigt — samt Trennlinien, Einzügen und Abschnittsköpfen, also
 /// genau den Unterschieden, um die es hier geht.
 ///
-/// Läuft **nur auf Zuruf**, sonst schreibt jeder Testlauf PNGs:
+/// **Die Bilder gehen als Anhang ins `.xcresult`**, nicht in einen Ordner:
 ///
-///     TEST_RUNNER_LECHARIOT_LIST_SHOTS=/pfad/zum/ordner xcodebuild test …
+///     xcodebuild test … -only-testing:LeChariotTests/ListDirectionShots \
+///       -resultBundlePath /tmp/bogen.xcresult
+///     xcrun xcresulttool export attachments --path /tmp/bogen.xcresult \
+///       --output-path /tmp/bogen
 ///
-/// **Das Präfix `TEST_RUNNER_` gehört dazu**, und hier stand es bis zum 08.08.
-/// nicht: `xcodebuild` reicht nur so präfigierte Variablen an den Prozess
-/// weiter, in dem die Tests laufen. Ohne das Präfix ist die Variable im
-/// Simulator nicht gesetzt, der Bogen wird still übersprungen, und es sieht
-/// aus, als hätte er nichts zu schreiben gehabt.
+/// **Hier stand bis zum 08.08. ein Weg über eine Umgebungsvariable, und der hat
+/// nie funktioniert.** Die Anweisung lautete
+/// `TEST_RUNNER_LECHARIOT_LIST_SHOTS=…`, mit der Begründung, `xcodebuild` reiche
+/// nur so präfigierte Variablen weiter. Nachgemessen: Im Prozess dieses
+/// Unit-Ziels kommt **weder** der Name mit Präfix **noch** der ohne an — die
+/// Umgebung enthält überhaupt keinen Schlüssel mit „LECHARIOT" darin. Das
+/// Präfix-Verfahren gilt für den Läufer eines **UI**-Tests; hier läuft der
+/// Bogen im Wirtsprozess der App, und `FOO=bar` hinter `xcodebuild test` ist
+/// eine Build-Einstellung, keine Umgebungsvariable. Der Bogen hat sich also
+/// stillschweigend übersprungen, egal was man ihm mitgab.
+///
+/// Anhänge brauchen diese Leitung nicht. Sie kosten dafür bei **jedem** Lauf
+/// die zwei Sekunden Zeichenzeit — der Preis dafür, dass der Bogen wirklich
+/// etwas liefert, wenn man ihn ruft.
 @MainActor
 final class ListDirectionShots: XCTestCase {
-    private var outDir: String? {
-        ProcessInfo.processInfo.environment["LECHARIOT_LIST_SHOTS"]
-    }
-
     func testWriteTheGrid() throws {
-        // **Übersprungen, nicht rot.** `XCTUnwrap` hat diesen Bogen bei jedem
-        // normalen Lauf durchfallen lassen — eine Suite, in der immer ein Test
-        // rot ist, hört auf, etwas zu bedeuten.
-        guard let dir = outDir else {
-            throw XCTSkip("ohne LECHARIOT_LIST_SHOTS wird nichts geschrieben")
-        }
-        try FileManager.default.createDirectory(
-            atPath: dir, withIntermediateDirectories: true
-        )
-
         for scheme in [ColorScheme.light, .dark] {
             let suffix = scheme == .light ? "hell" : "dunkel"
             // Das Raster ist ein voller Einkauf und braucht mehr Höhe als eine
             // Liste mit vier Zeilen — sonst schneidet der Ausschnitt genau die
             // Abschnitte ab, um die es geht.
-            try write(DirectionD(), to: "\(dir)/liste-D-raster-\(suffix).png", scheme: scheme, hoehe: 1500)
+            try write(DirectionD(), named: "liste-D-raster-\(suffix)", scheme: scheme, hoehe: 1500)
         }
+
+        // **Vorher/Nachher zur Spaltenzahl** (08.08.). Beide Fassungen in
+        // *einem* Lauf, damit der Vergleich nicht an zwei Auschecks hängt.
+        try write(DirectionD(columns: [GridItem(.adaptive(minimum: 76), spacing: Theme.Spacing.md)]),
+                  named: "raster-vorher-vier-393", scheme: .light, hoehe: 1500)
+        try write(DirectionD(),
+                  named: "raster-nachher-drei-393", scheme: .light, hoehe: 1500)
+        // Und die Probe aufs iPad: Dort darf die Kachel **nicht** mitwachsen,
+        // sondern es müssen mehr Spalten werden — der Grund, warum `.adaptive`
+        // bleibt statt einer festen Drei.
+        try write(DirectionD(), named: "raster-nachher-ipad-834",
+                  scheme: .light, breite: 834, hoehe: 1200)
     }
 
     /// iPhone-Breite in Punkten, Höhe großzügig: Ein zu knapper Ausschnitt
     /// schneidet genau die Zeile ab, um die es geht.
     private let size = CGSize(width: 393, height: 800)
 
-    private func write(_ view: some View, to path: String, scheme: ColorScheme,
-                       hoehe: CGFloat? = nil) throws {
-        let size = CGSize(width: self.size.width, height: hoehe ?? self.size.height)
+    private func write(_ view: some View, named name: String, scheme: ColorScheme,
+                       breite: CGFloat? = nil, hoehe: CGFloat? = nil) throws {
+        let size = CGSize(width: breite ?? self.size.width, height: hoehe ?? self.size.height)
         let host = UIHostingController(
             rootView: view
                 .environment(\.colorScheme, scheme)
@@ -87,7 +97,10 @@ final class ListDirectionShots: XCTestCase {
             window.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
         }
         let png = try XCTUnwrap(image.pngData())
-        try png.write(to: URL(fileURLWithPath: path))
+        let anhang = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
+        anhang.name = name
+        anhang.lifetime = .keepAlways
+        add(anhang)
     }
 }
 
@@ -124,6 +137,12 @@ private struct DirectionD: View {
     /// denen die Richtung entschieden wurde — Kategoriezeichen und Emoji —
     /// sind damit erledigt: Die Frage, die sie beantwortet haben, ist
     /// beantwortet.
+    ///
+    /// Die Spalten kommen aus `ShoppingGridTile.columns` — also aus derselben
+    /// Konstante, aus der die App sie nimmt. Überschrieben wird sie nur für
+    /// das Vorher-Bild der Spaltenrunde vom 08.08.
+    var columns: [GridItem] = ShoppingGridTile.columns
+
     var body: some View {
         List {
             abschnitt("Obst & Gemüse", ShotGrid.obst)
@@ -144,7 +163,7 @@ private struct DirectionD: View {
                            kopfzeichen: Bool = true) -> some View {
         Section {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 76), spacing: Theme.Spacing.md)],
+                columns: columns,
                 alignment: .leading,
                 spacing: Theme.Spacing.lg
             ) {

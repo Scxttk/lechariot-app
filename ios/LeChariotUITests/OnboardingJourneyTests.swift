@@ -238,18 +238,37 @@ final class OnboardingJourneyTests: XCTestCase {
         XCTAssertTrue(app.buttons["markets.done"].isEnabled)
     }
 
-    /// Gewählte Filialen stehen oben, ohne dass man die Kette wieder aufmachen
-    /// muss — sonst wäre eine Wahl leichter getroffen als rückgängig gemacht.
-    func testAChosenBranchIsReachableWithoutReenteringItsChain() {
+    /// **Gewählte Filialen stehen am Ende, nicht mehr oben** (08.08.).
+    ///
+    /// Zwei Zusagen auf einmal, und die zweite ist die neue: Die Wahl bleibt
+    /// auf der ersten Seite erreichbar, ohne die Kette wieder aufzumachen —
+    /// sonst wäre sie leichter getroffen als rückgängig gemacht. **Und sie
+    /// steht unter den Ketten**, denn oben schob sie mit jeder weiteren Wahl
+    /// genau die Ketten aus dem Bild, die man als Nächstes dazunehmen will
+    /// (Scott, 08.08.).
+    ///
+    /// Geprüft an den Rahmen, nicht an der Reihenfolge im Baum: Die
+    /// Abfragereihenfolge von XCUITest sagt nichts darüber, was der Nutzer
+    /// zuerst sieht — die y-Koordinate schon.
+    func testAChosenBranchStandsBelowTheChainsAndStaysReachable() {
         completeOnboarding(name: "Scott")
         pickFixtureBranchFromTheList()
 
         openTab("Einstellungen")
         openPlaces()
         app.buttons["Filialen bearbeiten"].tap()
-        XCTAssertTrue(app.staticTexts["Deine Filialen"].waitForExistence(timeout: 15))
+        let überschrift = app.staticTexts["Deine Filialen"]
+        XCTAssertTrue(überschrift.waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons[fixtureBranch].exists,
                       "die getroffene Wahl steht auf der ersten Seite")
+
+        let kette = app.buttons["picker.chain.\(fixtureChain)"]
+        XCTAssertTrue(kette.waitForExistence(timeout: 15))
+        XCTAssertLessThan(
+            kette.frame.minY, überschrift.frame.minY,
+            "Die Ketten müssen über der eigenen Auswahl stehen, sonst schiebt "
+            + "jede weitere Wahl sie weiter aus dem Bild"
+        )
     }
 
     /// Die Suche ist die Einschränkung: Wer tippt, bekommt Filialen, keine

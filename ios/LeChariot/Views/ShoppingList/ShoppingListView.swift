@@ -395,9 +395,9 @@ struct ShoppingListView: View {
     /// (Plan, Tipp, Checkliste) bleiben eigene Zeilen; sie sind Fließtext und
     /// gehören nicht ins Raster.
     ///
-    /// `.adaptive` statt vier fester Spalten: Auf dem iPhone kommen vier
-    /// heraus (bei 393 pt bleiben je Kachel 76 pt, und darin steht „Zahnpasta"
-    /// einzeilig), auf dem iPad entsprechend mehr — ohne zweite Regel.
+    /// `.adaptive` statt fester Spalten: Auf dem iPhone kommen **drei** heraus
+    /// (seit 08.08., vorher vier), auf dem iPad entsprechend mehr — ohne zweite
+    /// Regel. Die Zahl und ihre Begründung stehen bei `ShoppingGridTile.columns`.
     ///
     /// **Was mit den Zeilen weggefallen ist**, steht nicht mehr auf der
     /// Fläche: der Satz „Diese Woche nirgends im Angebot", der Hinweis auf ein
@@ -408,7 +408,7 @@ struct ShoppingListView: View {
     private func raster(_ items: [ShoppingItem], plan: [MarketListRank],
                         firstOpenItem: UUID?) -> some View {
         LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 76), spacing: Theme.Spacing.md)],
+            columns: ShoppingGridTile.columns,
             alignment: .leading,
             spacing: Theme.Spacing.lg
         ) {
