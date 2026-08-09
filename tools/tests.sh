@@ -60,9 +60,17 @@ WORKERS="${LECHARIOT_TEST_WORKERS:-3}"
 # überhaupt etwas beweist („die Trefferzahl muss sich unterwegs geändert
 # haben"). Wer sie billiger macht, muss erst zeigen, dass sie dasselbe prüft —
 # das ist eine eigene Aufgabe, keine Nebenwirkung dieser.
+# Und eine dritte, die denselben Befund trägt wie `TermGridJourneyTests`, nur
+# aus der anderen Richtung: `TileGestureJourneyTests`
+# (`testATapChecksTheItemWithoutWaitingForALongPress`) prüft, dass ein **kurzer**
+# Tipp abhakt, ohne auf den langen Druck zu warten — also eine Frist zwischen
+# zwei Gesten. Auf drei Klonen fiel der Test am 09.08. **zweimal von zwei**
+# Versuchen, allein auf einem Simulator ist er grün. Eine Zusicherung über
+# Gestendauer misst unter Last die Last.
 SERIELL=(
 	LeChariotUITests/PerformanceJourneyTests
 	LeChariotUITests/TermGridJourneyTests
+	LeChariotUITests/TileGestureJourneyTests
 )
 
 only=()

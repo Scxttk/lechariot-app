@@ -148,7 +148,7 @@ verhindert, und ist Korrektheit, nicht Langsamkeit.
 ist.** Beide Hebel klangen plausibel, beide waren in einer Viertelstunde
 widerlegt — und beide hätten ohne Messung echten Code hinterlassen.
 
-## Die zwei Klassen, die allein laufen
+## Die drei Klassen, die allein laufen
 
 `tools/tests.sh` fährt dafür einen zweiten, seriellen Durchgang.
 
@@ -181,6 +181,16 @@ haben"). Wer sie billiger macht, muss erst zeigen, dass sie dasselbe prüft.
 belegten Maschine kein billiger Handgriff.** Wenn es geht, `.firstMatch` oder
 eine Abfrage über den Bezeichner.
 
+**`TileGestureJourneyTests`** — derselbe Befund aus der anderen Richtung.
+`testATapChecksTheItemWithoutWaitingForALongPress` prüft, dass ein **kurzer**
+Tipp abhakt, ohne auf den langen Druck zu warten: eine Zusicherung über die
+Frist zwischen zwei Gesten. Auf drei Klonen fiel er am 09.08. **zweimal von
+zwei** Versuchen, allein auf einem Simulator ist er grün.
+
+**Merksatz: Wer eine Gestendauer zusichert, misst unter Last die Last.** Solche
+Journeys gehören in den seriellen Durchgang — oder ihre Zusicherung gehört so
+umgeschrieben, dass sie nicht an der Wanduhr hängt.
+
 Der Rundgang (`TutorialJourneyTests`, `TourTargetJourneyTests`) gehört
 ausdrücklich **nicht** dorthin: Er misst Geometrie — wo das wandernde Loch nach
 dem Einschwingen liegt —, und die hängt nicht an der Auslastung. Seine
@@ -190,6 +200,22 @@ genauso.
 Die Liste steht in `tools/tests.sh` (`SERIELL`) und ist absichtlich kurz zu
 halten: Jeder Eintrag wandert aus dem parallelen Durchgang in einen zweiten,
 seriellen und kostet damit volle Wanduhr.
+
+## Stand 2026-08-09: zwei Journeys auf `main` sind rot
+
+Unabhängig von diesem Geschirr und **auch seriell auf einem einzigen
+Simulator**:
+
+| Journey | seriell | drei Klone |
+|---|---|---|
+| `AddFlowZonesJourneyTests.testAWholeTileRowStaysAboveTheBlock` | ❌ | ❌ |
+| `ReviewNoteJourneyTests.testTheReviewNoteDescribesTheAppThatShips` | ❌ | ❌ |
+
+Beide kamen mit den Bedienrunden vom 08.08. ([#91](https://github.com/Scxttk/lechariot-app/pull/91)
+bzw. [#93](https://github.com/Scxttk/lechariot-app/pull/93)) und fallen mit
+oder ohne Verteilung. Wer nach einem roten Lauf hierher kommt: **das sind sie,
+und sie sind nicht die Klone.** Sobald sie repariert sind, gehört diese Tabelle
+hier raus.
 
 ## Wenn etwas kaputt aussieht
 
