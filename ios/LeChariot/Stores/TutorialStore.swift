@@ -213,10 +213,17 @@ struct TutorialStep: Identifiable, Equatable {
                 deed: .opensNextWeek,
                 tab: .angebote
             ),
+            // **Die Karte sagt nicht noch einmal, was in der Zeile steht.** Der
+            // erste Entwurf tat genau das („Diese Preise gelten noch nicht.
+            // Sie zeigen, was demnächst günstig wird …") — und war damit
+            // derselbe Fehler, der beim alten Rahmen 1 als „ugly" auffiel: Text
+            // über Text, einmal hell, einmal abgedunkelt. Seit #90 sagt die
+            // Zeile es selbst und laut; die Karte zeigt nur hin und
+            // verabschiedet sich.
             TutorialStep(
                 id: "done",
-                title: "Diese Preise gelten noch nicht",
-                text: "Sie zeigen, was demnächst günstig wird — damit du es heute stehen lassen kannst. Das war’s.",
+                title: "Das war’s",
+                text: "Lies die getönte Zeile oben — dann weißt du, woran du bei diesen Preisen bist. Den Rundgang findest du wieder unter „Einstellungen“.",
                 spotlight: .anchor(.nextWeekNotice),
                 deed: .reads,
                 tab: .angebote

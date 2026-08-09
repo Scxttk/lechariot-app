@@ -40,10 +40,7 @@ extension XCUIApplication {
             winkel.tap()
 
         case rahmen.contains("Im Laden abhaken"):
-            let kachel = buttons.matching(identifier: "list.tile").firstMatch
-            XCTAssertTrue(kachel.waitForExistence(timeout: 15),
-                          "Keine Kachel:\n" + debugDescription, file: file, line: line)
-            kachel.tap()
+            tapTheHole(what: "die Kachel", file, line)
 
         case rahmen.contains("Alle Angebote deiner Filialen"):
             buttons["Angebote"].firstMatch.tap()
@@ -68,6 +65,27 @@ extension XCUIApplication {
         // beendet, landet noch einmal auf dem Bildschirm darunter.
         Thread.sleep(forTimeInterval: 0.9)
         return true
+    }
+
+    /// **Dorthin tippen, wo der Rundgang hinzeigt** — auf die Mitte des Lochs,
+    /// nicht auf die Mitte eines Elements.
+    ///
+    /// Der Unterschied hat einen ganzen Nachmittag gekostet. Eine Kachel meldet
+    /// XCUITest als `Button {{0.0, 258.7}, {402.0, 120.0}}` — **bildschirmbreit**,
+    /// obwohl sie 112 pt breit gezeichnet ist; der Knopf trägt den ganzen
+    /// Rasterplatz. Ein `tap()` darauf zielt auf die Mitte dieses Rahmens, und
+    /// die liegt **neben** dem Loch, also auf einer Sperrfläche: „Failed to not
+    /// hittable". Der Tipp war richtig gemeint und landete am falschen Ort.
+    ///
+    /// Die Sonde `tutorial.hole` liegt im Testlauf genau auf dem Loch (siehe
+    /// `TutorialOverlay.holeProbe`) und ist damit die einzige Stelle, die
+    /// „dorthin, wo der Rundgang zeigt" wirklich ausdrückt.
+    private func tapTheHole(what: String,
+                            _ file: StaticString = #filePath, _ line: UInt = #line) {
+        let loch = images["tutorial.hole"]
+        XCTAssertTrue(loch.waitForExistence(timeout: 15),
+                      "Kein Loch für \(what):\n" + debugDescription, file: file, line: line)
+        loch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
     /// Den ganzen Rundgang mitmachen, bis er zu Ende ist.

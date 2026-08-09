@@ -51,12 +51,27 @@ final class RundgangShots: XCTestCase {
             // Über die Schonfrist und das Einschwing-Fenster hinaus warten:
             // Fotografiert wird, was stehen bleibt, nicht was gerade fliegt.
             Thread.sleep(forTimeInterval: 2.2)
-            attach(name: String(format: "rundgang-%02d", frame))
+            let name = String(format: "rundgang-%02d", frame)
+            attach(name: name)
+            // Der Baum dazu: Wenn ein Rahmen fehlt, steht hier, ob sein Ziel
+            // überhaupt auf dem Bildschirm war.
+            attachTree(name: "\(name)-baum", note: card.label)
             guard app.doTheTourDeed() else { break }
             frame += 1
         }
 
-        XCTAssertGreaterThan(frame, 1, "Kein einziger Rahmen fotografiert")
+        // **Sechs Rahmen, und zwar alle.** Der Bogen war das Werkzeug, mit dem
+        // aufgefallen ist, dass sich ein Rahmen still übersprang — dann muss er
+        // das auch melden und nicht nur zeigen.
+        XCTAssertEqual(frame - 1, 6, "Nicht jeder Rahmen kam dran")
+    }
+
+    private func attachTree(name: String, note: String) {
+        let text = "RAHMEN: \(note)\n\n" + app.debugDescription
+        let anhang = XCTAttachment(string: text)
+        anhang.name = name
+        anhang.lifetime = .keepAlways
+        add(anhang)
     }
 
     private func attach(name: String) {

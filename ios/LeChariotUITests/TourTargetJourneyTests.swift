@@ -181,9 +181,10 @@ final class TourTargetJourneyTests: XCTestCase {
             "Der Rahmen ist von allein weitergegangen: \(card.label)"
         )
 
-        // Und ein Tipp **daneben** zählt auch nicht: Die Vorschlagskachel liegt
-        // außerhalb des Lochs.
-        app.buttons["Butter hinzufügen"].firstMatch.tap()
+        // Und ein Tipp **daneben** zählt auch nicht. Über eine Koordinate und
+        // nicht über ein Element: Gemeint ist „irgendwo außerhalb des Lochs",
+        // und ein benanntes Element wäre eine Aussage über dieses Element.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35)).tap()
         Thread.sleep(forTimeInterval: 1.0)
         XCTAssertTrue(
             card.label.contains("Schreib deinen ersten Artikel auf"),

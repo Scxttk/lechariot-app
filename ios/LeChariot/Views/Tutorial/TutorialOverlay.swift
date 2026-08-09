@@ -322,6 +322,16 @@ struct TutorialOverlay: View {
                 .accessibilityElement()
                 .accessibilityAddTraits(.isImage)
                 .accessibilityLabel("Rundgang-Loch")
+                // Der Zustand, an dem ein übersprungener Rahmen hängt, als
+                // ablesbarer Wert: Welcher Schritt, hat er gerade ein Ziel,
+                // hatte er je eines, ist die Schonfrist um. Ohne das ist ein
+                // Rahmen, der sich selbst überspringt, im Testlauf nur eine
+                // Abwesenheit — und die sagt nicht, warum.
+                .accessibilityValue(
+                    "s\(tutorial.index) ziel\(resolvedHole == nil ? 0 : 1) "
+                    + "gesehen\(sawTargetFor ?? -1) frist\(graceExpiredFor ?? -1) "
+                    + "anker[\(anchorFingerprint)]"
+                )
                 .accessibilityIdentifier("tutorial.hole")
         }
         #endif
