@@ -80,6 +80,17 @@ You'll need XcodeGen — the `.xcodeproj` is generated, not the source of truth.
 xcodebuild -project ios/LeChariot.xcodeproj -scheme LeChariot -destination 'generic/platform=iOS Simulator' build
 ```
 
+## Tests
+
+```sh
+tools/tests.sh                       # everything
+tools/tests.sh AddFlowJourneyTests   # just these classes, while iterating
+```
+
+Not `xcodebuild test` by hand — the script is where it's written down which
+classes may run on parallel simulator clones and which may not.
+See [docs/TESTS.md](docs/TESTS.md).
+
 ## Data contracts
 
 See [docs/CONTRACTS.md](docs/CONTRACTS.md).
