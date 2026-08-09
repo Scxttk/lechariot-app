@@ -27,10 +27,11 @@ struct TutorialStep: Identifiable, Equatable {
         /// SwiftUI-Baums, aus dem die Anker kommen. Siehe
         /// `TutorialOverlay.navBarBand`.
         case navBar
-        /// **Kein Loch.** Nur die Schlusskarte hat das: Sie leuchtet nichts
-        /// aus, sie verabschiedet. Ein Rahmen ohne Ziel überspringt sich sonst
-        /// nach der Schonfrist selbst — dieser Fall ist davon ausgenommen,
-        /// siehe `TutorialOverlay.skipIfNothingToShow`.
+        /// **Kein Loch.** Nur die Schlusskarte hat das, und auch nur in der
+        /// Fassung ohne Filialen: Sie leuchtet nichts aus, sie verabschiedet.
+        /// Vom Selbst-Überspringen sind Rahmen zum Lesen ohnehin ausgenommen —
+        /// die Ausnahme hängt am `deed`, nicht hier, siehe
+        /// `TutorialOverlay.skipIfNothingToShow`.
         case nothing
     }
 
@@ -94,16 +95,18 @@ struct TutorialStep: Identifiable, Equatable {
     /// Tastatur, und ein Rahmen, der auf einen Tipp darauf wartet, wartet für
     /// immer.
     ///
-    /// **Und der Winkel-Knopf ist gar nicht da**, solange der Fluss läuft — am
-    /// Bild nachgesehen, nachdem der Vorschläge-Rahmen sich beim ersten Lauf
-    /// stillschweigend übersprungen hatte: In der Eingabezeile steht während
-    /// des Flusses links das Fertig-Häkchen, nicht der Winkel. Ein Rahmen ohne
-    /// Ziel überspringt sich nach 1,2 s selbst, und niemand merkt es — genau
-    /// die Falle vom 03.08., diesmal von der anderen Seite.
-    ///
     /// Deshalb gilt es für **alles außer dem ersten Rahmen**: Wer aufschreibt,
     /// braucht die Tastatur; wer danach etwas antippen soll, braucht den
     /// Bildschirm.
+    ///
+    /// **Eine Vermutung, die hier stand und falsch war, gehört mit hierher:**
+    /// Als der Vorschläge-Rahmen sich still übersprang, sah es aus, als fehle
+    /// der Winkel-Knopf während des Tipp-Flusses. Er ist die ganze Zeit da —
+    /// der Grund war ein verschluckter Anker (siehe `TutorialAnchor`). Für
+    /// diesen Rahmen ist das Wegräumen deshalb kein Muss, für den Rahmen zur
+    /// Tab-Leiste schon; einheitlich bleibt es trotzdem, weil „wer etwas
+    /// antippen soll, braucht den Bildschirm" die einfachere Regel ist als eine
+    /// Ausnahmeliste.
     var clearsInputFlow: Bool {
         switch deed {
         case .addsItem, .reads: false
