@@ -203,12 +203,15 @@ lauf() {
 	# Je Durchgang ein eigener Pfad: Zwei Durchgänge auf dasselbe Bündel
 	# schreiben lassen bricht den zweiten ab („already exists").
 	[ -n "$RESULT" ] && bundle=(-resultBundlePath "$RESULT")
+	# `${a[@]+"${a[@]}"}` und nicht `"${a[@]}"`: Unter `set -u` hält die Bash 3.2
+	# dieses Macs eine **leere** Array-Entfaltung für eine unbelegte Variable und
+	# bricht ab — also genau im Normalfall ohne `--result`.
 
 	xcodebuild test-without-building \
 		-test-timeouts-enabled YES \
 		-maximum-test-execution-time-allowance 600 \
 		-retry-tests-on-failure -test-iterations 2 \
-		"${bundle[@]}" \
+		${bundle[@]+"${bundle[@]}"} \
 		-xctestrun "$xctestrun" -destination "$DESTINATION" "$@" 2>&1 | tee -a "$protokoll"
 	local code=${PIPESTATUS[0]}
 	if [ "$code" -ne 0 ]; then

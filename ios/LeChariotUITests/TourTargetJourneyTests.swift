@@ -18,11 +18,14 @@ import XCTest
 /// Damit ist „das Loch deckt sein Ziel" eine Rechnung auf zwei Rechtecken.
 ///
 /// **Am 06.08. sind vier dieser Journeys weggefallen, weil ihr Gegenstand
-/// weggefallen ist:** Der Rundgang hat statt neun Rahmen noch drei, und alle
-/// drei spielen auf der Liste. Damit gibt es die Angaben-Schicht, die Vorschau
-/// und die Treffer-Kachel als Rahmen nicht mehr — und auch keinen Tab-Wechsel
-/// mehr, dessen Überblendung die Karte schwarz übermalen könnte. Was hier
-/// steht, ist das, was der Rundgang noch behauptet.
+/// weggefallen ist** — der Rundgang war auf drei Rahmen geschrumpft.
+///
+/// **Seit dem 09.08. sind es sechs, und jeder bis auf den letzten wartet auf
+/// eine Handlung des Nutzers.** Damit kommt hier eine zweite Frage dazu, die
+/// vorher keine war: *Geht ein Rahmen ohne die Handlung wirklich nicht weiter?*
+/// Auch das ist eine Rechnung und keine Meinung — gewartet wird über beide
+/// Fristen des Rundgangs hinaus (Einschwingen 0,7 s, Schonfrist 1,2 s), und
+/// danach muss derselbe Rahmen stehen.
 final class TourTargetJourneyTests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -144,7 +147,7 @@ final class TourTargetJourneyTests: XCTestCase {
     /// Tipper des Nutzers: Tab-Leiste, dann „Nächste Woche".
     func testTheTourEndsOnTheNextWeekNotice() {
         startTourFromSettings()
-        advance(to: "Diese Preise gelten noch nicht")
+        advance(to: "Das war")
         settle()
         assertHoleCovers(app.staticTexts["nextWeek.explainer"], "die Hinweiszeile der Vorschau")
         XCTAssertTrue(app.buttons["tutorial.next"].exists,
@@ -248,7 +251,8 @@ final class TourTargetJourneyTests: XCTestCase {
     /// zu. Ohne diesen Fall wäre die Lockerung oben ein Loch in der Führung.
     func testTheTabBarStaysShutEvenOnAHandsOnFrame() {
         startTourFromSettings()
-        XCTAssertTrue(card.label.contains("Schreib auf, was du brauchst"))
+        XCTAssertTrue(card.label.contains("Schreib deinen ersten Artikel auf"),
+                      card.label)
         openTab("Angebote")
         Thread.sleep(forTimeInterval: 0.8)
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].exists,

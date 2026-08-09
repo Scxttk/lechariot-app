@@ -301,9 +301,18 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
         XCTAssertFalse(app.staticTexts["marketPrompt.title"].exists,
                        "eine beantwortete Frage darf nicht wiederkommen")
-        // Und der Weg bleibt offen — im Leerzustand der Liste, wo er hingehört.
-        XCTAssertTrue(app.buttons["list.chooseMarkets"].exists,
-                      "„Später“ darf keine Sackgasse sein")
+        // **Und der Weg bleibt offen — auf der Liste, wo er hingehört.**
+        //
+        // Welche der beiden Flächen ihn trägt, hängt seit dem 09.08. davon ab,
+        // was der Nutzer im Rundgang getan hat: Wer selbst einen Artikel
+        // angelegt hat (Rahmen 1), hat damit den ersten Punkt der
+        // Einrichtungs-Checkliste erledigt — und die löst die Filialen-Karte
+        // ab (`ListGuidance.surface`). Beide führen zur Filialauswahl; die
+        // Zusicherung gilt dem **Weg**, nicht der Fläche.
+        let karte = app.buttons["list.chooseMarkets"]
+        let checkliste = app.buttons["list.checklist.markets"]
+        XCTAssertTrue(karte.exists || checkliste.exists,
+                      "„Später“ darf keine Sackgasse sein:\n" + app.debugDescription)
     }
 
     // MARK: Aus den Einstellungen
@@ -359,10 +368,14 @@ final class TutorialJourneyTests: XCTestCase {
         // `-uiTestingOnboarded` setzt eine Filiale, der Rundgang läuft also in
         // der langen Fassung. Bis zu dem Rahmen mitmachen, der um den Tipp auf
         // die Tab-Leiste bittet — und vor jedem Schritt messen, wo wir stehen.
+        // **Gemessen am Angebote-Bildschirm, nicht an der Einkaufsliste.** Die
+        // Titelleiste der Liste tritt beim Tippen ab (08.08., Punkt C) — auf
+        // ihre Abwesenheit zu prüfen hieße, den Tipp-Fluss zu messen und nicht
+        // den Tab.
         var erreicht = false
         for _ in 0..<5 {
-            XCTAssertTrue(app.navigationBars["Einkaufsliste"].exists,
-                          "Der Rundgang hat den Tab von allein gewechselt: " + tourCard.label)
+            XCTAssertFalse(app.navigationBars["Angebote"].exists,
+                           "Der Rundgang hat den Tab von allein gewechselt: " + tourCard.label)
             if tourCard.label.contains("Alle Angebote deiner Filialen") {
                 erreicht = true
                 break
@@ -372,8 +385,8 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(erreicht, "Der Angebote-Rahmen kam nie: " + tourCard.label)
 
         Thread.sleep(forTimeInterval: 2.5)   // über die Schonfrist hinaus
-        XCTAssertTrue(app.navigationBars["Einkaufsliste"].exists,
-                      "auch nach der Schonfrist steht die Liste: " + tourCard.label)
+        XCTAssertFalse(app.navigationBars["Angebote"].exists,
+                       "auch nach der Schonfrist steht die Liste: " + tourCard.label)
 
         // Und der Tipp bringt ihn dann wirklich hinüber.
         app.doTheTourDeed()
