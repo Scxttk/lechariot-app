@@ -31,7 +31,14 @@ extension XCUIApplication {
             feld.tap()
             // Ein Wort, zu dem der Vorrat garantiert nichts hat: Der Rahmen
             // danach hängt an der Kachel, nicht an einem Angebot.
-            feld.typeText("Zahnstocher\n")
+            //
+            // **Und beim zweiten Mal ein anderes.** `ShoppingListStore.add`
+            // weist Doppelte ab — dann landet kein Artikel auf der Liste, der
+            // Rahmen bekommt seine Handlung nie gemeldet und wartet ewig.
+            // Gefunden im vollen Lauf: `PerformanceJourneyTests` misst den
+            // Rundgang fünfmal hintereinander, und ab dem zweiten Durchgang
+            // stand „Zahnstocher" schon da.
+            feld.typeText(nextWord() + "\n")
 
         case rahmen.contains("Du musst nicht alles tippen"):
             let winkel = buttons["list.suggestions.toggle"]
@@ -65,6 +72,15 @@ extension XCUIApplication {
         // beendet, landet noch einmal auf dem Bildschirm darunter.
         Thread.sleep(forTimeInterval: 0.9)
         return true
+    }
+
+    /// Ein Wort, das noch nicht auf der Liste steht. Beim ersten Mal schlicht
+    /// „Zahnstocher", damit die Journeys danach suchen können, was sie schon
+    /// immer gesucht haben.
+    private func nextWord() -> String {
+        let wort = "Zahnstocher"
+        guard buttons[wort].exists else { return wort }
+        return "\(wort) \(buttons.matching(identifier: "list.tile").count + 1)"
     }
 
     /// **Dorthin tippen, wo der Rundgang hinzeigt** — auf die Mitte des Lochs,
