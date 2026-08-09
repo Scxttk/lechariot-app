@@ -86,7 +86,12 @@ while [ $# -gt 0 ]; do
 		# fehlt, damit `tools/tests.sh AddFlowJourneyTests` tut, was es sagt.
 		*) case "$1" in
 			*/*) only+=("$1") ;;
-			*Journey*|*Audit*) only+=("LeChariotUITests/$1") ;;
+			# `*Shots*` steht hier seit dem 09.08., und es hat einen Lauf
+			# gekostet: `tools/tests.sh FeldtestShots` landete als
+			# `LeChariotTests/FeldtestShots` im UI-losen Ziel, führte **null**
+			# Tests aus und meldete Erfolg. Ein grüner Lauf ohne einen
+			# einzigen gelaufenen Test ist die teuerste Sorte Grün.
+			*Journey*|*Audit*|*Shots*) only+=("LeChariotUITests/$1") ;;
 			*) only+=("LeChariotTests/$1") ;;
 		   esac
 		   shift ;;

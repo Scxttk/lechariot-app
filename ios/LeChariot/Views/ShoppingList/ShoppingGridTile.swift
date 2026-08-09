@@ -73,6 +73,74 @@ struct ShoppingGridTile: View {
     private var glyphTerm: String? { ItemGlyphTerm.term(for: item.text) }
 
     var body: some View {
+        // **Oben links, und beide anderen Ecken sind durchgefallen — an
+        // gerenderten Bildern, nicht im Kopf.**
+        //
+        // *Oben rechts:* Dort hängt das Preisfähnchen. Es sitzt an der Ecke des
+        // Zeichens und ragt 4 pt nach außen; auf der Vollmilch-Kachel
+        // berührten sich „0,99 €" und der Knopf fast, und auf einer schmaleren
+        // Kachel derselben Reihe wäre daraus eine Überlappung geworden.
+        //
+        // *Unten rechts:* Dort steht die Beschriftung. „Bananen" reicht bis
+        // fast an den Rand, und der Knopf klebte am Wort, als gehörte er dazu.
+        //
+        // Oben links ist auf jeder Kachel frei — das Zeichen steht mittig, das
+        // Fähnchen rechts davon, die Reißzwecke ebenfalls.
+        ZStack(alignment: .topLeading) {
+            kachel
+            // **Die sichtbare Tür zu den Angaben** (Feldtest 09.08.). Sie liegt
+            // über der Kachelfläche, nicht darin: Die Kachel ist ein Knopf, und
+            // ein Knopf im Knopf bekommt seinen Tipp nur, wenn er obenauf liegt.
+            if onEditDetail != nil {
+                angabenKnopf
+            }
+        }
+    }
+
+    /// **Warum die Kachel überhaupt eine sichtbare Tür braucht.**
+    ///
+    /// Seit #91 führt das Halten zum Trefferblatt, und damit ist das
+    /// Kontextmenü der Kachel für den Finger tot (gemessen, siehe `menü`).
+    /// Übrig blieb ein Weg zu den Angaben, der durch das Trefferblatt und dort
+    /// durch das ⋯-Menü führt — drei Griffe hinter einer Geste, die nichts
+    /// ankündigt. Scotts Feldtest am 09.08. ist genau darüber gestolpert:
+    /// „Kohl steht auf der Liste und ich komme an seine Angaben nicht mehr
+    /// heran." Das Bild dazu ist eindeutig — ein Bildschirm mit der
+    /// Überschrift „Treffer für ‚Kohl'", der „Keine Treffer" meldet, und die
+    /// einzige Tür zu den Angaben ist das ⋯ in seiner Ecke.
+    ///
+    /// Der Knopf hier ist die Antwort darauf: ein Griff, sichtbar, und er
+    /// führt in **dieselbe** Angaben-Schicht wie das Anlegen (`ItemDetailPanel`)
+    /// — nicht in eine zweite Fassung mit eigenem Wortschatz.
+    private var angabenKnopf: some View {
+        Button {
+            onEditDetail?()
+        } label: {
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.secondaryText)
+                // Die Fläche zum Treffen ist größer als das Zeichen: 44 pt sind
+                // Apples Maß, und die Ecke einer Kachel ist der Ort, an dem ein
+                // Daumen am ehesten danebengreift.
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        // **Nicht „Angaben zu Butter" — der Name ist vergeben**, und zwar an
+        // die Kachelzeile der Angaben-Schicht (`ItemDetailPanel.recentChip`).
+        // Steht die Schicht über der Liste, tragen sonst zwei Knöpfe auf einem
+        // Bildschirm denselben Namen; gemessen am 09.08. hieß das „Multiple
+        // matching elements found" in zwei Journeys, die es vorher gab. Genau
+        // die Falle, vor der `recentChip` an Ort und Stelle warnt.
+        //
+        // „ändern" ist außerdem das ehrlichere Wort: Auf der Kachel steht ein
+        // Artikel, den es schon gibt, und der Knopf ändert seine Angaben. Die
+        // Kachelzeile wechselt nur den Blick.
+        .accessibilityLabel("Angaben zu \(item.text) ändern")
+        .accessibilityIdentifier("list.tile.detail")
+    }
+
+    private var kachel: some View {
         Button(action: onToggle) {
             VStack(spacing: 6) {
                 zeichen

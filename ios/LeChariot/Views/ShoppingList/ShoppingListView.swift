@@ -517,10 +517,7 @@ struct ShoppingListView: View {
                     highlightsFirstMatch: item.id == glowItemID,
                     onToggle: { check(item) },
                     onShowMatches: { detailItem = item },
-                    onEditDetail: {
-                        editingItem = item
-                        tips?.detailsUsed()
-                    },
+                    onEditDetail: { openDetails(for: item) },
                     onDelete: { list.remove(item) }
                 )
             }
@@ -1562,6 +1559,24 @@ struct ShoppingListView: View {
     private func beginFlow(with item: ShoppingItem?) {
         guard let item else { return }
         withAnimation(.snappy) { addFlow.added(item.id) }
+    }
+
+    /// **Die Angaben eines Artikels, der schon auf der Liste steht**
+    /// (Feldtest 09.08.).
+    ///
+    /// Es öffnet sich **dieselbe Schicht wie beim Anlegen**, nicht das volle
+    /// Blatt: derselbe Wortschatz, dieselben Chipreihen, dieselbe Zusage, dass
+    /// jeder Chip sofort durchschreibt. Zwei Wege zu denselben Angaben dürfen
+    /// nicht zwei verschiedene Bildschirme sein — und das Blatt mit Freitext
+    /// und Überschriften liegt von hier aus genau da, wo es im Tipp-Fluss auch
+    /// liegt: hinter „Notiz …".
+    ///
+    /// Keine Tastatur: Der Fokus bleibt, wo er ist. Die Schicht hängt an
+    /// `addFlow.isActive`, nicht am Eingabefeld, und ihr Ausgang („Fertig")
+    /// kommt ohne Tastatur aus — siehe `endFlow`.
+    private func openDetails(for item: ShoppingItem) {
+        withAnimation(.snappy) { addFlow.reopen(item.id) }
+        tips?.detailsUsed()
     }
 
     /// **Der Ausgang, der keine Tastatur braucht.**
