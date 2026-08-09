@@ -139,7 +139,20 @@ final class AddFlowZonesJourneyTests: XCTestCase {
     /// Gemessen am Referenzvideo (604 × 1314): oben **20,5 %**, Mitte
     /// **44,8 %**, Tastatur **34,7 %**. Geprüft wird mit ±5 Punkten — der Test
     /// bewacht die Aufteilung, nicht die Dezimalstelle.
-    func testTheThreeZonesMatchTheReference() {
+    ///
+    /// **Nur auf der Geometrie, auf der die Zahlen entstanden sind** (09.08.).
+    /// Die drei Anteile wurden auf einem iPhone 17 Pro unter iOS 26.2
+    /// abgenommen — 874 pt Fenster, 233 pt Tastatur. Sie sind kein Gesetz für
+    /// jeden Bildschirm: Schon eine 10 pt höhere Tastatur (iOS 26.1) lässt die
+    /// 44,8 % und eine ganze Kachelreihe über dem Block nicht mehr
+    /// gleichzeitig zu, und dann gilt die Kachelreihe
+    /// (`testAWholeTileRowStaysAboveTheBlock`, `ItemDetailPanel.vocabulary`).
+    /// Gemessen mit drei statt vier Chipreihen: 26.1 **38 %**, iPhone 16e
+    /// **39 %** — beides richtig, nur eben nicht die Referenz.
+    ///
+    /// Übersprungen statt gelockert: Ein Anteil mit ±10 Punkten bewacht nichts
+    /// mehr.
+    func testTheThreeZonesMatchTheReference() throws {
         waitForList()
         input.tapAndAwaitKeyboard(in: app)
         app.typeText("Haferflocken\n")
@@ -147,6 +160,12 @@ final class AddFlowZonesJourneyTests: XCTestCase {
 
         let hoehe = app.windows.firstMatch.frame.height
         let tastaturOben = app.keyboards.firstMatch.frame.minY
+        let tastaturHoehe = app.keyboards.firstMatch.frame.height
+        try XCTSkipUnless(
+            hoehe == 874 && tastaturHoehe == 233,
+            "Die Referenzanteile gelten für 874 pt Fenster und 233 pt Tastatur; "
+            + "hier sind es \(Int(hoehe)) und \(Int(tastaturHoehe))"
+        )
         let oben = blockTop / hoehe
         let mitte = (tastaturOben - blockTop) / hoehe
         let tastatur = (hoehe - tastaturOben) / hoehe

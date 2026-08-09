@@ -50,6 +50,56 @@ struct ShoppingListView: View {
     /// `firstMatchArrived`.
     @State private var glowItemID: UUID?
 
+    /// Die Oberkante der Tastatur im Fenster, sonst `nil`.
+    ///
+    /// **Aus der Systemmeldung, nicht aus einem `GeometryReader`** — und das
+    /// ist nachgemessen, nicht Geschmack. Jeder Reader hier drin liefert
+    /// entweder das ganze Fenster (`ignoresSafeArea`: 874 pt, Einzüge 0) oder
+    /// eine Höhe, in der der Block unten schon abgezogen ist (gemessen 477 pt
+    /// bei 335 pt unterem Einzug). Die zweite Zahl den Block bemessen zu
+    /// lassen, der sie erzeugt, ist eine Rückkopplung. Die Tastatur meldet ihre
+    /// Lage von außen.
+    ///
+    /// **Diese Kante liegt höher als die, die eine Journey sieht**: Die Meldung
+    /// zählt die Vorschlagszeile („Ich · Ja · Das") mit, `app.keyboards` nicht —
+    /// auf dem 17 Pro 539 statt 583. Die 539 ist die richtige, denn dort endet
+    /// der Block.
+    @State private var tastaturOben: CGFloat?
+
+    /// Der obere Sicherheitsabstand — Statusleiste bzw. Dynamic Island.
+    /// Vom Block unten unberührt, deshalb hier gefahrlos aus der Geometrie.
+    @State private var sicherOben: CGFloat = 0
+
+    /// Die Höhe der Eingabezeile. Sie hängt nicht an der Schicht über ihr,
+    /// deshalb ist sie messbar, ohne sich selbst zu bemessen.
+    @State private var eingabeHoehe: CGFloat = 0
+
+    /// Was über dem Block stehen bleiben muss: **eine ganze Kachelreihe.**
+    ///
+    /// Die Zahl ist die gemessene Höhe einer Rasterzeile aus drei Kacheln
+    /// (#91). Sie skaliert mit der Schrift, weil die Kachel es tut — sonst
+    /// reservierte ein großer Schriftgrad zu wenig.
+    @ScaledMetric(relativeTo: .body) private var kachelReihe: CGFloat = 120
+
+    /// Wie viel Höhe die Angaben-Schicht bekommen darf, damit über dem ganzen
+    /// Block eine Kachelreihe stehen bleibt. `nil` heißt „keine Tastatur, keine
+    /// Enge" — dann ist die Schicht so hoch, wie ihr Inhalt es will.
+    ///
+    /// **Als Zahl weitergereicht, nicht als `frame(maxHeight:)`.** Der Rahmen
+    /// war der erste Versuch und kostete gemessen 2,33 pt, *auch wenn er gar
+    /// nicht griff* (Blockoberkante 188,67 statt 191) — und genau diese zwei
+    /// Punkte sind auf dem 17 Pro die ganze Reserve.
+    ///
+    /// **Genau eine Kachelreihe, kein Abstand obendrauf** — auch das ist
+    /// gemessen. Mit 8 pt Luft fällt der 17 Pro von vier Reihen auf drei: Dort
+    /// stehen 297 pt zur Verfügung und vier Reihen brauchen 292. Die Zusage ist
+    /// „eine ganze Kachelreihe", und die hält diese Rechnung; die 5 pt, die
+    /// dabei übrig bleiben, sind Zugabe, keine Voraussetzung.
+    private var platzFuerAngaben: CGFloat? {
+        guard let tastaturOben, eingabeHoehe > 0 else { return nil }
+        return max(0, tastaturOben - sicherOben - kachelReihe - eingabeHoehe)
+    }
+
     private var chains: [String] {
         Array(Set(favoriteMarkets.map(\.chain))).sorted()
     }
@@ -297,6 +347,33 @@ struct ShoppingListView: View {
             .toolbar(flowIsUp ? .hidden : .visible, for: .navigationBar)
             .toolbar { toolbarMenu }
             .safeAreaInset(edge: .bottom) { bottomBar }
+        }
+        // **Der Block darf die obere Zone nicht aufessen** (09.08.).
+        //
+        // Bis hierher war der Block so hoch, wie sein Inhalt es wollte, und was
+        // oben übrig blieb, war Rest. Auf dem Gerät, auf dem die vier
+        // Chipreihen gemessen wurden, ging das mit 9 pt auf; auf einem iPhone
+        // SE blieben von der oberen Zone 39 pt. Jetzt ist die Kachelreihe die
+        // gesetzte Größe und der Block bekommt, was danach übrig ist —
+        // `ItemDetailPanel.vocabulary` sucht sich dazu die Reihenzahl.
+        .background {
+            GeometryReader { proxy in
+                Color.clear.onChange(of: proxy.safeAreaInsets.top, initial: true) { _, neu in
+                    sicherOben = neu
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(
+            for: UIResponder.keyboardWillChangeFrameNotification
+        )) { meldung in
+            guard let rahmen = meldung.userInfo?[UIResponder.keyboardFrameEndUserInfoKey]
+                as? CGRect else { return }
+            tastaturOben = rahmen.minY
+        }
+        .onReceive(NotificationCenter.default.publisher(
+            for: UIResponder.keyboardWillHideNotification
+        )) { _ in
+            tastaturOben = nil
         }
         .task(id: branchIds) {
             await offerStore.load(branchIds: branchIds, chains: chains)
@@ -913,6 +990,13 @@ struct ShoppingListView: View {
             suggestionSurface
             detailPanel
             inputBar
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.onChange(of: proxy.size.height, initial: true) { _, neu in
+                            eingabeHoehe = neu
+                        }
+                    }
+                }
         }
         // Eine Fläche für beides. Vorher trug die Eingabezeile den Hintergrund
         // allein; zwei übereinandergelegte `.bar`-Flächen ergäben eine Kante
@@ -1256,6 +1340,7 @@ struct ShoppingListView: View {
                 item: item,
                 reihen: ItemDetailVocabulary.groups(for: item.query),
                 recent: recentFlowItems(active: item),
+                platz: platzFuerAngaben,
                 onFocus: { addFlow.focus($0.id) },
                 onToggleChip: { word in
                     // **Sofort durchgeschrieben, ohne „Fertig".** Das ist der

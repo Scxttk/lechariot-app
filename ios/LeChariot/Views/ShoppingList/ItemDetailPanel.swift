@@ -36,6 +36,10 @@ struct ItemDetailPanel: View {
     let reihen: [ItemDetailVocabulary.Group]
     /// Die zuletzt angelegten Artikel, ältester zuerst.
     let recent: [ShoppingItem]
+    /// Wie viel Höhe hier stehen darf, ohne der Liste ihre Kachelreihe zu
+    /// nehmen. `nil` heißt: Es drängt nichts, nimm die volle Zahl an Reihen.
+    /// Gerechnet wird sie in `ShoppingListView.platzFuerAngaben`.
+    var platz: CGFloat?
     let onFocus: (ShoppingItem) -> Void
     let onToggleChip: (String) -> Void
     let onOpenFull: () -> Void
@@ -44,13 +48,17 @@ struct ItemDetailPanel: View {
     /// Skaliert mit der Schrift, aber immer als **ganze** Reihe.
     @ScaledMetric(relativeTo: .subheadline) private var rowHeight: CGFloat = 60
 
-    /// Wie viele Reihen gleichzeitig dastehen.
+    /// Wie viele Reihen **höchstens** dastehen.
     ///
     /// **Vier, und das ist die Zahl, um die es Scott ging** (08.08.): Bring!
     /// gibt den Angaben rund 45 % des Bildschirms, wir gaben ihnen 25 % — und
     /// genau daran las sich das Ergebnis nicht wie Bring!. Vier Reihen plus
     /// Kachelzeile, Notizzeile und Eingabezeile ergeben gemessen 47 %.
-    private let visibleRows = 4
+    ///
+    /// **Höchstens**, weil die vier auf einem iPhone 17 Pro gemessen wurden und
+    /// dort mit 9 pt aufgingen — auf jedem kleineren Bildschirm nicht mehr.
+    /// Welche Zahl es wirklich wird, entscheidet der Platz: siehe `vocabulary`.
+    private static let maxRows = 4
 
     /// Die Höhe des Wortschatz-Feldes. Fest, nicht mitwachsend: Ob ein Artikel
     /// zwei Chips gewählt hat oder keinen und ob das Wörterbuch eine Sorte
@@ -66,8 +74,8 @@ struct ItemDetailPanel: View {
     /// Höhe ist heute ein Vielfaches der Reihenhöhe, und gescrollt wird
     /// **reihenweise** (`.viewAligned`). Angeschnitten werden kann damit
     /// nichts, in keiner Scroll-Lage und bei keinem Schriftgrad.
-    private var vocabularyHeight: CGFloat {
-        CGFloat(visibleRows) * rowHeight + CGFloat(visibleRows - 1) * Theme.Spacing.xs
+    private func vocabularyHeight(_ rows: Int) -> CGFloat {
+        CGFloat(rows) * rowHeight + CGFloat(rows - 1) * Theme.Spacing.xs
     }
 
     var body: some View {
@@ -197,7 +205,45 @@ struct ItemDetailPanel: View {
     ///
     /// Der ganze Wortschatz mit Umbruch, Überschriften und Freitext liegt
     /// weiterhin hinter „Notiz …".
+    ///
+    /// **Wie viele Reihen es werden, entscheidet der Platz — und das ist der
+    /// Nachtrag vom 09.08.** Vier Reihen waren auf einem iPhone 17 Pro unter
+    /// iOS 26.2 gemessen, und sie gingen dort mit **9 pt** auf. Diese 9 pt sind
+    /// die ganze Reserve gewesen, und sie reicht nirgends sonst: Die Tastatur
+    /// unter iOS 26.1 ist 10 pt höher, ein iPhone 16e hat 30 pt weniger Schirm,
+    /// ein iPhone SE 207 pt weniger. Gemessen (Kachelreihe über dem Block):
+    /// 17 Pro/26.2 **+9 pt**, 17 Pro/26.1 **−1**, 16e **−6**, SE **−81**. Auf
+    /// dem SE stand von der oberen Zone ein Streifen von 39 pt — genau der
+    /// Zierrat, gegen den `header` argumentiert.
+    ///
+    /// Was daraus wird, steht in `sichtbareReihen`: 17 Pro/26.2 **vier** (und
+    /// damit auf Scotts Gerät unverändert), 17 Pro/26.1 und 16e **drei**,
+    /// SE **zwei**.
     private var vocabulary: some View {
+        wortschatz(rows: sichtbareReihen)
+    }
+
+    /// Die Höhe des Panels **ohne** den Wortschatz: der obere Rand aus `body`,
+    /// die 32 pt hohe Kachelzeile aus `recentChip`, der Abstand des `VStack`
+    /// darunter. Alle drei sind Maße dieser Ansicht selbst — nachgerechnet
+    /// gegen den Simulator: 40 pt, und mit drei Reihen ergab das ein Panel von
+    /// 228 pt, genau wie gemessen.
+    private var kopfHoehe: CGFloat {
+        Theme.Spacing.xs + 32 + Theme.Spacing.xs
+    }
+
+    /// Die größte Reihenzahl, die in `platz` passt — höchstens `maxRows`,
+    /// mindestens eine. Ohne `platz` bleibt es bei `maxRows`.
+    private var sichtbareReihen: Int {
+        guard let platz else { return Self.maxRows }
+        for rows in stride(from: Self.maxRows, through: 2, by: -1)
+        where kopfHoehe + vocabularyHeight(rows) <= platz {
+            return rows
+        }
+        return 1
+    }
+
+    private func wortschatz(rows: Int) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 ForEach(reihen) { group in
@@ -206,7 +252,7 @@ struct ItemDetailPanel: View {
             }
             .scrollTargetLayout()
         }
-        .frame(height: vocabularyHeight)
+        .frame(height: vocabularyHeight(rows))
         .scrollTargetBehavior(.viewAligned)
         .scrollBounceBehavior(.basedOnSize)
     }
