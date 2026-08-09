@@ -257,7 +257,12 @@ fi
 # Repo: Der veraltet beim ersten neuen Test und wäre dann ein Wächter, dem
 # niemand mehr glaubt. Ein Rückgang ist ein Befund, ein Zuwachs ist der
 # Normalfall.
-gelaufen=$(grep -cE "Test case '.*' (passed|failed) on |^Test Case .*(passed|failed)" "$protokoll" || true)
+# **Namen zählen, nicht Zeilen.** Mit `-retry-tests-on-failure` schreibt ein
+# wackliger Test zwei Zeilen, und dann meldete dieser Wächter beim nächsten,
+# ruhigeren Lauf „ein Test fehlt" — am 09.08. genau so passiert: 824 gegen 823
+# bei zweimal denselben 823 Journeys.
+gelaufen=$(grep -oE "Test case '[A-Za-z0-9_]+\.[A-Za-z0-9_]+\(\)'|Test Case '-\[[A-Za-z0-9_.]+ [A-Za-z0-9_]+\]'" \
+	"$protokoll" | sort -u | wc -l | tr -d ' ')
 merker="$DERIVED/.letzte-testzahl"
 vorher=$(cat "$merker" 2>/dev/null || echo 0)
 if [ "$vorher" -gt 0 ] && [ "$gelaufen" -lt "$vorher" ]; then

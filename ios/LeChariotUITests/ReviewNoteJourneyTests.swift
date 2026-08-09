@@ -103,16 +103,23 @@ final class ReviewNoteJourneyTests: XCTestCase {
 
     /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst
     /// aufgeht.
+    ///
+    /// **Über „Fertig", seit dem 09.08.** Bis dahin stand hier ein
+    /// `app.swipeUp()` — aus der Zeit, als die Schicht mit dem Fokus ging und
+    /// es keinen Ausgang gab. Seit #91/#93 gibt es beides nicht mehr so: Die
+    /// Schicht nimmt 45 % des Bildschirms ein, der Wisch beginnt also **in
+    /// ihr** und scrollt ihre Chipreihen, statt sie wegzulegen. Auf einem
+    /// iPhone 17 Pro unter iOS 26.2 ging er trotzdem durch, unter 26.1 nicht —
+    /// die Journey hing an 10 pt Tastaturhöhe. „Fertig" unten links ist der
+    /// Weg, den die App seit C-3 anbietet, und der, den ein Prüfer nimmt.
     private func dismissQuantitySheet() {
         let abbrechen = app.buttons["itemDetail.cancel"]
         if abbrechen.exists { abbrechen.tap(); return }
-        // Seit dem 03.08. ist das Mengen-Menue kein Blatt mehr, sondern eine
-        // Schicht ueber der Eingabezeile — sie geht mit dem Fokus, nicht mit
-        // einem Knopf. Ein Wisch ueber die Liste tut das.
         let panel = app.buttons["list.detailPanel.more"]
         guard panel.waitForExistence(timeout: 3) else { return }
-        app.swipeUp()
-        _ = panel.waitForNonExistence(timeout: 3)
+        app.buttons["list.input.done"].tap()
+        XCTAssertTrue(panel.waitForNonExistence(timeout: 5),
+                      "\u{201E}Fertig\u{201C} r\u{00E4}umt die Angaben-Schicht nicht weg")
     }
 
 }

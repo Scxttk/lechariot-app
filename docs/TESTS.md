@@ -201,21 +201,39 @@ Die Liste steht in `tools/tests.sh` (`SERIELL`) und ist absichtlich kurz zu
 halten: Jeder Eintrag wandert aus dem parallelen Durchgang in einen zweiten,
 seriellen und kostet damit volle Wanduhr.
 
-## Stand 2026-08-09: zwei Journeys auf `main` sind rot
+## Das Gerät ist Teil des Ergebnisses
 
-Unabhängig von diesem Geschirr und **auch seriell auf einem einzigen
-Simulator**:
+Am 09.08. waren zwei Journeys auf `main` rot, und zwar hartnäckig: auch seriell,
+auch auf einem einzigen Simulator. Die Ursache war **kein** Code — es war das
+Gerät. Dieselbe Binärdatei, vier Simulatoren:
 
-| Journey | seriell | drei Klone |
+| Gerät | `testAWholeTileRow…` | `testTheReviewNote…` |
 |---|---|---|
-| `AddFlowZonesJourneyTests.testAWholeTileRowStaysAboveTheBlock` | ❌ | ❌ |
-| `ReviewNoteJourneyTests.testTheReviewNoteDescribesTheAppThatShips` | ❌ | ❌ |
+| iPhone 17 Pro, iOS 26.2 | ✅ | ✅ |
+| iPhone 17 Pro, iOS **26.1** | ❌ | ❌ |
+| iPhone 16e | ❌ | — |
+| iPhone SE 3 | ❌ | — |
 
-Beide kamen mit den Bedienrunden vom 08.08. ([#91](https://github.com/Scxttk/lechariot-app/pull/91)
-bzw. [#93](https://github.com/Scxttk/lechariot-app/pull/93)) und fallen mit
-oder ohne Verteilung. Wer nach einem roten Lauf hierher kommt: **das sind sie,
-und sie sind nicht die Klone.** Sobald sie repariert sind, gehört diese Tabelle
-hier raus.
+Die Tastatur unter iOS 26.1 ist **10 pt höher** als unter 26.2. Damit war der
+Platz über dem Angaben-Block um 10 pt kleiner, und die Kachelreihe passte nicht
+mehr darüber — auf dem 17 Pro/26.2 ging sie mit **1 pt** auf, auf dem SE fehlten
+**81 pt**. Beide Journeys hingen daran; die Anmerkungs-Journey zusätzlich an
+einem `swipeUp`, das seit dem hohen Panel in der Schicht beginnt statt auf der
+Liste. Repariert in [#95](https://github.com/Scxttk/lechariot-app/pull/95):
+Die Angaben-Schicht nimmt so viele Chipreihen, wie neben einer ganzen
+Kachelreihe Platz haben.
+
+**Was daraus für Journeys folgt:** Eine Zusicherung, die eine gemessene Zahl
+festhält, gilt zunächst nur auf dem Gerät, auf dem gemessen wurde. Zwei stehen
+noch so da und sind bewusst nicht angefasst worden, weil die Suite auf dem
+17 Pro läuft:
+
+- `testTheThreeZonesMatchTheReference` — die Anteile 20,5 / 44,8 / 34,7 % gelten
+  für 874 pt Fenster und 233 pt Tastatur. Auf allem anderen überspringt der Test
+  sich jetzt mit Begründung, statt eine falsche Zahl zu behaupten.
+- `testAWholeTileRowStaysAboveTheBlock` prüft `minY >= 44` — die Statusleiste
+  eines Geräts mit Dynamic Island. Auf einem iPhone SE sind es 20, und der Test
+  fällt dort, obwohl die Kachel korrekt sitzt.
 
 ## Wenn etwas kaputt aussieht
 
