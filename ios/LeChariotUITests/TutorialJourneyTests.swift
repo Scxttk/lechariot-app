@@ -176,13 +176,16 @@ final class TutorialJourneyTests: XCTestCase {
                        "kein Tipp von außen darf den Rahmen weiterschalten")
     }
 
+    /// Jeder Rahmen ist erreichbar, und zwar auf dem Weg, den er ansagt: Wer
+    /// tut, worum die Karte bittet, kommt bis zum Ende durch.
     func testEveryFrameIsReachableAndTheTourEnds() {
         startTour()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
         tapThrough()
 
-        XCTAssertFalse(tourCard.exists, "der Rundgang muss von allein zum Ende kommen")
+        XCTAssertFalse(tourCard.exists,
+                       "wer jede Handlung tut, muss am Ende ankommen")
         answerMarketPrompt(choose: false)
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15),
                       "danach steht der Nutzer wieder in der Liste")
@@ -203,28 +206,36 @@ final class TutorialJourneyTests: XCTestCase {
 
     /// Auf dem letzten Rahmen steht nur noch „Fertig". Vorher standen dort zwei
     /// Knöpfe nebeneinander, die dasselbe taten — gemeldet am 2026-07-30.
+    ///
+    /// **Und davor steht gar kein Primärknopf mehr** (09.08.): Ein Rahmen, der
+    /// auf eine Handlung wartet, darf keinen Knopf haben, der sie überspringt.
     func testTheLastFrameOffersOnlyOneWayOut() {
         startTour()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["tutorial.skip"].exists, "auf dem ersten Rahmen ist er eine Wahl")
+        XCTAssertFalse(next.exists,
+                       "solange ein Rahmen auf eine Handlung wartet, gibt es kein „Weiter“")
 
-        // Bis zum letzten Rahmen blättern, ohne ihn zu verlassen.
-        var taps = 0
-        while app.buttons["tutorial.skip"].exists && tourCard.exists && taps < 12 {
-            next.tap()
-            taps += 1
-            Thread.sleep(forTimeInterval: 0.5)
+        // Bis zum letzten Rahmen mitmachen, ohne ihn zu verlassen.
+        var handlungen = 0
+        while app.buttons["tutorial.skip"].exists && card.exists && handlungen < 9 {
+            app.doTheTourDeed()
+            handlungen += 1
         }
 
-        XCTAssertTrue(tourCard.exists, "der Rundgang muss noch laufen")
+        XCTAssertTrue(card.exists, "der Rundgang muss noch laufen")
         XCTAssertFalse(app.buttons["tutorial.skip"].exists,
                        "Abbruch und Fertig tun hier dasselbe, einer davon gehört weg")
-        XCTAssertTrue(next.exists)
+        XCTAssertTrue(next.exists, "und die Schlusskarte hat ihren einen Knopf")
     }
 
-    /// Die Beispiel-Artikel sind geliehen. Nach dem Rundgang ist die Liste
-    /// wieder so leer, wie der Tester sie hinterlassen hat.
-    func testTheDemoItemsAreTidiedAwayAfterwards() {
+    /// **Der Rundgang leiht sich seit dem 09.08. nichts mehr.**
+    ///
+    /// Bis dahin legte er Milch, Butter und Kaffee selbst auf die Liste, weil
+    /// der Plan-Rahmen sonst auf einen Leerzustand gezeigt hätte, und räumte sie
+    /// am Ende wieder ab. Jetzt schreibt der Nutzer im ersten Rahmen seinen
+    /// eigenen Artikel — der bleibt stehen, denn er gehört ihm.
+    func testTheTourBorrowsNothingAndKeepsWhatTheUserWrote() {
         startTour()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
         tapThrough()
@@ -232,38 +243,14 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertFalse(tourCard.exists, "der Rundgang muss zu Ende sein, bevor gezählt wird")
         answerMarketPrompt(choose: false)
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
-        // Ebenfalls `buttons` — siehe oben, sonst prüft die Schleife nichts.
-        for demo in ["Milch", "Butter", "Kaffee"] {
-            XCTAssertFalse(app.buttons[demo].exists,
-                           "\(demo) war nur geliehen und muss wieder von der Liste sein\n"
+
+        for geliehen in ["Milch", "Butter", "Kaffee"] {
+            XCTAssertFalse(app.buttons[geliehen].exists,
+                           "\(geliehen) hat der Rundgang gar nicht mehr zu legen\n"
                            + app.debugDescription)
         }
-    }
-
-    /// **Der Befund, mit dem die Runde vom 03.08. angefangen hat — und er gilt
-    /// weiter, nur für einen Rahmen weniger.**
-    ///
-    /// Über einer Liste ohne Filialen hatte der Plan-Rahmen kein Ziel: Die
-    /// Karte wurde gar nicht gebaut. Ein Rahmen ohne Ziel überspringt sich über
-    /// die Schonfrist von 1,2 s selbst, und niemand merkt es.
-    ///
-    /// Gewartet wird **länger als die Schonfrist**, bevor gelesen wird:
-    /// Ein Rahmen mit Ziel bleibt beliebig lange stehen, ein Rahmen ohne wäre
-    /// nach 1,2 s weitergesprungen. Genau dieser Unterschied ist die Prüfung.
-    ///
-    /// Der zweite Teil dieser Journey — derselbe Nachweis für den Rahmen „Das
-    /// günstigste Angebot" — ist am 06.08. mit dem Rahmen weggefallen.
-    func testThePlanFrameHasATargetEvenWithoutBranches() {
-        startTour()
-        XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
-
-        next.tap()                                   // → plan
-        Thread.sleep(forTimeInterval: 2.5)           // über die Schonfrist hinaus
-        XCTAssertTrue(
-            app.staticTexts["tutorial.card"].label.contains("Ein Einkauf, ein Markt"),
-            "Der Plan-Rahmen hat kein Ziel und hat sich übersprungen: "
-            + app.staticTexts["tutorial.card"].label
-        )
+        XCTAssertTrue(app.buttons["Zahnstocher"].exists,
+                      "was der Nutzer im ersten Rahmen selbst geschrieben hat, bleibt")
     }
 
     // MARK: Die Frage am Ende
@@ -350,14 +337,17 @@ final class TutorialJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
     }
 
-    /// **Der Rundgang bleibt auf der Liste, von vorn bis hinten.**
+    /// **Von allein wechselt der Rundgang den Tab nicht.**
     ///
-    /// Bis zum 06.08. stand hier die Gegenprobe: Der vorletzte Rahmen wechselte
-    /// auf den Angebote-Tab und leuchtete dort „Nächste Woche" aus. Beides ist
-    /// weg — mit drei Rahmen ist der Rundgang ein Bildschirm, und ein
-    /// Tab-Wechsel mitten in einer Führung ist genau die Sorte Bewegung, die
-    /// niemand bestellt hat.
-    func testTheTourNeverLeavesTheListTab() {
+    /// Bis zum 06.08. tat er es zweimal, und das war Scotts „visuell desaströs"
+    /// vom 03.08.: Eine `TabView` blendet ihren Inhalt nicht über, sie tauscht
+    /// ihn aus. Danach blieb er auf der Liste. **Seit dem 09.08. verlässt er sie
+    /// wieder — aber nur, weil der Nutzer selbst unten auf „Angebote" tippt**,
+    /// und der Rahmen, der darum bittet, steht noch auf der Liste.
+    ///
+    /// Diese Journey prüft die eine Hälfte, die dabei gleich bleiben muss: Bis
+    /// zu diesem Tipp steht die Einkaufsliste, auch über die Schonfrist hinaus.
+    func testTheTourStaysOnTheListUntilTheUserTapsTheTabBar() {
         app.launchArguments = ["-uiTesting", "-uiTestingTutorial", "-uiTestingOnboarded"]
         app.launch()
 
@@ -366,21 +356,29 @@ final class TutorialJourneyTests: XCTestCase {
         restart.tap()
         XCTAssertTrue(tourCard.waitForExistence(timeout: 15))
 
-        // input → plan → check, und dazwischen steht immer die Einkaufsliste.
-        for _ in 0..<2 {
+        // `-uiTestingOnboarded` setzt eine Filiale, der Rundgang läuft also in
+        // der langen Fassung. Bis zu dem Rahmen mitmachen, der um den Tipp auf
+        // die Tab-Leiste bittet — und vor jedem Schritt messen, wo wir stehen.
+        var erreicht = false
+        for _ in 0..<5 {
             XCTAssertTrue(app.navigationBars["Einkaufsliste"].exists,
-                          "Der Rundgang hat den Tab gewechselt: "
-                          + app.staticTexts["tutorial.card"].label)
-            next.tap()
-            Thread.sleep(forTimeInterval: 0.9)
+                          "Der Rundgang hat den Tab von allein gewechselt: " + tourCard.label)
+            if tourCard.label.contains("Alle Angebote deiner Filialen") {
+                erreicht = true
+                break
+            }
+            app.doTheTourDeed()
         }
-        Thread.sleep(forTimeInterval: 2.5)
+        XCTAssertTrue(erreicht, "Der Angebote-Rahmen kam nie: " + tourCard.label)
 
-        XCTAssertTrue(
-            app.staticTexts["tutorial.card"].label.contains("Abhaken beim Einkaufen"),
-            "Der letzte Rahmen steht nicht: " + app.staticTexts["tutorial.card"].label
-        )
-        XCTAssertTrue(app.navigationBars["Einkaufsliste"].exists)
+        Thread.sleep(forTimeInterval: 2.5)   // über die Schonfrist hinaus
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].exists,
+                      "auch nach der Schonfrist steht die Liste: " + tourCard.label)
+
+        // Und der Tipp bringt ihn dann wirklich hinüber.
+        app.doTheTourDeed()
+        XCTAssertTrue(app.navigationBars["Angebote"].waitForExistence(timeout: 15),
+                      "der eigene Tipp muss den Tab wechseln: " + tourCard.label)
     }
 
     func testTheTourCanBeStartedAgainFromTheSettings() {
@@ -420,27 +418,20 @@ final class TutorialJourneyTests: XCTestCase {
 
     // MARK: Helpers
 
-    private var tourCard: XCUIElement { app.buttons["tutorial.next"] }
+    /// **Die Karte, nicht ihr Knopf** (09.08.). Hier stand
+    /// `buttons["tutorial.next"]` — solange jeder Rahmen ein „Weiter" trug, war
+    /// das dasselbe. Seit der Knopf nur noch auf der Schlusskarte steht, hieße
+    /// „der Rundgang läuft" plötzlich „der Rundgang ist am Ende".
+    private var tourCard: XCUIElement { app.staticTexts["tutorial.card"] }
+    private var card: XCUIElement { tourCard }
     private var next: XCUIElement { app.buttons["tutorial.next"] }
     private var primary: XCUIElement { app.buttons["onboarding.primary"] }
 
-    /// Tippt sich bis ans Ende durch — mit einer Atempause je Rahmen.
-    ///
-    /// Ohne die Pause tippt XCUITest schneller, als der letzte Rahmen
-    /// verschwindet: Der Tipp, der die Tour beendet, landet dann noch einmal
-    /// auf dem Bildschirm darunter — und ausgerechnet dort, wo nach dem
-    /// Aufräumen wieder eine Vorschlagskachel liegt. Ergebnis war ein
-    /// „Beispiel-Artikel", den gar nicht der Rundgang gesetzt hatte.
-    ///
-    /// Gedeckelt: Ein Rahmen, dessen Ziel nie erscheint, überspringt sich
-    /// selbst. Bliebe er stehen, liefe die Schleife hier gegen die Grenze.
-    private func tapThrough(maxFrames: Int = 12) {
-        var taps = 0
-        while tourCard.exists && taps < maxFrames {
-            next.tap()
-            taps += 1
-            Thread.sleep(forTimeInterval: 0.5)
-        }
+    /// Macht den Rundgang mit, Handlung für Handlung — siehe
+    /// `XCUIApplication.walkTheWholeTour`. Bis zum 09.08. stand hier eine
+    /// Schleife über „Weiter"; den Knopf gibt es nicht mehr.
+    private func tapThrough() {
+        app.walkTheWholeTour()
     }
 
     private func startTour() {

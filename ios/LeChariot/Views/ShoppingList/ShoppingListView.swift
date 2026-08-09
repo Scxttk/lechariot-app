@@ -363,6 +363,20 @@ struct ShoppingListView: View {
                 }
             }
         }
+        // **Der Rundgang räumt die Eingabe weg, bevor er auf die Liste zeigt**
+        // (09.08.). Nach dem Anlegen eines Artikels stehen Tastatur und
+        // Angaben-Schicht; die Tab-Leiste liegt darunter und die Kacheln sind
+        // auf eine Reihe zusammengeschoben. Ein Rahmen, der auf einen Tipp auf
+        // die Tab-Leiste wartet, wartet dann für immer.
+        //
+        // Das ist die eine Stelle, an der der Rundgang die App noch selbst
+        // anfasst — und sie räumt nur auf, sie bedient nichts. Welche Rahmen
+        // das brauchen, steht im Schritt (`clearsInputFlow`), nicht hier.
+        .onChange(of: tutorial?.index) { _, _ in
+            guard tutorial?.isRunning == true, tutorial?.step.clearsInputFlow == true,
+                  flowIsUp else { return }
+            endFlow()
+        }
         .onReceive(NotificationCenter.default.publisher(
             for: UIResponder.keyboardWillChangeFrameNotification
         )) { meldung in
@@ -963,13 +977,12 @@ struct ShoppingListView: View {
     }
 
     /// Ob die Fläche gerade offen steht. Die Regel steht in
-    /// `SuggestionSurface`, hier stehen nur die vier Eingaben.
+    /// `SuggestionSurface`, hier stehen nur die drei Eingaben.
     private var surfaceIsExpanded: Bool {
         SuggestionSurface.isExpanded(
             choice: suggestionChoice,
             listIsEmpty: list.items.isEmpty,
-            isTyping: isTyping,
-            tourIsRunning: tutorial?.isRunning == true
+            isTyping: isTyping
         )
     }
 
@@ -1418,6 +1431,9 @@ struct ShoppingListView: View {
             let open = surfaceIsExpanded
             Button {
                 withAnimation(.snappy) { suggestionChoice = !open }
+                // Der Rundgang wartet an dieser Stelle genau darauf. Nur beim
+                // Aufmachen: Zumachen ist nicht die Handlung, um die er bittet.
+                if !open { tutorial?.report(.opensSuggestions) }
             } label: {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 17, weight: .semibold))

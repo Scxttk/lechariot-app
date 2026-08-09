@@ -6,6 +6,7 @@
 #   tools/tests.sh AddFlowJourneyTests      # nur diese Klassen (beim Arbeiten)
 #   tools/tests.sh --unit                   # nur die Unit-Tests (~25 s)
 #   tools/tests.sh --workers 2              # weniger Klone, wenn der Mac zu tun hat
+#   tools/tests.sh RundgangShots --result /tmp/bogen.xcresult   # mit Bildern
 #
 # **Warum ein Skript und nicht `xcodebuild test`.** Auf der Kommandozeile lässt
 # sich nicht in *einem* Lauf sagen „verteile auf Klone, aber diese eine Klasse
@@ -75,11 +76,17 @@ SERIELL=(
 
 only=()
 unit_only=0
+# Wohin das Ergebnisbündel geht. Leer heisst: keins — der Normalfall, denn ein
+# Bündel je Lauf kostet Platte und wird nie gelesen. Gebraucht wird es von den
+# Bilderbögen (`RundgangShots`, `BedienrundeShots`): Sie hängen ihre PNGs ans
+# Ergebnis, und ohne Bündel gibt es nichts, woraus man sie holen könnte.
+RESULT=""
 while [ $# -gt 0 ]; do
 	case "$1" in
 		--unit) unit_only=1; shift ;;
 		--workers) WORKERS="$2"; shift 2 ;;
 		--destination) DESTINATION="$2"; shift 2 ;;
+		--result) RESULT="$2"; shift 2 ;;
 		-h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
 		-*) echo "Unbekanntes Argument: $1" >&2; exit 2 ;;
 		# Ein blosser Klassenname reicht; das Ziel davor ist geraten, wenn es
@@ -192,10 +199,16 @@ lauf() {
 	local ab
 	ab=$(( $(wc -l < "$protokoll") + 1 ))
 
+	local bundle=()
+	# Je Durchgang ein eigener Pfad: Zwei Durchgänge auf dasselbe Bündel
+	# schreiben lassen bricht den zweiten ab („already exists").
+	[ -n "$RESULT" ] && bundle=(-resultBundlePath "$RESULT")
+
 	xcodebuild test-without-building \
 		-test-timeouts-enabled YES \
 		-maximum-test-execution-time-allowance 600 \
 		-retry-tests-on-failure -test-iterations 2 \
+		"${bundle[@]}" \
 		-xctestrun "$xctestrun" -destination "$DESTINATION" "$@" 2>&1 | tee -a "$protokoll"
 	local code=${PIPESTATUS[0]}
 	if [ "$code" -ne 0 ]; then

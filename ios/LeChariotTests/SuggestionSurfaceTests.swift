@@ -12,14 +12,14 @@ final class SuggestionSurfaceTests: XCTestCase {
 
     func testAnEmptyListShowsTheSuggestions() {
         XCTAssertTrue(SuggestionSurface.isExpanded(
-            choice: nil, listIsEmpty: true, isTyping: false, tourIsRunning: false
+            choice: nil, listIsEmpty: true, isTyping: false
         ))
     }
 
     /// Sobald etwas auf der Liste steht, gehört der Platz der Liste.
     func testOnceSomethingIsOnTheListTheSurfaceIsClosed() {
         XCTAssertFalse(SuggestionSurface.isExpanded(
-            choice: nil, listIsEmpty: false, isTyping: false, tourIsRunning: false
+            choice: nil, listIsEmpty: false, isTyping: false
         ))
     }
 
@@ -32,42 +32,42 @@ final class SuggestionSurfaceTests: XCTestCase {
     /// als der Streifen noch am Leerzustand hing.
     func testTakingASuggestionKeepsTheSurfaceOpenEvenThoughTheListIsNoLongerEmpty() {
         XCTAssertTrue(SuggestionSurface.isExpanded(
-            choice: true, listIsEmpty: false, isTyping: false, tourIsRunning: false
+            choice: true, listIsEmpty: false, isTyping: false
         ))
     }
 
     /// Die Gegenrichtung: Wer in die Zeile tippt, weiß, was er braucht.
     func testTypingClosesTheSurfaceEvenOnAnEmptyList() {
         XCTAssertFalse(SuggestionSurface.isExpanded(
-            choice: false, listIsEmpty: true, isTyping: false, tourIsRunning: false
+            choice: false, listIsEmpty: true, isTyping: false
         ))
     }
 
-    // MARK: Der Rundgang
+    // MARK: Der Rundgang — die Regel, die es nicht mehr gibt
 
-    /// Rahmen 2 leuchtet die Kacheln aus. Eine zugeklappte Fläche trägt keinen
-    /// Anker, und ein Rahmen ohne Ziel überspringt sich selbst — der Rundgang
-    /// ließe ausgerechnet den Tester, der bei Rahmen 1 mitgemacht hat, den
-    /// Vorschlags-Rahmen nie sehen. Still, und nur ihn.
-    func testTheTourOpensTheSurfaceNoMatterWhatTheListSays() {
-        XCTAssertTrue(SuggestionSurface.isExpanded(
-            choice: nil, listIsEmpty: false, isTyping: false, tourIsRunning: true
-        ))
-    }
-
-    /// Und auch gegen eine ausdrückliche Wahl — sonst hinge ein Rahmen des
-    /// Rundgangs daran, ob jemand vorher einen Knopf gedrückt hat.
-    func testTheTourWinsAgainstAClosedSurface() {
-        XCTAssertTrue(SuggestionSurface.isExpanded(
-            choice: false, listIsEmpty: false, isTyping: false, tourIsRunning: true
-        ))
-    }
-
-    /// Der Rundgang **überschreibt** die Wahl nicht, er übergeht sie nur:
-    /// Danach gilt wieder, was der Nutzer eingestellt hatte.
-    func testAfterTheTourTheUsersChoiceIsStillTheOneThatCounts() {
+    /// **Der Rundgang hatte hier Vorfahrt, und sie ist am 09.08. gefallen.**
+    ///
+    /// Bis dahin stand die Fläche offen, solange er lief: Sein zweiter Rahmen
+    /// leuchtete die Kacheln aus, eine zugeklappte Fläche trägt keinen Anker,
+    /// und ein Rahmen ohne Ziel überspringt sich selbst. Der Rundgang zum
+    /// Mitmachen zeigt statt der Kacheln den **Knopf** und wartet darauf, dass
+    /// der Nutzer ihn drückt (`TutorialStep.Deed.opensSuggestions`) — eine
+    /// Fläche, die von allein offen steht, nähme genau diesem Rahmen sein Ziel.
+    ///
+    /// Was hier bleibt, ist die Gegenprobe: Der Zustand hängt an nichts mehr
+    /// außer an den drei Eingaben. Nach dem Anlegen eines Artikels ist die
+    /// Fläche zu (`ShoppingListView.addItem` setzt die Wahl), und genau davor
+    /// steht der Rahmen.
+    func testTheTourNoLongerForcesTheSurfaceOpen() {
         XCTAssertFalse(SuggestionSurface.isExpanded(
-            choice: false, listIsEmpty: true, isTyping: false, tourIsRunning: false
+            choice: false, listIsEmpty: false, isTyping: false
+        ))
+    }
+
+    /// Und danach gilt weiterhin, was der Nutzer eingestellt hatte.
+    func testTheUsersChoiceIsTheOneThatCounts() {
+        XCTAssertFalse(SuggestionSurface.isExpanded(
+            choice: false, listIsEmpty: true, isTyping: false
         ))
     }
 
@@ -78,7 +78,7 @@ final class SuggestionSurfaceTests: XCTestCase {
     /// dem Wörterbuch-Raster darin. Jetzt gibt Tippen den Platz zurück.
     func testTypingClosesTheSurfaceEvenWhileTheListIsStillEmpty() {
         XCTAssertFalse(SuggestionSurface.isExpanded(
-            choice: nil, listIsEmpty: true, isTyping: true, tourIsRunning: false
+            choice: nil, listIsEmpty: true, isTyping: true
         ))
     }
 
@@ -88,14 +88,8 @@ final class SuggestionSurfaceTests: XCTestCase {
     /// ist genau der Zustand, den er auflösen soll.
     func testTheButtonBeatsTyping() {
         XCTAssertTrue(SuggestionSurface.isExpanded(
-            choice: true, listIsEmpty: false, isTyping: true, tourIsRunning: false
+            choice: true, listIsEmpty: false, isTyping: true
         ))
     }
 
-    /// Und der Rundgang steht weiterhin über allem.
-    func testTheTourBeatsTypingToo() {
-        XCTAssertTrue(SuggestionSurface.isExpanded(
-            choice: nil, listIsEmpty: true, isTyping: true, tourIsRunning: true
-        ))
-    }
 }

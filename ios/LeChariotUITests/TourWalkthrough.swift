@@ -1,0 +1,88 @@
+import XCTest
+
+/// **Den Rundgang so durchspielen, wie ein Tester ihn durchspielt** — an einer
+/// Stelle für alle Journeys.
+///
+/// Bis zum 09.08. war das eine Schleife über `tutorial.next`: dreimal „Weiter",
+/// fertig. Den Knopf gibt es nicht mehr. Jeder Rahmen wartet auf **die** Handlung,
+/// die sein Text ansagt (`TutorialStep.Deed`), und eine Journey, die den Rundgang
+/// nur durchqueren will, muss sie tun.
+///
+/// **Erkannt wird der Rahmen an seiner Überschrift und nicht an einer Zählung.**
+/// Der Rundgang hat mit Filialen sechs Rahmen und ohne vier; „viermal das
+/// Richtige tun" wäre in der einen Fassung still falsch. Steht eine Überschrift
+/// hier nicht, ist das ein Fehlschlag und keine stille Schleife — sonst liefe
+/// jede Journey nach einem neuen Rahmen in ihren Deckel statt in eine Meldung.
+extension XCUIApplication {
+    private var tourCard: XCUIElement { staticTexts["tutorial.card"] }
+
+    /// Erledigt die Handlung des Rahmens, der gerade steht.
+    /// - Returns: `false`, wenn kein Rahmen mehr steht — der Rundgang ist durch.
+    @discardableResult
+    func doTheTourDeed(_ file: StaticString = #filePath, _ line: UInt = #line) -> Bool {
+        guard tourCard.exists else { return false }
+        let rahmen = tourCard.label
+
+        switch true {
+        case rahmen.contains("Schreib deinen ersten Artikel auf"):
+            let feld = textFields["list.input"]
+            XCTAssertTrue(feld.waitForExistence(timeout: 15),
+                          "Kein Eingabefeld im Loch", file: file, line: line)
+            feld.tap()
+            // Ein Wort, zu dem der Vorrat garantiert nichts hat: Der Rahmen
+            // danach hängt an der Kachel, nicht an einem Angebot.
+            feld.typeText("Zahnstocher\n")
+
+        case rahmen.contains("Du musst nicht alles tippen"):
+            let winkel = buttons["list.suggestions.toggle"]
+            XCTAssertTrue(winkel.waitForExistence(timeout: 15),
+                          "Kein Winkel-Knopf:\n" + debugDescription, file: file, line: line)
+            winkel.tap()
+
+        case rahmen.contains("Im Laden abhaken"):
+            let kachel = buttons.matching(identifier: "list.tile").firstMatch
+            XCTAssertTrue(kachel.waitForExistence(timeout: 15),
+                          "Keine Kachel:\n" + debugDescription, file: file, line: line)
+            kachel.tap()
+
+        case rahmen.contains("Alle Angebote deiner Filialen"):
+            buttons["Angebote"].firstMatch.tap()
+
+        case rahmen.contains("Schon nächste Woche sehen"):
+            let vorschau = buttons["offers.nextWeek"]
+            XCTAssertTrue(vorschau.waitForExistence(timeout: 15),
+                          "Kein Vorschau-Knopf:\n" + debugDescription, file: file, line: line)
+            vorschau.tap()
+
+        case buttons["tutorial.next"].exists:
+            // Die Schlusskarte — der einzige Rahmen mit einem Knopf.
+            buttons["tutorial.next"].tap()
+
+        default:
+            XCTFail("Unbekannter Rahmen im Rundgang: \(rahmen)", file: file, line: line)
+            return false
+        }
+
+        // Eine Atempause je Rahmen. Ohne sie tippt XCUITest schneller, als der
+        // nächste Rahmen sein Loch bekommt — und der Tipp, der den Rundgang
+        // beendet, landet noch einmal auf dem Bildschirm darunter.
+        Thread.sleep(forTimeInterval: 0.9)
+        return true
+    }
+
+    /// Den ganzen Rundgang mitmachen, bis er zu Ende ist.
+    ///
+    /// Gedeckelt: Ein Rahmen, dessen Ziel nie erscheint, überspringt sich selbst
+    /// — bliebe er stehen, liefe die Schleife hier gegen die Grenze statt
+    /// endlos.
+    func walkTheWholeTour(maxFrames: Int = 10,
+                          _ file: StaticString = #filePath, _ line: UInt = #line) {
+        var rahmen = 0
+        while rahmen < maxFrames, doTheTourDeed(file, line) {
+            rahmen += 1
+        }
+        XCTAssertLessThan(rahmen, maxFrames,
+                          "Der Rundgang hört nicht auf:\n" + debugDescription,
+                          file: file, line: line)
+    }
+}

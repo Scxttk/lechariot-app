@@ -26,6 +26,11 @@ enum TutorialTarget: String, CaseIterable, Hashable {
     /// `tabBarTop` der einzige Griff, den SwiftUI auf eine von UIKit
     /// gezeichnete Leiste hergibt.
     case navBarBottom
+    /// Die Hinweiszeile der Vorschau („Diese Preise gelten noch nicht") — seit
+    /// dem 08.08. eine getönte Zeile in Warnfarbe statt einer Fettung in grauer
+    /// Fußnote (#90). Sie ist die eine Sache, die man auf diesem Bildschirm
+    /// wissen muss, und damit das Ziel der Schlusskarte des Rundgangs.
+    case nextWeekNotice
     case settingsMarkets
     case settingsHelp
 }

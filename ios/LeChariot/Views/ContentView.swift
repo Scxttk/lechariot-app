@@ -148,8 +148,16 @@ struct ContentView: View {
         .disabled(tutorial.isRunning && !tutorial.step.allowsInteraction)
         // Der Riegel für die Tab-Leiste auf den Mitmach-Rahmen: Wer sie dort
         // antippt, steht sofort wieder auf dem Tab des Rundgangs.
+        //
+        // **Mit einer Ausnahme, und die ist ein ganzer Rahmen** (09.08.): Der
+        // Rundgang bittet an einer Stelle ausdrücklich darum, unten auf
+        // „Angebote" zu tippen. Der Riegel greift trotzdem — nur meldet er den
+        // Wechsel vorher, und danach *gehört* der neue Tab zum Rundgang. Die
+        // Reihenfolge ist die ganze Logik: erst melden, dann fragen, wohin der
+        // Rahmen gehört.
         .onChange(of: selectedTab) { _, chosen in
             guard tutorial.isRunning else { return }
+            if chosen == .angebote { tutorial.report(.opensOffersTab) }
             let belongs = tab(for: tutorial.step.tab)
             if chosen != belongs { selectedTab = belongs }
         }
@@ -231,12 +239,18 @@ struct ContentView: View {
                 //
                 // Wiederholt aufrufen ist ungefährlich: `removeDemoItems`
                 // steigt bei leerer `seededItems` aus.
+                //
+                // **Der Tab bleibt seit dem 09.08. stehen, wo der Rundgang
+                // endet.** Hier stand `selectedTab = .liste`, weil der Rundgang
+                // die Liste nie verließ. Der Rundgang zum Mitmachen endet auf
+                // der Vorschau „Nächste Woche" — dorthin hat der Nutzer sich
+                // gerade selbst getippt, und ihn im letzten Bild wieder
+                // wegzuschieben nähme ihm genau das Ergebnis weg.
                 Task { @MainActor in
                     try? await Task.sleep(for: .seconds(Theme.Motion.screen.duration))
                     withAnimation(Theme.Motion.element.animation(reduceMotion: reduceMotion)) {
                         tutorial.removeDemoItems(from: shoppingList)
                     }
-                    selectedTab = .liste
                     cleanupDone = true
                 }
             }

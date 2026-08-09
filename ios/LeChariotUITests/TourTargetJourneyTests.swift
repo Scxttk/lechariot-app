@@ -53,15 +53,16 @@ final class TourTargetJourneyTests: XCTestCase {
         app.buttons[name].firstMatch.tap()
     }
 
-    /// Bis zu dem Rahmen blättern, dessen Titel passt. Über die Karte und nicht
+    /// Bis zu dem Rahmen mitmachen, dessen Titel passt. Über die Karte und nicht
     /// über eine Zählung: Der Rundgang hat mit und ohne Filialen verschiedene
     /// Längen, und ein „achtmal tippen" wäre still falsch, sobald einer dazukommt.
-    private func advance(to title: String, maxSteps: Int = 12) {
+    ///
+    /// **Mitmachen statt blättern** (09.08.): „Weiter" gibt es nicht mehr, der
+    /// Weg zum nächsten Rahmen führt durch die Handlung, um die er bittet.
+    private func advance(to title: String, maxSteps: Int = 9) {
         for _ in 0..<maxSteps {
             if card.label.contains(title) { return }
-            guard next.exists else { break }
-            next.tap()
-            Thread.sleep(forTimeInterval: 0.9)
+            guard app.doTheTourDeed() else { break }
         }
         XCTFail("Rahmen „\(title)“ nicht erreicht, zuletzt: \(card.label)")
     }
@@ -70,6 +71,17 @@ final class TourTargetJourneyTests: XCTestCase {
     /// damit gemessen wird, was stehen bleibt — nicht was gerade fliegt.
     private func settle() {
         Thread.sleep(forTimeInterval: 2.2)
+    }
+
+    /// Wartet, bis die Karte diesen Rahmen trägt. `waitForExistence` hilft hier
+    /// nicht: Das Element steht die ganze Zeit da, nur sein Text wechselt.
+    private func waitForCard(toContain title: String, timeout: TimeInterval = 8) -> Bool {
+        let frist = Date().addingTimeInterval(timeout)
+        while Date() < frist {
+            if card.label.contains(title) { return true }
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        return false
     }
 
     private func assertHoleCovers(_ target: XCUIElement, _ what: String) {
@@ -86,82 +98,128 @@ final class TourTargetJourneyTests: XCTestCase {
 
     // MARK: Der Anfang
 
-    /// **Der Plan-Rahmen muss die Karte ausleuchten, von der er redet.**
-    ///
-    /// Der Vorfahre dieses Tests fing den Fund vom 03.08.: Ein Loch, das um
-    /// eine ganze Panelhöhe neben seinem Ziel stand, weil der Anker den
-    /// Versatz einer Einblendung mitgenommen hatte. Der Angaben-Rahmen ist mit
-    /// der Kürzung vom 05.08. in die Kontext-Tipps gezogen; die Rechnung
-    /// „Loch deckt Ziel" wird jetzt am Plan-Rahmen geführt — dem Rahmen mit
-    /// dem Kernversprechen, dessen Karte er selbst erst herbeisät.
-    func testThePlanFrameHighlightsThePlanCard() {
-        startTourFromSettings()
-        advance(to: "Ein Einkauf, ein Markt")
-        settle()
-        // Die Kopfzeile der Karte ist das messbare Element — die Karte selbst
-        // trägt keinen Bezeichner, ihre Zusammenfassung schon (siehe
-        // `AccessibilityAuditTests.testThePlanCardIsReadAsAWhole`).
-        let summary = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label BEGINSWITH %@ OR label BEGINSWITH %@",
-                                  "Am besten zu", "Kein Markt hat diese Woche"))
-            .firstMatch
-        assertHoleCovers(summary, "die Plan-Karte")
-    }
-
-    /// Die Gegenrichtung, damit der Fix nicht einfach „alles ist ein großes
-    /// Loch" heißt: Der erste Rahmen zeigt weiter auf die Eingabezeile.
+    /// Der erste Rahmen zeigt auf die Eingabezeile — die Gegenrichtung zu
+    /// allem, was unten steht, damit „das Loch deckt sein Ziel" nicht einfach
+    /// „alles ist ein großes Loch" heißt.
     func testTheFirstFrameStillHighlightsTheInputBar() {
         startTourFromSettings()
         settle()
         assertHoleCovers(app.textFields["list.input"], "die Eingabezeile")
     }
 
-    // MARK: Der Rahmen, der sich selbst übersprang
-
-    /// **Ein Wort ohne Treffer durfte den Rundgang nie weiterschalten.**
+    /// **Das Loch bleibt im Bildschirm** (09.08.).
     ///
-    /// Der alte Treffer-Rahmen hing am Anker der Treffer-Kachel; hatte der
-    /// erste offene Artikel kein Angebot, übersprang er sich nach 1,2 s
-    /// selbst. Sein Inhalt steckt jetzt im Plan-Rahmen, und der hängt an der
-    /// Plan-Karte — die er über seine Beispiel-Artikel selbst herbeisät. Ob
-    /// diese Rettung trägt, prüft genau dieser Fall: erster Artikel ohne
-    /// Treffer, **über die Schonfrist hinaus** gewartet.
-    func testThePlanFrameStandsWhenTheFirstItemHasNoOffer() {
-        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded",
-                               "-uiTestingOnboardedThreeChains", "-uiTestingTutorial"]
-        app.launch()
-        let field = app.textFields["list.input"]
-        XCTAssertTrue(field.waitForExistence(timeout: 20))
-        field.tap()
-        // Ein Wort, zu dem der Vorrat garantiert nichts hat — und das damit
-        // der erste offene Artikel ohne Treffer ist.
-        field.typeText("Zahnstocher\n")
-        // **Den Fluss über „Fertig" beenden, nicht über einen Wisch.** Ein
-        // `swipeDown` in die Bildschirmmitte traf seit dem 08.08. die
-        // Angaben-Schicht — die ist dort Bring!-hoch, ihre waagerecht
-        // scrollenden Chipreihen schlucken den senkrechten Zug, und die
-        // Tastatur blieb stehen. Der benannte Knopf trifft immer.
-        let fertig = app.buttons["list.input.done"]
-        XCTAssertTrue(fertig.waitForExistence(timeout: 10))
-        fertig.tap()
-
-        openTab("Einstellungen")
-        // **Scrollen, nicht suchen.** Seit die Einstellungen am 06.08. neu
-        // sortiert sind, steht „Rundgang" unter der Falzkante — und eine
-        // `List` baut nur, was sichtbar ist. Der Knopf ist nicht weg, er ist
-        // noch nicht entstanden. Siehe `scrollToTutorialButton`.
-        app.scrollToTutorialButton().tap()
-        XCTAssertTrue(card.waitForExistence(timeout: 20))
-
-        advance(to: "Ein Einkauf, ein Markt")
+    /// Am Bild gemessen: Die Eingabezeile liegt über die volle Breite, mit den
+    /// acht Punkten Luft ringsherum stand das Loch von **−16 bis 418** auf einem
+    /// 402 pt breiten Gerät — die zwei runden Ecken lagen draußen, und was man
+    /// sah, war ein Balken am unteren Rand statt einer Hervorhebung.
+    func testTheHoleNeverRunsOffTheScreen() {
+        startTourFromSettings()
         settle()
+
+        XCTAssertTrue(hole.exists)
+        let bildschirm = app.frame
+        XCTAssertGreaterThanOrEqual(hole.frame.minX, bildschirm.minX,
+                                    "Das Loch \(hole.frame) hängt links heraus")
+        XCTAssertLessThanOrEqual(hole.frame.maxX, bildschirm.maxX,
+                                 "Das Loch \(hole.frame) hängt rechts heraus")
+    }
+
+    // MARK: Die zwei Stellen aus Scotts Liste (Bedienrunde 08.08., Punkt A)
+
+    /// **Das Vorschläge-Menü, das seit dem 08.08. eingeklappt startet.** Ohne
+    /// den Winkel-Knopf ist es nicht zu finden; der Rundgang zeigt genau ihn.
+    /// Der alte Anker `.suggestions` hing an den Kacheln, und die stehen im
+    /// Vorgabefall gerade nicht da.
+    func testTheSuggestionsFrameHighlightsTheToggleAndNotTheTiles() {
+        startTourFromSettings()
+        advance(to: "Du musst nicht alles tippen")
+        settle()
+        assertHoleCovers(app.buttons["list.suggestions.toggle"], "der Winkel-Knopf")
+    }
+
+    /// **Die Schlusskarte steht auf der Vorschau und leuchtet die Hinweiszeile
+    /// aus** — die aus #90, die sagt, dass diese Preise noch nicht gelten. Das
+    /// ist die zweite Stelle aus Scotts Liste, und der Weg dahin sind zwei
+    /// Tipper des Nutzers: Tab-Leiste, dann „Nächste Woche".
+    func testTheTourEndsOnTheNextWeekNotice() {
+        startTourFromSettings()
+        advance(to: "Diese Preise gelten noch nicht")
+        settle()
+        assertHoleCovers(app.staticTexts["nextWeek.explainer"], "die Hinweiszeile der Vorschau")
+        XCTAssertTrue(app.buttons["tutorial.next"].exists,
+                      "und die Schlusskarte hat ihren einen Knopf")
+    }
+
+    // MARK: Der Nutzer tippt selbst — und nur er
+
+    /// **Der Nachweis für den Prinzipwechsel: Ein Rahmen geht ohne die Handlung
+    /// nicht weiter.**
+    ///
+    /// Gemessen wird gegen die zwei Fristen, die der Rundgang kennt — das
+    /// Einschwing-Fenster (0,7 s) und die Schonfrist (1,2 s), nach der sich ein
+    /// Rahmen **ohne Ziel** selbst überspringt. Wer länger wartet als beide und
+    /// denselben Rahmen vorfindet, hat die Zusicherung: Hier passiert nichts von
+    /// allein.
+    ///
+    /// Drei Sachen zusammen, weil sie erst zusammen etwas beweisen: Es gibt
+    /// keinen „Weiter"-Knopf, Warten schaltet nicht weiter, und die Handlung
+    /// schaltet weiter. Ohne die dritte wäre ein Rundgang, der überhaupt nicht
+    /// mehr weitergeht, grün.
+    func testAFrameWaitsForTheDeedAndNothingElse() {
+        startTourFromSettings()
+        XCTAssertTrue(card.label.contains("Schreib deinen ersten Artikel auf"),
+                      "Der erste Rahmen steht nicht: \(card.label)")
+
+        XCTAssertFalse(app.buttons["tutorial.next"].exists,
+                       "Ein Rahmen, der auf eine Handlung wartet, hat kein „Weiter“")
+
+        // Weit über beide Fristen hinaus: 0,7 s Einschwingen + 1,2 s Schonfrist.
+        Thread.sleep(forTimeInterval: 4.0)
         XCTAssertTrue(
-            card.label.contains("Ein Einkauf, ein Markt"),
-            "Der Rahmen hat sich selbst übersprungen: \(card.label)"
+            card.label.contains("Schreib deinen ersten Artikel auf"),
+            "Der Rahmen ist von allein weitergegangen: \(card.label)"
+        )
+
+        // Und ein Tipp **daneben** zählt auch nicht: Die Vorschlagskachel liegt
+        // außerhalb des Lochs.
+        app.buttons["Butter hinzufügen"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 1.0)
+        XCTAssertTrue(
+            card.label.contains("Schreib deinen ersten Artikel auf"),
+            "Ein Tipp außerhalb des Lochs hat weitergeschaltet: \(card.label)"
+        )
+
+        // Jetzt die Handlung, um die der Rahmen bittet.
+        let feld = app.textFields["list.input"]
+        feld.tap()
+        feld.typeText("Zahnstocher\n")
+
+        XCTAssertTrue(
+            waitForCard(toContain: "Du musst nicht alles tippen"),
+            "Die Handlung hat nicht weitergeschaltet: \(card.label)"
         )
     }
 
-    // MARK: „Probier es gleich aus"
+    /// Dieselbe Zusicherung noch einmal mitten im Rundgang, damit sie nicht nur
+    /// für den ersten Rahmen gilt — und an einem Rahmen, dessen Ziel ein Knopf
+    /// ist und kein Textfeld.
+    func testTheSuggestionsFrameWaitsForTheToggleToo() {
+        startTourFromSettings()
+        advance(to: "Du musst nicht alles tippen")
+
+        Thread.sleep(forTimeInterval: 4.0)
+        XCTAssertTrue(
+            card.label.contains("Du musst nicht alles tippen"),
+            "Der Rahmen ist von allein weitergegangen: \(card.label)"
+        )
+
+        app.buttons["list.suggestions.toggle"].tap()
+        XCTAssertTrue(
+            waitForCard(toContain: "Im Laden abhaken"),
+            "Der Winkel-Knopf hat nicht weitergeschaltet: \(card.label)"
+        )
+    }
 
     /// **Der erste Rahmen lud zum Tippen ein und ließ es nicht zu.**
     ///
@@ -170,18 +228,19 @@ final class TourTargetJourneyTests: XCTestCase {
     /// in dieser Runde schon einmal die Ursache war:
     /// `Failed to synthesize event: Neither element nor any descendant has
     /// keyboard focus` — und im Baum stand `TextField … Disabled`.
+    ///
+    /// Seit dem 09.08. ist das Tippen **der Weg weiter** und nicht mehr nur
+    /// erlaubt; der Nachweis, dass der Artikel wirklich auf der Liste landet,
+    /// bleibt trotzdem hier.
     func testTheFirstFrameReallyLetsYouType() {
         startTourFromSettings()
         let field = app.textFields["list.input"]
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         field.tap()
         field.typeText("Zahnstocher\n")
-        Thread.sleep(forTimeInterval: 0.8)
 
         XCTAssertTrue(app.buttons["Zahnstocher"].waitForExistence(timeout: 10),
                       "Was der Rahmen zu tippen einlädt, muss auch auf der Liste landen")
-        XCTAssertTrue(card.label.contains("Schreib auf, was du brauchst"),
-                      "Mitmachen schaltet nicht weiter — jeder Rahmen wartet auf „Weiter“")
     }
 
     /// Der Riegel dazu: Die Tab-Leiste bleibt auch auf einem Mitmach-Rahmen

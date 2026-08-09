@@ -120,31 +120,41 @@ final class PerformanceJourneyTests: XCTestCase {
         }
     }
 
-    /// **Rundgang.** Kein Scrollen, sondern sieben Rahmen mit einem Loch, das
-    /// über den Bildschirm wandert — die einzige Strecke der App, die dauerhaft
-    /// eine Maske über allem hält.
+    /// **Rundgang.** Kein Scrollen, sondern Rahmen mit einem Loch, das über den
+    /// Bildschirm wandert — die einzige Strecke der App, die dauerhaft eine
+    /// Maske über allem hält.
     ///
     /// Hier steht `scrollDecelerationMetric` bewusst **nicht** in der Liste: Es
     /// wird nicht gescrollt, die Metrik hätte nichts zu messen und trüge einen
     /// leeren Grundwert ins Repo.
+    ///
+    /// **Die Strecke ist seit dem 09.08. eine andere, und die alten Grundwerte
+    /// sind es damit auch.** Bis dahin waren es sechsmal „Weiter"; jetzt macht
+    /// der Durchlauf mit, worum die Rahmen bitten — tippen, Vorschläge
+    /// aufklappen, abhaken, Tab wechseln, Vorschau öffnen. Gemessen wird also
+    /// der Rundgang **plus** Tastatur und Tab-Wechsel; das ist teurer und
+    /// trotzdem die richtige Zahl, denn genau das ist der Rundgang jetzt. Wer
+    /// die Werte in `tools/perf-baseline.json` gegen die von vorher hält,
+    /// vergleicht zwei verschiedene Wege.
+    ///
+    /// Nebenwirkung, damit sie niemand sucht: Jeder Durchlauf legt einen Artikel
+    /// an und hakt ihn ab. Die Liste wächst also über die Wiederholungen — bei
+    /// fünf Durchläufen um fünf Kacheln, gegen 1 200 Angebotszeilen im Vorrat.
     func testRundgangStepping() {
         launch(extraArguments: ["-uiTestingTutorial"])
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 30))
 
-        // Der ganze Weg liegt **im** Block, nicht davor: Der Rundgang endet auf
-        // der Liste (`ContentView` stellt den Tab zurück), der zweite Durchlauf
+        // Der ganze Weg liegt **im** Block, nicht davor: Der Rundgang endet
+        // inzwischen auf der Vorschau „Nächste Woche", der zweite Durchlauf
         // fände den Knopf sonst gar nicht mehr.
         measure(metrics: [XCTCPUMetric(application: app), XCTMemoryMetric(application: app)],
                 options: options) {
             openTab("Einstellungen")
             let restart = settingsTutorialButton()
             restart.tap()
-            var frames = 0
-            while app.buttons["tutorial.next"].exists && frames < 12 {
-                app.buttons["tutorial.next"].tap()
-                frames += 1
-            }
-            XCTAssertGreaterThan(frames, 0, "der Rundgang ist gar nicht gelaufen")
+            XCTAssertTrue(app.staticTexts["tutorial.card"].waitForExistence(timeout: 20),
+                          "der Rundgang ist gar nicht gelaufen")
+            app.walkTheWholeTour()
         }
     }
 

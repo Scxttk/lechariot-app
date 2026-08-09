@@ -28,6 +28,11 @@ struct NextWeekView: View {
     @State private var browser = OfferBrowser()
     @State private var selectedOffer: Offer?
 
+    /// Optional wie überall, wo eine Ansicht auch in einer Preview stehen soll —
+    /// gebraucht wird er nur, um dem Rundgang zu melden, dass die Vorschau offen
+    /// steht.
+    @Environment(TutorialStore.self) private var tutorial: TutorialStore?
+
     /// Ketten, die nachweislich nichts im Voraus veröffentlichen.
     ///
     /// Gemessen am 01.08.2026 im Browser: EDEKAs Angebotsseite zeigt am Tag vor
@@ -142,6 +147,11 @@ struct NextWeekView: View {
                     historyRepository: priceHistoryRepository
                 )
             }
+            // Der Rundgang wartet an dieser Stelle darauf, dass jemand die
+            // Vorschau wirklich aufmacht — siehe `TutorialStep.Deed`. Gemeldet
+            // wird immer; ob es einen Rahmen weiterschaltet, entscheidet der
+            // Store.
+            .onAppear { tutorial?.report(.opensNextWeek) }
     }
 
     @ViewBuilder
@@ -272,6 +282,10 @@ struct NextWeekView: View {
                 }
             }
             .foregroundStyle(Theme.warning)
+            // Der Anker der Schlusskarte des Rundgangs. Auf der Zeile, nicht auf
+            // dem Abschnitt: Ein `Section` meldet auch seine Ränder mit, und das
+            // Loch stünde dann um eine Listeneinrückung zu weit außen.
+            .tutorialAnchor(.nextWeekNotice)
             .listRowBackground(Theme.warningSurface)
         }
     }

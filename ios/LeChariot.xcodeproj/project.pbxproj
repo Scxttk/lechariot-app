@@ -111,6 +111,7 @@
 		7B35C65332AD54503F8D51AD /* TermSuggestionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B387BAAF541440742AD6E14E /* TermSuggestionsTests.swift */; };
 		7C48E7DAAA0BB9433D476802 /* RegionSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6448F0AE82476CEEC4230DB4 /* RegionSetupView.swift */; };
 		7CE8E52F408DFD9EC6252AEA /* PlaceNameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36BE45EEDE2FF2D29E31D1B3 /* PlaceNameTests.swift */; };
+		7D42CD0F8778B4087299AA3B /* RundgangShots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25A7AC45C9ED247C1A901398 /* RundgangShots.swift */; };
 		7D76BD32262AA96665275419 /* DietSymbolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E1F4752B62695EE71467411 /* DietSymbolTests.swift */; };
 		8126F6DB7A4F920B74A6F41E /* ListDirectionShots.swift in Sources */ = {isa = PBXBuildFile; fileRef = C21C8F6B5B5E66E104E3BC61 /* ListDirectionShots.swift */; };
 		816577DE856214745264DFE3 /* TermSuggestions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3146C6EE31E38698CB48DECD /* TermSuggestions.swift */; };
@@ -174,6 +175,7 @@
 		C09751F253E651B713832B95 /* OfferDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE1AC8F6716C11C294CBCE9 /* OfferDetailView.swift */; };
 		C14A6FF77070CDD5D26E1853 /* FeatureFlagsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590239F50C6AEE0E180227F6 /* FeatureFlagsTests.swift */; };
 		C33952407C5C9B4B9DFB147B /* SpotlightRingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9476B754D24CEEA148265365 /* SpotlightRingTests.swift */; };
+		C4623C7DF79D95340CE60240 /* TourWalkthrough.swift in Sources */ = {isa = PBXBuildFile; fileRef = 671308C9FF200F1518BAD565 /* TourWalkthrough.swift */; };
 		C83883ECE849FE43B83F12A6 /* OfferHitsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF3CB16A66C72764086C7938 /* OfferHitsView.swift */; };
 		CAD7F365827A486CE2491E62 /* ContextTipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89B0F6D055B939A84086552D /* ContextTipStore.swift */; };
 		CB1C9727FB60B36201B58B81 /* NearbyMarketsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EDABD7B58A24A9CB6728983 /* NearbyMarketsTests.swift */; };
@@ -278,6 +280,7 @@
 		1FA3FD792432E79CEB31DED8 /* MarketFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketFilter.swift; sourceTree = "<group>"; };
 		235B5CB43B35A715D3C8B791 /* matching-woerterbuch.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "matching-woerterbuch.json"; sourceTree = "<group>"; };
 		244C38B58D3568542C50049C /* MatchShelfTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchShelfTests.swift; sourceTree = "<group>"; };
+		25A7AC45C9ED247C1A901398 /* RundgangShots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RundgangShots.swift; sourceTree = "<group>"; };
 		274CCDD6435C2FD2A0635A59 /* DataExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExport.swift; sourceTree = "<group>"; };
 		27567E11DADD5D61E584D387 /* CartMorph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartMorph.swift; sourceTree = "<group>"; };
 		27D78051BC5949971330C6E3 /* CityNameJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityNameJourneyTests.swift; sourceTree = "<group>"; };
@@ -327,6 +330,7 @@
 		62BDE33263A95B533A0BEF91 /* ItemDetailVocabulary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailVocabulary.swift; sourceTree = "<group>"; };
 		6448F0AE82476CEEC4230DB4 /* RegionSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionSetupView.swift; sourceTree = "<group>"; };
 		647A543C891A626804D53C84 /* RejectionFeedbackSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RejectionFeedbackSheet.swift; sourceTree = "<group>"; };
+		671308C9FF200F1518BAD565 /* TourWalkthrough.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourWalkthrough.swift; sourceTree = "<group>"; };
 		6B78260113332C39A7AED125 /* MarketPromptSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketPromptSheet.swift; sourceTree = "<group>"; };
 		6BBC2A3B643BBE2A473B57F2 /* ShoppingListInputJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingListInputJourneyTests.swift; sourceTree = "<group>"; };
 		6EEFEB4C16B911C007BC6012 /* RegionQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionQuery.swift; sourceTree = "<group>"; };
@@ -628,11 +632,13 @@
 				80013F84C7B9D1BAEA2E8362 /* QueryUnderstandingJourneyTests.swift */,
 				D18A284202A7208FC262FFC2 /* RestartJourneyTests.swift */,
 				A478DEC8B0C1385464269E61 /* ReviewNoteJourneyTests.swift */,
+				25A7AC45C9ED247C1A901398 /* RundgangShots.swift */,
 				6BBC2A3B643BBE2A473B57F2 /* ShoppingListInputJourneyTests.swift */,
 				44DA1C98317850BC1FCE7F98 /* SuggestionSurfaceJourneyTests.swift */,
 				9972865AC8314C339D0DD1EC /* TermGridJourneyTests.swift */,
 				BCB6BE03201DF69C55AEAB7B /* TileGestureJourneyTests.swift */,
 				7134351276D0200290C51CE9 /* TourTargetJourneyTests.swift */,
+				671308C9FF200F1518BAD565 /* TourWalkthrough.swift */,
 				965633E574547736025B1070 /* TutorialJourneyTests.swift */,
 				ECDACEF9C90BF20F6ADF0BFE /* WeekBoundaryJourneyTests.swift */,
 			);
@@ -1239,11 +1245,13 @@
 				74D522FC8112E13867B3A27A /* QueryUnderstandingJourneyTests.swift in Sources */,
 				051E3B71EDEEFABEDE77D425 /* RestartJourneyTests.swift in Sources */,
 				EFB9DDD16B5BE4ED4AF98B4C /* ReviewNoteJourneyTests.swift in Sources */,
+				7D42CD0F8778B4087299AA3B /* RundgangShots.swift in Sources */,
 				2D0BD158D68A1C89C715C2D1 /* ShoppingListInputJourneyTests.swift in Sources */,
 				A0C2816A25B52F0B590E69A1 /* SuggestionSurfaceJourneyTests.swift in Sources */,
 				6893A9E43A65EBCB415B17E6 /* TermGridJourneyTests.swift in Sources */,
 				5FCF240B58611285D9A2CB38 /* TileGestureJourneyTests.swift in Sources */,
 				66AB74E4C7EE9A750D51A8CD /* TourTargetJourneyTests.swift in Sources */,
+				C4623C7DF79D95340CE60240 /* TourWalkthrough.swift in Sources */,
 				5721DB0A53DE1E8AF91A0C46 /* TutorialJourneyTests.swift in Sources */,
 				4E70CA98458BB10369031807 /* WeekBoundaryJourneyTests.swift in Sources */,
 			);

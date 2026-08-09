@@ -1,15 +1,18 @@
 import SwiftUI
 
 /// The tour itself: a scrim over the whole app with a hole cut around exactly
-/// one control, and a card that says what that control does.
+/// one control, and a card that says what that control does — and why.
 ///
 /// Everything outside the hole is inert — that is the point. Testers who opened
 /// the app after onboarding did not know where to start, and a tour that leaves
 /// the whole screen live is just a tooltip they can tap past by accident.
 ///
-/// The first frame is hands-on: the hole passes touches so the tester can
-/// actually type. It still waits for "Weiter" like every other frame — see
-/// `TutorialStep.allowsInteraction`. The rest only explain.
+/// **Seit dem 09.08. tippt der Nutzer selbst.** Es gibt kein „Weiter" mehr: Der
+/// Rahmen wartet auf die Handlung, die sein Text ansagt, und geht erst dann
+/// weiter (`TutorialStep.Deed`). Genau ein Rahmen je Fassung ist zum Lesen — die
+/// Schlusskarte. Die Melder für die Liste (Artikel angelegt, Artikel abgehakt)
+/// sitzen hier, weil das Overlay die Liste ohnehin schon in der Hand hat; die
+/// übrigen melden von der Stelle, an der sie passieren.
 struct TutorialOverlay: View {
     let anchors: [TutorialTarget: Anchor<CGRect>]
     let proxy: GeometryProxy
@@ -86,16 +89,21 @@ struct TutorialOverlay: View {
         .accessibilityAddTraits(.isModal)
         .onAppear {
             enterStep()
+            noteTarget()
             moveHoleIfNeeded()
         }
         .onChange(of: tutorial.index) { _, _ in
             enterStep()
+            noteTarget()
             // Beim Schrittwechsel steht der neue Anker meist noch nicht da.
             // Dann tut das hier nichts, und das Loch bleibt liegen, bis der
             // Anker unten eintrifft — statt in die Ecke zu fliegen.
             moveHoleIfNeeded()
         }
-        .onChange(of: resolvedHole) { _, _ in moveHoleIfNeeded() }
+        .onChange(of: resolvedHole) { _, _ in
+            noteTarget()
+            moveHoleIfNeeded()
+        }
         .task(id: tutorial.index) {
             let index = tutorial.index
             settling = true
@@ -107,26 +115,102 @@ struct TutorialOverlay: View {
             graceExpiredFor = index
         }
         .onChange(of: graceExpiredFor) { _, _ in skipIfNothingToShow() }
-        // Zweiter Auslöser: Ein Anker, der nach Ablauf der Schonfrist wieder
-        // verschwindet, darf den Rundgang nicht anhalten.
-        .onChange(of: anchorFingerprint) { _, _ in skipIfNothingToShow() }
+        // Zweiter Auslöser: ein Anker, der erst nach Ablauf der Schonfrist
+        // gemeldet würde — oder eben nie. Was einmal da war, zählt weiter;
+        // siehe `skipIfNothingToShow`.
+        .onChange(of: anchorFingerprint) { _, _ in
+            noteTarget()
+            skipIfNothingToShow()
+        }
+        // **Die zwei Melder der Liste.** Sie stehen hier und nicht in
+        // `ShoppingListView`, weil das Overlay die Liste ohnehin als Parameter
+        // hält — und weil hier beide nebeneinander stehen und man sie zusammen
+        // liest. Beide vergleichen **alt gegen neu**: „es gibt einen
+        // abgehakten Artikel" wäre nach dem ersten Einkauf für immer wahr.
+        .onChange(of: list.items.count) { alt, neu in
+            if neu > alt { tutorial.report(.addsItem) }
+        }
+        .onChange(of: checkedCount) { alt, neu in
+            if neu > alt { tutorial.report(.checksItem) }
+        }
+        // **Die Karte muss über der Tastatur bleiben** (09.08.).
+        //
+        // Der erste Rahmen zeigt auf die Eingabezeile und bittet darum, dort
+        // etwas zu tippen. Sobald jemand das tut, steht die Tastatur — und die
+        // Karte lag darunter, weil unter dem Loch mehr Platz *gerechnet* war
+        // als tatsächlich frei. Am Bild gefunden: Im Video des Testlaufs steht
+        // der Rahmen als Schemen hinter den Tasten.
+        //
+        // Über die Meldung und nicht über `keyboardLayoutGuide`: Das Overlay
+        // ignoriert die sichere Fläche (sonst deckte es den Bildschirm nicht
+        // ganz ab), und damit meldet ihm auch die Tastatur nichts.
+        .onReceive(NotificationCenter.default.publisher(
+            for: UIResponder.keyboardWillChangeFrameNotification
+        )) { meldung in
+            guard let rahmen = meldung.userInfo?[UIResponder.keyboardFrameEndUserInfoKey]
+                as? CGRect else { return }
+            keyboardTop = rahmen.minY
+        }
+        .onReceive(NotificationCenter.default.publisher(
+            for: UIResponder.keyboardWillHideNotification
+        )) { _ in
+            keyboardTop = nil
+        }
     }
+
+    /// Oberkante der Tastatur, `nil` wenn keine steht.
+    @State private var keyboardTop: CGFloat?
+
+    /// Wo der Platz für die Karte nach unten endet: am Bildschirmrand oder an
+    /// der Tastatur, je nachdem was weiter oben liegt.
+    private var bottomLimit: CGFloat {
+        min(proxy.size.height, keyboardTop ?? proxy.size.height)
+    }
+
+    private var checkedCount: Int { list.checkedItems.count }
 
     // MARK: Ablauf
 
     private func enterStep() {
-        if step.seedsDemoItems {
-            tutorial.seedDemoItems(into: list)
-        }
         cardFocused = true
     }
 
-    /// Kein Ziel auf dem Bildschirm — etwa die Karte bei einem Tester, in dessen
-    /// Gegend diese Woche nichts passt. Dann geht der Rundgang weiter, statt vor
-    /// einem Loch ins Leere stehen zu bleiben.
+    /// Kein Ziel auf dem Bildschirm — etwa die Vorschau bei einem Tester, dessen
+    /// Ketten diese Woche nichts vorab veröffentlichen. Dann geht der Rundgang
+    /// weiter, statt vor einem Loch ins Leere stehen zu bleiben.
+    ///
+    /// **Rahmen zum Lesen sind ausgenommen**, also die Schlusskarte. Ohne diese
+    /// Zeile beendete sich der Rundgang 1,2 s nach seinem letzten Rahmen selbst
+    /// — der Abschied wäre der einzige Rahmen, den niemand zu Ende liest. Die
+    /// Ausnahme hängt am `deed` und nicht am Loch: Die Schlusskarte zeigt mit
+    /// Filialen auf die Hinweiszeile der Vorschau, und ob die dasteht, hängt
+    /// daran, ob die Ketten dieser Woche etwas vorab veröffentlicht haben. Ohne
+    /// Ziel steht sie eben mittig — verabschieden kann sie sich trotzdem.
+    ///
+    /// **Und wer sein Ziel einmal hatte, verliert es nicht mehr** (09.08.). Bis
+    /// dahin durfte ein Anker auch *nach* der Schonfrist noch verschwinden und
+    /// den Rahmen mitnehmen; solange jeder Rahmen nach ein paar Sekunden „Weiter"
+    /// wegtippte, fiel das nie auf. Ein Rahmen, der auf eine Handlung wartet,
+    /// steht dagegen so lange, bis sie kommt — und unter ihm baut die App um:
+    /// Beim Umbau der Eingabezeile blinkt der Winkel-Knopf für einen Durchgang
+    /// weg, und der ganze Rahmen war still weg. **Am Bild gefunden**, nicht am
+    /// Test: Im Bilderbogen fehlte der Vorschläge-Rahmen einfach.
+    ///
+    /// Geprüft wird deshalb genau einmal — an der Frage „war das Ziel jemals
+    /// da?", nicht „ist es gerade da?".
     private func skipIfNothingToShow() {
+        guard step.deed != .reads else { return }
+        guard sawTargetFor != tutorial.index else { return }
         guard graceExpiredFor == tutorial.index, resolvedHole == nil else { return }
         tutorial.next()
+    }
+
+    /// Der Rahmen, dessen Ziel schon einmal gemeldet wurde.
+    @State private var sawTargetFor: Int?
+
+    private func noteTarget() {
+        guard resolvedHole != nil else { return }
+        sawTargetFor = tutorial.index
     }
 
     /// Zieht das gezeichnete Loch nach, wenn `SpotlightTransition` etwas zu
@@ -259,6 +343,10 @@ struct TutorialOverlay: View {
     // MARK: Loch
 
     private var resolvedHole: CGRect? {
+        rawHole.map(clampedToScreen)
+    }
+
+    private var rawHole: CGRect? {
         switch step.spotlight {
         case .anchor(let target):
             return rect(for: target)
@@ -273,7 +361,28 @@ struct TutorialOverlay: View {
             return tabBarBand
         case .navBar:
             return navBarBand
+        case .nothing:
+            return nil
         }
+    }
+
+    /// **Das Loch bleibt im Bildschirm** (09.08.).
+    ///
+    /// Am Bild gemessen: Die Eingabezeile liegt über die volle Breite, mit den
+    /// acht Punkten Luft ringsherum wird daraus auf einem 402 pt breiten Gerät
+    /// ein Loch von **−16 bis 418** — die zwei runden Ecken links und rechts
+    /// liegen außerhalb des Displays. Was man sieht, ist kein hervorgehobenes
+    /// Bedienelement mehr, sondern ein Balken, der unten am Rand klebt.
+    ///
+    /// Beschnitten statt verschoben: Ein Loch, das man in den Bildschirm
+    /// *schiebt*, deckt sein Ziel nicht mehr.
+    private func clampedToScreen(_ rect: CGRect) -> CGRect {
+        // `sm` und nicht `xs`: Die Ecke des Rings hat `Theme.Radius.card`, und
+        // vier Punkte Rand lassen davon nichts übrig — am Bild nachgesehen.
+        let bounds = CGRect(origin: .zero, size: proxy.size)
+            .insetBy(dx: Theme.Spacing.sm, dy: 0)
+        let clamped = rect.intersection(bounds)
+        return clamped.isNull ? rect : clamped
     }
 
     /// Wie viel Luft ein Ziel um sich bekommt.
@@ -429,8 +538,14 @@ struct TutorialOverlay: View {
 
     private var spaceBelow: CGFloat {
         guard let hole = cardHole else { return 0 }
-        return proxy.size.height - hole.maxY - safeArea.bottom
-            - gap - Theme.Spacing.sm
+        return bottomLimit - hole.maxY - bottomInset - gap - Theme.Spacing.sm
+    }
+
+    /// Was unten belegt ist: die Tastatur, sonst die sichere Fläche. Beides
+    /// zugleich gibt es nicht — steht die Tastatur, liegt der Home-Indikator
+    /// darunter.
+    private var bottomInset: CGFloat {
+        keyboardTop == nil ? safeArea.bottom : proxy.size.height - bottomLimit
     }
 
     private var placement: CardPlacement {
@@ -454,8 +569,9 @@ struct TutorialOverlay: View {
                 card()
                     .layoutPriority(cardPriority)
                 // Das Overlay ignoriert die sichere Fläche, also muss der
-                // Abstand zum Rand hier von Hand zurück.
-                layoutSpacer(minLength: safeArea.bottom + Theme.Spacing.sm)
+                // Abstand zum Rand hier von Hand zurück — und die Tastatur
+                // zählt mit, siehe `bottomInset`.
+                layoutSpacer(minLength: bottomInset + Theme.Spacing.sm)
             case .above:
                 layoutSpacer(minLength: safeArea.top + Theme.Spacing.sm)
                 card()
@@ -467,7 +583,7 @@ struct TutorialOverlay: View {
                 layoutSpacer(minLength: safeArea.top + Theme.Spacing.sm)
                 card()
                     .layoutPriority(cardPriority)
-                layoutSpacer(minLength: safeArea.bottom + Theme.Spacing.sm)
+                layoutSpacer(minLength: bottomInset + Theme.Spacing.sm)
             }
         }
         .frame(width: proxy.size.width, height: proxy.size.height)
@@ -507,11 +623,18 @@ struct TutorialOverlay: View {
         .padding(.horizontal, Theme.Spacing.lg)
     }
 
+    /// **Zwei Zeilen statt drei** (09.08.). Die Punkte standen als eigene Reihe
+    /// zwischen Text und Knöpfen und kosteten mit ihren Abständen rund 30 pt für
+    /// sieben Punkt Höhe. Sie stehen jetzt neben dem Ausgang — dieselbe Reihe,
+    /// dieselbe Aussage, eine Zeile weniger auf einer Karte, die vor dem Ziel
+    /// liegt, über das sie redet.
     private var cardStack: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             textBlock
-            stepDots
-            controls
+            HStack(spacing: Theme.Spacing.md) {
+                stepDots
+                controls
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
@@ -555,14 +678,18 @@ struct TutorialOverlay: View {
         .accessibilityHidden(true)
     }
 
+    /// **Ein Knopf je Rahmen.**
+    ///
+    /// Auf einem Rahmen, der auf eine Handlung wartet, ist es „Tour beenden" —
+    /// die eine echte Wahl, die es dort gibt. Auf der Schlusskarte ist es
+    /// „Fertig", und beide rufen dasselbe (`finish()`); zwei Knöpfe
+    /// nebeneinander, die dasselbe tun, lesen sich als Entscheidung, die keine
+    /// ist (gemeldet am 2026-07-30).
     private var controls: some View {
         HStack(spacing: Theme.Spacing.md) {
-            // Auf dem letzten Rahmen heißt der Primärknopf „Fertig" und tut
-            // dasselbe wie der Abbruch — beide rufen `finish()`. Zwei Knöpfe
-            // nebeneinander, die dasselbe tun, lesen sich als Entscheidung, die
-            // keine ist; gemeldet am 2026-07-30. Der Abbruch bleibt auf jedem
-            // Rahmen davor, denn dort ist er eine echte Wahl.
-            if !tutorial.isLastStep {
+            Spacer(minLength: 0)
+
+            if step.deed != .reads {
                 Button {
                     // **Der Ausgang war eine Ecke, kein Übergang** (06.08.).
                     // `ContentView` legt `.transition(.opacity)` auf das
@@ -593,25 +720,31 @@ struct TutorialOverlay: View {
                 .accessibilityIdentifier("tutorial.skip")
             }
 
-            Spacer(minLength: 0)
-
-            Button {
-                // Derselbe Grund wie beim Abbruch darüber: Auf dem letzten
-                // Rahmen ist „Weiter" der Ausgang, und der muss durch eine
-                // animierte Transaktion laufen.
-                withAnimation(Theme.Motion.screen.animation(reduceMotion: reduceMotion)) {
-                    tutorial.next()
+            // **„Weiter" gibt es nur noch auf der Schlusskarte, und dort heißt
+            // es „Fertig".** Das ist der Prinzipwechsel in einer Zeile: Solange
+            // ein Rahmen eine Handlung erwartet, hat er keinen Knopf, der sie
+            // überspringt — sonst wäre der Rundgang genau wieder das, was er
+            // war, nur mit einem Hinweis mehr. Der Bezeichner bleibt
+            // `tutorial.next`, damit die Journeys ihren Ausgang behalten.
+            if step.deed == .reads {
+                Button {
+                    // Derselbe Grund wie beim Abbruch darüber: Hier ist der
+                    // Knopf der Ausgang, und der muss durch eine animierte
+                    // Transaktion laufen.
+                    withAnimation(Theme.Motion.screen.animation(reduceMotion: reduceMotion)) {
+                        tutorial.next()
+                    }
+                } label: {
+                    Text("Fertig")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, Theme.Spacing.lg)
+                        .frame(minHeight: 44)
+                        .background(Theme.accent, in: Capsule())
                 }
-            } label: {
-                Text(tutorial.isLastStep ? "Fertig" : "Weiter")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.onAccent)
-                    .padding(.horizontal, Theme.Spacing.lg)
-                    .frame(minHeight: 44)
-                    .background(Theme.accent, in: Capsule())
+                .buttonStyle(TactileButtonStyle())
+                .accessibilityIdentifier("tutorial.next")
             }
-            .buttonStyle(TactileButtonStyle())
-            .accessibilityIdentifier("tutorial.next")
         }
     }
 }
