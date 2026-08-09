@@ -187,6 +187,11 @@ lauf() {
 	# steht am Ende des Laufs namentlich in der Zusammenfassung, und wer
 	# zweimal fällt, bleibt rot. Ein Test, der regelmässig in dieser Liste
 	# steht, gehört repariert — die Liste ist der Auftrag dazu.
+	# Wo dieser Durchgang im Protokoll anfängt — der Freispruch unten darf nur
+	# das beurteilen, was **hier** gelaufen ist.
+	local ab
+	ab=$(( $(wc -l < "$protokoll") + 1 ))
+
 	xcodebuild test-without-building \
 		-test-timeouts-enabled YES \
 		-maximum-test-execution-time-allowance 600 \
@@ -194,6 +199,20 @@ lauf() {
 		-xctestrun "$xctestrun" -destination "$DESTINATION" "$@" 2>&1 | tee -a "$protokoll"
 	local code=${PIPESTATUS[0]}
 	if [ "$code" -ne 0 ]; then
+		# **Erst die Frage, ob überhaupt etwas gelaufen ist.** Ein Durchgang, der
+		# gar nicht erst startet, hat null gefallene Tests — und wäre nach der
+		# Regel darunter „grün". Am 09.08. genau so passiert: Der serielle
+		# Durchgang scheiterte am Gerät (`Invalid connectionUUID`), keine der
+		# drei Klassen lief, und der Lauf meldete grün. Null gelaufene Tests
+		# sind kein Freispruch, sondern der eindeutigste Fehlschlag von allen.
+		local gelaufen_hier
+		gelaufen_hier=$(sed -n "${ab},\$p" "$protokoll" \
+			| grep -cE "Test case '.*' (passed|failed) on |^Test Case .*(passed|failed) \(" || true)
+		if [ "$gelaufen_hier" -eq 0 ]; then
+			echo "✗ In diesem Durchgang ist **kein einziger Test gelaufen**."
+			echo "  Das ist kein Simulator-Rauschen, das ist ein Ausfall."
+			return 1
+		fi
 		# **„Einmal gefallen" ist nicht „rot".** Seit `-retry-tests-on-failure`
 		# läuft ein gefallener Test noch einmal; kommt er durch, steht im
 		# Protokoll beides — eine `failed`- und eine `passed`-Zeile für
