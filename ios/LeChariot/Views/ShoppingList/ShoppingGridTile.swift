@@ -95,6 +95,13 @@ struct ShoppingGridTile: View {
                 angabenKnopf
             }
         }
+        // **Das Zurücktreten gilt der ganzen Kachel, nicht nur ihrer Fläche.**
+        // Bis zum 09.08. sass dieser Modifikator am Knopf der Kachel selbst;
+        // seit der Angaben-Knopf als Geschwister daneben liegt, wäre er sonst
+        // der einzige Teil einer abgehakten Kachel in voller Deckkraft — ein
+        // helles Bedienelement auf etwas, das gerade in den Hintergrund tritt.
+        // Eine Regel, eine Stelle.
+        .opacity(item.isChecked ? 0.45 : 1)
     }
 
     /// **Warum die Kachel überhaupt eine sichtbare Tür braucht.**
@@ -162,7 +169,6 @@ struct ShoppingGridTile: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(TactileButtonStyle())
-        .opacity(item.isChecked ? 0.45 : 1)
         // **Label ist der Artikel, Value das Angebot.** Beides ins Label zu
         // packen war der erste Anlauf und hat sofort etwas kaputtgemacht: Aus
         // „Vollmilch" wurde „Vollmilch, Günstigstes Angebot: …", und damit war

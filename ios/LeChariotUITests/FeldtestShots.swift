@@ -57,6 +57,12 @@ final class FeldtestShots: XCTestCase {
 
         XCTAssertTrue(kachel(mit: "Vollmilch").waitForExistence(timeout: 15))
         attach(name: "n3-raster-mit-fahnen")
+
+        // Und abgehakt: Die Kachel tritt zurück, und der Angaben-Knopf muss
+        // mitgehen — sonst leuchtet ein Bedienelement auf etwas Erledigtem.
+        kachel(mit: "Butter").tap()
+        _ = kachel(mit: "Kohl").waitForExistence(timeout: 5)
+        attach(name: "n4-abgehakt")
     }
 
     /// Der Weg, wie er heute ist: Liste → Halten → Trefferblatt → ⋯ → Angaben.
