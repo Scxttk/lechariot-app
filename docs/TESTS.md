@@ -272,14 +272,14 @@ Arbeiten, sondern den einen vollen Lauf vor dem PR.
 
 ### Wie verteilt wird
 
-Ein Job baut, drei laufen. Verteilt wird **je Klasse** — dieselbe Körnung wie
+Ein Job baut, vier laufen. Verteilt wird **je Klasse** — dieselbe Körnung wie
 lokal, nur über Maschinen statt über Klone:
 
 | Job | was er tut |
 |---|---|
 | `verteilen` | Ubuntu. Rechnet aus, welche Klasse auf welche Scherbe geht. |
 | `bauen` | `build-for-testing` **einmal**, dann die Unit-Tests. Das Ergebnis geht als Tar an die Scherben. |
-| `journeys` | Drei Runner, je ein Drittel der Journeys. Scherbe 1 hängt den seriellen Durchgang hinten dran. |
+| `journeys` | Vier Runner, je ein Viertel der Journeys. Scherbe 1 hängt den seriellen Durchgang hinten dran. |
 | `urteil` | Ubuntu. Liest die Befunde und fällt **ein** Urteil. |
 
 Die Verteilung ist „grösste Klasse zuerst auf die leerste Scherbe" (LPT), und

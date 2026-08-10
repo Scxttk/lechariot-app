@@ -16,7 +16,7 @@
 # Das ist der ganze Hebel: Die Suite ist ein Rudel unabhängiger App-Starts, und
 # ein einzelner Simulator lastet diesen Mac nicht aus. Das Messgeschirr darf
 # aber nicht mitfahren — es vergleicht CPU-Zahlen gegen Grundwerte aus dem
-# Leerlauf (siehe `SERIELL` unten).
+# Leerlauf (siehe `SERIELL` in `tools/testlauf.sh`).
 #
 # **Und warum `build-for-testing` getrennt.** Zwei Läufe, ein Bau. Ohne die
 # Trennung baut der zweite Durchgang alles noch einmal.
