@@ -142,10 +142,18 @@ final class OnboardingJourneyTests: XCTestCase {
         app.buttons["Lidl"].tap()  // eine Kette merken
         tapPrimary()               // Ketten → Belohnung
 
-        XCTAssertTrue(
-            app.staticTexts["4 Ketten, 5 Filialen in deiner Nähe."].waitForExistence(timeout: 15),
-            "die Belohnung muss die Zahlen der Gegend nennen, nicht irgendeinen Werbesatz"
-        )
+        // **Seit dem 10.08. abends stehen die Zahlen groß** (Punkt 4) und
+        // nicht mehr als Satz in der Überschrift. Der Satz ist geblieben — als
+        // Beschriftung des zusammengefassten Elements, damit VoiceOver ihn am
+        // Stück liest. Deshalb hier über den Bezeichner und nicht über den
+        // Text: Zwei Zahlen und zwei Wörter sind vier Fundstellen, und keine
+        // davon ist die Aussage.
+        let zahlen = app.descendants(matching: .any)
+            .matching(identifier: "payoff.numbers").firstMatch
+        XCTAssertTrue(zahlen.waitForExistence(timeout: 15),
+                      "die Belohnung muss die Zahlen der Gegend nennen, nicht irgendeinen Werbesatz")
+        XCTAssertEqual(zahlen.label, "4 Ketten, 5 Filialen in deiner Nähe.",
+                       "…und zwar die echten Zahlen der Gegend")
         // Die Zeile ist ein zusammengefasstes Element (Symbol + Satz), daher
         // über das Label statt über `staticTexts` gesucht.
         let liked = app.descendants(matching: .any)
