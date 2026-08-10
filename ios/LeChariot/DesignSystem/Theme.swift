@@ -14,6 +14,15 @@ enum Theme {
         static let xxl: CGFloat = 32
     }
 
+    // MARK: Typography
+
+    enum Typography {
+        /// Eine Zahl, die für sich steht — der Belohnungsschritt setzt so seine
+        /// Ketten- und Filialzahl. Grundwert bei „Groß (Standard)"; er wächst
+        /// mit der Systemschrift, weil er über `@ScaledMetric` gelesen wird.
+        static let heroNumber: CGFloat = 56
+    }
+
     // MARK: Radii
     // Rule: cards/tiles 16, nested surfaces 10 (16 − 6 padding), badges capsule.
 
@@ -57,6 +66,34 @@ enum Theme {
             ? UIColor(red: 0.059, green: 0.075, blue: 0.035, alpha: 1) // #0F1309
             : .white
     })
+
+    /// Die Fläche eines Hauptknopfs, der gerade **nicht** geht.
+    ///
+    /// **Dieselbe Klasse wie `onAccent`, eine Stelle weiter.** `onAccent` ist
+    /// gegen `accent` gemessen — und gilt deshalb nur, solange die Fläche
+    /// wirklich der Akzent ist. Sobald `.disabled` dazukommt, malt
+    /// `.borderedProminent` die Fläche selbst, und die Palette hat kein Wort
+    /// mehr mitzureden. Am gerenderten Bild vom 10.08. nachgemessen
+    /// (Wohnort-Schritt, dunkler Modus, Knopf aus): Die Fläche stand bei
+    /// **#000000**, die Schrift darauf bei #0A120A — **1,09:1**, und die
+    /// Kapsel selbst nur 1,14:1 gegen ihre eigene Leiste. Ein Knopf, den man
+    /// nicht sieht, sagt nicht „geht gerade nicht", sondern gar nichts.
+    ///
+    /// **Und kein Audit hätte das gefunden:** Apples Kontrastprüfung nimmt
+    /// ausgeschaltete Bedienelemente ausdrücklich aus (die Stelle steht seit dem
+    /// 26.07. in `AccessibilityAuditTests` beschrieben, dort als Grund, einen
+    /// Grund zu wählen, bevor gemessen wird). Was der Audit nicht misst und die
+    /// Palette nicht kennt, sieht zuerst der Nutzer.
+    ///
+    /// **Ein Wert für beide Modi**, und das ist kein Sparen: Ein gedämpftes
+    /// Olive liegt zwischen der Creme und dem dunklen Oliv und hat deshalb in
+    /// beiden Richtungen Abstand — 3,55:1 gegen die dunkle Seite, 3,55:1 gegen
+    /// die helle. Zum Akzent hin bleiben 1,94:1 (hell) und 2,16:1 (dunkel):
+    /// genug, dass „geht" und „geht nicht" zwei Zustände sind.
+    static let accentMuted = Color(uiColor: UIColor(red: 0.420, green: 0.459, blue: 0.384, alpha: 1)) // #6B7562
+
+    /// Beschriftung auf `accentMuted`. Weiß in beiden Modi — 4,83:1.
+    static let onAccentMuted = Color.white
 
     /// Non-dominant brand color (brown) in both appearances — warm tan in
     /// dark, deep brown in light. For secondary highlights only, never controls.
@@ -735,6 +772,41 @@ struct TactileButtonStyle: ButtonStyle {
             // Der Accessibility-Audit hat genau das am Weglegen-Knopf gemeldet;
             // dieselbe Falle wie die tote Mitte der Filialzeile in Phase 8.
             .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Primary action button style
+
+/// **Der Hauptknopf einer Seite — beide Zustände aus der Palette.**
+///
+/// Ersetzt das Dreigespann `.buttonStyle(.borderedProminent)` +
+/// `.foregroundStyle(Theme.onAccent)` + `.tint(Theme.accent)`, und zwar überall
+/// dort, wo der Knopf **auch aus** sein kann. Das Dreigespann stimmt nämlich
+/// nur, solange er an ist: Der ausgeschaltete Zustand gehört `.borderedProminent`
+/// allein, und der malte im dunklen Modus eine schwarze Kapsel mit fast
+/// schwarzer Schrift (gemessen 1,09:1, siehe `Theme.accentMuted`).
+///
+/// Hier zeichnet die App die Fläche selbst. Damit ist auch der ausgeschaltete
+/// Zustand ein Farbpaar der Palette — und `PaletteContrastTests` kann ihn
+/// nachrechnen, statt dass er niemandem gehört.
+struct PrimaryActionButtonStyle: ButtonStyle {
+    // Eigene Stile gehen an der automatischen Abdunklung des Systems vorbei —
+    // hier ist das der Zweck.
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(isEnabled ? Theme.onAccent : Theme.onAccentMuted)
+            .frame(maxWidth: .infinity)
+            .background(isEnabled ? Theme.accent : Theme.accentMuted, in: Capsule())
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(
+                reduceMotion ? nil : .snappy(duration: 0.15, extraBounce: 0),
+                value: configuration.isPressed
+            )
+            .contentShape(Capsule())
     }
 }
 

@@ -66,9 +66,7 @@ struct OnboardingStepView<Content: View>: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
             }
-            .buttonStyle(.borderedProminent)
-            .foregroundStyle(Theme.onAccent)
-            .tint(Theme.accent)
+            .buttonStyle(PrimaryActionButtonStyle())
             .disabled(!isPrimaryEnabled)
             // Stable handle for the UI journeys: several steps put a text field
             // on screen, and the software keyboard contributes its own buttons

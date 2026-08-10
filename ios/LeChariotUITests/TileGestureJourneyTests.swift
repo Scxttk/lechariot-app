@@ -89,9 +89,12 @@ final class TileGestureJourneyTests: XCTestCase {
             blatt.waitForExistence(timeout: 10),
             "Nach dem Halten steht das Artikelblatt nicht da:\n" + app.debugDescription
         )
-        // Und es trägt beides: die Angaben oben, die Angebote darunter.
-        XCTAssertTrue(app.staticTexts["Angaben"].exists,
-                      "Auf dem Blatt fehlen die Angaben:\n" + app.debugDescription)
+        // Und es trägt beides: die Angebote als Bildschirm, die Angaben hinter
+        // ihrem Knopf ganz oben (10.08. abends, Punkt 10).
+        XCTAssertTrue(app.staticTexts["itemSheet.offers.header"].exists,
+                      "Auf dem Blatt fehlen die Angebote:\n" + app.debugDescription)
+        XCTAssertTrue(app.buttons["itemSheet.angaben"].exists,
+                      "Auf dem Blatt fehlt der Weg zu den Angaben:\n" + app.debugDescription)
     }
 
     /// **Egal wie lange gehalten wird — es kommen die Treffer, nie das
@@ -136,12 +139,17 @@ final class TileGestureJourneyTests: XCTestCase {
     /// öffnet: die Angaben oben, das Löschen ganz unten. Der Umweg über ein
     /// ⋯-Menü ist damit weg — Scotts Punkt A, wörtlich: „the button in the left
     /// corner is only the Präferenzen menu and not löschen".
+    ///
+    /// **Seit dem Abend desselben Tages liegen die Angaben hinter einem Knopf**
+    /// (Punkt 10). Erreichbar bleiben sie — und weil genau das hier geprüft
+    /// wird, geht die Journey den Knopf mit, statt die Zusage zu verkleinern.
     func testTheOtherTileActionsAreStillReachable() {
         launch()
         addItem("Vollmilch")
 
         XCTAssertTrue(kachelMitVollmilch().waitForExistence(timeout: 15))
         app.openItemSheet(ofItem: "Vollmilch")
+        app.öffneAngaben()
 
         XCTAssertTrue(app.buttons["Bio"].waitForExistence(timeout: 10),
                       "Die Angaben stehen nicht auf dem Blatt:\n" + app.debugDescription)

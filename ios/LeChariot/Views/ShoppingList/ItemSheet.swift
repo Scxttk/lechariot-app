@@ -12,12 +12,24 @@ import SwiftUI
 ///
 /// Jetzt ist es eine: Das Halten öffnet dieses Blatt, und es trägt beides.
 ///
-/// **Die Reihenfolge ist die Antwort auf den Feldtest vom 09.08.** Oben die
-/// Angaben, darunter die Treffer — nicht umgekehrt. „Kohl steht auf der Liste
-/// und ich komme an seine Angaben nicht mehr heran" war die Meldung, und der
-/// Bildschirm, auf dem sie entstand, hieß „Treffer für ‚Kohl'" und meldete
-/// „Keine Treffer". Wer einen Artikel lange hält, meint erst einmal ihn selbst;
-/// was diese Woche im Prospekt dazu steht, ist die zweite Frage.
+/// **Die Gewichtung hat sich am Abend des 10.08. umgedreht** (Punkt 10).
+///
+/// Die erste Fassung stellte die Angaben nach oben und die Treffer darunter —
+/// die Antwort auf den Feldtest vom 09.08. („Kohl steht auf der Liste und ich
+/// komme an seine Angaben nicht mehr heran"). Am Gerät war das die eine
+/// Bewegung zu viel: Wer ein Blatt öffnet, sieht drei Chipreihen und muss an
+/// ihnen vorbeiwischen, um zu erfahren, was der Artikel diese Woche kostet.
+/// Scott, wörtlich: „just the button where it says ‚Angaben konfigurieren' …
+/// and then there is the offers of the week … the main screen."
+///
+/// Also: **Die Angebote sind der Bildschirm, die Angaben stehen hinter einem
+/// Knopf** — und die Zusage vom 09.08. bleibt trotzdem eingelöst, denn der
+/// Knopf steht ganz oben und trägt, was schon gewählt ist. Erreichbar heißt
+/// nicht ausgebreitet.
+///
+/// Aufgeklappt wird an Ort und Stelle, nicht in einem zweiten Blatt: Zwei
+/// gestapelte Karten für ein Aufklappen sind eine Karte zu viel — dieselbe
+/// Regel, aus der der Preisverlauf geschoben und nicht gestapelt wird.
 ///
 /// **Kein „Fertig", das etwas bestätigt.** Jeder Chip, jede Reißzwecke, jedes ✕
 /// schreibt sofort durch — dieselbe Zusage wie in `ItemDetailPanel`. Der Knopf
@@ -55,15 +67,26 @@ struct ItemSheet: View {
     /// jedem Zeichen aus der Liste zurückgelesen werden.
     @State private var note: String
 
+    /// Ob die Chipreihen ausgeklappt sind. Zu heißt: Das Blatt gehört den
+    /// Angeboten.
+    @State private var angabenOffen = false
+
+    /// **Aufgeklappt starten — für den einen Weg, der ausdrücklich die Angaben
+    /// meint.** „Notiz …" aus der Schicht beim Anlegen heißt wörtlich „Notiz
+    /// und alle Angaben zu …"; wer dort tippt, hat die Angebote nicht gesucht.
+    /// Das Halten auf der Kachel meint den Artikel und bekommt deshalb den
+    /// Normalfall.
     init(item: ShoppingItem,
          offers: [Offer],
          favoriteMarkets: [Market] = [],
+         startsWithAngaben: Bool = false,
          priceHistoryRepository: PriceHistoryRepositoryProtocol = AppRepositories.priceHistory) {
         self.item = item
         self.offers = offers
         self.favoriteMarkets = favoriteMarkets
         self.priceHistoryRepository = priceHistoryRepository
         _note = State(initialValue: item.note ?? "")
+        _angabenOffen = State(initialValue: startsWithAngaben)
     }
 
     private var allMatches: [OfferMatch] {
@@ -124,9 +147,12 @@ struct ItemSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                angabenSection
-                notizSection
-                if !fremdwörter.isEmpty { fremdwortSection }
+                angabenKnopfSection
+                if angabenOffen {
+                    angabenSection
+                    notizSection
+                    if !fremdwörter.isEmpty { fremdwortSection }
+                }
 
                 trefferKopf
                 understandingSection
@@ -250,13 +276,61 @@ struct ItemSheet: View {
         gewählt.filter { ItemDetailVocabulary.group(of: $0, in: reihen) == nil }
     }
 
-    /// **Ganz oben, und mit dem Satz, der die Angaben von der Suche trennt.**
+    /// **Der Knopf, hinter dem die Angaben liegen.**
+    ///
+    /// Er steht als Erstes auf dem Blatt und ist zugeklappt die einzige Zeile,
+    /// die den Angeboten Platz wegnimmt. Was schon gewählt ist, steht trotzdem
+    /// darunter — sonst wäre „zugeklappt" dasselbe wie „nicht da", und genau
+    /// das war der Befund vom 09.08.
+    private var angabenKnopfSection: some View {
+        Section {
+            Button {
+                withAnimation(Theme.Motion.element.animation) { angabenOffen.toggle() }
+            } label: {
+                HStack(spacing: Theme.Spacing.sm) {
+                    Label("Angaben konfigurieren", systemImage: "slider.horizontal.3")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer(minLength: Theme.Spacing.sm)
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .rotationEffect(.degrees(angabenOffen ? 180 : 0))
+                        .foregroundStyle(Theme.secondaryText)
+                        .accessibilityHidden(true)
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(TactileButtonStyle())
+            .tint(Theme.accent)
+            .accessibilityIdentifier("itemSheet.angaben")
+            .accessibilityHint(angabenOffen ? "Klappt die Angaben wieder zu" : "Klappt die Angaben auf")
+
+            if !angabenOffen, let stand = angabenStand {
+                Text(stand)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("itemSheet.angabenStand")
+            }
+        }
+        .listRowBackground(Theme.surface)
+    }
+
+    /// Was am Artikel steht, in einer Zeile — nil, solange nichts gewählt und
+    /// nichts notiert ist.
+    private var angabenStand: String? {
+        var teile = gewählt
+        let notiz = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !notiz.isEmpty { teile.append(notiz) }
+        return teile.isEmpty ? nil : teile.joined(separator: " · ")
+    }
+
+    /// **Die Chipreihen — aufgeklappt, mit dem Satz, der die Angaben von der
+    /// Suche trennt.**
     ///
     /// Der Satz stand seit dem 01.08. im alten Angaben-Blatt und ist der
     /// Grund, aus dem hier niemand „Bio" wählt und dann ein anderes Angebot
     /// erwartet: Was hier steht, steht unter dem Artikel — und nirgends sonst.
-    /// Auf diesem Bildschirm wiegt er schwerer als vorher, weil die Treffer
-    /// jetzt direkt darunter stehen.
     private var angabenSection: some View {
         Section {
             ForEach(reihen) { group in

@@ -20,9 +20,15 @@ import XCTest
 /// ein sichtbarer Eck-Knopf auf der Kachel — Scott: „Das Präferenzen menu
 /// button I don't like, bring opens it by long pressing the product." Jetzt
 /// ist es das Halten, und dahinter liegt ein Bildschirm, der Angaben **und**
-/// Treffer trägt. Die Zusage von #97 steht damit sogar stärker da als vorher:
-/// Der Artikel ohne jedes Angebot bekommt seine Angaben **oben**, und die
-/// Meldung „Keine Treffer" steht darunter statt an ihrer Stelle.
+/// Treffer trägt.
+///
+/// **Am Abend desselben Tages kam die Gewichtung dazu** (Punkt 10): Das Blatt
+/// macht mit den Angeboten auf, die Angaben liegen hinter „Angaben
+/// konfigurieren“ ganz oben. Die Zusage dieser Journeys ändert sich dadurch
+/// **nicht** — jeder Artikel kommt an seine Angaben, auch der ohne ein
+/// einziges Angebot. Was dazukommt, ist ein Tipp auf dem Weg dorthin, und
+/// genau der steht ab jetzt mit drin: Ein Knopf, den keine Journey drückt,
+/// kann morgen fehlen, ohne dass es auffällt.
 final class ListItemDetailPathJourneyTests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -43,13 +49,19 @@ final class ListItemDetailPathJourneyTests: XCTestCase {
 
         app.openItemSheet(ofItem: "Kohl")
 
-        XCTAssertTrue(
-            app.staticTexts["Angaben"].waitForExistence(timeout: 10),
-            "Ein Artikel ohne Treffer kommt nicht an seine Angaben:\n" + app.debugDescription
-        )
-        // Und die leere Auskunft steht **darunter**, nicht an ihrer Stelle.
+        // Die Angebote sind der Bildschirm — auch bei einem Artikel, zu dem es
+        // keine gibt.
         XCTAssertTrue(app.staticTexts["itemSheet.offers.header"].exists,
                       "Der Bildschirm trägt die Angebote nicht mit")
+
+        let angaben = app.buttons["itemSheet.angaben"]
+        XCTAssertTrue(
+            angaben.waitForExistence(timeout: 10),
+            "Ein Artikel ohne Treffer kommt nicht an seine Angaben:\n" + app.debugDescription
+        )
+        angaben.tap()
+        XCTAssertTrue(app.staticTexts["Angaben"].waitForExistence(timeout: 10),
+                      "Der Knopf klappt die Angaben nicht auf:\n" + app.debugDescription)
     }
 
     /// **Es ist dieselbe Schicht wie beim Anlegen, kein zweiter Wortschatz.**
@@ -61,6 +73,7 @@ final class ListItemDetailPathJourneyTests: XCTestCase {
         addItem("Kohl")
 
         app.openItemSheet(ofItem: "Kohl")
+        app.öffneAngaben()
 
         XCTAssertTrue(
             app.buttons["Rotkohl"].waitForExistence(timeout: 10),
@@ -80,6 +93,7 @@ final class ListItemDetailPathJourneyTests: XCTestCase {
         addItem("Kohl")
 
         app.openItemSheet(ofItem: "Kohl")
+        app.öffneAngaben()
         XCTAssertTrue(app.buttons["Rotkohl"].waitForExistence(timeout: 10))
         app.buttons["Rotkohl"].tap()
 

@@ -91,12 +91,18 @@ struct RegionSetupView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                     fields
-                    Button(primaryTitle) { primaryAction() }
-                        .buttonStyle(.borderedProminent)
-                        .foregroundStyle(Theme.onAccent)
-                        .tint(Theme.accent)
-                        .disabled(!isPrimaryEnabled)
-                        .frame(maxWidth: .infinity)
+                    Button {
+                        primaryAction()
+                    } label: {
+                        Text(primaryTitle)
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                    }
+                    // Derselbe Knopf wie im Assistenten, also derselbe Stil —
+                    // und aus demselben Grund: Er kann aus sein.
+                    .buttonStyle(PrimaryActionButtonStyle())
+                    .disabled(!isPrimaryEnabled)
                 }
                 .padding(Theme.Spacing.xl)
                 .readableWidth()

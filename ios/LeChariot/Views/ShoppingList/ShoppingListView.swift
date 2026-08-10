@@ -28,6 +28,8 @@ struct ShoppingListView: View {
     /// Der Artikel, dessen Blatt gerade oben steht — Angaben **und** Treffer,
     /// siehe `ItemSheet`. Bis zum 10.08. waren das zwei Zustände.
     @State private var sheetItem: ShoppingItem?
+    /// Ob das Blatt mit aufgeklappten Angaben aufgehen soll — siehe `ItemSheet`.
+    @State private var sheetOpensAngaben = false
     @State private var newItemText = ""
     @FocusState private var inputFocused: Bool
     /// Der laufende Tipp-Fluss — siehe `AddFlowState` und `ItemDetailPanel`.
@@ -471,7 +473,8 @@ struct ShoppingListView: View {
             ItemSheet(
                 item: item,
                 offers: offerStore.offers,
-                favoriteMarkets: favoriteMarkets
+                favoriteMarkets: favoriteMarkets,
+                startsWithAngaben: sheetOpensAngaben
             )
                 .environment(rejections)
                 // Das Blatt schreibt Angaben und Heftung selbst und muss den
@@ -1451,6 +1454,7 @@ struct ShoppingListView: View {
                     tips?.detailsUsed()
                 },
                 onOpenFull: {
+                    sheetOpensAngaben = true
                     sheetItem = item
                     tips?.detailsUsed()
                 }
@@ -1619,10 +1623,13 @@ struct ShoppingListView: View {
     /// (10.08., Punkt A) — der Weg dahin ist das Halten auf seiner Kachel.
     ///
     /// Es öffnet sich derselbe Bildschirm, den auch „Notiz …" aus der Schicht
-    /// öffnet: Angaben oben, Treffer darunter (`ItemSheet`). Zwei Wege zu
-    /// denselben Angaben dürfen nicht zwei verschiedene Bildschirme sein — das
-    /// war die Lehre aus dem Feldtest vom 09.08. und gilt unverändert.
+    /// öffnet: die Angebote der Woche, die Angaben hinter ihrem Knopf oben
+    /// (`ItemSheet`). Zwei Wege zu denselben Angaben dürfen nicht zwei
+    /// verschiedene Bildschirme sein — das war die Lehre aus dem Feldtest vom
+    /// 09.08. und gilt unverändert. Was sie unterscheiden dürfen, ist womit
+    /// der Bildschirm aufmacht: Hier ist der Artikel gemeint, dort die Angabe.
     private func openSheet(for item: ShoppingItem) {
+        sheetOpensAngaben = false
         sheetItem = item
         tips?.detailsUsed()
     }
