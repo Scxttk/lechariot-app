@@ -8,6 +8,14 @@ tools/tests.sh --workers 2           # weniger Klone, wenn der Mac zu tun hat
 tools/tests.sh RundgangShots --result /tmp/bogen.xcresult   # mit Bildern
 ```
 
+**Zwei Wege, ein Regelwerk.** Lokal läuft die Suite über `tools/tests.sh`, in
+CI über `.github/workflows/suite.yml`. Was beide wissen müssen — welche Klassen
+seriell laufen, wie ein Klassenname zu seinem Ziel kommt, wie ein Protokoll zu
+urteilen ist — steht **einmal** in `tools/testlauf.sh`; das Skript sourcet es,
+der Workflow ruft es auf. Wer eine Klasse in `SERIELL` einträgt, hat damit
+beide Wege umgestellt. Welcher Weg wann dran ist, steht unter
+[Die Politik](#die-politik).
+
 **Die Bilderbögen brauchen `--result`.** `RundgangShots` und `BedienrundeShots`
 hängen ihre PNGs (und den Barrierefreiheits-Baum dazu) ans Ergebnisbündel; ohne
 Pfad gibt es keins, und die Bilder sind weg. Herausholen:
@@ -250,6 +258,247 @@ noch so da und sind bewusst nicht angefasst worden, weil die Suite auf dem
 - `testAWholeTileRowStaysAboveTheBlock` prüft `minY >= 44` — die Statusleiste
   eines Geräts mit Dynamic Island. Auf einem iPhone SE sind es 20, und der Test
   fällt dort, obwohl die Kachel korrekt sitzt.
+
+## Der Nachweis auf geliehenen Macs
+
+`.github/workflows/suite.yml` fährt dieselbe Suite auf GitHubs macOS-Runnern.
+Das Repo ist öffentlich, also kostet das nichts ausser Wartezeit — und die
+Wartezeit ist nicht Scotts Mac. Der bleibt frei fürs Iterieren; genau das war
+der Zweck.
+
+**`tools/tests.sh` bleibt und bleibt unverändert.** Offline, ohne Warteschlange,
+mit Bilderbögen und mit dem Messgeschirr. Der Workflow ersetzt nicht das
+Arbeiten, sondern den einen vollen Lauf vor dem PR.
+
+### Wie verteilt wird
+
+Ein Job baut, vier laufen. Verteilt wird **je Klasse** — dieselbe Körnung wie
+lokal, nur über Maschinen statt über Klone:
+
+| Job | was er tut |
+|---|---|
+| `verteilen` | Ubuntu. Rechnet aus, welche Klasse auf welche Scherbe geht. |
+| `bauen` | `build-for-testing` **einmal**, dann die Unit-Tests. Das Ergebnis geht als Tar an die Scherben. |
+| `journeys` | Vier Runner, je ein Viertel der Journeys. Scherbe 1 hängt den seriellen Durchgang hinten dran. |
+| `urteil` | Ubuntu. Liest die Befunde und fällt **ein** Urteil. |
+
+Die Verteilung ist „grösste Klasse zuerst auf die leerste Scherbe" (LPT), und
+das Gewicht einer Klasse ist die **Zahl ihrer Testmethoden**. Eine Kostentabelle
+wäre genauer — `AccessibilityAuditTests` kostet je Test 43 s,
+`OnboardingJourneyTests` 25 s — und stünde in einem halben Jahr falsch im Repo.
+Die Zahl der Methoden ist grob und stimmt immer. Ob die Grobheit reicht, sagt
+der Lauf selbst: `urteil` druckt je Scherbe die Wanduhr.
+
+Die Untergrenze bleibt dieselbe wie lokal: **die längste einzelne Klasse.** Wer
+eine anlegt, die allein sechs Minuten läuft, hebt damit die Untergrenze — lieber
+zwei Klassen.
+
+### `PerformanceJourneyTests` läuft dort nicht
+
+Als einzige Klasse ist sie ausgeschlossen (`OHNE_CI` in `tools/testlauf.sh`).
+Sie vergleicht CPU- und Speicherzahlen gegen `tools/perf-baseline.json` —
+Grundwerte von Scotts Mac im Leerlauf. Auf drei geliehenen Kernen wäre jede
+dieser Zahlen eine Aussage über den Nachbarn im Rechenzentrum. Die Klasse sagt
+das seit dem 01.08. selbst in ihrem Kopfkommentar.
+
+Ausgeschlossen und nicht stillschweigend geduldet: Ein Messstand, dem niemand
+glaubt, wird abgeschaltet statt gelesen — und eine Ampel, die in jedem zweiten
+PR grundlos rot ist, erzieht dazu, rote Ampeln zu überblättern.
+
+### Gerät und Fassung sind genagelt
+
+| | Scotts Mac | Runner |
+|---|---|---|
+| Xcode | 26.3 | Vorgabe **26.6**, genagelt auf 26.3 |
+| iOS-Laufzeiten | 26.1, 26.2 | 26.2, 26.4, **26.5** |
+| Ziel | `iPhone 17 Pro, OS=latest` → 26.2 | `OS=latest` wäre **26.5**, genagelt auf 26.2 |
+
+`OS=latest` heisst auf dem Runner etwas anderes als hier. Das ist keine
+Kleinigkeit, sondern genau der Befund vom 09.08.: Die Tastatur unter iOS 26.1
+ist 10 pt höher als unter 26.2, und daran hingen zwei rote Journeys auf `main`
+(siehe [Das Gerät ist Teil des Ergebnisses](#das-gerät-ist-teil-des-ergebnisses)).
+Zwei Zusicherungen der Suite halten ausserdem Zahlen fest, die für dieses Gerät
+gelten. Der Workflow sagt deshalb, was er meint.
+
+### Der Simulator wird gesucht, bevor `xcodebuild` fragt
+
+Ein frischer Runner hat den Simulator-Dienst beim ersten Zugriff noch nicht
+wach. `xcodebuild` bekommt dann eine Geräteliste, in der **nur Platzhalter**
+stehen, und bricht ab:
+
+    Unable to find a device matching the provided destination specifier:
+        { platform:iOS Simulator, OS:26.2, name:iPhone 17 Pro }
+    Available destinations for the "LeChariot" scheme:
+        { platform:iOS Simulator, id:…SimulatorPlaceholder…, name:Any iOS Simulator Device }
+
+Das liest sich wie „die Laufzeit fehlt dem Image" und ist es nicht: Derselbe
+Workflow lief auf demselben Image erst durch und beim nächsten Mal nicht. Ein
+Wettlauf, den man nicht bemerkt, solange man ihn gewinnt.
+
+`.github/simulator.sh` fragt deshalb selbst nach, bis das Gerät auftaucht, und
+gibt dessen **UDID** aus; gefahren wird auf `-destination "id=…"`. Damit hängt
+kein Lauf mehr daran, ob der Dienst rechtzeitig wach war oder ob `xcodebuild`
+den Namen so auflöst, wie er gemeint war. Findet sich nach zwölf Versuchen
+keines, ist das ein Befund und kein Rauschen — dann fehlt dem Image wirklich die
+Laufzeit, und der Lauf sagt das laut, statt auf ein anderes Gerät auszuweichen.
+
+### Was der Runner kostet, gemessen am 10.08.
+
+| Posten | `macos-26` | Scotts Mac |
+|---|---|---|
+| `build-for-testing`, kalt | **52–70 s** | 2–4 min |
+| Unit-Tests (mit Simulator-Start) | **3:33** | ~25 s |
+| Simulator booten | **1:26** | — |
+| `OfferHitsJourneyTests` (3 Tests), ohne Klone | **417 s** (Testzeit 170 s) | ~45 s |
+| dieselbe Klasse, zwei Klone | **508 s**, Auslagerung 480 MB | — |
+
+**Klone bringen dort nichts.** Derselbe Befund wie lokal beim vierten Klon, nur
+eine Stufe tiefer: drei Kerne, 7 GB, und der zweite Klon nimmt den anderen mehr
+weg, als er dazulegt — messbar an der Auslagerung, die ohne Klone bei **null**
+bleibt. Die Parallelität kommt hier aus den Scherben, nicht aus Klonen; das
+erspart nebenbei genau den Wettlauf beim Klon-Start, der lokal in vier von sechs
+Läufen einmal je Lauf zuschlug.
+
+**Bauen ist auf dem Runner schneller, Journeys sind langsamer.** Die 170 s reine
+Testzeit gegen rund 45 s lokal sind grob das Vierfache; die Differenz zwischen
+170 s und 417 s ist Simulator-Start, Installieren und Abräumen — ein Posten je
+Scherbe, kein Posten je Test.
+
+### Was der erste Lauf auf einer fremden Uhr gefunden hat
+
+Der erste Versuch war rot, und zwar nicht wegen des Runners: **Die Fixtures
+setzten stillschweigend voraus, dass die Maschine in deutscher Zeit steht.**
+
+`MockFixtures.weekStart` rechnete mit `Calendar(identifier: .iso8601)`, also in
+der Zeitzone des *Geräts*. `OfferQuery.current` fragt aber in
+`Calendar.supabase`, fest in Europe/Berlin — „Angebotsdaten sind Berliner
+Mitternachte". In Berlin fallen beide auf denselben Augenblick, der Unterschied
+war unsichtbar. Auf einem Runner in UTC liegt `weekStart` zwei Stunden **hinter**
+dem „heute" der Abfrage, `validFrom <= today` ist falsch, und **kein einziges
+Fixture-Angebot gilt**.
+
+Zweimal belegt, bevor eine Zeile geändert wurde:
+
+| Probe | Ergebnis |
+|---|---|
+| `OfferHitsJourneyTests` auf dem Runner (UTC) | **3 von 3 rot**, alle an derselben Zeile, App zeigt „NOCH KEIN TREFFER" |
+| dieselbe Klasse, Runner-Uhr auf Europe/Berlin | **3 von 3 grün** |
+| drei Klassen ohne Angebotsbezug, Runner (UTC) | **6 von 6 grün** |
+
+Repariert wurde die Ursache und nicht das Symptom: `MockFixtures.weekStart`
+rechnet jetzt in `Calendar.supabase`. In Berlin kommt derselbe Augenblick heraus
+wie vorher — **lokal ändert sich nichts** —, überall sonst kommt jetzt auch der
+richtige heraus. Die Uhr des Runners bleibt auf UTC; sie umzustellen hätte die
+Annahme versteckt statt entfernt.
+
+Der Rückfall ist mit einem Unit-Test zugenagelt
+(`testTheFixtureOffersAreValidTodayWhereverTheClockStands`): Er braucht keinen
+Simulator und läuft in jedem Unit-Lauf mit.
+
+**Und es war nicht die einzige Stelle.** Derselbe Lauf hat drei Unit-Tests rot
+gemeldet, alle aus derselben Familie — die Suite setzte voraus, dass die
+Maschine deutsch eingestellt ist:
+
+| Test | Befund auf dem Runner | Ursache |
+|---|---|---|
+| `PriceHistoryDecodingTests.testDecodeIgnoresRecordedAt` | „22.7. – 28.7." statt „23.7. – 29.7." | `DateFormatter.offerDay` **liest** Berliner Mitternachte (`supabaseDay`), **schrieb** sie aber ohne Zone — westlich von Berlin ist eine Berliner Mitternacht noch der Vortag |
+| `MarketFilterTests.testTheChainLineLeadsWithTheDistanceNotTheCount` | „1.2 km" statt „1,2 km" | `distanceLabel` formatierte mit `locale: .current` |
+| `MarketFilterTests.testDistanceLosesItsDecimalBeyondTenKilometres` | „9.9 km" statt „9,9 km" | dieselbe Zeile |
+
+Beide sind repariert, und beide Male am Bestand statt an der Umgebung:
+`offerDay`/`offerDayLong` tragen jetzt `Europe/Berlin`, `distanceLabel` nagelt
+`de_DE` fest — wie die Datumsformatierer daneben es längst tun. Der verrutschte
+Tag war dabei kein reines Testproblem: Wer mit der App nach London fährt, sah
+dort jede Gültigkeit einen Tag zu früh.
+
+**Die Uhr und die Sprache des Runners bleiben, wie sie sind** (UTC, englisch).
+Sie umzustellen wäre ein Zweizeiler gewesen und hätte jede dieser vier Stellen
+versteckt statt entfernt — und die nächste fremde Maschine hätte sie wieder
+gefunden.
+
+**Merksatz: Wer Datum und Uhrzeit prüft, prüft auch die Zeitzone der Maschine.**
+Zwei Kalender im selben Bestand müssen dieselbe Zone haben, sonst stimmen sie
+nur dort überein, wo entwickelt wurde. Dasselbe gilt für die Sprache: Ein
+deutsches „1,2 km" ist eine Zusage und kommt aus `de_DE`, nicht aus `.current`.
+
+### Was ein Lauf dort kostet, dreimal gemessen
+
+Derselbe Commit, dreimal hintereinander, nichts dazwischen geändert:
+
+| | Lauf 1 | Lauf 2 | Lauf 3 |
+|---|---|---|---|
+| `bauen` samt 683 Unit-Tests | 4:59 | 5:16 | **14:20** |
+| Scherben 2–4 | 21–25 min | 21–24 min | 26–33 min |
+| **Scherbe 1** (mit seriellem Durchgang) | 33:39 | **46:33** | 32:25 |
+| **gesamt** | **39:00** | **52:16** | **47:45** |
+
+Lokal: **27–35 min** (`tools/tests.sh`, oben gemessen). **CI ist also nicht
+schneller, und die Spanne ist grösser.** Der Ausreisser ist nicht die Suite,
+sondern die Maschine — in Lauf 3 brauchte schon das Bauen 14:20 statt 5 Minuten
+und die Unit-Tests 10:11 statt 3:42, bei identischem Commit. Wer auf geliehenen
+Kernen misst, misst den Nachbarn mit.
+
+**Die Untergrenze ist Scherbe 1**, und das ist der serielle Durchgang. Wer den
+Lauf kürzen will, fängt dort an, nicht bei der Zahl der Scherben.
+
+### Das Wackelbild — und was davon kein Wackeln ist
+
+856 Tests je Lauf:
+
+| Journey | Lauf 1 | Lauf 2 | Lauf 3 |
+|---|---|---|---|
+| `NextWeekJourneyTests.testTheSameProductInBothWeeks…` | **rot** | **rot** | **rot** |
+| `AddFlowZonesJourneyTests.testTheVisibleStripFollows…` | wackelig | **rot** | **rot** |
+| `TileGestureJourneyTests.testATapChecks…` | **rot** | grün | wackelig |
+| `OnboardingJourneyTests.testAChosenBranchStandsBelow…` | wackelig | grün | grün |
+| `BringSectionsJourneyTests.testTheSecondCardIsGone` | grün | grün | wackelig |
+| die übrigen 851 | grün | grün | grün |
+
+**Die ersten beiden Zeilen sind ein Befund, kein Wackeln.** Die
+Vorschau-Journey fällt dreimal von drei, die Streifen-Journey war in keinem Lauf
+sauber grün. Beide gehören angesehen — die Vorschau hängt an Datumsgrenzen, also
+an derselben Familie wie die vier Stellen oben.
+
+**Die Unit-Tests wackeln dort nicht:** 683 Tests, dreimal null rot.
+
+**Und deshalb urteilt der Workflow beratend.** Lokal steht hier rund *ein*
+wackelnder Test je vollem Lauf; auf dem Runner sind es zwei rote plus null bis
+zwei Wackler, die roten immer dieselben. CI wackelt also schlechter als dieser
+Mac, und eine Ampel, die in jedem Lauf grundlos rot ist, erzieht dazu, rote
+Ampeln zu überblättern. `GATE: '0'` bleibt stehen, bis die beiden oberen
+Journeys grün sind und zwei Läufe hintereinander sauber durchgehen; umgelegt
+wird es in einer Zeile.
+
+### Geurteilt wird nach Tests, nicht nach Ampeln
+
+Dieselbe Regel wie lokal, und auf einem geliehenen Mac eher noch wichtiger.
+Jede Scherbe schreibt ihren Befund in eine Datei; `.github/urteil.sh` liest die
+Dateien. **Rot** ist ein Lauf nur, wenn eines davon zutrifft:
+
+1. Ein Test ist gefallen und im zweiten Anlauf nicht wieder aufgestanden
+   (`-retry-tests-on-failure -test-iterations 2`, wie lokal).
+2. Eine Klasse aus dem Quellbaum hat **keinen einzigen Test gemeldet**.
+
+Der zweite Punkt ist die Gegenprobe zum Freispruch im ersten. Lokal vergleicht
+`tools/tests.sh` dafür die Testzahl mit dem letzten Lauf *dieser Maschine*; auf
+einem Runner gibt es kein „letztes Mal". Der Sollwert kommt deshalb aus
+`tools/testlauf.sh soll`, also aus demselben Quellbaum wie die Tests — und er
+fängt beides: den ausgefallenen Arbeiter und die ganze Scherbe, deren Job
+gestorben ist. (Bewusst nicht aus den Befunden: Ein fehlender Befund prüfte
+sich sonst selbst.)
+
+Alles andere — ein Runner, der beim Klon-Start stolpert, ein Durchgang, der
+Fehlschlag meldet, ohne dass eine Zusicherung gefallen ist — wird gemeldet und
+nicht bestraft. Wer nur im zweiten Anlauf grün wurde, steht namentlich in der
+Zusammenfassung.
+
+**Der Wächter ist am 10.08. unfreiwillig geprüft worden.** Ein Lauf wurde mitten
+in den Journeys abgebrochen, weil ein neuer Commit ihn ablöste. Die vier
+Scherben lieferten trotzdem ihre Teilbefunde (18/25/20/29 gelaufene Tests) —
+**kein einziger roter Journey-Test**, und nach der ersten Regel allein wäre das
+ein grüner Lauf gewesen. Die zweite Regel hat ihn gefangen und namentlich
+aufgezählt, welche Klassen nie einen Test gemeldet hatten. Genau der Fall, der
+am 08.08. lokal stillschweigend durchging.
 
 ## Wenn etwas kaputt aussieht
 

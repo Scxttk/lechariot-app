@@ -1,0 +1,296 @@
+# Die volle Suite auf geliehenen Macs.
+#
+# **Wozu.** Der Nachweis vor einem PR kostet auf Scotts Mac eine halbe Stunde,
+# in der die Maschine für nichts anderes zu gebrauchen ist — kein zweiter Lauf,
+# keine Messung, kein Simulator (siehe `docs/TESTS.md`, „Mehrere Sitzungen
+# teilen sich diesen Mac"). Das Repo ist öffentlich, also sind macOS-Runner
+# umsonst. Der Nachweis wandert hierher, der Mac behält das Iterieren:
+# `tools/tests.sh` bleibt, und zwar unverändert — offline, ohne Netz, ohne
+# Wartezeit auf eine Warteschlange.
+#
+# **Was hier gerade *nicht* passiert:** Die Regeln werden nicht nachgebaut.
+# Welche Klassen seriell laufen, wie ein Klassenname zu seinem Ziel kommt und
+# wie ein Protokoll zu urteilen ist, steht in `tools/testlauf.sh` — einmal, für
+# beide Wege. Eine zweite Fassung dieser Regeln liefe still auseinander.
+#
+# **Geurteilt wird nach gefallenen Tests, nicht nach Rückgabewerten.** Das ist
+# die Lehre aus #94/#95, und sie gilt auf einem geliehenen Mac eher mehr als
+# auf einem eigenen: Am 09.08. lief ein Durchgang alle 139 Journeys durch, null
+# gefallen, und meldete trotzdem Fehlschlag, weil *ein* Test-Runner beim
+# Klon-Start stolperte. Jede Scherbe schreibt deshalb ihren Befund in eine
+# Datei; `urteil` liest die Dateien und nicht die Ampeln.
+name: Suite
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      scherben:
+        description: 'Auf wie viele Runner die Journeys verteilt werden'
+        default: '4'
+      # **Auf dem Runner bringen Klone nichts, sie kosten.** Gemessen am 10.08.
+      # mit `OfferHitsJourneyTests` (3 Tests) auf `macos-26`:
+      #
+      #   ohne Klone   417 s, Auslagerung 0
+      #   zwei Klone   508 s, Auslagerung 480 MB
+      #
+      # Derselbe Befund wie lokal beim vierten Klon, nur eine Stufe tiefer: Die
+      # Maschine hat drei Kerne und 7 GB, der zweite Klon nimmt den anderen mehr
+      # weg, als er dazulegt. Die Parallelität kommt hier aus den Scherben.
+      klone:
+        description: 'Simulator-Klone je Runner (1 = ohne Klone, direkt auf dem Gerät)'
+        default: '1'
+
+concurrency:
+  group: suite-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # **Gerät und Fassung sind Teil des Ergebnisses, also werden sie genagelt.**
+  # Am 09.08. waren zwei Journeys auf `main` rot, und die Ursache war kein Code,
+  # sondern der Simulator: Die Tastatur unter iOS 26.1 ist 10 pt höher als unter
+  # 26.2, damit passte die Kachelreihe nicht mehr über den Angaben-Block
+  # (`docs/TESTS.md`, „Das Gerät ist Teil des Ergebnisses"). Zwei Zusicherungen
+  # der Suite halten ausserdem gemessene Zahlen fest, die für dieses Gerät
+  # gelten.
+  #
+  # Auf dem Runner liegen iOS 26.2, 26.4 und 26.5 nebeneinander — `OS=latest`
+  # hiesse hier **26.5** und damit ein anderes Gerät als auf Scotts Mac. Der
+  # Lauf sagt also, was er meint.
+  #
+  # Gesucht wird das Gerät von `.github/simulator.sh`, und gefahren wird dann
+  # auf seiner **UDID**: Ein frischer Runner hat den Simulator-Dienst beim
+  # ersten Zugriff noch nicht wach, und `xcodebuild` sieht dann eine Liste aus
+  # lauter Platzhaltern. Siehe den Kopf des Skripts.
+  LAUFZEIT: com.apple.CoreSimulator.SimRuntime.iOS-26-2
+  GERAET_NAME: iPhone 17 Pro
+  # Xcode 26.3 ist auch das, was auf Scotts Mac steht. Die Vorgabe des Images
+  # ist eine andere und wechselt ohne Vorwarnung.
+  XCODE: /Applications/Xcode_26.3.app
+  DERIVED: build/tests-dd
+
+jobs:
+  # Wer was bekommt. Auf Ubuntu, weil es nur den Quellbaum liest — ein
+  # macOS-Runner dafür wäre eine Minute Wartezeit für ein `sed`.
+  verteilen:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.teilen.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: teilen
+        run: |
+          tools/testlauf.sh scherben '${{ inputs.scherben || 4 }}' > scherben.txt
+          # `seriell` trägt nur Scherbe 1 — dass ihre parallele Ladung dafür
+          # kleiner ausfällt, hat `tools/testlauf.sh` schon eingerechnet.
+          matrix=$(awk '{printf "%s{\"nr\":%d,\"klassen\":\"%s\",\"seriell\":%s}", (NR>1?",":""), NR, $0, (NR==1?"true":"false")}' scherben.txt)
+          echo "matrix=[$matrix]" >> "$GITHUB_OUTPUT"
+          echo "### Verteilung" >> "$GITHUB_STEP_SUMMARY"
+          awk '{n=split($0,a," "); print "- Scherbe " NR ": " n " Klassen"}' scherben.txt >> "$GITHUB_STEP_SUMMARY"
+          echo "- seriell (auf Scherbe 1): $(tools/testlauf.sh seriell | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"
+
+  # Einmal bauen, einmal die Unit-Tests. Ohne die Trennung baut jede Scherbe
+  # alles noch einmal — derselbe Grund, aus dem `tools/tests.sh`
+  # `build-for-testing` von `test-without-building` trennt.
+  bauen:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Xcode nageln
+        run: sudo xcode-select -s "$XCODE"
+
+      - name: Simulator bereitstellen
+        run: |
+          # Als Zuweisung und nicht als `echo "$(…)"`: So faellt der Schritt,
+          # wenn das Skript aufgibt, statt ein leeres `GERAET` weiterzureichen.
+          udid=$(.github/simulator.sh "$LAUFZEIT" "$GERAET_NAME")
+          echo "GERAET=$udid" >> "$GITHUB_ENV"
+
+      # Die Datei ist gitignoriert (Geheimnis), das Projekt verweist aber auf
+      # sie. Für die Tests reicht die Vorlage: Journeys starten die App mit
+      # `-uiTesting` gegen Fixtures, nicht gegen Supabase.
+      - name: Schlüsseldatei aus der Vorlage
+        run: cp ios/LeChariot/Resources/APIKeys.example.plist ios/LeChariot/Resources/APIKeys.plist
+
+      - name: Bauen
+        run: |
+          start=$SECONDS
+          xcodebuild build-for-testing \
+            -project ios/LeChariot.xcodeproj -scheme LeChariot \
+            -destination "id=$GERAET" -derivedDataPath "$DERIVED" -quiet
+          echo "bauen_sekunden=$((SECONDS - start))" >> "$GITHUB_ENV"
+
+      - name: Unit-Tests
+        run: |
+          set +e
+          start=$SECONDS
+          xctestrun="$(ls -t "$DERIVED"/Build/Products/*.xctestrun | head -1)"
+          xcodebuild test-without-building -xctestrun "$xctestrun" \
+            -destination "id=$GERAET" -only-testing:LeChariotTests \
+            -test-timeouts-enabled YES -maximum-test-execution-time-allowance 600 \
+            -retry-tests-on-failure -test-iterations 2 2>&1 | tee unit.log
+          set -e
+          { echo "scherbe=unit"
+            echo "sekunden=$((SECONDS - start))"
+            echo "zugeteilt=LeChariotTests"
+            tools/testlauf.sh auswertung unit.log
+          } > bericht-unit.txt
+          cat bericht-unit.txt
+
+      # **Nicht `upload-artifact` auf das Verzeichnis.** Die Aktion legt die
+      # Dateien einzeln ab und verliert dabei das Ausführungsrecht und die
+      # Symlinks in den `.app`-Bündeln — die Scherbe lädt dann etwas herunter,
+      # das aussieht wie eine App und sich nicht starten lässt. Ein Tar behält
+      # beides.
+      - name: Bauergebnis einpacken
+        run: tar -cf produkte.tar -C "$DERIVED/Build" Products
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: produkte
+          path: produkte.tar
+          overwrite: true
+          retention-days: 1
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: bericht-unit
+          overwrite: true
+          path: |
+            bericht-unit.txt
+            unit.log
+
+      - name: Bauzeit festhalten
+        if: always()
+        run: |
+          echo "bauen_sekunden=${bauen_sekunden:-0}" > bauzeit.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: bauzeit
+          overwrite: true
+          path: bauzeit.txt
+
+  journeys:
+    needs: [verteilen, bauen]
+    runs-on: macos-26
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        scherbe: ${{ fromJSON(needs.verteilen.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Xcode nageln
+        run: sudo xcode-select -s "$XCODE"
+
+      - name: Simulator bereitstellen
+        run: |
+          # Als Zuweisung und nicht als `echo "$(…)"`: So faellt der Schritt,
+          # wenn das Skript aufgibt, statt ein leeres `GERAET` weiterzureichen.
+          udid=$(.github/simulator.sh "$LAUFZEIT" "$GERAET_NAME")
+          echo "GERAET=$udid" >> "$GITHUB_ENV"
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: produkte
+
+      - name: Auspacken
+        run: |
+          mkdir -p "$DERIVED/Build"
+          tar -xf produkte.tar -C "$DERIVED/Build"
+
+      # **Ein Durchgang darf rot melden, ohne dass der Schritt fällt.** Der
+      # Rückgabewert von `xcodebuild` ist unter Klonen unzuverlässig; geurteilt
+      # wird unten aus dem Protokoll. Fiele der Schritt hier, gäbe es kein
+      # Protokoll zum Urteilen — nur eine rote Ampel ohne Befund.
+      - name: Journeys
+        timeout-minutes: 100
+        run: |
+          set +e
+          start=$SECONDS
+          xctestrun="$(ls -t "$DERIVED"/Build/Products/*.xctestrun | head -1)"
+          gemeinsam=(-xctestrun "$xctestrun" -destination "id=$GERAET"
+                     -test-timeouts-enabled YES -maximum-test-execution-time-allowance 600
+                     -retry-tests-on-failure -test-iterations 2)
+
+          # **Ein Klon ist kein Klon, sondern Aufwand.** Bei `1` läuft der
+          # Durchgang direkt auf dem Gerät — das erspart genau den Wettlauf beim
+          # Klon-Start, der lokal in vier von sechs Läufen einmal je Lauf
+          # zuschlug („Failed to launch …xctrunner").
+          if [ '${{ inputs.klone || 1 }}' = '1' ]; then
+            args=(-parallel-testing-enabled NO)
+          else
+            args=(-parallel-testing-enabled YES
+                  -parallel-testing-worker-count '${{ inputs.klone || 1 }}')
+          fi
+          for k in ${{ matrix.scherbe.klassen }}; do args+=(-only-testing:"$k"); done
+          xcodebuild test-without-building "${gemeinsam[@]}" "${args[@]}" 2>&1 | tee -a lauf-${{ matrix.scherbe.nr }}.log
+
+          if [ '${{ matrix.scherbe.seriell }}' = 'true' ]; then
+            args=(-parallel-testing-enabled NO)
+            for k in $(tools/testlauf.sh seriell); do args+=(-only-testing:"$k"); done
+            xcodebuild test-without-building "${gemeinsam[@]}" "${args[@]}" 2>&1 | tee -a lauf-${{ matrix.scherbe.nr }}.log
+          fi
+          echo "SEKUNDEN=$((SECONDS - start))" >> "$GITHUB_ENV"
+
+      - name: Befund
+        if: always()
+        run: |
+          zugeteilt='${{ matrix.scherbe.klassen }}'
+          if [ '${{ matrix.scherbe.seriell }}' = 'true' ]; then
+            zugeteilt="$zugeteilt $(tools/testlauf.sh seriell | tr '\n' ' ')"
+          fi
+          { echo "scherbe=${{ matrix.scherbe.nr }}"
+            echo "sekunden=${SEKUNDEN:-0}"
+            echo "zugeteilt=$zugeteilt"
+            tools/testlauf.sh auswertung lauf-${{ matrix.scherbe.nr }}.log
+          } > "bericht-${{ matrix.scherbe.nr }}.txt"
+          cat "bericht-${{ matrix.scherbe.nr }}.txt"
+          # Das Protokoll einer Scherbe sind ein paar Dutzend MB Fliesstext.
+          gzip -f "lauf-${{ matrix.scherbe.nr }}.log"
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: bericht-${{ matrix.scherbe.nr }}
+          overwrite: true
+          path: |
+            bericht-${{ matrix.scherbe.nr }}.txt
+            lauf-${{ matrix.scherbe.nr }}.log.gz
+
+  # **Die einzige Ampel, auf die es ankommt.**
+  #
+  # Sie liest Dateien, keine Rückgabewerte: Wer ist gefallen und nicht wieder
+  # aufgestanden, wer ist nur gewackelt, und — die Gegenprobe — hat jede
+  # zugeteilte Klasse überhaupt einen Test gemeldet? Der letzte Punkt ersetzt
+  # den lokalen Wächter aus `tools/tests.sh`, der die Testzahl gegen den letzten
+  # Lauf *dieser Maschine* hält. Auf einem Runner gibt es kein „letztes Mal";
+  # die Zuteilung ist der bessere Sollwert, weil sie aus demselben Quellbaum
+  # kommt wie die Tests.
+  urteil:
+    needs: [verteilen, bauen, journeys]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: bericht-*
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with: { name: bauzeit }
+
+      - name: Zusammenzählen
+        run: bash .github/urteil.sh
+        env:
+          # **Beratend, nicht sperrend — vorerst.** Solange nicht gemessen ist,
+          # dass ein Lauf hier nicht öfter wackelt als auf Scotts Mac, wäre eine
+          # sperrende Ampel eine, die man sich abgewöhnt zu lesen. Die Zahl
+          # dahinter steht im PR. Umgelegt wird das hier, in einer Zeile.
+          GATE: '0'

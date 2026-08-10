@@ -16,7 +16,7 @@
 # Das ist der ganze Hebel: Die Suite ist ein Rudel unabhängiger App-Starts, und
 # ein einzelner Simulator lastet diesen Mac nicht aus. Das Messgeschirr darf
 # aber nicht mitfahren — es vergleicht CPU-Zahlen gegen Grundwerte aus dem
-# Leerlauf (siehe `SERIELL` unten).
+# Leerlauf (siehe `SERIELL` in `tools/testlauf.sh`).
 #
 # **Und warum `build-for-testing` getrennt.** Zwei Läufe, ein Bau. Ohne die
 # Trennung baut der zweite Durchgang alles noch einmal.
@@ -26,53 +26,18 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IOS="$REPO/ios"
+
+# Welche Klassen seriell laufen, wie ein Klassenname zu seinem Ziel kommt und
+# wie ein Protokoll zu urteilen ist — das steht seit dem CI-Lauf in
+# `tools/testlauf.sh`, weil der Workflow dasselbe wissen muss. Zwei Fassungen
+# davon liefen still auseinander.
+. "$REPO/tools/testlauf.sh"
 DERIVED="${LECHARIOT_DERIVED_DATA:-$REPO/build/tests-dd}"
 DESTINATION="${LECHARIOT_TEST_DESTINATION:-platform=iOS Simulator,name=iPhone 17 Pro,OS=latest}"
 # Die Zahl der Klone. Vorgabe passend zu diesem Mac (M1, 8 Kerne, 16 GB).
 # Auf einer größeren Maschine ist sie anzuheben; die Untergrenze eines Laufs
 # bleibt trotzdem die längste einzelne Testklasse (siehe `docs/TESTS.md`).
 WORKERS="${LECHARIOT_TEST_WORKERS:-3}"
-
-# Die Klassen, die **allein auf einer ruhigen Maschine** laufen müssen.
-#
-# Nur eine: `PerformanceJourneyTests` misst CPU und Speicher der App und
-# vergleicht gegen `tools/perf-baseline.json` — Grundwerte von diesem Mac im
-# Leerlauf. Neben zwei weiteren Simulatoren gemessen wären sie eine Aussage
-# über die Auslastung und über nichts sonst.
-#
-# Der Rundgang (`TutorialJourneyTests`, `TourTargetJourneyTests`) gehört
-# ausdrücklich **nicht** hierher, obwohl er Zeiten benutzt: Er misst Geometrie
-# — wo das wandernde Loch nach dem Einschwingen liegt —, und die hängt nicht an
-# der Auslastung. Seine Schonfristen sind `Thread.sleep`, also Wanduhr, und die
-# läuft auf einem Klon genauso.
-#
-# Wer hier etwas einträgt, sagt damit „das kostet Wanduhr, seriell" — die Liste
-# ist absichtlich kurz zu halten.
-# Und eine, die unter Last nicht langsamer wird, sondern **umkippt**:
-# `TermGridJourneyTests.testNothingMovesUnderTheThumbWhileTyping` zählt je
-# Buchstabe alle Knöpfe mit `buttons.matching(…).count`. `.count` muss jeden
-# Treffer wirklich holen, also den ganzen Barrierefreiheits-Baum über den
-# Prozess hinweg — fünfmal, bei stehender Tastatur. Allein gemessen 9,4 s,
-# neben zwei Klonen **552,5 s**. Die beiden Nachbartests derselben Klasse auf
-# demselben Klon blieben bei 11 s und 12 s; es ist also die Abfrage und nicht
-# der Klon.
-#
-# Serialisiert statt umgeschrieben: Die Zählung ist der Beweis, dass die Probe
-# überhaupt etwas beweist („die Trefferzahl muss sich unterwegs geändert
-# haben"). Wer sie billiger macht, muss erst zeigen, dass sie dasselbe prüft —
-# das ist eine eigene Aufgabe, keine Nebenwirkung dieser.
-# Und eine dritte, die denselben Befund trägt wie `TermGridJourneyTests`, nur
-# aus der anderen Richtung: `TileGestureJourneyTests`
-# (`testATapChecksTheItemWithoutWaitingForALongPress`) prüft, dass ein **kurzer**
-# Tipp abhakt, ohne auf den langen Druck zu warten — also eine Frist zwischen
-# zwei Gesten. Auf drei Klonen fiel der Test am 09.08. **zweimal von zwei**
-# Versuchen, allein auf einem Simulator ist er grün. Eine Zusicherung über
-# Gestendauer misst unter Last die Last.
-SERIELL=(
-	LeChariotUITests/PerformanceJourneyTests
-	LeChariotUITests/TermGridJourneyTests
-	LeChariotUITests/TileGestureJourneyTests
-)
 
 only=()
 unit_only=0
@@ -89,19 +54,10 @@ while [ $# -gt 0 ]; do
 		--result) RESULT="$2"; shift 2 ;;
 		-h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
 		-*) echo "Unbekanntes Argument: $1" >&2; exit 2 ;;
-		# Ein blosser Klassenname reicht; das Ziel davor ist geraten, wenn es
-		# fehlt, damit `tools/tests.sh AddFlowJourneyTests` tut, was es sagt.
-		*) case "$1" in
-			*/*) only+=("$1") ;;
-			# `*Shots*` steht hier seit dem 09.08., und es hat einen Lauf
-			# gekostet: `tools/tests.sh FeldtestShots` landete als
-			# `LeChariotTests/FeldtestShots` im UI-losen Ziel, führte **null**
-			# Tests aus und meldete Erfolg. Ein grüner Lauf ohne einen
-			# einzigen gelaufenen Test ist die teuerste Sorte Grün.
-			*Journey*|*Audit*|*Shots*) only+=("LeChariotUITests/$1") ;;
-			*) only+=("LeChariotTests/$1") ;;
-		   esac
-		   shift ;;
+		# Ein blosser Klassenname reicht; das Ziel davor schlägt
+		# `ziel_fuer_klasse` im Quellbaum nach, damit
+		# `tools/tests.sh AddFlowJourneyTests` tut, was es sagt.
+		*) only+=("$(ziel_fuer_klasse "$1")"); shift ;;
 	esac
 done
 
@@ -152,23 +108,8 @@ xctestrun="$(ls -t "$DERIVED"/Build/Products/*.xctestrun | head -1)"
 protokoll="$(mktemp)"
 trap 'rm -f "$protokoll"' EXIT
 
-# Die Testnamen aus einem Protokoll ziehen — beide Schreibweisen: parallel
-# meldet „Test case 'Klasse.test()' passed on 'Clone N …'", seriell
-# „Test Case '-[Ziel.Klasse test]' passed".
-namen_mit_ausgang() {   # $1 = Protokoll, $2 = passed|failed
-	grep -oE "Test case '[A-Za-z0-9_]+\.[A-Za-z0-9_]+\(\)' $2|Test Case '-\[[A-Za-z0-9_.]+ [A-Za-z0-9_]+\]' $2" "$1" 2>/dev/null \
-		| sed -E "s/Test [Cc]ase '(-\[)?//; s/(\]|\(\))?' $2\$//; s/ /./" | sort -u
-}
-
-# Gefallen **und** nicht danach doch noch durchgekommen.
-namen_endgueltig_rot() {
-	comm -23 <(namen_mit_ausgang "$1" failed) <(namen_mit_ausgang "$1" passed)
-}
-
-# Gefallen, aber im zweiten Anlauf grün — die Wackelkandidaten.
-namen_wackelig() {
-	comm -12 <(namen_mit_ausgang "$1" failed) <(namen_mit_ausgang "$1" passed)
-}
+# `namen_mit_ausgang`, `namen_endgueltig_rot` und `namen_wackelig` stehen in
+# `tools/testlauf.sh` — der Workflow urteilt nach denselben Regeln.
 
 # **Ein roter Lauf ist nicht dasselbe wie ein roter Test.** `xcodebuild` meldet
 # auch dann Fehlschlag, wenn gar keine Zusicherung gefallen ist — ein Klon, der
@@ -314,8 +255,10 @@ fi
 # heraus, mit `ase '` **833 und 833** — dieselbe Zahl, und für den unzerissenen
 # Lauf dieselbe wie vorher. Es ist also keine neue Zählweise, nur eine, der ein
 # paar verlorene Zeichen am Zeilenanfang nichts ausmachen.
-gelaufen=$(grep -oE "ase '[A-Za-z0-9_]+\.[A-Za-z0-9_]+\(\)'|ase '-\[[A-Za-z0-9_.]+ [A-Za-z0-9_]+\]'" \
-	"$protokoll" | sed "s/^ase //" | sort -u | wc -l | tr -d ' ')
+#
+# (Der Wächter in CI zählt nicht gegen den letzten Lauf, sondern gegen den
+# Quellbaum — dort gibt es kein „letztes Mal auf dieser Maschine".)
+gelaufen=$(namen_gelaufen "$protokoll" | wc -l | tr -d ' ')
 merker="$DERIVED/.letzte-testzahl"
 vorher=$(cat "$merker" 2>/dev/null || echo 0)
 if [ "$vorher" -gt 0 ] && [ "$gelaufen" -lt "$vorher" ]; then

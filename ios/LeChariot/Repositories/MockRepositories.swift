@@ -10,8 +10,23 @@ enum MockFixtures {
     /// onwards every preview and UI-test run showed an offer that had expired
     /// — harmless for the assertions, misleading for anyone looking at the
     /// screen, and drifting further every week.
+    ///
+    /// **`Calendar.supabase` und nicht `.iso8601`, weil die Zeitzone dazugehört.**
+    /// Der ISO-Kalender rechnet in der Zone des *Geräts*, `OfferQuery.current`
+    /// fragt aber in `Calendar.supabase`, also fest in Europe/Berlin — „Angebote
+    /// tragen Berliner Mitternachte". Auf einem Gerät in Berliner Zeit fallen
+    /// beide auf denselben Augenblick zusammen, und der Unterschied war
+    /// jahrelang unsichtbar. Westlich davon nicht: Auf einem GitHub-Runner (UTC)
+    /// liegt `weekStart` zwei Stunden **hinter** dem „heute" der Abfrage, damit
+    /// ist `validFrom <= today` falsch, und **kein einziges Fixture-Angebot
+    /// gilt**. Gemessen am 10.08.: Alle drei Tests von `OfferHitsJourneyTests`
+    /// fielen dort an derselben Zeile, während die App „NOCH KEIN TREFFER"
+    /// anzeigte; Journeys ohne Angebotsbezug waren im selben Lauf grün.
+    ///
+    /// Mit `Calendar.supabase` kommt überall derselbe Augenblick heraus — in
+    /// Berlin derselbe wie vorher, also ändert sich lokal nichts.
     static let weekStart: Date = {
-        Calendar(identifier: .iso8601).dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
+        Calendar.supabase.dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
     }()
     static let weekEnd: Date = weekStart.addingTimeInterval(6 * 24 * 60 * 60)
 
