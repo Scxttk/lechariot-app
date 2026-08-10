@@ -78,8 +78,17 @@ SERIELL=(
 # Ausgeschlossen statt stillschweigend geduldet: Ein Messstand, dem niemand
 # glaubt, wird abgeschaltet statt gelesen — und ein roter Messstand in jedem
 # zweiten PR erzieht dazu, rote Läufe zu überblättern.
+#
+# `MarktwahlProbe` steht aus demselben Grund hier (10.08., #124). Sie misst die
+# Tippdauer über drei Verzeichnisgrößen, und der Befund ist eine *Steigung*
+# zwischen zwei Größen — auf geliehenen Kernen wäre auch die eine Aussage über
+# den Nachbarn. Dazu startet sie die App dreimal und kostet damit rund
+# anderthalb Minuten in einer Scherbe, für eine Zusicherung, die nur sagt, dass
+# überhaupt gemessen wurde. Sie gehört an den Mac, an dem jemand die Zahlen
+# liest, nicht in jeden PR.
 OHNE_CI=(
 	LeChariotUITests/PerformanceJourneyTests
+	LeChariotUITests/MarktwahlProbe
 )
 
 # Ein blosser Klassenname reicht; das Ziel davor kommt aus dem Quellbaum.
