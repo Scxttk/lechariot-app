@@ -90,6 +90,46 @@ final class SuggestionSurfaceTests: XCTestCase {
         )
     }
 
+    // MARK: Der Rundgang
+
+    /// **Während des Rundgangs holt die Tastatur nichts** — und das ist ein
+    /// gemessener Fehler, kein Vorbehalt.
+    ///
+    /// Der erste Rahmen lädt zum Tippen ein; danach steht die Tastatur bei
+    /// leerem Feld, nach der neuen Regel also der Vorschlagsstreifen. Der
+    /// zweite Rahmen bittet um einen Tipp auf die **Kachel** — und der landete
+    /// auf „Milch hinzufügen", weil der Streifen die Liste hochgeschoben hat.
+    /// Danach stand eine Kachel „Milch" auf der Liste, die niemand angelegt hat
+    /// (`TutorialJourneyTests.testTheTourBorrowsNothingAndKeepsWhatTheUserWrote`,
+    /// gefallen im vollen Lauf vom 10.08.).
+    func testTheTourKeepsTheSurfaceOutOfItsWay() {
+        XCTAssertEqual(
+            SuggestionSurface.shape(isTyping: false, keyboardIsUp: true,
+                                    detailPanelIsUp: false, listIsEmpty: false,
+                                    tourIsRunning: true),
+            .none
+        )
+        XCTAssertEqual(
+            SuggestionSurface.shape(isTyping: true, keyboardIsUp: true,
+                                    detailPanelIsUp: false, listIsEmpty: true,
+                                    tourIsRunning: true),
+            .none,
+            "auch die Produkte nicht — sie stehen an derselben Stelle"
+        )
+    }
+
+    /// **Die leere Liste behält ihren Streifen.** Der Rundgang fängt auf ihr
+    /// an, und dort stand er vor dieser Runde auch — ihn hier zusätzlich
+    /// wegzunehmen wäre eine Änderung, die niemand angefordert hat.
+    func testTheTourStartsOnTheEmptyListWithItsUsualStrip() {
+        XCTAssertEqual(
+            SuggestionSurface.shape(isTyping: false, keyboardIsUp: false,
+                                    detailPanelIsUp: false, listIsEmpty: true,
+                                    tourIsRunning: true),
+            .staples
+        )
+    }
+
     /// **Die Gegenprobe zur alten Regel.** Bis zum 10.08. entschied eine
     /// gemerkte Wahl des Nutzers, und der Winkel-Knopf war ihre Fassung. Beide
     /// sind weg: Derselbe Zustand ergibt jetzt immer dieselbe Gestalt, ganz

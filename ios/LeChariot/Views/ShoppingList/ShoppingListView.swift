@@ -1053,7 +1053,8 @@ struct ShoppingListView: View {
             isTyping: isTyping,
             keyboardIsUp: inputFocused,
             detailPanelIsUp: detailPanelIsUp,
-            listIsEmpty: list.items.isEmpty
+            listIsEmpty: list.items.isEmpty,
+            tourIsRunning: tutorial?.isRunning == true
         )
     }
 

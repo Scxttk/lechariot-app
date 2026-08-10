@@ -99,11 +99,11 @@ struct TutorialStep: Identifiable, Equatable {
     ///
     /// **Eine Vermutung, die hier stand und falsch war, gehört mit hierher:**
     /// Als der Vorschläge-Rahmen sich still übersprang, sah es aus, als fehle
-    /// der Winkel-Knopf während des Tipp-Flusses. Er ist die ganze Zeit da —
-    /// der Grund war ein verschluckter Anker (siehe `TutorialAnchor`). Für
-    /// diesen Rahmen ist das Wegräumen deshalb kein Muss, für den Rahmen zur
-    /// Tab-Leiste schon; einheitlich bleibt es trotzdem, weil „wer etwas
-    /// antippen soll, braucht den Bildschirm" die einfachere Regel ist als eine
+    /// der Winkel-Knopf während des Tipp-Flusses. Er war die ganze Zeit da —
+    /// der Grund war ein verschluckter Anker (siehe `TutorialAnchor`). Den
+    /// Rahmen gibt es seit dem 10.08. nicht mehr (Punkt E hat den Knopf
+    /// abgeschafft); die Regel bleibt trotzdem einheitlich, weil „wer etwas
+    /// antippen soll, braucht den Bildschirm" einfacher ist als eine
     /// Ausnahmeliste.
     var clearsInputFlow: Bool {
         switch deed {
