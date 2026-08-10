@@ -5,17 +5,31 @@ import Observation
 
 extension DateFormatter {
     /// "13.7." — the short validity form used in rows and the price history.
+    ///
+    /// **Die Zeitzone gehört dazu, sonst verrutscht der Tag.** `supabaseDay`
+    /// *liest* Angebotsdaten als Berliner Mitternachte; wer sie ohne Zone
+    /// wieder ausgibt, formatiert in der Zone des Geräts — und westlich von
+    /// Berlin ist eine Berliner Mitternacht noch der **Vortag**. Gemessen am
+    /// 10.08. auf einem Runner in UTC: „23.7. – 29.7." wurde zu
+    /// „22.7. – 28.7.", ein Tag zu früh, in jeder Zeile und im Preisverlauf.
+    ///
+    /// Sichtbar wird das nicht nur in CI: Wer mit der App nach London oder in
+    /// die Staaten fährt, sieht dort jede Gültigkeit einen Tag zu früh.
     static let offerDay: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = TimeZone(identifier: "Europe/Berlin")
         formatter.dateFormat = "d.M."
         return formatter
     }()
 
     /// "13. Juli" — the detail sheet has room for the long form.
+    ///
+    /// Dieselbe Zone aus demselben Grund wie bei `offerDay`.
     static let offerDayLong: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = TimeZone(identifier: "Europe/Berlin")
         formatter.dateFormat = "d. MMMM"
         return formatter
     }()

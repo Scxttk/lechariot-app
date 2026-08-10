@@ -144,10 +144,19 @@ enum MarketFilter {
     ///
     /// `locale:` ist der Punkt: ohne es schreibt `String(format:)` einen Punkt
     /// statt des Kommas.
+    ///
+    /// **`de_DE` und nicht `.current`** (10.08.). `.current` liefert das Komma
+    /// nur auf einem deutschen Gerät; auf einem englischen steht dort „1.2 km".
+    /// Die App ist deutsch — die Zeile darüber sagt „1,2 km" als Zusage, nicht
+    /// als Beispiel —, und die Datumsformatierer daneben nageln ihr `de_DE`
+    /// längst fest. Aufgefallen ist es erst, als die Suite zum ersten Mal auf
+    /// einer Maschine lief, die nicht deutsch eingestellt ist: „9.9 km" gegen
+    /// erwartete „9,9 km".
     static func distanceLabel(_ km: Double) -> String {
-        km < 10
-            ? String(format: "%.1f km", locale: .current, km)
-            : String(format: "%.0f km", locale: .current, km)
+        let deutsch = Locale(identifier: "de_DE")
+        return km < 10
+            ? String(format: "%.1f km", locale: deutsch, km)
+            : String(format: "%.0f km", locale: deutsch, km)
     }
 
     /// Die Unterzeile einer Kettenzeile im Wähler: wie viele Filialen in
