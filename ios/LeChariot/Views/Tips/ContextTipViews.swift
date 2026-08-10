@@ -9,9 +9,17 @@ import TipKit
 /// Makro-Regeln laufen erst in einer konfigurierten Laufzeit und wären es nicht.
 ///
 /// Die Kopplung ist deshalb bewusst simpel: Eine Ansicht trägt das Schild nur,
-/// solange sein Tipp der aktive ihrer Fläche ist (`ContextTipCard`). TipKits
-/// eigenes Einmal-Gedächtnis bleibt als zweiter Riegel trotzdem an —
-/// `MaxDisplayCount(1)`, und das ✗ des Nutzers invalidiert bei TipKit selbst.
+/// solange sein Tipp der aktive ihrer Fläche ist (`ContextTipCard`).
+///
+/// **Und TipKit zählt bewusst gar nichts mit.** Bis zum 10.08. trug jeder Tipp
+/// `MaxDisplayCount(1)`, und das ✗ invalidierte ihn zusätzlich bei TipKit — als
+/// „zweiter Riegel". Genau dieser zweite Riegel macht „Tipps wieder anzeigen"
+/// aus den Einstellungen (Schicht 3) unmöglich: TipKits Merker liegt im
+/// App-Container, `resetDatastore()` wirkt nur **vor** `Tips.configure()`, und
+/// ein Knopf, der nichts tut, ist schlimmer als keiner. Das Einmal-Versprechen
+/// hält der Store allein (`ContextTipLedger.shown`) — eine Entscheidung, eine
+/// Stelle. `ContextTipJourneyTests.testShowingTipsAgainBringsTheSignBack` hält
+/// den Fall fest.
 ///
 /// **Die Texte stehen für sich.** Sie stammen aus Rahmen, die es seit dem
 /// Abriss des Rundgangs nicht mehr gibt, und dürfen deshalb nichts
@@ -30,10 +38,6 @@ struct NextWeekContextTip: Tip {
     var image: Image? {
         Image(systemName: "calendar")
     }
-
-    var options: [any TipOption] {
-        [MaxDisplayCount(1)]
-    }
 }
 
 /// Die Angebotszeile unterm Artikel: Treffer, Preisverlauf, Anheften.
@@ -48,10 +52,6 @@ struct MatchLineContextTip: Tip {
 
     var image: Image? {
         Image(systemName: "pin")
-    }
-
-    var options: [any TipOption] {
-        [MaxDisplayCount(1)]
     }
 }
 
@@ -68,10 +68,6 @@ struct ItemDetailsContextTip: Tip {
     var image: Image? {
         Image(systemName: "square.and.pencil")
     }
-
-    var options: [any TipOption] {
-        [MaxDisplayCount(1)]
-    }
 }
 
 /// Abhaken und Löschen — die zwei Handgriffe an der Zeile.
@@ -86,10 +82,6 @@ struct CheckOffContextTip: Tip {
 
     var image: Image? {
         Image(systemName: "checkmark.circle")
-    }
-
-    var options: [any TipOption] {
-        [MaxDisplayCount(1)]
     }
 }
 
@@ -117,8 +109,9 @@ struct CheckOffContextTip: Tip {
 ///   deshalb gar nicht gezeichnet — wer je eines hinzufügt, sieht es hier
 ///   fehlen, statt es unbemerkt zu verlieren.
 struct EnamelSignTipViewStyle: TipViewStyle {
-    /// Was das ✗ außer TipKits eigenem Merker noch tun muss: das Schild aus
-    /// dem Store nehmen, der es zeichnen lässt.
+    /// Was das ✗ tut: das Schild aus dem Store nehmen, der es zeichnen lässt.
+    /// Gezeigt ist es dort längst — der Merker fällt beim Anzeigen, nicht beim
+    /// Wegdrücken (`ContextTipStore.activate`).
     let onDismiss: () -> Void
 
     func makeBody(configuration: Configuration) -> some View {
@@ -140,10 +133,7 @@ struct EnamelSignTipViewStyle: TipViewStyle {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button {
-                configuration.tip.invalidate(reason: .tipClosed)
-                onDismiss()
-            } label: {
+            Button(action: onDismiss) {
                 Image(systemName: "xmark")
                     .font(.footnote.bold())
                     .foregroundStyle(Theme.secondaryText)

@@ -189,4 +189,44 @@ final class ContextTipJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Nächste Woche"].waitForExistence(timeout: 20),
                       "Der Weg, den das Schild nennt, muss offen sein")
     }
+    /// **Der Wiederholweg** (Rundgang-Konzept §4, Schicht 3): „Tipps wieder
+    /// anzeigen" in den Einstellungen ersetzt „Rundgang erneut ansehen" — und
+    /// muss dasselbe einlösen, nämlich wirklich etwas zeigen.
+    ///
+    /// Diese Journey ist der Grund, warum die Schilder **kein**
+    /// `MaxDisplayCount(1)` mehr tragen: TipKits eigener Merker liegt im
+    /// App-Container und ist zur Laufzeit nicht mehr zurückzusetzen. Mit ihm
+    /// blieb der Knopf ein Knopf, der nichts tut.
+    func testShowingTipsAgainBringsTheSignBack() {
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded", "-uiTestingTips"]
+        app.launch()
+
+        app.tabBars.buttons["Angebote"].tap()
+        XCTAssertTrue(tipTitle.waitForExistence(timeout: 15))
+        app.buttons["tip.dismiss"].firstMatch.tap()
+        XCTAssertTrue(tipTitle.waitForNonExistence(timeout: 5))
+
+        // Ohne Zurücksetzen bliebe es weg — das ist der Vertrag von
+        // „gezeigt heißt gezeigt".
+        app.tabBars.buttons["Liste"].tap()
+        app.tabBars.buttons["Angebote"].tap()
+        XCTAssertFalse(tipTitle.waitForExistence(timeout: 3),
+                       "Ein gezeigtes Schild kommt von allein nicht wieder")
+
+        app.tabBars.buttons["Einstellungen"].tap()
+        let knopf = app.buttons["settings.tips"]
+        var versuche = 0
+        while !knopf.exists && versuche < 8 {
+            app.swipeUp()
+            versuche += 1
+        }
+        XCTAssertTrue(knopf.waitForExistence(timeout: 15),
+                      "Der Knopf steht nicht da:\n\(app.debugDescription)")
+        knopf.tap()
+        app.buttons["Alles klar"].tap()
+
+        app.tabBars.buttons["Angebote"].tap()
+        XCTAssertTrue(tipTitle.waitForExistence(timeout: 15),
+                      "Nach dem Zurücksetzen muss das Schild wieder kommen")
+    }
 }
