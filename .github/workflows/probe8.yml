@@ -1,0 +1,49 @@
+# WEGWERF — Runde 8, die Gegenprobe.
+#
+# Runde 5 hat gezeigt, dass `OfferHitsJourneyTests` auf dem Runner rot ist, und
+# zwar mit einer Aussage der App („NOCH KEIN TREFFER"), nicht mit einem
+# Simulator-Fehler. Bevor daraus „Journeys laufen dort nicht" wird, die
+# umgekehrte Frage: **Laufen Journeys, die gar keine Angebote brauchen?**
+#
+# Drei kleine Klassen ohne Angebotsbezug. Sind die grün, ist der Befund eng und
+# hat einen Namen; sind sie rot, ist es die Umgebung.
+name: Probe8
+
+on:
+  push:
+    branches: [ci-suite]
+    paths: ['.github/workflows/probe8.yml']
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app
+          cp ios/LeChariot/Resources/APIKeys.example.plist ios/LeChariot/Resources/APIKeys.plist
+
+      - name: Bauen
+        run: |
+          xcodebuild build-for-testing \
+            -project ios/LeChariot.xcodeproj -scheme LeChariot \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -derivedDataPath build/tests-dd -quiet
+
+      - name: Drei Klassen ohne Angebotsbezug
+        timeout-minutes: 30
+        run: |
+          set +e
+          xctestrun="$(ls -t build/tests-dd/Build/Products/*.xctestrun | head -1)"
+          start=$SECONDS
+          xcodebuild test-without-building -xctestrun "$xctestrun" \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES -maximum-test-execution-time-allowance 300 \
+            -only-testing:LeChariotUITests/RestartJourneyTests \
+            -only-testing:LeChariotUITests/KeyboardBackgroundJourneyTests \
+            -only-testing:LeChariotUITests/AreaNoticeJourneyTests 2>&1 | tee lauf.log
+          echo "::notice::DREIKLASSENZEIT: $((SECONDS - start)) s"
+          grep -aE "^Test Case .*(passed|failed)|Executed [0-9]+ test" lauf.log | tail -12
