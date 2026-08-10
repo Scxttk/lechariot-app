@@ -149,8 +149,16 @@ struct ItemSheet: View {
             List {
                 angabenKnopfSection
                 if angabenOffen {
-                    angabenSection
+                    // **Die Notiz zuerst, dann die Chipreihen.** Am Bild
+                    // nachgemessen: Aufgeklappt schob der Wortschatz von
+                    // „Butter" das Freitextfeld unter die Kante — zwei Journeys
+                    // fanden es nicht mehr, und eine `List` baut nur, was im
+                    // Bild ist. Der Freitext ist außerdem das Einzige hier, das
+                    // man *tippt*; die Chips sind zum Durchsehen da. Und der
+                    // Weg, der aufgeklappt ankommt, heißt „Notiz und alle
+                    // Angaben zu …" — er landet jetzt auf der Notiz.
                     notizSection
+                    angabenSection
                     if !fremdwörter.isEmpty { fremdwortSection }
                 }
 
