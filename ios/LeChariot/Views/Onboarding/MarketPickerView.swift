@@ -82,38 +82,53 @@ struct MarketPickerView: View {
         MarketFilter.filter(markets, query: query)
     }
 
-    /// Local branches grouped by chain. Within a chain the nearest store
-    /// first — with three REWE in one postcode, alphabetical order says
-    /// nothing about which one the user means.
+    /// Local branches grouped by chain, chains alphabetical. Within a chain the
+    /// nearest store first — with three REWE in one postcode, alphabetical
+    /// order says nothing about which one the user means.
     ///
-    /// **Ungewählte Ketten oben, gewählte sinken, die zuletzt gewählte ganz
-    /// unten** (seit dem 10.08., #123). Dieselbe Ordnung wie „Deine Filialen"
-    /// seit dem 08.08. und wie „Erledigt" in der Einkaufsliste: Was
-    /// entschieden ist, geht aus dem Weg. Wer drei Ketten nacheinander
-    /// durchgeht, findet die noch offenen oben, statt an den schon erledigten
-    /// vorbeizuscrollen — und der Weg ist genau der, den Scott am 01.08.
-    /// beschrieben hat (Kette antippen, wählen, „Fertig", nächste Kette).
+    /// Das ist die Ordnung für die **Suche**. Wer tippt, sucht eine bestimmte
+    /// Zeile, und dann ist eine Liste wert, was sie an Vorhersagbarkeit hat:
+    /// Alphabetisch steht ein Treffer da, wo man ihn erwartet. Die Ordnung nach
+    /// der Wahl (`chainGroupsNachWahl`) würde eine schon bediente Kette nach
+    /// unten schieben — beim Blättern hilfreich, beim Suchen schiebt sie einen
+    /// Treffer aus dem Bild, ohne dafür etwas zu geben.
+    private var chainGroups: [(chain: String, markets: [Market])] {
+        Dictionary(grouping: filtered.filter { !$0.isNationwide }, by: \.chain)
+            .map { (chain: $0.key, markets: $0.value.sorted(by: nearerFirst)) }
+            .sorted { $0.chain < $1.chain }
+    }
+
+    /// Dieselben Ketten, aber **ungewählte oben, gewählte sinken, die zuletzt
+    /// gewählte ganz unten** (seit dem 10.08., #123).
+    ///
+    /// Dieselbe Ordnung wie „Deine Filialen" seit dem 08.08. und wie „Erledigt"
+    /// in der Einkaufsliste: Was entschieden ist, geht aus dem Weg. Wer drei
+    /// Ketten nacheinander durchgeht, findet die noch offenen oben, statt an den
+    /// schon erledigten vorbeizuscrollen — und der Weg ist genau der, den Scott
+    /// am 01.08. beschrieben hat (Kette antippen, wählen, „Fertig", nächste
+    /// Kette).
     ///
     /// Die Reihenfolge der Wahl musste nicht erfunden werden, sie steht schon
     /// da — siehe `RegionStore.chainSelectionOrder`.
     ///
+    /// **Nur für die Blätteransicht**, nicht für die Suche — die Begründung
+    /// steht an `chainGroups`.
+    ///
     /// **Hier wird nur sortiert, nichts gefiltert.** Die Regeln des Wählers
     /// vom 03.08. (Umkreis, Obergrenzen) sitzen in `loadDirectory` und
     /// `nearbyWideningIfSparse` und bleiben unberührt.
-    private var chainGroups: [(chain: String, markets: [Market])] {
+    private var chainGroupsNachWahl: [(chain: String, markets: [Market])] {
         let gewählt = store.chainSelectionOrder
-        return Dictionary(grouping: filtered.filter { !$0.isNationwide }, by: \.chain)
-            .map { (chain: $0.key, markets: $0.value.sorted(by: nearerFirst)) }
-            .sorted { lhs, rhs in
-                switch (gewählt[lhs.chain], gewählt[rhs.chain]) {
-                // Beide ungewählt: alphabetisch, wie vor dem 10.08.
-                case (nil, nil): return lhs.chain < rhs.chain
-                case (nil, _): return true
-                case (_, nil): return false
-                // Beide gewählt: die ältere Wahl steht höher.
-                case let (l?, r?): return l < r
-                }
+        return chainGroups.sorted { lhs, rhs in
+            switch (gewählt[lhs.chain], gewählt[rhs.chain]) {
+            // Beide ungewählt: alphabetisch, wie vor dem 10.08.
+            case (nil, nil): return lhs.chain < rhs.chain
+            case (nil, _): return true
+            case (_, nil): return false
+            // Beide gewählt: die ältere Wahl steht höher.
+            case let (l?, r?): return l < r
             }
+        }
     }
 
     /// Ob gerade gesucht wird. Die Suche ist die Einschränkung — dann stehen
@@ -383,7 +398,7 @@ struct MarketPickerView: View {
     private var chainSection: some View {
         if !chainGroups.isEmpty {
             Section {
-                ForEach(chainGroups, id: \.chain) { group in
+                ForEach(chainGroupsNachWahl, id: \.chain) { group in
                     chainRow(chain: group.chain, markets: group.markets)
                 }
             } header: {
