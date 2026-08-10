@@ -27,29 +27,24 @@ on:
     inputs:
       scherben:
         description: 'Auf wie viele Runner die Journeys verteilt werden'
-        # **Fünf statt vier, seit dem 10.08. — nachgerechnet, nicht geschätzt.**
+        # **Vier, und das ist gemessen — fünf war schlechter.**
         #
-        # Die Wanduhr eines Laufs ist die **längste** Scherbe, nicht die Summe.
-        # Mit den gemessenen Klassenzeiten aus Lauf 31422359776
-        # (`tools/testzeiten.sh`) und der Verteilung, die `testlauf.sh`
-        # tatsächlich baut, ergibt sich für die längste Scherbe:
+        # Am 10.08. auf fünf gestellt, weil die Rechnung es nahelegte: Mit den
+        # echten Klassenzeiten (`tools/testzeiten.sh`) fällt die längste Scherbe
+        # rechnerisch von 1539 s auf 1244 s. Der Lauf danach war trotzdem
+        # **langsamer** — 52 min statt 35.
         #
-        #   4 Scherben  1539 s   (Ideal 1233 s)
-        #   5 Scherben  1244 s   (Ideal  986 s)
-        #   6 Scherben  1020 s   (Ideal  822 s)
+        # Der Grund stand nicht in der Rechnung: **Das Konto lässt vier
+        # macOS-Jobs gleichzeitig laufen, nicht fünf.** Nachgezählt über die
+        # Start- und Endzeiten zweier Läufe (höchste Gleichzeitigkeit: 4). Vier
+        # Scherben starteten um 21:46:56 zusammen, die fünfte erst um 22:10:22 —
+        # sie hat 23 Minuten auf einen freien Runner gewartet und die Wanduhr
+        # damit verlängert statt verkürzt.
         #
-        # Der Schritt von vier auf fünf spart rund **fünf Minuten**, ohne dass
-        # ein Test wegfällt — es läuft nur anderes gleichzeitig.
-        #
-        # **Warum nicht gleich sechs.** Sechs wäre nochmal vier Minuten besser,
-        # aber jede Scherbe ist ein eigener `macos-26`-Runner, und wie viele
-        # davon gleichzeitig laufen dürfen, entscheidet das Konto, nicht diese
-        # Datei. Vier liefen nachweislich parallel; ob sechs es tun oder in der
-        # Warteschlange stehen (und den Gewinn wieder auffressen), ist von hier
-        # aus nicht zu sehen. Fünf ist der Schritt, der sich an einem Lauf
-        # ablesen lässt — steht in der Zusammenfassung des Workflows je Scherbe
-        # die Wanduhr, ist sechs danach eine Entscheidung mit Zahlen.
-        default: '5'
+        # Mehr Scherben helfen also erst, wenn das Konto mehr gleichzeitige
+        # macOS-Runner erlaubt. Bis dahin ist die Zahl hier an die
+        # Gleichzeitigkeit gebunden, nicht an die Verteilung.
+        default: '4'
       # **Auf dem Runner bringen Klone nichts, sie kosten.** Gemessen am 10.08.
       # mit `OfferHitsJourneyTests` (3 Tests) auf `macos-26`:
       #
@@ -102,7 +97,7 @@ jobs:
       - uses: actions/checkout@v7
       - id: teilen
         run: |
-          tools/testlauf.sh scherben '${{ inputs.scherben || 5 }}' > scherben.txt
+          tools/testlauf.sh scherben '${{ inputs.scherben || 4 }}' > scherben.txt
           # `seriell` trägt nur Scherbe 1 — dass ihre parallele Ladung dafür
           # kleiner ausfällt, hat `tools/testlauf.sh` schon eingerechnet.
           matrix=$(awk '{printf "%s{\"nr\":%d,\"klassen\":\"%s\",\"seriell\":%s}", (NR>1?",":""), NR, $0, (NR==1?"true":"false")}' scherben.txt)
