@@ -26,6 +26,11 @@ enum TutorialTarget: String, CaseIterable, Hashable {
     /// `tabBarTop` der einzige Griff, den SwiftUI auf eine von UIKit
     /// gezeichnete Leiste hergibt.
     case navBarBottom
+    /// Die Hinweiszeile der Vorschau („Diese Preise gelten noch nicht") — seit
+    /// dem 08.08. eine getönte Zeile in Warnfarbe statt einer Fettung in grauer
+    /// Fußnote (#90). Sie ist die eine Sache, die man auf diesem Bildschirm
+    /// wissen muss, und damit das Ziel der Schlusskarte des Rundgangs.
+    case nextWeekNotice
     case settingsMarkets
     case settingsHelp
 }
@@ -83,9 +88,31 @@ private struct TutorialAnchorModifier: ViewModifier {
         // Deliberately not `if active { … } else { content }`: a branch changes
         // structural identity, and the input bar holds a TextField bound to
         // @FocusState. Flipping identity under it drops first responder
-        // mid-typing. One shape always, empty dictionary when idle.
-        content.anchorPreference(key: TutorialAnchorKey.self, value: .bounds) {
-            active ? [target: $0] : [:]
+        // mid-typing. One shape always, nothing written when idle.
+        //
+        // **`transform…` und nicht `anchorPreference` — gemessen am 09.08.**
+        //
+        // `anchorPreference` **setzt** den Wert dieser Ansicht und wirft dabei
+        // weg, was ihr Teilbaum gemeldet hat. Zwei Ziele liegen aber *in* einem
+        // anderen Ziel: der Winkel-Knopf in der Eingabezeile
+        // (`.inputBar`) und die Preisfahne in der Kachel (`.rowCheck`). Beide
+        // wurden vom Elternteil verschluckt und kamen im Overlay **nie** an.
+        //
+        // Aufgefallen ist es erst, als der neue Rundgang den Winkel-Knopf
+        // ausleuchten sollte: Der Rahmen übersprang sich still, weil er kein
+        // Ziel hatte. Der Knopf stand im Barrierefreiheits-Baum, das Loch war
+        // trotzdem leer — und gefunden wurde es nicht durch Nachdenken, sondern
+        // indem die Sonde `tutorial.hole` im Testlauf mitschreibt, **welche
+        // Anker das Overlay wirklich hat**: `inputBar, planCard, rowCheck,
+        // settingsHelp, tabBarTop` — genau ohne die zwei verschachtelten.
+        //
+        // `transformAnchorPreference` schreibt in den Wert des Teilbaums hinein,
+        // statt ihn zu ersetzen. Damit ist Verschachteln erlaubt.
+        content.transformAnchorPreference(
+            key: TutorialAnchorKey.self, value: .bounds
+        ) { value, anchor in
+            guard active else { return }
+            value[target] = anchor
         }
     }
 }

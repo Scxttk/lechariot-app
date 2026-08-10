@@ -278,7 +278,9 @@ final class AccessibilityAuditTests: XCTestCase {
         try audit("Rundgang-Angebot")
 
         app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")
-        XCTAssertTrue(app.buttons["tutorial.next"].waitForExistence(timeout: 15))
+        // Die **Karte**, nicht ihr Knopf: Seit dem 09.08. trägt nur noch die
+        // Schlusskarte einen, jeder Rahmen davor wartet auf eine Handlung.
+        XCTAssertTrue(app.staticTexts["tutorial.card"].waitForExistence(timeout: 15))
         try audit("Rundgang", failOnContrast: false)
     }
 

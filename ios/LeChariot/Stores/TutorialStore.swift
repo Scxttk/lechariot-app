@@ -10,7 +10,8 @@ enum TutorialTab {
     case liste, angebote, einstellungen
 }
 
-/// One frame of the tour: what is highlighted, what is said, and how it ends.
+/// One frame of the tour: what is highlighted, what is said, and what the user
+/// has to do to get past it.
 struct TutorialStep: Identifiable, Equatable {
     /// What the hole is cut around.
     enum Spotlight: Equatable {
@@ -26,98 +27,212 @@ struct TutorialStep: Identifiable, Equatable {
         /// SwiftUI-Baums, aus dem die Anker kommen. Siehe
         /// `TutorialOverlay.navBarBand`.
         case navBar
+        /// **Kein Loch.** Nur die Schlusskarte hat das, und auch nur in der
+        /// Fassung ohne Filialen: Sie leuchtet nichts aus, sie verabschiedet.
+        /// Vom Selbst-Überspringen sind Rahmen zum Lesen ohnehin ausgenommen —
+        /// die Ausnahme hängt am `deed`, nicht hier, siehe
+        /// `TutorialOverlay.skipIfNothingToShow`.
+        case nothing
+    }
+
+    /// **Was der Nutzer tun muss, damit der Rahmen weitergeht** (09.08.).
+    ///
+    /// Das ist der Prinzipwechsel aus Scotts Bedienrunde vom 08.08., Punkt A:
+    /// „the app only highlights where to click and why and the user clicks
+    /// through it by himself so he'll remember better whats doable." Bis hierher
+    /// war jeder Rahmen ein Text mit einem „Weiter"-Knopf; wer dreimal auf
+    /// „Weiter" tippte, hatte den Rundgang gesehen, ohne die App einmal
+    /// angefasst zu haben. **Jetzt gibt es „Weiter" nicht mehr** — der Rahmen
+    /// geht weiter, wenn die Handlung passiert ist, und sonst gar nicht. Der
+    /// einzige andere Ausgang bleibt „Tour beenden".
+    ///
+    /// **Das dreht die Regel vom 2026-07-30 um, und zwar bewusst.** Damals
+    /// trugen zwei Rahmen `advance: .itemAdded` und sprangen, sobald ein Artikel
+    /// auf der Liste landete; Scotts Bruder meldete „der erste Punkt ist
+    /// automatisch und zu schnell". Der Fehler war aber nicht das Weiterschalten
+    /// durch eine Handlung, sondern dass es **daneben** noch einen zweiten Weg
+    /// gab: Wer den Vorschlag antippte, während er den Text noch las, wurde
+    /// mitten im Satz weitergeschoben, ohne es gewollt zu haben. Jetzt ist die
+    /// Handlung der einzige Weg und im Text angesagt — dann ist das
+    /// Weiterschalten die Antwort auf etwas, das man gerade absichtlich getan
+    /// hat, und keine Überraschung.
+    enum Deed: Equatable {
+        /// Nur lesen; der Knopf beendet den Rundgang. Genau **einmal** je
+        /// Fassung, als Schlusskarte.
+        case reads
+        /// Ein Artikel steht auf der Liste, der vorher nicht dort stand.
+        case addsItem
+        /// Die Vorschlagsfläche über der Eingabezeile steht offen.
+        case opensSuggestions
+        /// Ein Artikel ist abgehakt.
+        case checksItem
+        /// Der Angebote-Tab steht.
+        case opensOffersTab
+        /// Die Vorschau „Nächste Woche" steht.
+        case opensNextWeek
     }
 
     let id: String
     let title: String
     let text: String
     let spotlight: Spotlight
-    /// Berührungen erreichen das hervorgehobene Element. Alles außerhalb des
-    /// Lochs ist immer tot — das ist der Zweck der Übung.
-    ///
-    /// Mitmachen heißt **nicht** weiterspringen: Die Rahmen mit
-    /// `allowsInteraction` gingen bis zum 2026-07-30 von allein weiter, sobald
-    /// ein Artikel auf der Liste landete (`advance: .itemAdded`). Scotts Bruder
-    /// hat es beim ersten Anfassen gemeldet — „der erste Punkt ist automatisch
-    /// und zu schnell": Wer den Vorschlag antippt, während er noch liest, wird
-    /// mitten im Satz weitergeschoben, und der Text, der erklärt was er gerade
-    /// getan hat, ist weg. Jeder Rahmen wartet jetzt auf „Weiter".
-    var allowsInteraction = false
+    let deed: Deed
     var tab: TutorialTab = .liste
-    /// Legt beim Betreten Beispiel-Artikel auf die Liste. Ohne die gäbe es für
-    /// die Karte und die Zeilen nichts zu zeigen — und genau die erklären,
-    /// wofür die App da ist.
-    var seedsDemoItems = false
 
-    /// Der Rundgang: vier Rahmen, nur der Kern-Loop.
+    /// Berührungen erreichen das hervorgehobene Element. Alles außerhalb des
+    /// Lochs bleibt tot — das ist der Zweck der Übung.
     ///
-    /// **Gekürzt von acht bis neun auf vier** (05.08.). Die Forschungsrunde zum
-    /// Onboarding war eindeutig: Touren über fünf Schritten werden abgebrochen,
-    /// und Rahmen, die UI beschreiben statt Ziele, erklären nichts. Der alte
-    /// Rundgang erzählte in neun Rahmen fast die ganze App — die Angaben-
-    /// Schicht, das Abhaken, die Vorschau „Nächste Woche", Preisverlauf und
-    /// Anheften. **Nichts davon ist ersatzlos gestrichen:** Diese Inhalte
-    /// wandern als Einmal-Tipps (TipKit) an die Stelle, an der sie relevant
-    /// werden — eigenes Arbeitspaket, siehe Onboarding-Plan vom 05.08. Hier
-    /// bleibt, was man braucht, um die App zum ersten Mal zu benutzen:
-    /// aufschreiben, ablesen, stöbern, umstellen.
+    /// Kein eigenes Feld mehr: Ein Rahmen, der auf eine Handlung wartet, **muss**
+    /// sie zulassen, sonst ist er eine Sackgasse. Nur die Schlusskarte hat
+    /// nichts durchzulassen.
+    var allowsInteraction: Bool { deed != .reads }
+
+    /// Der Rundgang legt die Eingabe-Schicht weg, bevor dieser Rahmen kommt.
     ///
-    /// Reihenfolge so gewählt, dass nie gescrollt werden muss: Der erste
-    /// Rahmen spielt auf dem leeren Bildschirm, der zweite legt die
-    /// Beispiel-Artikel selbst und zeigt daran die Karte oben.
+    /// Nach dem Anlegen eines Artikels stehen Tastatur und Angaben-Schicht;
+    /// zusammen sind das seit dem 08.08. rund zwei Drittel des Bildschirms
+    /// (Bring!s Aufteilung, Punkt C). Die Tab-Leiste liegt dann unter der
+    /// Tastatur, und ein Rahmen, der auf einen Tipp darauf wartet, wartet für
+    /// immer.
     ///
-    /// **Drei Rahmen, und zwar seit dem 06.08.**
+    /// Deshalb gilt es für **alles außer dem ersten Rahmen**: Wer aufschreibt,
+    /// braucht die Tastatur; wer danach etwas antippen soll, braucht den
+    /// Bildschirm.
     ///
-    /// Vorher waren es neun, über drei Tabs, mit Überblendung dazwischen.
-    /// Scotts Befund: zu viel. Und die Messung vom 03.08. sagt dasselbe von der
-    /// anderen Seite — der Rundgang steht bei rund **+100 % Instruktionen**
-    /// gegen den gespeicherten Grundwert und ist damit die teuerste Strecke der
-    /// App, für etwas, das jeder Nutzer genau einmal sieht.
+    /// **Eine Vermutung, die hier stand und falsch war, gehört mit hierher:**
+    /// Als der Vorschläge-Rahmen sich still übersprang, sah es aus, als fehle
+    /// der Winkel-Knopf während des Tipp-Flusses. Er ist die ganze Zeit da —
+    /// der Grund war ein verschluckter Anker (siehe `TutorialAnchor`). Für
+    /// diesen Rahmen ist das Wegräumen deshalb kein Muss, für den Rahmen zur
+    /// Tab-Leiste schon; einheitlich bleibt es trotzdem, weil „wer etwas
+    /// antippen soll, braucht den Bildschirm" die einfachere Regel ist als eine
+    /// Ausnahmeliste.
+    var clearsInputFlow: Bool {
+        switch deed {
+        case .addsItem, .reads: false
+        default: true
+        }
+    }
+
+    /// **Der Rundgang zum Mitmachen** (09.08.) — fünf Handgriffe und eine
+    /// Schlusskarte, mit Filialen; ohne sie drei und die Schlusskarte.
     ///
-    /// **Was den Ausschlag gab, welche drei bleiben:** Der Rundgang gibt es,
-    /// weil Testern nach dem Onboarding nicht klar war, *was sie tun sollen*.
-    /// Das sind drei Handgriffe — aufschreiben, den Markt ablesen, im Laden
-    /// abhaken. Alles andere im alten Rundgang erklärte Dinge, die auf dem
-    /// Bildschirm ohnehin stehen (die Vorschlagskacheln, die Tab-Leiste, die
-    /// Angebotszeile unter dem Artikel) oder die man erst später sucht (die
-    /// Vorschau, die Einstellungen). Ein Rahmen, der etwas zeigt, das man sieht,
-    /// kostet nur Zeit.
+    /// Die Geschichte davor in zwei Sätzen: Am 03.08. wuchs der Rundgang auf
+    /// neun Rahmen, weil er „der App hinterherhinkte"; am 06.08. schrumpfte er
+    /// auf drei, weil ein Rahmen, der zeigt, was ohnehin auf dem Bildschirm
+    /// steht, nur Zeit kostet. **Beide Male ging es darum, wie viel *vorgeführt*
+    /// wird.** Scotts Auftrag vom 08.08. wechselt die Achse: Vorgeführt wird gar
+    /// nichts mehr, die App hebt hervor und sagt warum, und **der Nutzer tippt
+    /// selbst** (siehe `Deed`).
     ///
-    /// **Und alle drei spielen auf der Liste.** Damit ist der Tab-Wechsel im
-    /// Rundgang keine Strecke mehr, sondern nur noch der Weg hinein, wenn er aus
-    /// den Einstellungen gestartet wurde.
+    /// **Die Lehre vom 06.08. bleibt trotzdem stehen und ist der Grund, warum
+    /// hier nicht mehr steht.** Der Plan-Rahmen ist ersatzlos weg: Er zeigte auf
+    /// eine Karte, die der Rundgang sich mit drei geliehenen Artikeln selbst
+    /// hinlegen musste. Jetzt legt der Nutzer im ersten Rahmen seinen eigenen
+    /// Artikel an, die Karte erscheint darüber als Folge davon — der Satz dazu
+    /// steht in Rahmen 1. Was man durch die eigene Handlung entstehen sieht,
+    /// braucht keinen eigenen Rahmen.
     ///
-    /// `hasMarkets` ändert weiter einen Text: Seit dem 2026-07-31 endet das
-    /// Onboarding in der Liste statt in der Filialauswahl, der Rundgang läuft
-    /// also im Normalfall über einer Liste **ohne** gewählte Filiale. „Sie sagt
-    /// dir, welche Filiale am günstigsten ist" über einer Karte, die den
-    /// Leerzustand zeigt, ist eine kleine Lüge — und die erste, die ein Tester
-    /// zu sehen bekommt.
-    static func tour(hasMarkets: Bool) -> [TutorialStep] {
-        [
+    /// **Zwei Stellen kommen dazu, beide aus Scotts Liste** (Bedienrunde,
+    /// Punkt A): Das Vorschläge-Menü, das seit dem 08.08. eingeklappt startet
+    /// (es ist ohne den Winkel-Knopf schlicht nicht zu finden), und die Vorschau
+    /// „Nächste Woche" samt der Hinweiszeile aus #90. Beides sind Wege, die
+    /// niemand von allein geht.
+    ///
+    /// **Sechs statt der fünf aus der Onboarding-Forschung — mit Begründung.**
+    /// Die Zahl kam aus Touren zum *Lesen*; hier ist jeder Rahmen ein Tipp, und
+    /// der letzte ist der Abschied. Wer abbrechen will, hat auf jedem Rahmen
+    /// „Tour beenden".
+    ///
+    /// `hasMarkets` streicht die zwei Angebote-Rahmen, statt nur ihren Text zu
+    /// drehen: Ohne gewählte Filiale steht auf dem Angebote-Tab „Keine Filiale
+    /// gewählt" und es gibt weder Liste noch Vorschau-Knopf. Ein Rahmen, der auf
+    /// einen Tipp wartet, den man nicht tun kann, ist eine Sackgasse — und der
+    /// Normalfall nach dem Onboarding ist genau dieser, seit es seit dem
+    /// 2026-07-31 in der Liste endet statt in der Filialauswahl.
+    ///
+    /// `showsNextWeek` hängt am Schalter, nicht am Geschmack: Ohne die Vorschau
+    /// gibt es den Knopf „Nächste Woche" nicht, und dann fällt mit ihm auch der
+    /// Rahmen zur Tab-Leiste weg — er ist der **Weg** dorthin, und ein Weg zu
+    /// nichts ist ein Rahmen, der zeigt, was man ohnehin sieht. Als Parameter
+    /// mit Vorgabe, damit die Zusicherungen beide Fassungen prüfen können, ohne
+    /// am globalen Schalter zu drehen.
+    static func tour(hasMarkets: Bool,
+                     showsNextWeek: Bool = FeatureFlags.nextWeekPreview) -> [TutorialStep] {
+        var steps: [TutorialStep] = [
             TutorialStep(
                 id: "input",
-                title: "Schreib auf, was du brauchst",
-                text: "Tipp hier ein, was du einkaufen willst — ein Artikel pro Zeile. Die Tastatur bleibt danach stehen, du kannst einfach weitertippen. Probier es gleich aus.",
+                title: "Schreib deinen ersten Artikel auf",
+                text: hasMarkets
+                    ? "Tipp ins Feld und leg einen Artikel an — oben steht dann, welche deiner Filialen ihn am günstigsten hat."
+                    : "Tipp ins Feld und leg einen Artikel an.",
                 spotlight: .anchor(.inputBar),
-                allowsInteraction: true
+                deed: .addsItem
             ),
             TutorialStep(
-                id: "plan",
-                title: "Ein Einkauf, ein Markt",
-                text: hasMarkets
-                    ? "Diese Karte ist der Kern: Sie sagt dir, welche deiner Filialen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet. Unter jedem Artikel steht das beste Angebot dazu."
-                    : "Diese Karte ist der Kern: Sobald du Filialen gewählt hast, sagt sie dir, welche von ihnen die ganze Liste am günstigsten abdeckt — und was der Einkauf dort kostet. Unter jedem Artikel steht dann das beste Angebot dazu.",
-                spotlight: .anchor(.planCard),
-                seedsDemoItems: true
+                id: "suggestions",
+                title: "Du musst nicht alles tippen",
+                text: "Hinter dem Winkel liegen deine Vorschläge. Tipp ihn an.",
+                spotlight: .anchor(.suggestionsToggle),
+                deed: .opensSuggestions
             ),
             TutorialStep(
                 id: "check",
-                title: "Abhaken beim Einkaufen",
-                text: "Im Laden tippst du den Kreis an, dann wandert der Artikel nach unten zu „Erledigt“. Zum Löschen wischst du die Zeile nach links. Diesen Rundgang findest du jederzeit wieder unter „Einstellungen“.",
-                spotlight: .anchor(.rowCheck)
+                title: "Im Laden abhaken",
+                text: "Tipp die Kachel an — der Artikel wandert nach unten zu „Erledigt“.",
+                spotlight: .anchor(.rowCheck),
+                deed: .checksItem
             ),
         ]
+
+        guard hasMarkets, showsNextWeek else {
+            steps.append(
+                TutorialStep(
+                    id: "done",
+                    title: "Das war’s",
+                    text: hasMarkets
+                        ? "Den Rundgang findest du jederzeit wieder unter „Einstellungen“."
+                        : "Angebote siehst du, sobald du eine Filiale gewählt hast. Den Rundgang findest du jederzeit unter „Einstellungen“.",
+                    spotlight: .nothing,
+                    deed: .reads
+                )
+            )
+            return steps
+        }
+
+        steps.append(contentsOf: [
+            TutorialStep(
+                id: "offers",
+                title: "Alle Angebote deiner Filialen",
+                text: "Tipp unten auf „Angebote“.",
+                spotlight: .tabBar,
+                deed: .opensOffersTab
+            ),
+            TutorialStep(
+                id: "nextWeek",
+                title: "Schon nächste Woche sehen",
+                text: "Oben links liegt die Vorschau. Tipp auf „Nächste Woche“.",
+                spotlight: .navBar,
+                deed: .opensNextWeek,
+                tab: .angebote
+            ),
+            // **Die Karte sagt nicht noch einmal, was in der Zeile steht.** Der
+            // erste Entwurf tat genau das („Diese Preise gelten noch nicht.
+            // Sie zeigen, was demnächst günstig wird …") — und war damit
+            // derselbe Fehler, der beim alten Rahmen 1 als „ugly" auffiel: Text
+            // über Text, einmal hell, einmal abgedunkelt. Seit #90 sagt die
+            // Zeile es selbst und laut; die Karte zeigt nur hin und
+            // verabschiedet sich.
+            TutorialStep(
+                id: "done",
+                title: "Das war’s",
+                text: "Lies die getönte Zeile oben — dann weißt du, woran du bei diesen Preisen bist. Den Rundgang findest du wieder unter „Einstellungen“.",
+                spotlight: .anchor(.nextWeekNotice),
+                deed: .reads,
+                tab: .angebote
+            ),
+        ])
+        return steps
     }
 }
 
@@ -147,8 +262,9 @@ final class TutorialStore {
     /// gefragt wird — siehe `offersTourAfterOnboarding`.
     private(set) var hasSeenTutorial: Bool
 
-    /// Was der Rundgang selbst auf die Liste gelegt hat. Kommt am Ende wieder
-    /// herunter, damit niemand mit drei fremden Artikeln dasteht.
+    /// Was ein **alter** Rundgang auf die Liste gelegt hat. Kommt beim nächsten
+    /// Start wieder herunter; gelegt wird seit dem 09.08. nichts mehr, siehe
+    /// `removeDemoItems`.
     private(set) var seededItems: [ShoppingItem] = []
 
     /// Woher der laufende Rundgang gestartet wurde.
@@ -188,11 +304,6 @@ final class TutorialStore {
     private static let key = "tutorial.hasSeen"
     private static let seededKey = "tutorial.seededItems"
     private static let marketPromptKey = "tutorial.marketPrompt.answered"
-
-    /// Artikel, die der Rundgang für die datenabhängigen Rahmen setzt.
-    /// Grundnahrungsmittel aus `ShoppingSuggestions.staples`, also genau die
-    /// Wörter, für die das Wörterbuch am zuverlässigsten Treffer liefert.
-    static let demoItems = ["Milch", "Butter", "Kaffee"]
 
     init(defaults: UserDefaults = AppDefaults.shared) {
         self.defaults = defaults
@@ -271,6 +382,23 @@ final class TutorialStore {
         }
     }
 
+    /// **Der Nutzer hat etwas getan — geht der Rahmen davon weiter?**
+    ///
+    /// Die eine Stelle, an der der Rundgang weiterschaltet, seit es „Weiter"
+    /// nicht mehr gibt. Die Melder sitzen dort, wo die Handlung wirklich
+    /// passiert (`TutorialOverlay` für die Liste, `ContentView` für den Tab,
+    /// `ShoppingListView` für die Vorschläge, `NextWeekView` für die Vorschau)
+    /// und melden **immer**, ob der Rundgang läuft oder nicht — die Entscheidung
+    /// steht hier und nicht siebenmal am Rand.
+    ///
+    /// Der Vergleich ist absichtlich stur auf den *aktuellen* Rahmen: Wer im
+    /// dritten Rahmen einen weiteren Artikel anlegt, hat den ersten nicht noch
+    /// einmal erledigt.
+    func report(_ deed: TutorialStep.Deed) {
+        guard isRunning, step.deed == deed else { return }
+        next()
+    }
+
     func skip() {
         finish()
     }
@@ -306,25 +434,19 @@ final class TutorialStore {
         defaults.set(true, forKey: Self.key)
     }
 
-    // MARK: Beispiel-Artikel
+    // MARK: Beispiel-Artikel — nur noch das Aufräumen
 
-    /// Legt die Beispiel-Artikel auf die Liste — aber nur die, die nicht schon
-    /// dort stehen. `add` meldet `false` für Doppelte, also bleibt stehen, was
-    /// der Tester in den ersten beiden Rahmen selbst getippt hat, und es wird
-    /// ihm hinterher auch nicht weggeräumt.
-    func seedDemoItems(into list: ShoppingListStore) {
-        guard seededItems.isEmpty else { return }
-        for text in Self.demoItems where list.add(text) {
-            if let added = list.items.last {
-                seededItems.append(added)
-            }
-        }
-        persistSeededItems()
-    }
-
-    /// Räumt genau die eigenen Artikel wieder ab. Wird bei jedem Ende gerufen —
-    /// „Fertig“ wie „Tour beenden“ —, deshalb sitzt der Aufruf in `ContentView`
-    /// an `isRunning` und nicht an einem einzelnen Knopf.
+    /// **Gesät wird seit dem 09.08. nichts mehr.** Der Rundgang legte bis dahin
+    /// Milch, Butter und Kaffee selbst auf die Liste, weil der Plan-Rahmen sonst
+    /// auf einen Leerzustand gezeigt hätte. Mit dem Rundgang zum Mitmachen legt
+    /// der Nutzer seinen eigenen Artikel an; damit sind geliehene Artikel, ihre
+    /// Persistenz und ihr Abräumen ersatzlos weg.
+    ///
+    /// **Was bleibt, ist der Rückweg für bestehende Installationen:** Wer den
+    /// alten Rundgang mitten im Lauf abgeschossen hat, hat seine drei Artikel
+    /// noch auf Platte. `init` liest sie, `ContentView` räumt sie beim nächsten
+    /// Start ab — sonst stünden sie dort für immer, und niemand wüsste warum.
+    /// Diese Hälfte fällt weg, wenn kein Gerät sie mehr trägt.
     func removeDemoItems(from list: ShoppingListStore) {
         guard !seededItems.isEmpty else { return }
         for item in seededItems {

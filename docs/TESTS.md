@@ -5,6 +5,22 @@ tools/tests.sh                       # alles
 tools/tests.sh AddFlowJourneyTests   # nur diese Klasse(n)
 tools/tests.sh --unit                # nur die Unit-Tests (~25 s)
 tools/tests.sh --workers 2           # weniger Klone, wenn der Mac zu tun hat
+tools/tests.sh RundgangShots --result /tmp/bogen.xcresult   # mit Bildern
+```
+
+**Die Bilderbögen brauchen `--result`.** `RundgangShots` und `BedienrundeShots`
+hängen ihre PNGs (und den Barrierefreiheits-Baum dazu) ans Ergebnisbündel; ohne
+Pfad gibt es keins, und die Bilder sind weg. Herausholen:
+
+```sh
+xcrun xcresulttool export attachments --path /tmp/bogen.xcresult --output-path /tmp/bogen
+```
+
+Hell und Dunkel kommen vom Simulator, nicht von einem Startschalter — die App
+steht auf „System":
+
+```sh
+xcrun simctl ui booted appearance dark
 ```
 
 Nicht `xcodebuild test` von Hand. Das Skript ist die einzige Stelle, an der
