@@ -1,0 +1,66 @@
+# WEGWERF — misst den Runner aus, bevor der echte Workflow gebaut wird.
+name: Probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Maschine
+        run: |
+          sysctl -n machdep.cpu.brand_string hw.ncpu hw.memsize
+          df -h / | tail -1
+          echo "--- Xcodes ---"
+          ls /Applications | grep -i '^Xcode'
+          echo "--- default ---"
+          xcodebuild -version
+
+      - name: Xcode 26.3 wählen
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app
+
+      - name: Simulatoren
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes | grep iOS || true
+          echo "--- Geräte ---"
+          xcrun simctl list devices available | grep -A2 -i "iOS 26" || true
+
+      - name: Schlüsseldatei aus der Vorlage
+        run: cp ios/LeChariot/Resources/APIKeys.example.plist ios/LeChariot/Resources/APIKeys.plist
+
+      - name: Bauen
+        run: |
+          start=$SECONDS
+          xcodebuild build-for-testing \
+            -project ios/LeChariot.xcodeproj -scheme LeChariot \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -derivedDataPath build/tests-dd -quiet
+          echo "BAUZEIT: $((SECONDS - start)) s"
+          du -sh build/tests-dd/Build/Products
+          ls build/tests-dd/Build/Products/*.xctestrun
+
+      - name: Unit-Tests
+        run: |
+          xctestrun="$(ls -t build/tests-dd/Build/Products/*.xctestrun | head -1)"
+          start=$SECONDS
+          xcodebuild test-without-building -xctestrun "$xctestrun" \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -only-testing:LeChariotTests 2>&1 | tail -25
+          echo "UNITZEIT: $((SECONDS - start)) s"
+
+      - name: Eine UI-Klasse, zwei Klone
+        run: |
+          xctestrun="$(ls -t build/tests-dd/Build/Products/*.xctestrun | head -1)"
+          start=$SECONDS
+          xcodebuild test-without-building -xctestrun "$xctestrun" \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -parallel-testing-enabled YES -parallel-testing-worker-count 2 \
+            -test-timeouts-enabled YES -maximum-test-execution-time-allowance 600 \
+            -only-testing:LeChariotUITests/FirstValueJourneyTests \
+            -only-testing:LeChariotUITests/OfferHitsJourneyTests 2>&1 | tail -40
+          echo "UIZEIT: $((SECONDS - start)) s"
