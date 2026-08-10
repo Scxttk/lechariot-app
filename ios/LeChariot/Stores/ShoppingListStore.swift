@@ -156,12 +156,21 @@ enum ShoppingSuggestions {
 
     /// The staples not on the list yet, in their fixed order.
     ///
-    /// Checked items count as on the list: re-suggesting what the user just
-    /// ticked off would be the app arguing with them, and `add` would refuse
-    /// the duplicate anyway.
+    /// **Nur die offenen zählen** (Scott, 10.08., Punkt D). Bis dahin galt ein
+    /// abgehakter Artikel als „steht schon auf der Liste", mit der Begründung,
+    /// `add` würde die Dublette ohnehin abweisen. Genau diese Abweisung war der
+    /// Fehler aus Punkt C — und zusammen ergaben beide eine Sackgasse: Ein
+    /// gerade gekauftes Produkt lag im Abschnitt „Erledigt" *und* war aus dem
+    /// Streifen gesperrt. Es gab keinen kurzen Weg zurück auf die Liste.
     static func remaining(for items: [ShoppingItem], from staples: [String] = staples) -> [String] {
-        let taken = Set(items.map { $0.text.lowercased() })
+        let taken = Set(openWords(items))
         return staples.filter { !taken.contains($0.lowercased()) }
+    }
+
+    /// Was gerade wirklich auf der Liste steht — kleingeschrieben, ohne die
+    /// abgehakten. Die eine Stelle, an der „schon auf der Liste" definiert ist.
+    static func openWords(_ items: [ShoppingItem]) -> [String] {
+        items.filter { !$0.isChecked }.map { $0.text.lowercased() }
     }
 
     /// How many tiles the strip shows.
@@ -224,7 +233,8 @@ enum ShoppingSuggestions {
         includeStaples: Bool = true,
         limit: Int = stripLength
     ) -> [String] {
-        var taken = Set(items.map { $0.text.lowercased() })
+        // Abgehaktes zählt nicht als „steht schon da" — siehe `remaining`.
+        var taken = Set(openWords(items))
         var result: [String] = []
 
         // Stufe 1: was dieser Haushalt tatsächlich kauft.
@@ -302,14 +312,38 @@ final class ShoppingListStore {
     var uncheckedItems: [ShoppingItem] { items.filter { !$0.isChecked } }
     var checkedItems: [ShoppingItem] { items.filter(\.isChecked) }
 
-    /// Adds an item unless one with the same text already exists
-    /// (case-insensitive, like the CLI). Returns false on duplicates.
+    /// Legt einen Artikel an — es sei denn, er steht schon **offen** auf der
+    /// Liste (unabhängig von Groß- und Kleinschreibung, wie in der CLI).
+    ///
+    /// **Erledigtes blockiert nicht** (Scott, Bedienrunde 10.08., Punkt C):
+    /// „Big bug, if a product like Milch is erledigt I can't add a new Milch
+    /// item". Bis dahin sah die Abweisung nur den Text und nicht den Haken —
+    /// wer Milch gekauft und abgehakt hatte, bekam beim nächsten Einkauf keine
+    /// Milch mehr auf die Liste. Und weil ein abgewiesenes `add` still ist, war
+    /// auf dem Bildschirm nicht zu sehen, warum.
+    ///
+    /// **Die abgehakte Zeile wird geweckt, nicht verdoppelt** — so macht es
+    /// Bring!: Ein Artikel ist entweder auf der Liste oder nicht, ein zweites
+    /// „Milch" daneben gibt es dort nicht. Was an der Zeile hängt (Angaben,
+    /// Notiz, gewähltes Angebot), bleibt dabei stehen; Bring! merkt sich die
+    /// Spezifikation eines Artikels ebenfalls über den Einkauf hinaus, und wer
+    /// „1,5 %" einmal eingetragen hat, will es nicht jede Woche neu tippen.
+    ///
+    /// Die geweckte Zeile rückt ans Ende, weil `lastAdded` daran hängt: Käme
+    /// sie an ihrem alten Platz zurück, öffnete die Angaben-Schicht über einem
+    /// fremden Artikel.
     @discardableResult
     func add(_ rawText: String) -> Bool {
         let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return false }
-        guard !items.contains(where: { $0.text.lowercased() == text.lowercased() }) else {
-            return false
+        if let idx = items.firstIndex(where: { $0.text.lowercased() == text.lowercased() }) {
+            guard items[idx].isChecked else { return false }
+            var geweckt = items.remove(at: idx)
+            geweckt.isChecked = false
+            geweckt.checkedAt = nil
+            items.append(geweckt)
+            persist()
+            return true
         }
         items.append(ShoppingItem(text: text))
         persist()
@@ -321,9 +355,12 @@ final class ShoppingListStore {
     /// weiß nur der Speicher.
     var lastAdded: ShoppingItem? { items.last }
 
-    func toggle(_ item: ShoppingItem) {
+    /// Haken setzen oder wieder abnehmen. Der Zeitpunkt ist die Uhr, an der das
+    /// Aufräumen hängt (`sweepChecked`); der Haken ab heißt, die Uhr ist aus.
+    func toggle(_ item: ShoppingItem, now: Date = .now) {
         guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
         items[idx].isChecked.toggle()
+        items[idx].checkedAt = items[idx].isChecked ? now : nil
         persist()
     }
 
@@ -410,6 +447,54 @@ final class ShoppingListStore {
     func clearChecked() {
         items.removeAll { $0.isChecked }
         persist()
+    }
+
+    // MARK: Die Lebensdauer des Erledigten
+
+    /// **Wie lange ein abgehakter Artikel stehen bleibt: eine Woche.**
+    ///
+    /// Scotts Frage aus der Bedienrunde vom 10.08. — „when does erledigt
+    /// products get deleted" — hatte bis dahin die Antwort „nie". Erledigtes
+    /// verschwand ausschließlich auf Ansage: „Erledigte entfernen", „Liste
+    /// leeren", einzeln wischen, oder App zurücksetzen. Ein Haken vom Juli
+    /// stand im August noch da, und der Abschnitt wuchs mit jedem Einkauf.
+    ///
+    /// **Eine Woche, weil die App im Wochentakt lebt.** Der Prospekt wechselt
+    /// wöchentlich, und ein Einkauf ist die Einheit dazwischen: Was man heute
+    /// gekauft hat, will man heute und morgen noch sehen können (versehentlich
+    /// abgehakt, oder „habe ich das jetzt mitgenommen?"). Nach dem nächsten
+    /// Einkauf will es niemand mehr sehen.
+    ///
+    /// Verloren geht dabei nichts, was die App noch braucht: Das **Wort** liegt
+    /// im Vorrat (`PurchaseHistoryStore`) und kommt als Vorschlag zurück. Was
+    /// geht, ist die Zeile — und die stand ohnehin nur da, weil niemand sie
+    /// weggeräumt hat.
+    static let checkedRetention: TimeInterval = 7 * 24 * 60 * 60
+
+    /// Räumt ab, was länger als `checkedRetention` abgehakt ist.
+    ///
+    /// **Ein Haken aus einem älteren Build wird gestempelt, nicht geworfen.**
+    /// Auf den Geräten der Tester liegen abgehakte Artikel ohne `checkedAt`.
+    /// Die beim ersten Durchlauf mitzunehmen hieße, ein Update Daten löschen zu
+    /// lassen, für die niemand eine Freigabe gegeben hat — die Uhr fängt für
+    /// sie hier an zu laufen.
+    ///
+    /// Aufgerufen beim Start und bei jeder Rückkehr in den Vordergrund
+    /// (`ContentView`). Kein Zeitgeber: Ein Artikel, der um 3 Uhr nachts
+    /// verschwindet, während niemand hinsieht, ist dasselbe Ergebnis für mehr
+    /// Aufwand.
+    func sweepChecked(now: Date = .now) {
+        var geändert = false
+        for idx in items.indices where items[idx].isChecked && items[idx].checkedAt == nil {
+            items[idx].checkedAt = now
+            geändert = true
+        }
+        let vorher = items.count
+        items.removeAll { item in
+            guard item.isChecked, let seit = item.checkedAt else { return false }
+            return now.timeIntervalSince(seit) > Self.checkedRetention
+        }
+        if geändert || items.count != vorher { persist() }
     }
 
     func clearAll() {

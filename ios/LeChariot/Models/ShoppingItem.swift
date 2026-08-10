@@ -71,6 +71,20 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
     /// ihre Liste verlieren — ohne Fehlermeldung.
     var pins: [PinnedOffer]?
 
+    /// **Wann der Haken gesetzt wurde** — die Uhr, an der das Aufräumen hängt.
+    ///
+    /// Bis zum 10.08. hatte ein abgehakter Artikel keinen Zeitpunkt, und
+    /// deshalb hatte „Erledigt" keine Lebensdauer: Ein Haken vom Juli stand im
+    /// August noch da. Scotts Frage aus der Bedienrunde („when does erledigt
+    /// products get deleted") war ohne dieses Feld nicht zu beantworten, weil
+    /// die Antwort „nie" lautete.
+    ///
+    /// `nil` heißt zweierlei und beides ist harmlos: offener Artikel, oder ein
+    /// Haken aus einem älteren Build. Der zweite Fall wird beim ersten
+    /// Aufräumen gestempelt statt weggeworfen — siehe
+    /// `ShoppingListStore.sweepChecked`.
+    var checkedAt: Date?
+
     /// Die Wahl(en) dieses Eintrags, egal aus welchem Build sie stammen.
     var pinnedOffers: [PinnedOffer] { pins ?? [] }
 
@@ -84,7 +98,8 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
         addedAt: Date = .now,
         detail: [String]? = nil,
         note: String? = nil,
-        pins: [PinnedOffer]? = nil
+        pins: [PinnedOffer]? = nil,
+        checkedAt: Date? = nil
     ) {
         self.id = id
         self.text = text
@@ -93,6 +108,7 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
         self.detail = detail
         self.note = note
         self.pins = pins
+        self.checkedAt = checkedAt
         self.pinned = nil
     }
 
@@ -111,6 +127,7 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
         addedAt = try c.decodeIfPresent(Date.self, forKey: .addedAt) ?? .now
         detail = try c.decodeIfPresent([String].self, forKey: .detail)
         note = try c.decodeIfPresent(String.self, forKey: .note)
+        checkedAt = try c.decodeIfPresent(Date.self, forKey: .checkedAt)
         pinned = nil
         let stored = try c.decodeIfPresent([PinnedOffer].self, forKey: .pins)
         let alt = try c.decodeIfPresent(PinnedOffer.self, forKey: .pinned)
@@ -128,10 +145,11 @@ struct ShoppingItem: Codable, Equatable, Identifiable {
         try c.encodeIfPresent(detail, forKey: .detail)
         try c.encodeIfPresent(note, forKey: .note)
         try c.encodeIfPresent(pins, forKey: .pins)
+        try c.encodeIfPresent(checkedAt, forKey: .checkedAt)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, text, isChecked, addedAt, detail, note, pins, pinned
+        case id, text, isChecked, addedAt, detail, note, pins, pinned, checkedAt
     }
 
     /// The one string that leaves this item — to the matcher, to the purchase

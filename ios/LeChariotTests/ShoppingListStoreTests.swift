@@ -36,6 +36,153 @@ final class ShoppingListStoreTests: XCTestCase {
         XCTAssertEqual(store.items.count, 1)
     }
 
+    // MARK: Erledigtes blockiert nicht (Scott, 10.08., Punkt C)
+
+    /// **Der Fehler aus der Bedienrunde vom 10.08.**, wörtlich: „if a product
+    /// like Milch is erledigt I can't add a new Milch item".
+    ///
+    /// Die Dubletten-Abweisung sah nur den Text und nicht den Haken. Wer Milch
+    /// gekauft und abgehakt hatte, bekam beim nächsten Einkauf keine Milch mehr
+    /// auf die Liste — und die App sagte dazu nichts, weil ein abgewiesenes
+    /// `add` still ist.
+    func testACheckedItemDoesNotBlockAddingItAgain() {
+        let store = makeStore()
+        store.add("Milch")
+        store.toggle(store.items[0])
+
+        XCTAssertTrue(store.add("Milch"), "Erledigtes darf die Neuanlage nicht blockieren")
+        XCTAssertEqual(store.uncheckedItems.map(\.text), ["Milch"])
+    }
+
+    /// **Ein Produkt, eine Zeile — wie bei Bring!.** Dort ist ein Artikel
+    /// entweder auf der Liste oder nicht; ein zweites „Milch" daneben gibt es
+    /// nicht. Das erneute Anlegen weckt deshalb die abgehakte Zeile wieder auf,
+    /// statt eine zweite anzulegen.
+    func testReAddingRevivesTheCheckedRowInsteadOfMakingASecondOne() {
+        let store = makeStore()
+        store.add("Milch")
+        let original = store.items[0]
+        store.toggle(original)
+
+        store.add("milch")   // andere Schreibweise, derselbe Artikel
+        XCTAssertEqual(store.items.count, 1, "Es darf keine zweite Milch entstehen")
+        XCTAssertEqual(store.items[0].id, original.id, "Es ist dieselbe Zeile")
+        XCTAssertFalse(store.items[0].isChecked)
+        XCTAssertEqual(store.items[0].text, "Milch",
+                       "Die Schreibweise der Zeile bleibt, die Neuanlage benennt sie nicht um")
+    }
+
+    /// Die geweckte Zeile behält, was an ihr hängt — Angaben, Notiz, Wahl.
+    /// Bring! merkt sich die Spezifikation eines Artikels über den Einkauf
+    /// hinaus; wer „1,5 %" einmal eingetragen hat, will es nicht jede Woche neu
+    /// tippen.
+    func testTheRevivedRowKeepsItsDetail() {
+        let store = makeStore()
+        store.add("Milch")
+        store.setDetail(["1,5 %"], note: "für Oma", for: store.items[0])
+        store.toggle(store.items[0])
+
+        store.add("Milch")
+        XCTAssertFalse(store.items[0].isChecked, "Ohne das Wecken prüft der Rest hier nichts")
+        XCTAssertEqual(store.items[0].detail, ["1,5 %"])
+        XCTAssertEqual(store.items[0].note, "für Oma")
+    }
+
+    /// **Und die geweckte Zeile ist die zuletzt angelegte.** Das Mengen-Menü
+    /// hängt an `lastAdded` ([UI-8]); käme die Zeile an ihrem alten Platz
+    /// zurück, öffnete die Angaben-Schicht über einem fremden Artikel.
+    func testTheRevivedRowIsTheLastAdded() {
+        let store = makeStore()
+        store.add("Milch")
+        store.add("Brot")
+        store.toggle(store.items[0])   // Milch abhaken
+
+        store.add("Milch")
+        XCTAssertEqual(store.lastAdded?.text, "Milch")
+        XCTAssertEqual(store.items.map(\.text), ["Brot", "Milch"])
+    }
+
+    /// Ein **offener** Artikel bleibt eine Dublette — daran ändert sich nichts.
+    func testAnOpenItemStillBlocks() {
+        let store = makeStore()
+        store.add("Milch")
+        XCTAssertFalse(store.add("Milch"))
+        XCTAssertEqual(store.items.count, 1)
+    }
+
+    // MARK: Lebensdauer des Erledigten (Scott, 10.08.: „when does erledigt products get deleted")
+
+    /// **Was heute passiert, schwarz auf weiß.** Erledigtes verschwindet von
+    /// selbst nach `checkedRetention` — vorher nur auf Ansage („Erledigte
+    /// entfernen", „Liste leeren", Wischen, App-Reset). Bis zum 10.08. gab es
+    /// die Alterung gar nicht: Ein Haken vom Juli stand im August noch da.
+    func testCheckedItemsAgeOutAfterTheRetention() {
+        let store = makeStore()
+        store.add("Milch")
+        let heute = Date(timeIntervalSince1970: 1_754_000_000)
+        store.toggle(store.items[0], now: heute)
+
+        store.sweepChecked(now: heute.addingTimeInterval(ShoppingListStore.checkedRetention - 60))
+        XCTAssertEqual(store.items.count, 1, "Kurz davor steht es noch")
+
+        store.sweepChecked(now: heute.addingTimeInterval(ShoppingListStore.checkedRetention + 60))
+        XCTAssertTrue(store.items.isEmpty, "Danach räumt die Liste selbst auf")
+    }
+
+    /// Offene Artikel altern **nicht**. Die Liste ist zuerst ein Merkzettel;
+    /// was nie abgehakt wurde, ist noch gewollt.
+    func testOpenItemsNeverAgeOut() {
+        let store = makeStore()
+        store.add("Zahnpasta")
+        store.sweepChecked(now: .now.addingTimeInterval(365 * 24 * 60 * 60))
+        XCTAssertEqual(store.items.map(\.text), ["Zahnpasta"])
+    }
+
+    /// **Ein Haken aus einem älteren Build fängt bei null an.** Auf den Geräten
+    /// der Tester liegen abgehakte Artikel ohne Zeitpunkt. Die beim ersten
+    /// Aufräumen sofort wegzuwerfen hieße, ein Update Daten löschen zu lassen,
+    /// die der Nutzer nie zum Löschen freigegeben hat.
+    func testALegacyCheckedItemStartsItsClockAtTheFirstSweep() {
+        // Genau der Datensatz, den ein Build vor dem 10.08. geschrieben hat:
+        // abgehakt, ohne `checkedAt`.
+        let alt = """
+        [{"id":"\(UUID().uuidString)","text":"Milch","isChecked":true,\
+        "addedAt":760000000}]
+        """
+        defaults.set(Data(alt.utf8), forKey: "shopping.items")
+        let store = makeStore()
+        XCTAssertEqual(store.items.count, 1, "Die alte Liste muss lesbar bleiben")
+        XCTAssertNil(store.items[0].checkedAt)
+
+        let jetzt = Date(timeIntervalSince1970: 1_754_000_000)
+        store.sweepChecked(now: jetzt)
+        XCTAssertEqual(store.items.count, 1, "Beim ersten Aufräumen wird nur gestempelt")
+        XCTAssertEqual(store.items[0].checkedAt, jetzt)
+
+        store.sweepChecked(now: jetzt.addingTimeInterval(ShoppingListStore.checkedRetention + 60))
+        XCTAssertTrue(store.items.isEmpty)
+    }
+
+    /// Der Haken wieder ab heißt: die Uhr ist wieder aus.
+    func testUncheckingClearsTheClock() {
+        let store = makeStore()
+        store.add("Milch")
+        store.toggle(store.items[0])
+        XCTAssertNotNil(store.items[0].checkedAt)
+        store.toggle(store.items[0])
+        XCTAssertNil(store.items[0].checkedAt)
+    }
+
+    /// Und das Aufwecken über `add` löscht die Uhr genauso — sonst räumte der
+    /// nächste Durchlauf einen **offenen** Artikel weg.
+    func testRevivingClearsTheClock() {
+        let store = makeStore()
+        store.add("Milch")
+        store.toggle(store.items[0])
+        store.add("Milch")
+        XCTAssertNil(store.items[0].checkedAt)
+    }
+
     // MARK: Toggle, remove, clear
 
     func testToggleMovesItemBetweenOpenAndChecked() {
@@ -147,14 +294,20 @@ final class ShoppingListStoreTests: XCTestCase {
         XCTAssertFalse(remaining.contains("Milch"))
     }
 
-    /// Re-suggesting what the user just ticked off would be the app arguing
-    /// with them.
-    func testACheckedItemIsStillOnTheList() {
+    /// **Diese Zusicherung stand bis zum 10.08. auf dem Kopf.**
+    ///
+    /// Sie hieß „ein abgehakter Artikel steht immer noch auf der Liste", mit
+    /// der Begründung, ein Vorschlag darauf wäre die App im Widerspruch zum
+    /// Nutzer — und `add` würde die Dublette ohnehin abweisen. Genau diese
+    /// Abweisung war Scotts Fehler C. Ohne sie ist der Vorschlag kein
+    /// Widerspruch mehr, sondern der kurze Weg zurück: Abgehaktes gehört in den
+    /// Vorrat („Zuletzt verwendet", Punkt D), nicht in eine Sperrliste.
+    func testACheckedItemIsBackInThePool() {
         let remaining = ShoppingSuggestions.remaining(
             for: [ShoppingItem(text: "Brot", isChecked: true)]
         )
 
-        XCTAssertFalse(remaining.contains("Brot"))
+        XCTAssertTrue(remaining.contains("Brot"))
     }
 
     func testNothingLeftToSuggestReturnsAnEmptyStrip() {

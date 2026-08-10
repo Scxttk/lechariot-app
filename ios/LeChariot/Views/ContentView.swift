@@ -58,6 +58,7 @@ struct ContentView: View {
     /// aus diesem Zweig. **Keine der beiden Seiten war für sich falsch.**
     @State private var cleanupDone = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private enum Tab {
         case liste, angebote, einstellungen
@@ -261,6 +262,15 @@ struct ContentView: View {
             if !tutorial.isRunning {
                 tutorial.removeDemoItems(from: shoppingList)
             }
+        }
+        // **Die Lebensdauer des Erledigten**, siehe
+        // `ShoppingListStore.sweepChecked`. Beim Start und bei jeder Rückkehr,
+        // nicht über einen Zeitgeber: Ein Artikel, der verschwindet, während
+        // niemand hinsieht, ist dasselbe Ergebnis für mehr Aufwand — und ein
+        // Artikel, der unter dem Daumen verschwindet, wäre schlechter.
+        .task { shoppingList.sweepChecked() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { shoppingList.sweepChecked() }
         }
         // **Ein Sheet statt eines System-Alerts** (05.08.). Die Frage nach den
         // Filialen ist der Moment, an dem hängt, ob die App je etwas
