@@ -320,6 +320,28 @@ ist 10 pt höher als unter 26.2, und daran hingen zwei rote Journeys auf `main`
 Zwei Zusicherungen der Suite halten ausserdem Zahlen fest, die für dieses Gerät
 gelten. Der Workflow sagt deshalb, was er meint.
 
+### Der Simulator wird gesucht, bevor `xcodebuild` fragt
+
+Ein frischer Runner hat den Simulator-Dienst beim ersten Zugriff noch nicht
+wach. `xcodebuild` bekommt dann eine Geräteliste, in der **nur Platzhalter**
+stehen, und bricht ab:
+
+    Unable to find a device matching the provided destination specifier:
+        { platform:iOS Simulator, OS:26.2, name:iPhone 17 Pro }
+    Available destinations for the "LeChariot" scheme:
+        { platform:iOS Simulator, id:…SimulatorPlaceholder…, name:Any iOS Simulator Device }
+
+Das liest sich wie „die Laufzeit fehlt dem Image" und ist es nicht: Derselbe
+Workflow lief auf demselben Image erst durch und beim nächsten Mal nicht. Ein
+Wettlauf, den man nicht bemerkt, solange man ihn gewinnt.
+
+`.github/simulator.sh` fragt deshalb selbst nach, bis das Gerät auftaucht, und
+gibt dessen **UDID** aus; gefahren wird auf `-destination "id=…"`. Damit hängt
+kein Lauf mehr daran, ob der Dienst rechtzeitig wach war oder ob `xcodebuild`
+den Namen so auflöst, wie er gemeint war. Findet sich nach zwölf Versuchen
+keines, ist das ein Befund und kein Rauschen — dann fehlt dem Image wirklich die
+Laufzeit, und der Lauf sagt das laut, statt auf ein anderes Gerät auszuweichen.
+
 ### Was der Runner kostet, gemessen am 10.08.
 
 | Posten | `macos-26` | Scotts Mac |
