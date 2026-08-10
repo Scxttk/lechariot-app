@@ -1,11 +1,14 @@
-# WEGWERF — Runde 3.
+# WEGWERF — Runde 4.
 #
-# Runde 2 hängt in beiden Armen (ein Klon wie zwei). Beide legen Klone an;
-# `-parallel-testing-worker-count 1` ist immer noch ein Klon, kein Gerät.
-# Hier läuft es ohne: ein von Hand gebootetes Gerät, `-destination id=…`,
-# `-parallel-testing-enabled NO`. Wenn das durchläuft, kommt die Parallelität
-# in CI aus den Scherben und nicht aus Klonen — was ohnehin die sauberere
-# Aufteilung wäre.
+# Was bisher steht: Bauen 52 s, Unit-Tests 3:33 — beides grün, beides auf einem
+# Simulator, den `xcodebuild` selbst hochgefahren hat. Was hängt: jeder Lauf mit
+# Klonen (Runde 2, ein Klon wie zwei) und ein von Hand gebootetes Gerät
+# (`simctl bootstatus -b`, Runde 3, nach 30 Minuten immer noch im Bootschritt).
+#
+# Also die kleinste Frage, die noch offen ist: **Läuft überhaupt eine einzige
+# Journey?** Ein Testfall, kein Klon, dasselbe Ziel wie bei den Unit-Tests,
+# harter Deckel von 15 Minuten — damit es ein Ergebnis gibt und nicht wieder
+# eine Stunde Warten.
 name: Probe3
 
 on:
@@ -17,40 +20,35 @@ on:
 jobs:
   probe:
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
-
-      - name: Gerät booten
-        run: |
+      - run: |
           sudo xcode-select -s /Applications/Xcode_26.3.app
-          udid=$(xcrun simctl list devices available -j \
-            | jq -r '.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-2"][]
-                     | select(.name=="iPhone 17 Pro") | .udid' | head -1)
-          echo "UDID=$udid" >> "$GITHUB_ENV"
-          xcrun simctl boot "$udid"
-          xcrun simctl bootstatus "$udid" -b
-          xcrun simctl list devices | grep -i booted
-
-      - run: cp ios/LeChariot/Resources/APIKeys.example.plist ios/LeChariot/Resources/APIKeys.plist
+          cp ios/LeChariot/Resources/APIKeys.example.plist ios/LeChariot/Resources/APIKeys.plist
 
       - name: Bauen
         run: |
           xcodebuild build-for-testing \
             -project ios/LeChariot.xcodeproj -scheme LeChariot \
-            -destination "id=$UDID" -derivedDataPath build/tests-dd -quiet
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -derivedDataPath build/tests-dd -quiet
 
-      - name: Eine Klasse, kein Klon
+      - name: Ein einziger Testfall, kein Klon
         run: |
           set +e
           xctestrun="$(ls -t build/tests-dd/Build/Products/*.xctestrun | head -1)"
           start=$SECONDS
-          xcodebuild test-without-building -xctestrun "$xctestrun" \
-            -destination "id=$UDID" -parallel-testing-enabled NO \
-            -test-timeouts-enabled YES -maximum-test-execution-time-allowance 180 \
-            -only-testing:LeChariotUITests/OfferHitsJourneyTests 2>&1 | tee lauf.log
-          echo "::notice::UIZEIT ohne Klon: $((SECONDS - start)) s"
-          echo "--- je Test ---"
-          grep -aE "^Test Case .*(passed|failed)" lauf.log | tail -20
+          timeout 900 xcodebuild test-without-building -xctestrun "$xctestrun" \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES -maximum-test-execution-time-allowance 300 \
+            -only-testing:LeChariotUITests/FirstValueJourneyTests/testDismissingAnExampleLeavesTheListAlone \
+            2>&1 | tee lauf.log
+          echo "::notice::EINZELZEIT: $((SECONDS - start)) s"
+          echo "--- Ausgang ---"
+          grep -aE "^Test Case .*(passed|failed)|Executed [0-9]+ test" lauf.log | tail
           echo "--- Symptome ---"
-          grep -aoE "Timed out while [a-z ]+|Failed to launch[^\"]{0,60}|preflight checks|to idle|Unknown application" lauf.log | sort | uniq -c | sort -rn | head
+          grep -aoE "Timed out while [a-zA-Z ]+|Failed to launch[^\"]{0,50}|preflight checks|to idle|Unknown application|Simulator device failed" lauf.log | sort | uniq -c | sort -rn | head
+          echo "--- letzte Zeilen ---"
+          tail -30 lauf.log
