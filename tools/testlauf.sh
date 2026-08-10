@@ -23,8 +23,11 @@
 #
 # Direkt aufgerufen ist es ein kleines Werkzeug für den Workflow:
 #
-#     tools/testlauf.sh scherben 3        # die Klassen auf 3 Scherben verteilen
+#     tools/testlauf.sh scherben 4        # die Klassen auf 4 Scherben verteilen
 #     tools/testlauf.sh seriell           # die Klassen des seriellen Durchgangs
+#     tools/testlauf.sh soll              # was in einem CI-Lauf gelaufen sein muss
+#     tools/testlauf.sh ziel FooTests     # in welchem Ziel die Klasse liegt
+#     tools/testlauf.sh gewichte          # Klassen nach Zahl der Testmethoden
 #     tools/testlauf.sh auswertung x.log  # Urteil über ein Protokoll
 
 TESTLAUF_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
