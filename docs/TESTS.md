@@ -444,6 +444,14 @@ Fehlschlag meldet, ohne dass eine Zusicherung gefallen ist — wird gemeldet und
 nicht bestraft. Wer nur im zweiten Anlauf grün wurde, steht namentlich in der
 Zusammenfassung.
 
+**Der Wächter ist am 10.08. unfreiwillig geprüft worden.** Ein Lauf wurde mitten
+in den Journeys abgebrochen, weil ein neuer Commit ihn ablöste. Die vier
+Scherben lieferten trotzdem ihre Teilbefunde (18/25/20/29 gelaufene Tests) —
+**kein einziger roter Journey-Test**, und nach der ersten Regel allein wäre das
+ein grüner Lauf gewesen. Die zweite Regel hat ihn gefangen und namentlich
+aufgezählt, welche Klassen nie einen Test gemeldet hatten. Genau der Fall, der
+am 08.08. lokal stillschweigend durchging.
+
 ## Wenn etwas kaputt aussieht
 
 **„Timed out while loading Accessibility"** ist ein kaputter Simulator, kein
