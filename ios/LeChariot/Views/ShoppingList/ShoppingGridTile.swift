@@ -184,11 +184,23 @@ struct ShoppingGridTile: View {
                 // verlorengehen — ein leeres Feld wäre genau der stille
                 // Zustand von damals.
                 //
-                // Der ganze Satz steht weiter im Trefferblatt, das das
-                // Kachelmenü öffnet („Warum kein Angebot?").
+                // Der ganze Satz steht weiter im Artikelblatt, das das Halten
+                // öffnet („Warum kein Angebot?").
+                //
+                // **Grün wie jedes andere Zeichen** (10.08., Punkt B-4, Scott:
+                // „das fragezeichen ist okay aber bitte in grün"). Es stand
+                // hier in Grau, und das war eine stille Behauptung: Grau ist in
+                // dieser App die Farbe des Nebensächlichen. Das Fragezeichen
+                // ist aber nicht weniger wichtig als eine Erdbeere — es steht
+                // an genau derselben Stelle und sagt genau dasselbe, nämlich
+                // „das ist der Artikel". Nur eben: den kenne ich nicht.
+                //
+                // Abgehakt wechselt es die Farbe wie die gezeichneten Zeichen
+                // auch — sonst wäre es das einzige Zeichen im Raster, das auf
+                // einer erledigten Kachel noch leuchtet.
                 Image(systemName: "questionmark")
                     .font(.system(size: 26, weight: .light))
-                    .foregroundStyle(Theme.secondaryText)
+                    .foregroundStyle(item.isChecked ? Theme.secondaryText : Theme.accent)
                     .frame(width: 52, height: 46)
                     .accessibilityHidden(true)
             }
