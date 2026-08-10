@@ -138,12 +138,14 @@ jobs:
         with:
           name: produkte
           path: produkte.tar
+          overwrite: true
           retention-days: 1
 
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: bericht-unit
+          overwrite: true
           path: |
             bericht-unit.txt
             unit.log
@@ -156,6 +158,7 @@ jobs:
         if: always()
         with:
           name: bauzeit
+          overwrite: true
           path: bauzeit.txt
 
   journeys:
@@ -235,6 +238,7 @@ jobs:
         if: always()
         with:
           name: bericht-${{ matrix.scherbe.nr }}
+          overwrite: true
           path: |
             bericht-${{ matrix.scherbe.nr }}.txt
             lauf-${{ matrix.scherbe.nr }}.log.gz
