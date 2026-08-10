@@ -61,19 +61,15 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.teilen.outputs.matrix }}
-      klassen: ${{ steps.teilen.outputs.klassen }}
     steps:
       - uses: actions/checkout@v7
       - id: teilen
         run: |
-          N='${{ inputs.scherben || 3 }}'
-          tools/testlauf.sh scherben "$N" > scherben.txt
-          # Scherbe 1 trägt zusätzlich den seriellen Durchgang — so verteilt es
-          # `tools/testlauf.sh` schon beim Rechnen, ihr Gewicht startet deshalb
-          # nicht bei null.
+          tools/testlauf.sh scherben '${{ inputs.scherben || 3 }}' > scherben.txt
+          # `seriell` trägt nur Scherbe 1 — dass ihre parallele Ladung dafür
+          # kleiner ausfällt, hat `tools/testlauf.sh` schon eingerechnet.
           matrix=$(awk '{printf "%s{\"nr\":%d,\"klassen\":\"%s\",\"seriell\":%s}", (NR>1?",":""), NR, $0, (NR==1?"true":"false")}' scherben.txt)
           echo "matrix=[$matrix]" >> "$GITHUB_OUTPUT"
-          echo "klassen=$(tools/testlauf.sh klassen | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
           echo "### Verteilung" >> "$GITHUB_STEP_SUMMARY"
           awk '{n=split($0,a," "); print "- Scherbe " NR ": " n " Klassen"}' scherben.txt >> "$GITHUB_STEP_SUMMARY"
           echo "- seriell (auf Scherbe 1): $(tools/testlauf.sh seriell | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"

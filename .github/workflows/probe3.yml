@@ -1,0 +1,56 @@
+# WEGWERF — Runde 3.
+#
+# Runde 2 hängt in beiden Armen (ein Klon wie zwei). Beide legen Klone an;
+# `-parallel-testing-worker-count 1` ist immer noch ein Klon, kein Gerät.
+# Hier läuft es ohne: ein von Hand gebootetes Gerät, `-destination id=…`,
+# `-parallel-testing-enabled NO`. Wenn das durchläuft, kommt die Parallelität
+# in CI aus den Scherben und nicht aus Klonen — was ohnehin die sauberere
+# Aufteilung wäre.
+name: Probe3
+
+on:
+  push:
+    branches: [ci-suite]
+    paths: ['.github/workflows/probe3.yml']
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Gerät booten
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app
+          udid=$(xcrun simctl list devices available -j \
+            | jq -r '.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-2"][]
+                     | select(.name=="iPhone 17 Pro") | .udid' | head -1)
+          echo "UDID=$udid" >> "$GITHUB_ENV"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl list devices | grep -i booted
+
+      - run: cp ios/LeChariot/Resources/APIKeys.example.plist ios/LeChariot/Resources/APIKeys.plist
+
+      - name: Bauen
+        run: |
+          xcodebuild build-for-testing \
+            -project ios/LeChariot.xcodeproj -scheme LeChariot \
+            -destination "id=$UDID" -derivedDataPath build/tests-dd -quiet
+
+      - name: Eine Klasse, kein Klon
+        run: |
+          set +e
+          xctestrun="$(ls -t build/tests-dd/Build/Products/*.xctestrun | head -1)"
+          start=$SECONDS
+          xcodebuild test-without-building -xctestrun "$xctestrun" \
+            -destination "id=$UDID" -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES -maximum-test-execution-time-allowance 180 \
+            -only-testing:LeChariotUITests/OfferHitsJourneyTests 2>&1 | tee lauf.log
+          echo "::notice::UIZEIT ohne Klon: $((SECONDS - start)) s"
+          echo "--- je Test ---"
+          grep -aE "^Test Case .*(passed|failed)" lauf.log | tail -20
+          echo "--- Symptome ---"
+          grep -aoE "Timed out while [a-z ]+|Failed to launch[^\"]{0,60}|preflight checks|to idle|Unknown application" lauf.log | sort | uniq -c | sort -rn | head
