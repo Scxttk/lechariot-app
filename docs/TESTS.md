@@ -421,6 +421,54 @@ Zwei Kalender im selben Bestand müssen dieselbe Zone haben, sonst stimmen sie
 nur dort überein, wo entwickelt wurde. Dasselbe gilt für die Sprache: Ein
 deutsches „1,2 km" ist eine Zusage und kommt aus `de_DE`, nicht aus `.current`.
 
+### Was ein Lauf dort kostet, dreimal gemessen
+
+Derselbe Commit, dreimal hintereinander, nichts dazwischen geändert:
+
+| | Lauf 1 | Lauf 2 | Lauf 3 |
+|---|---|---|---|
+| `bauen` samt 683 Unit-Tests | 4:59 | 5:16 | **14:20** |
+| Scherben 2–4 | 21–25 min | 21–24 min | 26–33 min |
+| **Scherbe 1** (mit seriellem Durchgang) | 33:39 | **46:33** | 32:25 |
+| **gesamt** | **39:00** | **52:16** | **47:45** |
+
+Lokal: **27–35 min** (`tools/tests.sh`, oben gemessen). **CI ist also nicht
+schneller, und die Spanne ist grösser.** Der Ausreisser ist nicht die Suite,
+sondern die Maschine — in Lauf 3 brauchte schon das Bauen 14:20 statt 5 Minuten
+und die Unit-Tests 10:11 statt 3:42, bei identischem Commit. Wer auf geliehenen
+Kernen misst, misst den Nachbarn mit.
+
+**Die Untergrenze ist Scherbe 1**, und das ist der serielle Durchgang. Wer den
+Lauf kürzen will, fängt dort an, nicht bei der Zahl der Scherben.
+
+### Das Wackelbild — und was davon kein Wackeln ist
+
+856 Tests je Lauf:
+
+| Journey | Lauf 1 | Lauf 2 | Lauf 3 |
+|---|---|---|---|
+| `NextWeekJourneyTests.testTheSameProductInBothWeeks…` | **rot** | **rot** | **rot** |
+| `AddFlowZonesJourneyTests.testTheVisibleStripFollows…` | wackelig | **rot** | **rot** |
+| `TileGestureJourneyTests.testATapChecks…` | **rot** | grün | wackelig |
+| `OnboardingJourneyTests.testAChosenBranchStandsBelow…` | wackelig | grün | grün |
+| `BringSectionsJourneyTests.testTheSecondCardIsGone` | grün | grün | wackelig |
+| die übrigen 851 | grün | grün | grün |
+
+**Die ersten beiden Zeilen sind ein Befund, kein Wackeln.** Die
+Vorschau-Journey fällt dreimal von drei, die Streifen-Journey war in keinem Lauf
+sauber grün. Beide gehören angesehen — die Vorschau hängt an Datumsgrenzen, also
+an derselben Familie wie die vier Stellen oben.
+
+**Die Unit-Tests wackeln dort nicht:** 683 Tests, dreimal null rot.
+
+**Und deshalb urteilt der Workflow beratend.** Lokal steht hier rund *ein*
+wackelnder Test je vollem Lauf; auf dem Runner sind es zwei rote plus null bis
+zwei Wackler, die roten immer dieselben. CI wackelt also schlechter als dieser
+Mac, und eine Ampel, die in jedem Lauf grundlos rot ist, erzieht dazu, rote
+Ampeln zu überblättern. `GATE: '0'` bleibt stehen, bis die beiden oberen
+Journeys grün sind und zwei Läufe hintereinander sauber durchgehen; umgelegt
+wird es in einer Zeile.
+
 ### Geurteilt wird nach Tests, nicht nach Ampeln
 
 Dieselbe Regel wie lokal, und auf einem geliehenen Mac eher noch wichtiger.
