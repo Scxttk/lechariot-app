@@ -108,16 +108,27 @@ struct TutorialOverlay: View {
             // fällt der Sprung weg, mit dem die Karte bisher jeden Rahmen
             // anfing: Ohne Loch stand sie mittig und wanderte erst mit dem
             // eintreffenden Anker an ihren Platz.
-            // **Ohne eigene Kurve auf `cardIsReady`.** Der erste Entwurf
-            // blendete die Karte ein (`.transition(.opacity)` plus
-            // `.animation(…, value: cardIsReady)` am Behälter). Gemessen am
-            // 10.08. kostete das fünf Journeys: Eine Kurve auf dem Behälter
-            // animiert **alles**, was in derselben Transaktion steht — auch die
-            // vier Sperrflächen und das Loch. Der Tipp der Journey landete
-            // dann auf einer Fläche, die noch flog, die Handlung kam nie an,
-            // und der Rundgang lief in seinen Deckel („Der Rundgang hört nicht
-            // auf", zehn Runden auf dem Abhak-Rahmen).
-            if cardIsReady { cardLayer }
+            // **Versteckt, nicht entfernt — und das ist zweimal gemessen.**
+            //
+            // Der erste Entwurf schrieb `if cardIsReady { cardLayer }`. Das
+            // kostete fünf Journeys, und zwar mit **und** ohne Kurve darauf
+            // (10.08., zwei Läufe): Ein `if` wechselt die strukturelle
+            // Identität, und beim Schrittwechsel steht die abtretende Karte
+            // noch im Baum, während die neue schon da ist. Dann gibt es
+            // **zwei** Elemente `tutorial.card`, und XCUITest greift das
+            // erste — die alte. Beide Fehlerbilder erklären sich daraus: Die
+            // Journey wiederholte die Handlung des vorigen Rahmens, bis sie in
+            // ihren Deckel lief („Der Rundgang hört nicht auf"), und auf der
+            // Schlusskarte standen „Tour beenden" und „Fertig" gleichzeitig —
+            // einer je Karte.
+            //
+            // Deshalb bleibt genau **eine** Karte im Baum; sie ist nur
+            // unsichtbar, unantastbar und für Hilfstechnik nicht da, solange
+            // ihr Ziel fehlt.
+            cardLayer
+                .opacity(cardIsReady ? 1 : 0)
+                .allowsHitTesting(cardIsReady)
+                .accessibilityHidden(!cardIsReady)
         }
         .frame(width: proxy.size.width, height: proxy.size.height)
         // Auf den Schritt animiert, nicht auf das Rechteck: Das Rechteck ändert
