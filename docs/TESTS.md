@@ -320,6 +320,28 @@ ist 10 pt höher als unter 26.2, und daran hingen zwei rote Journeys auf `main`
 Zwei Zusicherungen der Suite halten ausserdem Zahlen fest, die für dieses Gerät
 gelten. Der Workflow sagt deshalb, was er meint.
 
+### Was der Runner kostet, gemessen am 10.08.
+
+| Posten | `macos-26` | Scotts Mac |
+|---|---|---|
+| `build-for-testing`, kalt | **52–70 s** | 2–4 min |
+| Unit-Tests (mit Simulator-Start) | **3:33** | ~25 s |
+| Simulator booten | **1:26** | — |
+| `OfferHitsJourneyTests` (3 Tests), ohne Klone | **417 s** (Testzeit 170 s) | ~45 s |
+| dieselbe Klasse, zwei Klone | **508 s**, Auslagerung 480 MB | — |
+
+**Klone bringen dort nichts.** Derselbe Befund wie lokal beim vierten Klon, nur
+eine Stufe tiefer: drei Kerne, 7 GB, und der zweite Klon nimmt den anderen mehr
+weg, als er dazulegt — messbar an der Auslagerung, die ohne Klone bei **null**
+bleibt. Die Parallelität kommt hier aus den Scherben, nicht aus Klonen; das
+erspart nebenbei genau den Wettlauf beim Klon-Start, der lokal in vier von sechs
+Läufen einmal je Lauf zuschlug.
+
+**Bauen ist auf dem Runner schneller, Journeys sind langsamer.** Die 170 s reine
+Testzeit gegen rund 45 s lokal sind grob das Vierfache; die Differenz zwischen
+170 s und 417 s ist Simulator-Start, Installieren und Abräumen — ein Posten je
+Scherbe, kein Posten je Test.
+
 ### Geurteilt wird nach Tests, nicht nach Ampeln
 
 Dieselbe Regel wie lokal, und auf einem geliehenen Mac eher noch wichtiger.
