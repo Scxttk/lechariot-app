@@ -128,25 +128,6 @@ struct OffersView: View {
     var body: some View {
         NavigationStack {
             content
-                // **Nullhöhen-Marker unterhalb der Navigationsleiste** — der
-                // einzige Griff, den SwiftUI auf eine von UIKit gezeichnete
-                // Leiste hergibt. „Nächste Woche" ist ein `ToolbarItem` und
-                // liegt außerhalb des Baums, aus dem die Anker kommen; siehe
-                // `TutorialOverlay.navBarBand`.
-                //
-                // **Er sitzt hier und nicht in `ContentView`, und das ist der
-                // Fund vom 03.08.:** Dort lag er außerhalb dieses
-                // `NavigationStack` und meldete damit die Oberkante der
-                // sicheren Fläche — also die Kante **über** der Leiste. Das
-                // Band lief von 0 bis 66 pt und leuchtete die Uhr aus, während
-                // die Karte „oben links" sagte und der Knopf darunter im
-                // Dunkeln lag.
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    Color.clear
-                        .frame(height: 0)
-                        .allowsHitTesting(false)
-                        .tutorialAnchor(.navBarBottom)
-                }
                 .themedScreen()
                 .navigationTitle("Angebote")
                 .searchable(text: $browser.search, prompt: "Produkt suchen")
@@ -385,7 +366,7 @@ struct OffersView: View {
             // Der Vorschau-Tipp steht oben, direkt unter dem Knopf, den er
             // erklärt — siehe `ContextTipCard`.
             Section {
-                ContextTipCard(store: tips, screen: .offers)
+                ContextTipCard(store: tips, surface: .offers)
                     .listRowInsets(EdgeInsets(
                         top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
                         bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg

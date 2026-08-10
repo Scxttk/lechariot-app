@@ -15,7 +15,7 @@ struct SettingsView: View {
     @Environment(ShoppingListStore.self) private var list
     @Environment(MatchRejectionStore.self) private var rejections
     @Environment(MatchFeedbackStore.self) private var feedback
-    @Environment(TutorialStore.self) private var tutorial
+    @Environment(MarketPromptStore.self) private var marketPrompt
     @Environment(ContextTipStore.self) private var tips
     @Environment(SetupProgressStore.self) private var setup
     @Environment(AreaRequestStore.self) private var areaRequests
@@ -25,7 +25,6 @@ struct SettingsView: View {
     /// `PlaceNameStore`.
     @Environment(PlaceNameStore.self) private var placeNames
     @Environment(DiagnosticsGate.self) private var diagnostics
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(Theme.appearanceKey, store: AppDefaults.shared)
     private var appearance: AppAppearance = .system
     let marketRepository: MarketRepositoryProtocol
@@ -39,6 +38,9 @@ struct SettingsView: View {
     @State private var isPressingVersion = false
     @State private var installIdCopied = false
     @State private var showForgetConfirmation = false
+    /// Ohne Rückmeldung sähe „Tipps wieder anzeigen" aus wie ein Knopf, der
+    /// nichts tut: Die Schilder kommen erst an ihrem Moment wieder.
+    @State private var showTipsResetNotice = false
     @State private var showDeleteConfirmation = false
     @State private var privacy = PrivacyStore()
 
@@ -118,17 +120,6 @@ struct SettingsView: View {
                         .buttonStyle(TactileButtonStyle())
                         .accessibilityIdentifier("settings.setup.list")
                 }
-                if !tutorial.hasSeenTutorial {
-                    Button {
-                        withAnimation(Theme.Motion.screen.animation(reduceMotion: reduceMotion)) {
-                            tutorial.start(origin: .settings, hasMarkets: store.hasFavorites)
-                        }
-                    } label: {
-                        setupRow("Rundgang ansehen")
-                    }
-                    .buttonStyle(TactileButtonStyle())
-                    .accessibilityIdentifier("settings.setup.tour")
-                }
             } header: {
                 Text("Noch offen")
             }
@@ -138,8 +129,12 @@ struct SettingsView: View {
 
     /// Erledigt heißt: Der Abschnitt ist weg. Kein „3 von 3 ✓" als Trophäe —
     /// eine Liste, die nichts mehr zu sagen hat, sagt nichts.
+    ///
+    /// **Zwei Punkte seit dem 10.08.** Der dritte war „Rundgang ansehen"; mit
+    /// dem Rundgang fällt er weg. Was er versprach — zeigen, was die App kann —
+    /// steht jetzt an den vier Orten, an denen es gebraucht wird.
     private var setupIsComplete: Bool {
-        store.hasFavorites && !list.items.isEmpty && tutorial.hasSeenTutorial
+        store.hasFavorites && !list.items.isEmpty
     }
 
     private func setupRow(_ title: String) -> some View {
@@ -166,9 +161,6 @@ struct SettingsView: View {
                 LabeledContent("Filialen und Regionen", value: placesSummary)
             }
             .accessibilityIdentifier("settings.places")
-            // Der Anker sitzt auf der Zeile, nicht auf dem Abschnitt: Ein
-            // `Section` reicht den Modifikator an jede Zeile einzeln durch.
-            .tutorialAnchor(.settingsMarkets)
         } header: {
             Text("Einkaufen")
         } footer: {
@@ -198,28 +190,29 @@ struct SettingsView: View {
 
     private var helpSection: some View {
         Section {
+            // **Der Wiederholweg** (Rundgang-Konzept §4, Schicht 3). Hier stand
+            // „Rundgang erneut ansehen"; die HIG-Vorgabe dahinter — ein
+            // Tutorial ist optional und später leicht wiederzufinden — gilt
+            // unverändert, nur gibt es jetzt Schilder statt einer Führung.
+            //
+            // Zurückgesetzt wird, was gezeigt wurde, nicht was der Nutzer schon
+            // kann: siehe `ContextTipStore.showTipsAgain`.
             Button {
-                // Aus den Einstellungen: **keine** Frage nach den Filialen am
-                // Ende. Wer hier startet, hat seine Wahl längst getroffen oder
-                // sitzt eine Zeile über dem Weg dorthin.
-                //
-                // In einer animierten Transaktion, damit das Overlay auch von
-                // dieser Tür aus **aufgeht** statt zu poppen. Aus dem Onboarding
-                // sah es weich aus, aber nur zufällig: Dort kippt im selben
-                // Durchgang `isOnboardingComplete`, und dessen `.stateAnimation`
-                // deckte den Baum mit ab. Hier gibt es nichts, was das täte.
-                withAnimation(Theme.Motion.screen.animation(reduceMotion: reduceMotion)) {
-                    tutorial.start(origin: .settings, hasMarkets: store.hasFavorites)
-                }
+                tips.showTipsAgain()
+                showTipsResetNotice = true
             } label: {
                 // Gezeichneter Wegweiser statt `sparkles` — siehe `AppGlyph`.
                 // Die zwei Glitzer-Glyphen versprachen Zauberei, wo eine
                 // Einführung und ein Aufräumen stehen ([UI-3], 01.08.).
-                AppGlyphLabel(title: "Rundgang erneut ansehen", glyph: .tour)
+                AppGlyphLabel(title: "Tipps wieder anzeigen", glyph: .tour)
                     .foregroundStyle(Theme.accent)
             }
-            .accessibilityIdentifier("settings.tutorial")
-            .tutorialAnchor(.settingsHelp)
+            .accessibilityIdentifier("settings.tips")
+            .alert("Tipps kommen wieder", isPresented: $showTipsResetNotice) {
+                Button("Alles klar", role: .cancel) {}
+            } message: {
+                Text("Die kurzen Hinweise erscheinen wieder, sobald ihr Moment kommt — auf der Liste und im Angebote-Tab.")
+            }
 
             // **Nur die Vorschläge, nicht die App.**
             //
@@ -277,7 +270,7 @@ struct SettingsView: View {
                         list: list,
                         rejections: rejections,
                         feedback: feedback,
-                        tutorial: tutorial,
+                        marketPrompt: marketPrompt,
                         tips: tips,
                         setup: setup,
                         areaRequests: areaRequests,
@@ -637,10 +630,6 @@ private struct ShoppingPlacesScreen: View {
                     Label("Filialen bearbeiten", systemImage: "storefront")
                         .foregroundStyle(Theme.accent)
                 }
-                // Der Anker sitzt auf der Zeile, nicht auf dem Abschnitt: Ein
-                // `Section` reicht den Modifikator an jede Zeile einzeln durch,
-                // und übrig blieb der Fußtext statt der Filialen.
-                .tutorialAnchor(.settingsMarkets)
             } else {
                 // Ohne Region verschwand dieser Link ersatzlos — und mit ihm
                 // der einzige Weg zu den Filialen. Eine Sackgasse, aus der nur
@@ -651,7 +640,6 @@ private struct ShoppingPlacesScreen: View {
                     Label("Region hinzufügen, um Filialen zu wählen", systemImage: "plus")
                         .foregroundStyle(Theme.accent)
                 }
-                .tutorialAnchor(.settingsMarkets)
             }
         } header: {
             Text("Deine Filialen")
@@ -881,7 +869,8 @@ private struct ProfileEditScreen: View {
         .environment(ShoppingListStore())
         .environment(MatchRejectionStore())
         .environment(MatchFeedbackStore())
-        .environment(TutorialStore())
+        .environment(MarketPromptStore())
+        .environment(ContextTipStore())
         .environment(SetupProgressStore())
         .environment(AreaRequestStore(repository: MockAreaRequestRepository()))
         .environment(BranchRequestStore(repository: MockBranchRequestRepository()))

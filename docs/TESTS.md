@@ -5,7 +5,7 @@ tools/tests.sh                       # alles
 tools/tests.sh AddFlowJourneyTests   # nur diese Klasse(n)
 tools/tests.sh --unit                # nur die Unit-Tests (~25 s)
 tools/tests.sh --workers 2           # weniger Klone, wenn der Mac zu tun hat
-tools/tests.sh RundgangShots --result /tmp/bogen.xcresult   # mit Bildern
+tools/tests.sh SchilderShots --result /tmp/bogen.xcresult   # mit Bildern
 ```
 
 **Zwei Wege, ein Regelwerk.** Lokal läuft die Suite über `tools/tests.sh`, in
@@ -16,7 +16,7 @@ der Workflow ruft es auf. Wer eine Klasse in `SERIELL` einträgt, hat damit
 beide Wege umgestellt. Welcher Weg wann dran ist, steht unter
 [Die Politik](#die-politik).
 
-**Die Bilderbögen brauchen `--result`.** `RundgangShots` und `BedienrundeShots`
+**Die Bilderbögen brauchen `--result`.** `SchilderShots` und `BedienrundeShots`
 hängen ihre PNGs (und den Barrierefreiheits-Baum dazu) ans Ergebnisbündel; ohne
 Pfad gibt es keins, und die Bilder sind weg. Herausholen:
 
@@ -88,7 +88,6 @@ Klasse, nicht je Test. Gemessen am 08.08. im seriellen Grundlauf:
 | Klasse | Testzeit | Tests |
 |---|---|---|
 | `OnboardingJourneyTests` | 399 s | 16 |
-| `TutorialJourneyTests` | 384 s | 16 |
 | `AccessibilityAuditTests` | 303 s | 7 |
 | `PerformanceJourneyTests` | 243 s | 4 |
 | alle übrigen | je 20–162 s | |
@@ -160,7 +159,7 @@ voll:
 | Posten | Vorkommen | Wanduhr je vollem Lauf |
 |---|---|---|
 | Abwesenheitsprüfungen | 20 | 86 s |
-| `Thread.sleep` (Schonfristen des Rundgangs) | 10 | 12 s |
+| `Thread.sleep` (Bilderbogen, Einschwingen) | 10 | 12 s |
 
 Rund 1,6 Minuten von 50, also **3 %**. Dafür jede dieser Zahlen anzufassen
 hieße, Sekunden mit Wackelkontakt zu kaufen. Die Wartelogik in
@@ -214,12 +213,6 @@ zwei** Versuchen, allein auf einem Simulator ist er grün.
 **Merksatz: Wer eine Gestendauer zusichert, misst unter Last die Last.** Solche
 Journeys gehören in den seriellen Durchgang — oder ihre Zusicherung gehört so
 umgeschrieben, dass sie nicht an der Wanduhr hängt.
-
-Der Rundgang (`TutorialJourneyTests`, `TourTargetJourneyTests`) gehört
-ausdrücklich **nicht** dorthin: Er misst Geometrie — wo das wandernde Loch nach
-dem Einschwingen liegt —, und die hängt nicht an der Auslastung. Seine
-Schonfristen sind `Thread.sleep`, also Wanduhr, und die läuft auf einem Klon
-genauso.
 
 Die Liste steht in `tools/tests.sh` (`SERIELL`) und ist absichtlich kurz zu
 halten: Jeder Eintrag wandert aus dem parallelen Durchgang in einen zweiten,

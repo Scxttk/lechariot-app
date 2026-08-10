@@ -145,4 +145,48 @@ final class ContextTipJourneyTests: XCTestCase {
         XCTAssertFalse(card.waitForExistence(timeout: 2),
                        "Die Frage kam nach dem Neustart wieder")
     }
+    /// **Die Umkehrung von `testTheTourCoversTheAppCompletelyWhileItRuns`.**
+    ///
+    /// Der Rundgang legte sich modal über die App: Sperrflächen außen, ein Loch
+    /// innen, das „Mehr"-Menü wurde gar nicht erst gebaut. Genau das war die
+    /// Zusicherung, die diese Journey bis zum 10.08. festhielt — und genau das
+    /// ist mit dem Abriss weg. Die neue Zusage lautet umgekehrt: **Während ein
+    /// Schild steht, bleibt die App vollständig bedienbar.**
+    ///
+    /// Sie wird hier nicht behauptet, sondern durchgetippt: Tab wechseln,
+    /// Menü öffnen, Artikel anlegen — alles, während das Schild dasteht.
+    func testTheAppStaysUsableWhileASignStands() {
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded", "-uiTestingTips"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+
+        app.tabBars.buttons["Angebote"].tap()
+        XCTAssertTrue(tipTitle.waitForExistence(timeout: 15), "Ohne Schild prüft die Journey nichts")
+
+        // 1. Die Tab-Leiste trägt weiter. Der Rundgang schob hier zurück.
+        app.tabBars.buttons["Liste"].tap()
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 10),
+                      "Der Tab-Wechsel muss durchgehen, während ein Schild steht")
+
+        app.tabBars.buttons["Angebote"].tap()
+        XCTAssertTrue(tipTitle.waitForExistence(timeout: 10),
+                      "…und das Schild steht danach noch")
+
+        // 2. Das ✗ nimmt das Schild weg, ohne sonst etwas anzufassen.
+        let close = app.buttons["tip.dismiss"].firstMatch
+        XCTAssertTrue(close.waitForExistence(timeout: 5), "Das Schild trägt sein ✗")
+        close.tap()
+        XCTAssertTrue(tipTitle.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Angebote"].exists,
+                      "Weggetippt heißt: Schild weg, Bildschirm bleibt")
+
+        // 3. Und das Ziel, auf das es zeigt, ist wirklich erreichbar — der
+        //    Rundgang hat an dieser Stelle einen Riegel gebraucht, das Schild
+        //    braucht keinen.
+        let vorschau = app.buttons["offers.nextWeek"]
+        XCTAssertTrue(vorschau.waitForExistence(timeout: 15))
+        vorschau.tap()
+        XCTAssertTrue(app.navigationBars["Nächste Woche"].waitForExistence(timeout: 20),
+                      "Der Weg, den das Schild nennt, muss offen sein")
+    }
 }

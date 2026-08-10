@@ -56,30 +56,10 @@ enum SuggestionSurface {
     ///   - keyboardIsUp: Ob das Feld den Fokus hat.
     ///   - detailPanelIsUp: Ob die Angaben-Schicht über der Zeile steht.
     ///   - listIsEmpty: Ob die Einkaufsliste leer ist.
-    ///   - tourIsRunning: Ob der Rundgang läuft.
     static func shape(isTyping: Bool,
                       keyboardIsUp: Bool,
                       detailPanelIsUp: Bool,
-                      listIsEmpty: Bool,
-                      tourIsRunning: Bool = false) -> Shape {
-        // 0. **Während des Rundgangs holt die Tastatur nichts.**
-        //
-        // Das ist nicht Vorsicht, sondern ein gemessener Fehler: Der erste
-        // Rahmen lädt zum Tippen ein, danach steht die Tastatur bei leerem
-        // Feld — nach der neuen Regel also der Vorschlagsstreifen. Der zweite
-        // Rahmen bittet um einen Tipp auf die **Kachel**, und der Streifen
-        // schiebt die Liste so weit hoch, dass dieser Tipp auf „Milch
-        // hinzufügen" landete. Im Testlauf stand danach eine Kachel „Milch"
-        // auf der Liste, die niemand angelegt hat
-        // (`TutorialJourneyTests.testTheTourBorrowsNothingAndKeepsWhatTheUserWrote`).
-        //
-        // Dieselbe Rücksicht nimmt die Angaben-Schicht schon seit dem 05.08.
-        // (`ShoppingListView.activeFlowItem`), und aus demselben Grund: Was
-        // unter dem Rahmen von selbst aufgeht, verschiebt sein Ziel.
-        //
-        // Die leere Liste behält ihren Streifen — dort stand er vor dieser
-        // Runde auch, und der Rundgang fängt auf ihr an.
-        if tourIsRunning { return listIsEmpty && !isTyping ? .staples : .none }
+                      listIsEmpty: Bool) -> Shape {
         // 1. **Wer tippt, bekommt Produkte.** Der Fall gewinnt vor der
         //    Angaben-Schicht: Sobald wieder getippt wird, ist der vorige
         //    Artikel abgehandelt, und zwei Schichten übereinander sind genau

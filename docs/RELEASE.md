@@ -195,8 +195,8 @@ keine Filialen, und die App sieht dann leer aus.
 1. Onboarding: Vorname eingeben, dann PLZ 01219 tippen
 2. Die Frage "Welche Maerkte magst du?" kann uebersprungen werden ("Spaeter");
    danach zeigt die App die Ketten und Filialen der Gegend
-3. Zum Schluss bietet die App einen kurzen Rundgang an - "Los geht's" fuehrt
-   durch die Einkaufsliste, "Spaeter" geht direkt dorthin
+3. Zum Schluss fragt die App nach den Filialen, wenn noch keine gewaehlt ist -
+   "Spaeter" geht direkt in die Liste
 4. Auf der Einkaufsliste steht "Noch keine Filiale gewaehlt". Dort auf
    "Filialen waehlen" tippen und zwei bis drei Laeden auswaehlen
    (z. B. Lidl, ALDI, Netto), dann "Fertig"

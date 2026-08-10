@@ -16,7 +16,7 @@ import XCTest
 final class MotionTests: XCTestCase {
     /// **Eine Familie, zwei Größenordnungen.** Zwei verschiedene Kurven wären
     /// zwei Regeln; genau daraus bestand der gemeldete Zustand. `.snappy` ist
-    /// die, die der Rundgang seit PR #21 schon nutzt.
+    /// die, die der Rundgang seit PR #21 genutzt hat.
     func testBothKindsUseTheSameCurveFamily() {
         XCTAssertEqual(Theme.Motion.screen.animation, .snappy(duration: 0.3))
         XCTAssertEqual(Theme.Motion.element.animation, .snappy(duration: 0.22))

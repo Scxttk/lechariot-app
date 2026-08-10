@@ -91,14 +91,12 @@ struct ItemDetailPanel: View {
         // **Kein Bezeichner auf dem Behälter.** Er erbt sich auf jedes Kind
         // und überschreibt dessen eigenen — am Simulator gemessen: „Notiz …"
         // trug danach `list.detailPanel` statt `list.detailPanel.more` und war
-        // für keine Journey mehr auffindbar. Dieselbe Falle steht seit dem
-        // 30.07. in `TutorialOverlay` beschrieben.
-        // **Ein- und ausblenden, nicht schieben — und das ist keine
-        // Geschmacksfrage.** `.move(edge: .bottom)` verschiebt die Schicht in
-        // ihren Platz hinein, und der Rundgang-Anker nimmt diese Verschiebung
-        // mit: Am 03.08. gemessen lag sein Loch danach dauerhaft 186 pt tiefer
-        // als die Schicht, die der Rahmen erklärt — der Anker wird nach der
-        // Bewegung nicht noch einmal gemeldet. Ohne Versatz kein falsches Loch.
+        // für keine Journey mehr auffindbar.
+        //
+        // **Ein- und ausblenden, nicht schieben.** `.move(edge: .bottom)`
+        // verschiebt die Schicht in ihren Platz hinein; das hat am 03.08. den
+        // Rundgang-Anker um 186 pt versetzt. Den Rundgang gibt es nicht mehr,
+        // die Bewegung war aber auch für sich die unruhigere.
         .transition(.opacity)
     }
 

@@ -18,9 +18,8 @@ struct ShoppingListView: View {
     @Environment(ProfileStore.self) private var profile
     /// Zählt beim Abhaken mit — siehe `PurchaseHistoryStore`.
     @Environment(PurchaseHistoryStore.self) private var history
-    /// Optional, damit Previews ohne Rundgang auskommen.
-    @Environment(TutorialStore.self) private var tutorial: TutorialStore?
-    /// Die Einmal-Tipps — optional aus demselben Grund. Die Liste meldet ihm
+    /// Die vier Einmal-Schilder — optional, damit Previews ohne sie
+    /// auskommen. Die Liste meldet ihm
     /// nur Momente; entschieden wird in `ContextTipRules`.
     @Environment(ContextTipStore.self) private var tips: ContextTipStore?
     /// Die zwei ersten Male (Artikel, Treffer) und die Checkliste dazu.
@@ -239,17 +238,15 @@ struct ShoppingListView: View {
             hasMarkets: hasMarkets,
             firstItemAdded: setup.firstItemAdded,
             checklistVisible: setup.checklistIsVisible(hasMarkets: hasMarkets),
-            tourIsRunning: tutorial?.isRunning == true,
             flowActive: addFlow.isActive,
             tipActive: activeListTip != nil
         )
     }
 
-    /// Der aktive Einmal-Tipp, sofern er zu **diesem** Bildschirm gehört —
+    /// Das aktive Schild, sofern es zu **diesem** Bildschirm gehört —
     /// der Vorschau-Tipp des Angebote-Tabs zählt hier nicht.
     private var activeListTip: ContextTip? {
-        guard let tip = tips?.active, ContextTipCard.Screen.list.owns(tip) else { return nil }
-        return tip
+        tips?.activeTip(on: .list)
     }
 
     /// Ob eine Führungsfläche den Bildschirm hätte, wenn kein Tipp aktiv wäre
@@ -263,7 +260,6 @@ struct ShoppingListView: View {
             hasMarkets: hasMarkets,
             firstItemAdded: setup.firstItemAdded,
             checklistVisible: setup.checklistIsVisible(hasMarkets: hasMarkets),
-            tourIsRunning: tutorial?.isRunning == true,
             flowActive: false,
             tipActive: false
         ) != .none
@@ -278,12 +274,9 @@ struct ShoppingListView: View {
     /// Ob gerade der **allererste** Treffer auf dem Bildschirm steht.
     ///
     /// Kurzgeschlossen über den persistierten Merker: Nach dem ersten Mal
-    /// kostet die Frage nichts mehr. Der Rundgang zählt nicht — seine
-    /// Beispiel-Artikel sind nicht die eigenen Daten, und genau dort soll der
-    /// Moment passieren.
+    /// kostet die Frage nichts mehr.
     private var firstMatchArrived: Bool {
         guard !setup.firstMatchSeen,
-              tutorial?.isRunning != true,
               !list.items.isEmpty else { return false }
         // Direkt an der Wertung abgelesen: `OfferHitSummary` hat diese Frage
         // bis zum 06.08. beantwortet und ist mit der Trefferzeile weggefallen.
@@ -360,20 +353,6 @@ struct ShoppingListView: View {
                 }
             }
         }
-        // **Der Rundgang räumt die Eingabe weg, bevor er auf die Liste zeigt**
-        // (09.08.). Nach dem Anlegen eines Artikels stehen Tastatur und
-        // Angaben-Schicht; die Tab-Leiste liegt darunter und die Kacheln sind
-        // auf eine Reihe zusammengeschoben. Ein Rahmen, der auf einen Tipp auf
-        // die Tab-Leiste wartet, wartet dann für immer.
-        //
-        // Das ist die eine Stelle, an der der Rundgang die App noch selbst
-        // anfasst — und sie räumt nur auf, sie bedient nichts. Welche Rahmen
-        // das brauchen, steht im Schritt (`clearsInputFlow`), nicht hier.
-        .onChange(of: tutorial?.index) { _, _ in
-            guard tutorial?.isRunning == true, tutorial?.step.clearsInputFlow == true,
-                  flowIsUp else { return }
-            endFlow()
-        }
         .onReceive(NotificationCenter.default.publisher(
             for: UIResponder.keyboardWillChangeFrameNotification
         )) { meldung in
@@ -392,12 +371,9 @@ struct ShoppingListView: View {
         // Bestehende Installationen: Wer schon Artikel auf der Liste hat, hat
         // seinen ersten längst hinzugefügt — nur der Merker ist jünger als die
         // Liste. Ohne den Nachtrag stünde in der Checkliste ein offener Punkt
-        // über einer vollen Liste. Liegengebliebene Rundgang-Artikel (App-Tod
-        // mitten in der Tour) zählen nicht; die räumt `ContentView` ohnehin ab.
+        // über einer vollen Liste.
         .task {
-            if !list.items.isEmpty, tutorial?.seededItems.isEmpty ?? true {
-                setup.recordItemAdded()
-            }
+            if !list.items.isEmpty { setup.recordItemAdded() }
         }
         // **Der Aha-Moment.** Sobald der erste Treffer dasteht, wird er
         // festgehalten — und die Kachel der Zeile leuchtet genau einmal kurz
@@ -445,8 +421,7 @@ struct ShoppingListView: View {
         }
         // **Eine** Stelle statt drei Aufrufstellen (Feld, Wörterbuch-Kacheln,
         // Vorschlags-Kacheln): Jeder Weg, der wirklich etwas anlegt, wächst
-        // hier durch. Die Beispiel-Artikel des Rundgangs laufen auch durch —
-        // der Store sortiert sie über `tourIsRunning` aus.
+        // hier durch.
         .onChange(of: list.items.count) { old, new in
             if new > old { tips?.itemAdded() }
         }
@@ -510,8 +485,7 @@ struct ShoppingListView: View {
     /// Kachel von 76 pt trägt keinen Satz. Alle drei stehen weiterhin im
     /// Trefferblatt, das das Kontextmenü der Kachel öffnet, und der
     /// Vorlesetext der Kachel spricht sie unverändert aus.
-    private func raster(_ items: [ShoppingItem], plan: [MarketListRank],
-                        firstOpenItem: UUID?) -> some View {
+    private func raster(_ items: [ShoppingItem], plan: [MarketListRank]) -> some View {
         LazyVGrid(
             columns: ShoppingGridTile.columns,
             alignment: .leading,
@@ -521,9 +495,6 @@ struct ShoppingListView: View {
                 ShoppingGridTile(
                     item: item,
                     suggestion: suggestion(for: item, plan: plan),
-                    // Nur die erste offene Kachel trägt die Anker des
-                    // Rundgangs — sonst zeigt das Loch auf sechs Stellen.
-                    carriesTutorialAnchors: item.id == firstOpenItem,
                     highlightsFirstMatch: item.id == glowItemID,
                     onToggle: { check(item) },
                     onOpenItem: { openSheet(for: item) },
@@ -692,7 +663,6 @@ struct ShoppingListView: View {
                         winnerWithoutPins: winnerWithoutPins(plan),
                         onShowHits: { hitsRanks = plan }
                     )
-                        .tutorialAnchor(.planCard)
                         .listRowInsets(EdgeInsets(
                             top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
                             bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
@@ -710,7 +680,6 @@ struct ShoppingListView: View {
                 // während des Rundgangs immer die Karte, seines Ankers wegen.
                 Section {
                     NoMarketsCard(action: onChooseMarkets)
-                        .tutorialAnchor(.planCard)
                         .listRowInsets(EdgeInsets(
                             top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
                             bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
@@ -728,7 +697,7 @@ struct ShoppingListView: View {
             // gebaut ist. Jetzt entscheidet dieselbe Vorfahrtsregel auch hier.
             if guidance == .tip {
                 Section {
-                    ContextTipCard(store: tips, screen: .list)
+                    ContextTipCard(store: tips, surface: .list)
                         .listRowInsets(EdgeInsets(
                             top: Theme.Spacing.sm, leading: Theme.Spacing.lg,
                             bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
@@ -764,11 +733,9 @@ struct ShoppingListView: View {
             // trifft, den die Liste zeichnet.
             let abschnitte = openGroups(plan: plan)
             let showsHeaders = abschnitte.showsHeaders
-            let firstOpenItem = list.uncheckedItems.first?.id
-
             ForEach(abschnitte.groups) { section in
                 Section {
-                    raster(section.items, plan: plan, firstOpenItem: firstOpenItem)
+                    raster(section.items, plan: plan)
                         // Das Ziel des Mitscrollens — siehe `followTheFlow`
                         // oben. Eine `List`-Zeile ist die feinste Auflösung,
                         // die `ScrollViewReader` hier hergibt.
@@ -800,7 +767,7 @@ struct ShoppingListView: View {
 
             if !list.checkedItems.isEmpty {
                 Section("Erledigt") {
-                    raster(list.checkedItems, plan: plan, firstOpenItem: nil)
+                    raster(list.checkedItems, plan: plan)
                     // **Der eine Satz, der Scotts Frage beantwortet** („when
                     // does erledigt products get deleted", 10.08.). Sonst gilt
                     // hier die Regel gegen erklärenden Beitext — die Ausnahme
@@ -970,10 +937,10 @@ struct ShoppingListView: View {
     }
 
     /// Ob die Ansprache die Einladung „Füg mal ‚Milch‘ hinzu" trägt. Nur vor
-    /// dem allerersten Artikel, nie während des Rundgangs — und nicht, wenn
-    /// die Beispiel-Angebote sie schon tragen.
+    /// dem allerersten Artikel — und nicht, wenn die Beispiel-Angebote sie
+    /// schon tragen.
     private var showsFirstItemPrompt: Bool {
-        guard !setup.firstItemAdded, tutorial?.isRunning != true else { return false }
+        guard !setup.firstItemAdded else { return false }
         switch guidance {
         case .firstItem: return firstItemExamples.isEmpty
         case .noMarkets: return true
@@ -1033,13 +1000,7 @@ struct ShoppingListView: View {
     /// hatte, aus genau diesem Streifen heraus. Bei **einem** Artikel war er
     /// damit gar nicht zu sehen: 324 pt gemessen, bei einem Block ab 183.
     ///
-    /// **Während des Rundgangs bleibt sie.** Sein Plan-Rahmen hängt an ihrem
-    /// Anker, und wer der Einladung „Probier es gleich aus" folgt, hätte den
-    /// Rahmen sonst nie gesehen — dieselbe Rücksicht, die `activeFlowItem`
-    /// schon nimmt.
-    private var planCardStandsBack: Bool {
-        tutorial?.isRunning != true && flowIsUp
-    }
+    private var planCardStandsBack: Bool { flowIsUp }
 
     /// Ob gerade etwas im Feld steht.
     private var isTyping: Bool {
@@ -1053,8 +1014,7 @@ struct ShoppingListView: View {
             isTyping: isTyping,
             keyboardIsUp: inputFocused,
             detailPanelIsUp: detailPanelIsUp,
-            listIsEmpty: list.items.isEmpty,
-            tourIsRunning: tutorial?.isRunning == true
+            listIsEmpty: list.items.isEmpty
         )
     }
 
@@ -1383,10 +1343,6 @@ struct ShoppingListView: View {
                 .accessibilityLabel("\(staple) hinzufügen")
             }
         }
-        // Seit L-2 steht das Raster an **einer** Stelle. Vorher lag es im
-        // Leerzustand und als Listenabschnitt, und welches der beiden der
-        // Rundgang ausleuchtete, entschied der Preference-Merge.
-        .tutorialAnchor(.suggestions)
     }
 
     // MARK: Angaben
@@ -1397,15 +1353,6 @@ struct ShoppingListView: View {
     /// den Chips, die man ihr gerade gibt, und das Panel bliebe grau, während
     /// die Liste die Angabe schon trägt.
     private var activeFlowItem: ShoppingItem? {
-        // **Während des Rundgangs bleibt die Angaben-Schicht zu.** Der erste
-        // Rahmen lädt zum Tippen ein („Probier es gleich aus"); wer das tut,
-        // hätte die Schicht sonst über den ganzen Rundgang stehen und nähme
-        // damit dem Plan-Rahmen darunter seinen Platz — der überspringt sich
-        // dann selbst, und zwar ausgerechnet bei dem, der der Aufforderung
-        // gefolgt ist. Ihren eigenen Rahmen hatte die Schicht bis zum 05.08.;
-        // seit der Kürzung auf den Kern-Loop erklärt sie ein Einmal-Tipp an
-        // Ort und Stelle (TipKit, eigenes Arbeitspaket).
-        if tutorial?.isRunning == true { return nil }
         guard let id = addFlow.activeID else { return nil }
         return list.items.first { $0.id == id }
     }
@@ -1455,12 +1402,11 @@ struct ShoppingListView: View {
                     tips?.detailsUsed()
                 }
             )
-            .tutorialAnchor(.detailPanel)
         }
     }
 
     /// Die Kachelzeile über dem Panel. Der aktive Artikel ist immer dabei —
-    /// auch dann, wenn der Rundgang ihn gesetzt hat und der Fluss leer ist.
+    /// auch dann, wenn der Fluss leer ist.
     private func recentFlowItems(active: ShoppingItem) -> [ShoppingItem] {
         let ids = addFlow.recent
         let known = ids.compactMap { id in list.items.first { $0.id == id } }
@@ -1564,7 +1510,6 @@ struct ShoppingListView: View {
         .padding(.vertical, Theme.Spacing.sm)
         // Bar across the whole width, field only as wide as the list above it.
         .readableWidth()
-        .tutorialAnchor(.inputBar)
     }
 
     private func addItem() {
@@ -1643,26 +1588,18 @@ struct ShoppingListView: View {
 
     @ToolbarContentBuilder
     private var toolbarMenu: some ToolbarContent {
-        // Während des Rundgangs gibt es das Menü nicht.
-        //
-        // Die Navigationsleiste zeichnet UIKit; `accessibilityHidden` auf dem
-        // Inhalt erreicht sie nicht, und „Liste leeren" mitten in der Führung
-        // wäre der eine Knopf, der wirklich Schaden anrichtet. Also nicht
-        // verstecken, sondern gar nicht erst bauen.
         ToolbarItem(placement: .topBarTrailing) {
-            if tutorial?.isRunning != true {
-                Menu {
-                    Button("Erledigte entfernen", systemImage: "checkmark.circle") {
-                        withAnimation { list.clearChecked() }
-                    }
-                    .disabled(list.checkedItems.isEmpty)
-                    Button("Liste leeren", systemImage: "trash", role: .destructive) {
-                        withAnimation { list.clearAll() }
-                    }
-                    .disabled(list.items.isEmpty)
-                } label: {
-                    Label("Mehr", systemImage: "ellipsis.circle")
+            Menu {
+                Button("Erledigte entfernen", systemImage: "checkmark.circle") {
+                    withAnimation { list.clearChecked() }
                 }
+                .disabled(list.checkedItems.isEmpty)
+                Button("Liste leeren", systemImage: "trash", role: .destructive) {
+                    withAnimation { list.clearAll() }
+                }
+                .disabled(list.items.isEmpty)
+            } label: {
+                Label("Mehr", systemImage: "ellipsis.circle")
             }
         }
     }
@@ -1678,8 +1615,7 @@ private struct RankBundle: Identifiable {
 ///
 /// Die Karte wegzulassen wäre die bequeme Antwort gewesen — dann steht auf dem
 /// ersten Bildschirm der App nichts, was erklärt, warum man Filialen wählen
-/// sollte, und der Rundgang überspringt den Rahmen, der den Zweck der App
-/// erklärt. Also steht hier, was fehlt, und daneben der Weg dahin.
+/// sollte. Also steht hier, was fehlt, und daneben der Weg dahin.
 struct NoMarketsCard: View {
     let action: () -> Void
 
