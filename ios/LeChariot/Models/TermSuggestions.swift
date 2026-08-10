@@ -44,13 +44,7 @@ enum TermSuggestions {
     ///     ganze Anfrage.
     ///   - offers: der Vorrat der gewählten Filialen.
     static func words(for typed: String, in offers: [Offer]) -> [String] {
-        // **Ein einzelner Buchstabe schlägt nichts vor, und diese Regel steht
-        // nicht hier.** `OfferMatcher.tokens` wirft Wörter unter zwei Zeichen
-        // weg — das Raster erbt sie damit von der Suche selbst, statt sie ein
-        // zweites Mal zu formulieren. Eine eigene Grenze hier wäre eine zweite
-        // Regel, die eines Tages von der ersten abweicht. (Zuerst stand hier
-        // `prefix.count >= 2`; die Gegenprobe zeigte, dass sie nie greift.)
-        let prefix = OfferMatcher.tokens(typed).last ?? ""
+        let prefix = self.prefix(of: typed)
         guard !prefix.isEmpty else { return [] }
 
         let reachable = reachableVocabulary(in: offers)
@@ -71,6 +65,26 @@ enum TermSuggestions {
             }
             .prefix(limit)
             .map(QueryUnderstanding.display)
+    }
+
+    /// **Der Anfang, auf den geschaut wird — ab dem ersten Buchstaben.**
+    ///
+    /// Bis zum 10.08. kam er aus `OfferMatcher.tokens`, und das Raster erbte
+    /// damit eine Regel der **Suche**: Wörter unter zwei Zeichen fliegen raus,
+    /// weil ein einzelner Buchstabe in einem Prospekttitel nichts bedeutet.
+    /// Für einen getippten Anfang bedeutet er sehr wohl etwas — Scotts Punkt E
+    /// sagt es wörtlich: „if u type a letter the matching starts". Ein „m" hat
+    /// im Wörterbuch 63 Kandidaten, davon steht diese Woche eine Handvoll im
+    /// Prospekt; die Liste ist ohnehin auf `limit` gedeckelt.
+    ///
+    /// Normalisiert wird weiter mit `OfferMatcher` — Groß-/Kleinschreibung und
+    /// Umlaute müssen genauso fallen wie in der Suche, sonst findet „Käse"
+    /// etwas anderes als „kaese".
+    ///
+    /// **Gewertet wird das letzte Wort:** Wer „bio mil" tippt, meint mit „mil"
+    /// das nächste Wort, nicht die ganze Anfrage.
+    static func prefix(of typed: String) -> String {
+        OfferMatcher.normalize(typed).split(separator: " ").last.map(String.init) ?? ""
     }
 
     /// Was der Vorrat dieser Woche überhaupt hergibt — einmal gerechnet statt

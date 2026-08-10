@@ -25,18 +25,14 @@ struct ShoppingListView: View {
     @Environment(ContextTipStore.self) private var tips: ContextTipStore?
     /// Die zwei ersten Male (Artikel, Treffer) und die Checkliste dazu.
     @Environment(SetupProgressStore.self) private var setup
-    @State private var detailItem: ShoppingItem?
-    /// Der Artikel, dessen Angaben gerade bearbeitet werden — nicht zu
-    /// verwechseln mit `detailItem`, das die **Angebote** zum Artikel zeigt.
-    @State private var editingItem: ShoppingItem?
+    /// Der Artikel, dessen Blatt gerade oben steht — Angaben **und** Treffer,
+    /// siehe `ItemSheet`. Bis zum 10.08. waren das zwei Zustände.
+    @State private var sheetItem: ShoppingItem?
     @State private var newItemText = ""
     @FocusState private var inputFocused: Bool
     /// Der laufende Tipp-Fluss — siehe `AddFlowState` und `ItemDetailPanel`.
     /// Bewusst `@State` und nicht persistiert: Er endet mit der Tastatur.
     @State private var addFlow = AddFlowState()
-    /// Was der Nutzer in dieser Sitzung zuletzt mit der Vorschlagsfläche getan
-    /// hat — siehe `SuggestionSurface`. Bewusst `@State` und nicht persistiert.
-    @State private var suggestionChoice: Bool?
     /// Die Wertung, die hinter „Passende Artikel im Angebot" liegt — gesetzt
     /// beim Antippen, damit das Blatt genau den Lauf zeigt, dessen Zahlen in
     /// der Zeile standen. Siehe `OfferHitsView`.
@@ -468,22 +464,21 @@ struct ShoppingListView: View {
                 guidanceVisible: moment.guidanceVisible
             )
         }
-        .sheet(item: $detailItem) { item in
-            MatchDetailView(
+        // **Ein Blatt je Artikel, und es trägt beides** (10.08., Punkt A).
+        // Bis heute standen hier zwei: die Treffer (`detailItem`) und die
+        // Angaben (`editingItem`). Siehe `ItemSheet`.
+        .sheet(item: $sheetItem) { item in
+            ItemSheet(
                 item: item,
                 offers: offerStore.offers,
                 favoriteMarkets: favoriteMarkets
             )
                 .environment(rejections)
-                // Das Blatt schreibt die Heftung selbst und muss den Artikel
-                // dafür **live** lesen: `detailItem` ist eine Kopie vom Moment
-                // des Antippens und wüsste von der eigenen Änderung nichts.
+                // Das Blatt schreibt Angaben und Heftung selbst und muss den
+                // Artikel dafür **live** lesen: `sheetItem` ist eine Kopie vom
+                // Moment des Antippens und wüsste von der eigenen Änderung
+                // nichts.
                 .environment(list)
-        }
-        .sheet(item: $editingItem) { item in
-            ItemDetailSheet(item: item) { detail, note in
-                list.setDetail(detail, note: note, for: item)
-            }
         }
         .sheet(item: Binding(
             get: { hitsRanks.map(RankBundle.init) },
@@ -531,8 +526,7 @@ struct ShoppingListView: View {
                     carriesTutorialAnchors: item.id == firstOpenItem,
                     highlightsFirstMatch: item.id == glowItemID,
                     onToggle: { check(item) },
-                    onShowMatches: { detailItem = item },
-                    onEditDetail: { openDetails(for: item) },
+                    onOpenItem: { openSheet(for: item) },
                     onDelete: { list.remove(item) }
                 )
             }
@@ -1052,13 +1046,14 @@ struct ShoppingListView: View {
         !newItemText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    /// Ob die Fläche gerade offen steht. Die Regel steht in
-    /// `SuggestionSurface`, hier stehen nur die drei Eingaben.
-    private var surfaceIsExpanded: Bool {
-        SuggestionSurface.isExpanded(
-            choice: suggestionChoice,
-            listIsEmpty: list.items.isEmpty,
-            isTyping: isTyping
+    /// Welche Gestalt die Fläche über der Zeile gerade hat. Die Regel steht in
+    /// `SuggestionSurface`, hier stehen nur die vier Eingaben.
+    private var surfaceShape: SuggestionSurface.Shape {
+        SuggestionSurface.shape(
+            isTyping: isTyping,
+            keyboardIsUp: inputFocused,
+            detailPanelIsUp: detailPanelIsUp,
+            listIsEmpty: list.items.isEmpty
         )
     }
 
@@ -1099,16 +1094,13 @@ struct ShoppingListView: View {
         TermSuggestions.words(for: newItemText, in: offerStore.offers)
     }
 
-    /// **Beim Tippen zeigt dieselbe Fläche etwas anderes — aber nur auf
-    /// Verlangen** (2026-08-08, Scotts Punkt C-1).
+    /// **Beim Tippen zeigt dieselbe Fläche etwas anderes — und zwar von
+    /// selbst** (10.08., Punkt E).
     ///
-    /// Bis heute stand das Wörterbuch-Raster **bedingungslos** da, sobald ein
-    /// Buchstabe im Feld war: Der Zweig hier fragte `surfaceIsExpanded` gar
-    /// nicht. Beim zweiten Artikel lagen damit zwei Flächen übereinander — das
-    /// Raster über den Angaben des ersten — und die Liste, in die man gerade
-    /// etwas einträgt, war ein Streifen. Der Winkel-Knopf links im Feld holt
-    /// das Raster zurück; er war schon der Weg zurück zu „Häufig auf der
-    /// Liste" und ist jetzt der Weg zu beiden Fassungen.
+    /// Zwei Zustände, wie im Referenzvideo: Tastatur auf und Feld leer heißt
+    /// „Häufig auf der Liste", ab dem ersten Buchstaben stehen an derselben
+    /// Stelle die **passenden Produkte**. Welcher dran ist, entscheidet
+    /// `SuggestionSurface` — hier steht nur, was die Gestalten zeichnen.
     ///
     /// **Eine feste Höhe, und der Grund dafür ist nachgemessen ein anderer als
     /// der naheliegende.** Die Vermutung war: Wächst die Fläche, schiebt sie
@@ -1126,41 +1118,18 @@ struct ShoppingListView: View {
     /// Leerfläche unter einer einzelnen Kachel.
     @ViewBuilder
     private var suggestionSurface: some View {
-        if isTyping {
-            if surfaceIsExpanded { termSurface }
-        } else {
-            stapleSurface
+        switch surfaceShape {
+        case .none: EmptyView()
+        case .terms: termSurface
+        case .staples: stapleSurface(schmal: false)
+        case .staplesRow: stapleSurface(schmal: true)
         }
     }
 
-    /// **Der Vorschlagsstreifen weicht dem Angaben-Panel — mit zwei Ausnahmen.**
-    ///
-    /// Beides gleichzeitig stehen zu lassen wäre der bequeme Weg gewesen und
-    /// hätte den Block unten auf über 300 Punkte gebracht; von der Liste, in
-    /// die man gerade etwas einträgt, bliebe neben der Tastatur kaum etwas
-    /// übrig. Also weicht der Streifen — aber **nicht** stillschweigend: Der
-    /// Winkel-Knopf links im Feld holt ihn zurück, und genau dafür gibt es ihn.
-    ///
-    /// Die zweite Ausnahme war der Rundgang: Sein Vorschlags-Rahmen hing am
-    /// Anker der Kacheln. Den Rahmen gibt es seit der Kürzung vom 05.08.
-    /// nicht mehr, und die Angaben-Schicht bleibt während des Rundgangs
-    /// ohnehin zu (`activeFlowItem`) — die Bedingung hier braucht ihn also
-    /// nicht mehr zu kennen.
-    private var showsStapleSurface: Bool {
-        guard surfaceIsExpanded else { return false }
-        guard detailPanelIsUp else { return true }
-        // **Neben der Schicht nur ohne Tastatur.** Die Regel „der nächste
-        // Vorschlag bleibt einen Tipp weit weg" stammt vom Weg über „Häufig
-        // gekauft", und dort steht keine Tastatur. Mit Tastatur ist der
-        // nächste Artikel ohnehin ein getipptes Wort weit weg — und der
-        // geschrumpfte Streifen kostete dort die letzte Kachelreihe der Liste.
-        return !inputFocused && suggestionChoice == true
-    }
-
     @ViewBuilder
-    private var stapleSurface: some View {
+    private func stapleSurface(schmal: Bool) -> some View {
         let remaining = suggestions
-        if !remaining.isEmpty && showsStapleSurface {
+        if !remaining.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 Text("Häufig auf der Liste")
                     .font(.caption.weight(.semibold))
@@ -1174,7 +1143,7 @@ struct ShoppingListView: View {
                 // Nicht weggelassen, sondern gekürzt: Der zweite Vorschlag muss
                 // **einen Tipp** weit weg bleiben. Genau das war am 26.07. schon
                 // einmal kaputt, als die Fläche beim ersten Artikel zuschlug.
-                if detailPanelIsUp {
+                if schmal {
                     suggestionRow(remaining)
                 } else {
                     suggestionChips(remaining)
@@ -1201,12 +1170,24 @@ struct ShoppingListView: View {
         }
     }
 
-    /// Das Raster beim Tippen.
+    /// **Die Produkte beim Tippen** (10.08., Punkt E).
+    ///
+    /// > „if u type a letter the matching starts and where previous the
+    /// > vorgeschlagenen offers came now coming actual products that match it,
+    /// > so the product name with its drawing not the actual matched offer"
+    ///
+    /// Zwei Dinge stecken in dem Satz, und beide sind hier eingelöst: Die
+    /// Kacheln tragen ab jetzt das **Artikelzeichen** neben dem Wort (siehe
+    /// `termChip`), und was sie zeigen, ist ein **Produkt** — ein Wort aus dem
+    /// Wörterbuch — und nicht die Prospektzeile, die dazu gefunden wurde. Der
+    /// Unterschied ist keiner der Darstellung: „Bärenmarke Die Frische" auf
+    /// einer Kachel legte das Angebot auf die Liste, „Milch" legt den Artikel
+    /// dorthin, und nur der Artikel bleibt nächste Woche richtig.
     ///
     /// **Und die Zeile, wenn nichts passt, gehört dazu.** Sie ist der Grund,
     /// aus dem die Fläche auch dann steht, wenn sie leer ist: „Kein Begriff
     /// passt" ist eine Auskunft, kein Fehler — dieselbe Unterscheidung, die der
-    /// Kopf des Trefferblatts seit dem 01.08. trifft. Ein Raster, das sich
+    /// Kopf des Artikelblatts seit dem 01.08. trifft. Ein Raster, das sich
     /// stillschweigend schließt, sagt genau das nicht.
     private var termSurface: some View {
         let terms = typedTerms
@@ -1246,47 +1227,79 @@ struct ShoppingListView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Theme.Spacing.sm) {
                 ForEach(terms, id: \.self) { term in
-                Button {
-                    // Der Tipp legt **das Wort** auf die Liste, nicht den
-                    // getippten Anfang. Genau dafür ist das Raster da: Was
-                    // hier steht, versteht der Matcher.
-                    newItemText = ""
-                    // **Zweimal, und das ist derselbe Fund wie in `addItem`:**
-                    // Der Tipp auf eine Kachel nimmt dem Feld den Fokus, und
-                    // zwar **nach** dieser Zeile. Ohne den Durchgang Geduld
-                    // stand `inputFocused` einen Wimpernschlag später auf
-                    // `false`, der Fluss beendete sich selbst — und die
-                    // Angaben-Schicht war weg, bevor jemand sie gesehen hat.
-                    inputFocused = true
-                    keepTyping()
-                    // Nur bei Erfolg: Bei einem Duplikat legt `add` nichts an,
-                    // und `lastAdded` wäre dann ein fremder Eintrag.
-                    let angelegt = withAnimation { list.add(term) }
-                    if angelegt {
-                        recordUserAdd()
-                        beginFlow(with: list.lastAdded)
-                    }
-                } label: {
-                    Text(term)
-                        .font(.subheadline.weight(.medium))
-                        .lineLimit(1)
-                        .padding(.horizontal, Theme.Spacing.md)
-                        .frame(minWidth: 96)
-                        .frame(height: 44)
-                        .background(
-                            Theme.surface,
-                            in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
-                                .strokeBorder(Theme.stroke)
-                        )
-                }
-                    .buttonStyle(TactileButtonStyle())
-                    .accessibilityLabel("\(term) hinzufügen")
+                    termChip(term)
                 }
             }
         }
+    }
+
+    /// **Zeichen neben dem Wort, nicht darüber** — und das ist eine Zahl, keine
+    /// Meinung: Die Fläche beim Tippen ist 44 pt hoch, und diese 44 sind die
+    /// eine Zahl, an der die ganze Zone hängt (siehe `termSurface`). Ein
+    /// Zeichen über dem Wort, wie auf der Listen-Kachel, bräuchte 64 und
+    /// schöbe die Eingabezeile bei jedem Buchstaben um 20 pt.
+    ///
+    /// Das Zeichen kommt aus demselben Satz wie das der Kachel
+    /// (`ItemGlyphTerm` → `ItemGlyphs`); für die Begriffe ohne Zeichnung
+    /// (Warengruppen wie „soßen") bleibt es leer, und dann steht das Wort
+    /// allein — das ist ehrlicher als ein erfundenes Bild.
+    private func termChip(_ term: String) -> some View {
+        Button {
+            // Der Tipp legt **das Wort** auf die Liste, nicht den
+            // getippten Anfang. Genau dafür ist die Fläche da: Was
+            // hier steht, versteht der Matcher.
+            newItemText = ""
+            // **Zweimal, und das ist derselbe Fund wie in `addItem`:**
+            // Der Tipp auf eine Kachel nimmt dem Feld den Fokus, und
+            // zwar **nach** dieser Zeile. Ohne den Durchgang Geduld
+            // stand `inputFocused` einen Wimpernschlag später auf
+            // `false`, der Fluss beendete sich selbst — und die
+            // Angaben-Schicht war weg, bevor jemand sie gesehen hat.
+            inputFocused = true
+            keepTyping()
+            // Nur bei Erfolg: Bei einem Duplikat legt `add` nichts an,
+            // und `lastAdded` wäre dann ein fremder Eintrag.
+            let angelegt = withAnimation { list.add(term) }
+            if angelegt {
+                recordUserAdd()
+                beginFlow(with: list.lastAdded)
+            }
+        } label: {
+            HStack(spacing: Theme.Spacing.xs) {
+                // Nur wenn es wirklich eine Zeichnung gibt: `ItemGlyphView`
+                // liefert sonst eine **leere Fläche** in voller Größe, und die
+                // wäre ein 22 pt breites Loch vor dem Wort.
+                if let zeichen = gezeichneterBegriff(term) {
+                    ItemGlyphView(term: zeichen, category: nil, size: 22)
+                        .foregroundStyle(Theme.accent)
+                        .accessibilityHidden(true)
+                }
+                Text(term)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, Theme.Spacing.md)
+            .frame(minWidth: 96)
+            .frame(height: 44)
+            .background(
+                Theme.surface,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                    .strokeBorder(Theme.stroke)
+            )
+        }
+        .buttonStyle(TactileButtonStyle())
+        .accessibilityLabel("\(term) hinzufügen")
+    }
+
+    /// Der Wörterbuchbegriff dieses Wortes — aber nur, wenn er gezeichnet ist.
+    private func gezeichneterBegriff(_ word: String) -> String? {
+        guard let term = ItemGlyphTerm.term(for: word),
+              ItemGlyph.drawing(for: term, in: CGRect(x: 0, y: 0, width: 1, height: 1)) != nil
+        else { return nil }
+        return term
     }
 
     /// Dieselben Vorschläge, nur als eine seitlich scrollende Reihe — die
@@ -1297,7 +1310,6 @@ struct ShoppingListView: View {
             HStack(spacing: Theme.Spacing.sm) {
                 ForEach(staples, id: \.self) { staple in
                     Button {
-                        suggestionChoice = true
                         let angelegt = withAnimation { list.add(staple) }
                         if angelegt {
                             recordUserAdd()
@@ -1340,13 +1352,12 @@ struct ShoppingListView: View {
         ) {
             ForEach(staples, id: \.self) { staple in
                 Button {
-                    // Eine Kachel antippen heißt „ich benutze die Fläche" —
-                    // sie bleibt danach offen. Ohne das schlüge sie beim ersten
-                    // Artikel unter dem Daumen zu, und der zweite Vorschlag
-                    // wäre wieder einen Knopfdruck weit weg. Genau der Fehler
-                    // ist schon einmal dagewesen (2026-07-26, damals mit dem
-                    // Leerzustand als Ursache).
-                    suggestionChoice = true
+                    // **Die Fläche bleibt nach dem Tipp stehen**, nur
+                    // geschrumpft auf eine Reihe — das entscheidet seit dem
+                    // 10.08. `SuggestionSurface` am Zustand („Schicht oben,
+                    // keine Tastatur") statt an einer gemerkten Wahl. Der
+                    // Grund ist derselbe geblieben: Der zweite Vorschlag muss
+                    // einen Tipp weit weg bleiben (2026-07-26).
                     // Nur bei Erfolg — siehe die Vorschlagskacheln oben.
                     let angelegt = withAnimation { list.add(staple) }
                     if angelegt {
@@ -1398,33 +1409,22 @@ struct ShoppingListView: View {
         return list.items.first { $0.id == id }
     }
 
-    /// **Ein Blatt schlägt das Panel.** Beide zeigen denselben Wortschatz; wer
-    /// die volle Fassung geöffnet hat, will sie und nicht ihren Schatten
+    /// **Ein Blatt schlägt die Schicht.** Beide zeigen denselben Wortschatz;
+    /// wer das Artikelblatt geöffnet hat, will es und nicht seinen Schatten
     /// darunter — und zwei Sätze gleich beschrifteter Chips auf einem
     /// Bildschirm sind für eine Journey nicht auseinanderzuhalten.
+    ///
+    /// **Und beim Tippen tritt die Schicht hinter die Vorschläge zurück**
+    /// (2026-08-08): Bring! hat an dieser Stelle **eine** Schicht, nie zwei.
+    /// Gemessen, warum: Mit dem hohen Panel (vier Chipreihen) blieben über
+    /// beidem zusammen noch 72 pt Liste — keine ganze Kachelreihe.
     private var detailPanelIsUp: Bool {
-        activeFlowItem != nil && editingItem == nil && detailItem == nil && !surfaceTakesOver
+        activeFlowItem != nil && sheetItem == nil && !isTyping
     }
-
-    /// **Beim Tippen tritt die Angaben-Schicht hinter die Vorschläge zurück**
-    /// (2026-08-08) — und damit tut die App endlich, was das Referenzvideo
-    /// zeigt: Bring! hat an dieser Stelle **eine** Schicht, nie zwei.
-    /// Während getippt wird, steht dort der Katalog; sobald der Artikel
-    /// angelegt ist, stehen dort seine Angaben.
-    ///
-    /// **Gemessen, warum es jetzt sein muss:** Mit dem hohen Panel (vier
-    /// Chipreihen) blieben über beidem zusammen noch 72 pt Liste — keine
-    /// ganze Kachelreihe. Vorher, mit einer Chipreihe, ging das Stapeln
-    /// gerade so durch.
-    ///
-    /// Ohne Tastatur (Weg über „Häufig auf der Liste") bleibt es beim
-    /// Nebeneinander: Dort ist der Bildschirm nicht geteilt, und der nächste Vorschlag soll
-    /// **einen Tipp** weit weg bleiben — genau der Fehler vom 26.07.
-    private var surfaceTakesOver: Bool { isTyping && surfaceIsExpanded }
 
     @ViewBuilder
     private var detailPanel: some View {
-        if let item = activeFlowItem, editingItem == nil, detailItem == nil {
+        if let item = activeFlowItem, detailPanelIsUp {
             ItemDetailPanel(
                 item: item,
                 reihen: ItemDetailVocabulary.groups(for: item.query),
@@ -1450,7 +1450,7 @@ struct ShoppingListView: View {
                     tips?.detailsUsed()
                 },
                 onOpenFull: {
-                    editingItem = item
+                    sheetItem = item
                     tips?.detailsUsed()
                 }
             )
@@ -1480,52 +1480,6 @@ struct ShoppingListView: View {
         list.items.isEmpty ? "Was brauchst du?" : "Nächster Artikel …"
     }
 
-    /// Ob es überhaupt etwas aufzuklappen gäbe — beim Tippen sind das die
-    /// Wörterbuchwörter, sonst die Vorschläge. **Zwei Quellen, ein Knopf:**
-    /// Welche der beiden Fassungen die Fläche zeigt, entscheidet
-    /// `suggestionSurface` an derselben Frage.
-    private var surfaceHasContent: Bool {
-        isTyping ? !typedTerms.isEmpty : !suggestions.isEmpty
-    }
-
-    /// Der Knopf, der die Vorschlagsfläche auf- und zuklappt.
-    ///
-    /// Links im Feld, weil er zu dem gehört, was darüber liegt. Er fehlt, wenn
-    /// es nichts vorzuschlagen gibt — ein Knopf, der eine leere Fläche öffnet,
-    /// ist ein kaputter Knopf. **Solange sie offen steht, bleibt er trotzdem**,
-    /// sonst verschwände beim ersten Buchstaben ohne Wörterbuchtreffer der
-    /// einzige Weg, sie wieder zuzumachen.
-    ///
-    /// **Seit dem 08.08. ist er der einzige Weg zu den Vorschlägen, solange
-    /// jemand tippt** (Punkt C-1) — und damit die Stelle, die der neue
-    /// Rundgang zeigen muss. Deshalb trägt er einen eigenen Anker: Der bisherige
-    /// (`.suggestions`) hängt an den Kacheln, und die stehen im neuen
-    /// Vorgabefall gerade nicht da.
-    @ViewBuilder
-    private var surfaceToggle: some View {
-        if surfaceHasContent || surfaceIsExpanded {
-            let open = surfaceIsExpanded
-            Button {
-                withAnimation(.snappy) { suggestionChoice = !open }
-                // Der Rundgang wartet an dieser Stelle genau darauf. Nur beim
-                // Aufmachen: Zumachen ist nicht die Handlung, um die er bittet.
-                if !open { tutorial?.report(.opensSuggestions) }
-            } label: {
-                Image(systemName: "chevron.up")
-                    .font(.system(size: 17, weight: .semibold))
-                    .rotationEffect(.degrees(open ? 180 : 0))
-                    .foregroundStyle(Theme.accent)
-                    .frame(width: 44, height: 44)
-            }
-            .buttonStyle(TactileButtonStyle())
-            .accessibilityIdentifier("list.suggestions.toggle")
-            // Der Zustand steckt im Namen und nicht in einem `value`: Ein
-            // gedrehtes Winkelzeichen sagt einem Screenreader nichts.
-            .accessibilityLabel(open ? "Vorschläge ausblenden" : "Vorschläge einblenden")
-            .tutorialAnchor(.suggestionsToggle)
-        }
-    }
-
     /// **Fertig — unten links an der Tastatur** (2026-08-08, Scotts Punkt C-3).
     ///
     /// Der Ausgang aus dem Tipp-Fluss stand bisher als ✗ oben rechts in der
@@ -1542,6 +1496,14 @@ struct ShoppingListView: View {
     /// **Und er ist der einzige Ausgang ohne Tastatur.** Auf dem Weg über
     /// „Häufig auf der Liste" steht keine — genau Scotts Punkt 9 vom 03.08.,
     /// den bis heute das ✗ der Schicht getragen hat.
+    ///
+    /// **Seit dem 10.08. ist er der einzige Knopf hier unten** (Punkt B-2: „I
+    /// don't like both the collaps buttons"). Neben ihm stand ein Winkel, der
+    /// die Vorschlagsfläche holte; die kommt jetzt von selbst, sobald die
+    /// Tastatur steht (`SuggestionSurface`). Von den beiden hat dieser
+    /// gewonnen, weil er etwas kann, was sonst niemand kann: den Fluss ohne
+    /// Tastatur beenden. Der Winkel dagegen holte nur zurück, was heute gar
+    /// nicht mehr verschwindet.
     @ViewBuilder
     private var doneButton: some View {
         if flowIsUp {
@@ -1560,7 +1522,6 @@ struct ShoppingListView: View {
     private var inputBar: some View {
         HStack(spacing: Theme.Spacing.sm) {
             doneButton
-            surfaceToggle
 
             TextField(inputPlaceholder, text: $newItemText)
                 // Vier Test-Helfer griffen das Feld über seinen Platzhalter —
@@ -1616,9 +1577,6 @@ struct ShoppingListView: View {
         // Der Fokus bleibt im Feld, das nächste Wort ersetzt das Panel
         // einfach. Siehe `ItemDetailPanel`.
         beginFlow(with: list.lastAdded)
-        // Wer tippt, weiß was er braucht — die Fläche gibt der Liste ihren
-        // Platz zurück. Die Gegenrichtung steht bei den Kacheln.
-        withAnimation(.snappy) { suggestionChoice = false }
     }
 
     /// **Der Fokus bleibt im Feld — und das kostet einen Umweg.**
@@ -1656,21 +1614,15 @@ struct ShoppingListView: View {
         withAnimation(.snappy) { addFlow.added(item.id) }
     }
 
-    /// **Die Angaben eines Artikels, der schon auf der Liste steht**
-    /// (Feldtest 09.08.).
+    /// **Das Artikelblatt eines Artikels, der schon auf der Liste steht**
+    /// (10.08., Punkt A) — der Weg dahin ist das Halten auf seiner Kachel.
     ///
-    /// Es öffnet sich **dieselbe Schicht wie beim Anlegen**, nicht das volle
-    /// Blatt: derselbe Wortschatz, dieselben Chipreihen, dieselbe Zusage, dass
-    /// jeder Chip sofort durchschreibt. Zwei Wege zu denselben Angaben dürfen
-    /// nicht zwei verschiedene Bildschirme sein — und das Blatt mit Freitext
-    /// und Überschriften liegt von hier aus genau da, wo es im Tipp-Fluss auch
-    /// liegt: hinter „Notiz …".
-    ///
-    /// Keine Tastatur: Der Fokus bleibt, wo er ist. Die Schicht hängt an
-    /// `addFlow.isActive`, nicht am Eingabefeld, und ihr Ausgang („Fertig")
-    /// kommt ohne Tastatur aus — siehe `endFlow`.
-    private func openDetails(for item: ShoppingItem) {
-        withAnimation(.snappy) { addFlow.reopen(item.id) }
+    /// Es öffnet sich derselbe Bildschirm, den auch „Notiz …" aus der Schicht
+    /// öffnet: Angaben oben, Treffer darunter (`ItemSheet`). Zwei Wege zu
+    /// denselben Angaben dürfen nicht zwei verschiedene Bildschirme sein — das
+    /// war die Lehre aus dem Feldtest vom 09.08. und gilt unverändert.
+    private func openSheet(for item: ShoppingItem) {
+        sheetItem = item
         tips?.detailsUsed()
     }
 

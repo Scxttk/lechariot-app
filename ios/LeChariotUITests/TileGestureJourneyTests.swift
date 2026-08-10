@@ -6,6 +6,11 @@ import XCTest
 /// dorthin im Kontextmenü, also ein Griff weiter. Der Umbau legt ihn auf das
 /// Halten selbst.
 ///
+/// **Am 10.08. hat sich das Ziel geändert, nicht die Geste** (Punkt A): Das
+/// Halten öffnet jetzt das Artikelblatt — Angaben *und* Treffer auf einem
+/// Bildschirm (`ItemSheet`). Alles, was hier gemessen wird, gilt unverändert;
+/// nur heißt „das Blatt steht" ab jetzt „`itemSheet.done` steht".
+///
 /// **Der Grund, warum das hier gemessen und nicht nur gebaut wird:** Ein
 /// Erkenner für langes Drücken kann den Tipp verzögern — er muss abwarten, ob
 /// aus dem Tipp noch ein Halten wird. Und der Tipp ist die eine Handlung, die
@@ -72,7 +77,7 @@ final class TileGestureJourneyTests: XCTestCase {
     // MARK: Das Halten
 
     /// **Halten öffnet die Treffer, ohne Umweg über ein Menü.**
-    func testALongPressOpensTheMatchesDirectly() {
+    func testALongPressOpensTheItemSheetDirectly() {
         launch()
         addItem("Vollmilch")
 
@@ -81,9 +86,12 @@ final class TileGestureJourneyTests: XCTestCase {
         kachel.press(forDuration: 0.6)
 
         XCTAssertTrue(
-            trefferblatt.waitForExistence(timeout: 10),
-            "Nach dem Halten steht das Trefferblatt nicht da:\n" + app.debugDescription
+            blatt.waitForExistence(timeout: 10),
+            "Nach dem Halten steht das Artikelblatt nicht da:\n" + app.debugDescription
         )
+        // Und es trägt beides: die Angaben oben, die Angebote darunter.
+        XCTAssertTrue(app.staticTexts["Angaben"].exists,
+                      "Auf dem Blatt fehlen die Angaben:\n" + app.debugDescription)
     }
 
     /// **Egal wie lange gehalten wird — es kommen die Treffer, nie das
@@ -101,18 +109,18 @@ final class TileGestureJourneyTests: XCTestCase {
     /// 0,35 s über die Schwelle des Kontextmenüs (~0,5 s) hebt: Dann käme bei
     /// langem Halten das Menü und der Nutzer bekäme zwei verschiedene Antworten
     /// auf dieselbe Geste. Dieser Test merkt das.
-    func testEveryHoldLengthOpensTheMatchesAndNotTheContextMenu() {
+    func testEveryHoldLengthOpensTheSheetAndNotTheContextMenu() {
         for dauer in [0.4, 0.7, 1.2] {
             launch()
             addItem("Vollmilch")
             XCTAssertTrue(kachelMitVollmilch().waitForExistence(timeout: 15))
             kachelMitVollmilch().press(forDuration: dauer)
 
-            XCTAssertTrue(trefferblatt.waitForExistence(timeout: 10),
-                          "Halten für \(dauer) s hat die Treffer nicht geöffnet")
+            XCTAssertTrue(blatt.waitForExistence(timeout: 10),
+                          "Halten für \(dauer) s hat das Artikelblatt nicht geöffnet")
             // Dem Menü Zeit lassen: Es käme später als das Blatt, wenn es käme.
-            _ = app.buttons["list.item.detail"].waitForExistence(timeout: 2)
-            XCTAssertFalse(app.buttons["list.item.detail"].exists,
+            _ = app.buttons["list.item.sheet"].waitForExistence(timeout: 2)
+            XCTAssertFalse(app.buttons["list.item.sheet"].exists,
                            "Bei \(dauer) s stehen Blatt und Kontextmenü gleichzeitig da — "
                            + "dieselbe Geste gibt zwei Antworten")
             app.terminate()
@@ -120,27 +128,38 @@ final class TileGestureJourneyTests: XCTestCase {
     }
 
     /// **Angaben und Löschen bleiben mit dem Finger erreichbar.** Das Halten
-    /// ist jetzt besetzt, und gemessen ist, dass das Kontextmenü damit für den
-    /// Finger weg ist (siehe oben). Die beiden Punkte dürfen deshalb nicht
-    /// unter den Tisch fallen — sonst wäre ein Griff gespart und zwei Wege
-    /// verloren. Ihr Weg ist das ⋯-Menü im Trefferblatt.
+    /// ist besetzt, und gemessen ist, dass das Kontextmenü damit für den Finger
+    /// weg ist (siehe oben). Die beiden Punkte dürfen deshalb nicht unter den
+    /// Tisch fallen — sonst wäre ein Griff gespart und zwei Wege verloren.
+    ///
+    /// **Seit dem 10.08. liegen beide auf demselben Blatt**, das das Halten
+    /// öffnet: die Angaben oben, das Löschen ganz unten. Der Umweg über ein
+    /// ⋯-Menü ist damit weg — Scotts Punkt A, wörtlich: „the button in the left
+    /// corner is only the Präferenzen menu and not löschen".
     func testTheOtherTileActionsAreStillReachable() {
         launch()
         addItem("Vollmilch")
 
         XCTAssertTrue(kachelMitVollmilch().waitForExistence(timeout: 15))
-        app.tapInItemMenu("matches.item.detail", ofItem: "Vollmilch")
-        XCTAssertTrue(app.buttons["itemDetail.cancel"].waitForExistence(timeout: 10),
-                      "„Angaben“ öffnet das Angaben-Blatt nicht mehr")
+        app.openItemSheet(ofItem: "Vollmilch")
+
+        XCTAssertTrue(app.buttons["Bio"].waitForExistence(timeout: 10),
+                      "Die Angaben stehen nicht auf dem Blatt:\n" + app.debugDescription)
+
+        let löschen = app.buttons["itemSheet.delete"]
+        for _ in 0..<6 where !löschen.exists || !löschen.isHittable { app.swipeUp() }
+        XCTAssertTrue(löschen.exists, "Kein Weg zum Löschen:\n" + app.debugDescription)
+        löschen.tap()
+        XCTAssertTrue(app.buttons["Vollmilch"].waitForNonExistence(timeout: 10),
+                      "Der Artikel ist noch da")
     }
 
     // MARK: Helfer
 
-    private var trefferblatt: XCUIElement {
-        app.navigationBars.matching(
-            NSPredicate(format: "identifier BEGINSWITH %@", "Treffer für")
-        ).firstMatch
-    }
+    /// Das Artikelblatt — erkannt an seinem „Fertig", nicht an der Überschrift:
+    /// Die ist seit dem 10.08. der Artikelname, und ein Name steht auch auf der
+    /// Kachel darunter.
+    private var blatt: XCUIElement { app.buttons["itemSheet.done"].firstMatch }
 
     /// Die Kachel über ihren Namen, nicht über `list.tile`: Beim Abhaken
     /// wandert sie in den Abschnitt „Erledigt", und `firstMatch` zeigte danach
@@ -181,9 +200,7 @@ final class TileGestureJourneyTests: XCTestCase {
         // Das Mengen-Menü geht beim Anlegen von selbst auf; hier ist es ein
         // Zwischenschritt, kein Prüfgegenstand.
         let panel = app.buttons["list.detailPanel.more"]
-        if app.buttons["itemDetail.cancel"].exists {
-            app.buttons["itemDetail.cancel"].tap()
-        } else if panel.waitForExistence(timeout: 3) {
+        if panel.waitForExistence(timeout: 3) {
             app.swipeUp()
             _ = panel.waitForNonExistence(timeout: 3)
         }

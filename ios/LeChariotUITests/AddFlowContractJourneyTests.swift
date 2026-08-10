@@ -188,10 +188,9 @@ final class AddFlowContractJourneyTests: XCTestCase {
     func testADictionaryChipFollowsTheSameContract() {
         startTyping()
         app.typeText("Milc")
-        // Seit dem 08.08. startet die Fläche beim Tippen zugeklappt (Punkt
-        // C-1) — das Wörterbuch-Raster liegt hinter dem Winkel-Knopf. Der
-        // Vertrag dieser Datei gilt für den Weg dahinter unverändert.
-        app.buttons["list.suggestions.toggle"].tap()
+        // Seit dem 10.08. steht die Fläche beim Tippen von selbst da (Punkt E)
+        // und zeigt dort die passenden Produkte. Der Vertrag dieser Datei gilt
+        // für den Weg über eine solche Kachel unverändert.
         let kachel = app.buttons["Milch hinzufügen"]
         XCTAssertTrue(kachel.waitForExistence(timeout: 10),
                       "Das Wörterbuch schlägt zu „Milc“ nichts vor")

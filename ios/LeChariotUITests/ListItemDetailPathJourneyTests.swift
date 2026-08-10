@@ -12,9 +12,17 @@ import XCTest
 /// gesagt hat, dass hier nichts ist.
 ///
 /// Diese Journeys halten die Zusage fest, die daraus folgt: **Jeder Artikel
-/// auf der Liste hat einen sichtbaren Weg zu seinen Angaben, ganz gleich ob es
-/// zu ihm Treffer gibt.** Und dieser Weg führt in dieselbe Schicht wie das
+/// auf der Liste hat einen Weg zu seinen Angaben, ganz gleich ob es zu ihm
+/// Treffer gibt.** Und dieser Weg führt in denselben Wortschatz wie das
 /// Anlegen, nicht in eine zweite Fassung.
+///
+/// **Der Weg selbst hat sich am 10.08. geändert** (Punkt A). Bis dahin war es
+/// ein sichtbarer Eck-Knopf auf der Kachel — Scott: „Das Präferenzen menu
+/// button I don't like, bring opens it by long pressing the product." Jetzt
+/// ist es das Halten, und dahinter liegt ein Bildschirm, der Angaben **und**
+/// Treffer trägt. Die Zusage von #97 steht damit sogar stärker da als vorher:
+/// Der Artikel ohne jedes Angebot bekommt seine Angaben **oben**, und die
+/// Meldung „Keine Treffer" steht darunter statt an ihrer Stelle.
 final class ListItemDetailPathJourneyTests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -28,57 +36,55 @@ final class ListItemDetailPathJourneyTests: XCTestCase {
 
     /// **Der gemeldete Fall.** „Kohl" hat in den Testdaten kein einziges
     /// Angebot — genau der Artikel, an dem der alte Weg in eine Sackgasse
-    /// führte. Ein sichtbarer Griff, und die Angaben stehen da.
+    /// führte. Ein Halten, und die Angaben stehen da.
     func testAnItemWithoutAnyOffersStillReachesItsDetails() {
         waitForList()
         addItem("Kohl")
 
-        let knopf = detailKnopf(von: "Kohl")
-        XCTAssertTrue(
-            knopf.waitForExistence(timeout: 15),
-            "Die Kachel trägt keinen sichtbaren Weg zu den Angaben:\n" + app.debugDescription
-        )
-        knopf.tap()
+        app.openItemSheet(ofItem: "Kohl")
 
         XCTAssertTrue(
-            app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10),
+            app.staticTexts["Angaben"].waitForExistence(timeout: 10),
             "Ein Artikel ohne Treffer kommt nicht an seine Angaben:\n" + app.debugDescription
         )
+        // Und die leere Auskunft steht **darunter**, nicht an ihrer Stelle.
+        XCTAssertTrue(app.staticTexts["itemSheet.offers.header"].exists,
+                      "Der Bildschirm trägt die Angebote nicht mit")
     }
 
     /// **Es ist dieselbe Schicht wie beim Anlegen, kein zweiter Wortschatz.**
     /// Die Probe ist ein Chip, den nur das Wörterbuch zu „Kohl" kennt: Steht
     /// „Rotkohl" da, kommen die Reihen aus `ItemDetailVocabulary.groups(for:)`
     /// — derselben Quelle wie im Tipp-Fluss.
-    func testTheDetailsAreTheSameLayerAsWhenAddingAnItem() {
+    func testTheDetailsAreTheSameVocabularyAsWhenAddingAnItem() {
         waitForList()
         addItem("Kohl")
 
-        detailKnopf(von: "Kohl").tap()
-        XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10))
+        app.openItemSheet(ofItem: "Kohl")
 
         XCTAssertTrue(
-            app.buttons["Rotkohl"].waitForExistence(timeout: 5),
+            app.buttons["Rotkohl"].waitForExistence(timeout: 10),
             "Die Reihen kommen nicht aus dem Wörterbuch des Artikels:\n" + app.debugDescription
         )
-        // Und die volle Fassung liegt hier, wo sie im Tipp-Fluss auch liegt.
-        XCTAssertTrue(app.buttons["list.detailPanel.more"].exists,
-                      "Der Weg zu Notiz und voller Fassung fehlt")
+        // Und der Freitext liegt auf demselben Bildschirm, nicht dahinter.
+        XCTAssertTrue(app.textFields["itemDetail.note"].exists
+                        || app.textViews["itemDetail.note"].exists,
+                      "Der Freitext fehlt auf dem Artikelblatt")
     }
 
     /// **Ein Chip schreibt durch, und die Kachel trägt ihn danach.** Der Weg
     /// wäre wertlos, wenn er nur eine Ansicht öffnete, aus der nichts
     /// zurückkommt.
-    func testAChipChosenFromTheListLandsOnTheTile() {
+    func testAChipChosenFromTheSheetLandsOnTheTile() {
         waitForList()
         addItem("Kohl")
 
-        detailKnopf(von: "Kohl").tap()
-        XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10))
+        app.openItemSheet(ofItem: "Kohl")
+        XCTAssertTrue(app.buttons["Rotkohl"].waitForExistence(timeout: 10))
         app.buttons["Rotkohl"].tap()
 
-        // „Fertig" beendet nur das Aufschreiben; gespeichert ist längst.
-        app.buttons["list.input.done"].tap()
+        // „Fertig" schließt nur das Blatt; geschrieben ist längst.
+        app.buttons["itemSheet.done"].tap()
 
         XCTAssertTrue(
             app.buttons["Kohl, Rotkohl"].waitForExistence(timeout: 10),
@@ -86,10 +92,10 @@ final class ListItemDetailPathJourneyTests: XCTestCase {
         )
     }
 
-    /// **Abhaken bleibt der Tipp auf die Kachel.** Der neue Knopf liegt über
-    /// der Kachelfläche, und ein Knopf über einem Knopf ist genau die Stelle,
-    /// an der eine Geste der anderen den Rang abläuft. Hier steht, dass es
-    /// nicht passiert ist.
+    /// **Abhaken bleibt der Tipp auf die Kachel.** Auf derselben Fläche liegt
+    /// das Halten, und zwei Erkenner auf einer Fläche sind genau die Stelle,
+    /// an der einer dem anderen den Rang abläuft. Hier steht, dass es nicht
+    /// passiert ist.
     func testTheNewButtonDoesNotSwallowTheCheckOffTap() {
         waitForList()
         addItem("Kohl")
@@ -106,15 +112,6 @@ final class ListItemDetailPathJourneyTests: XCTestCase {
     }
 
     // MARK: Helfer
-
-    /// Der Angaben-Knopf **dieser** Kachel. `list.tile.detail` allein träfe den
-    /// der ersten Kachel — bei mehreren Artikeln die falsche.
-    private func detailKnopf(von text: String) -> XCUIElement {
-        app.buttons.matching(
-            NSPredicate(format: "identifier == %@ AND label == %@",
-                        "list.tile.detail", "Angaben zu \(text) ändern")
-        ).firstMatch
-    }
 
     private func kachel(von text: String) -> XCUIElement {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", text)).firstMatch

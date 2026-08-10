@@ -23,7 +23,7 @@ import XCTest
 /// Reißzwecke an die Preisfahne, und die kann nicht umbrechen. Mit der
 /// Zeilenansicht ist am 08.08. auch `PinnedChip` gegangen, der hier bis dahin
 /// geprüft wurde. Das Abzeichen mit Wortlaut steht jetzt im Angebotsdetail
-/// (`MatchDetailView`), also wird dort gemessen; der Fall ist derselbe
+/// (`ItemSheet`), also wird dort gemessen; der Fall ist derselbe
 /// geblieben: enge Spalte, Nachbartext daneben.
 @MainActor
 final class BadgeLayoutTests: XCTestCase {
@@ -39,7 +39,7 @@ final class BadgeLayoutTests: XCTestCase {
     /// Die Zeile, in der das Abzeichen auf dem Gerät wirklich steht: Abzeichen
     /// und Marktname nebeneinander in einer schmalen Spalte — der Fall aus der
     /// Meldung, nicht nur das Bauteil für sich. Bei einer Heftung ist der
-    /// Nachbar genau der Marktname (`MatchDetailView`).
+    /// Nachbar genau der Marktname (`ItemSheet`).
     ///
     /// Der Marktname ist hier einzeilig festgehalten. Ohne das misst der Test
     /// **seinen** Umbruch mit (bei 110 pt wurde die Zeile 144 pt hoch, und

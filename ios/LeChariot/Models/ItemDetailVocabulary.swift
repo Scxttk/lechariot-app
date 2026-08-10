@@ -69,7 +69,7 @@ enum ItemDetailVocabulary {
     ///
     /// **Und trotzdem geht nichts davon in die Suche.** Ein Chip ist eine
     /// Notiz wie „Bio" — wer „Cherrytomaten" wählt, sucht weiterhin nach
-    /// „Tomaten". Das ist dieselbe Zusage, die `ItemDetailSheet` im Klartext
+    /// „Tomaten". Das ist dieselbe Zusage, die `ItemSheet` im Klartext
     /// ausspricht; sie gilt hier unverändert, obwohl die Wörter diesmal aus
     /// dem Wörterbuch stammen.
     ///

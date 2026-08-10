@@ -105,19 +105,23 @@ final class TermSuggestionsTests: XCTestCase {
     private static let vollesRegal: [Offer] = MatchDictionary.allTerms
         .map { offer("Testartikel \($0)", tags: [$0]) }
 
-    /// **Ein Buchstabe schlägt noch nichts vor** — nach „m" wäre jede Kachel
-    /// geraten.
+    /// **Der erste Buchstabe schlägt schon vor** (10.08., Punkt E: „if u type a
+    /// letter the matching starts").
     ///
-    /// Die Regel gehört `OfferMatcher.tokens`, nicht `TermSuggestions`: Die
-    /// Suche wirft Wörter unter zwei Zeichen selbst weg, das Raster erbt es.
-    /// Genau das prüft die zweite Zusicherung mit — sie hält fest, **woher**
-    /// die Grenze kommt. Eine eigene Grenze stand hier zuerst; die Gegenprobe
-    /// (auf ein Zeichen gelockert) änderte nichts, weil sie nie greift.
-    func testASingleLetterSuggestsNothing() {
-        XCTAssertTrue(TermSuggestions.words(for: "m", in: regal).isEmpty)
+    /// Bis dahin galt das Gegenteil, und die Begründung war eine geerbte:
+    /// `OfferMatcher.tokens` wirft Wörter unter zwei Zeichen weg, weil ein
+    /// einzelner Buchstabe in einem **Prospekttitel** nichts bedeutet. Für
+    /// einen getippten **Anfang** bedeutet er etwas — deshalb hat
+    /// `TermSuggestions` seit heute seine eigene Zerlegung.
+    ///
+    /// Die zweite Zusicherung hält fest, dass die Grenze der Suche unberührt
+    /// geblieben ist: Es sind jetzt zwei Regeln, und das ist Absicht.
+    func testASingleLetterAlreadySuggests() {
+        XCTAssertTrue(TermSuggestions.words(for: "m", in: regal).contains("Milch"),
+                      "Der erste Buchstabe schlägt nichts vor")
         XCTAssertTrue(TermSuggestions.words(for: "", in: regal).isEmpty)
         XCTAssertTrue(OfferMatcher.tokens("m").isEmpty,
-                      "Die Ein-Zeichen-Grenze der Suche ist weg — dann braucht das Raster eine eigene")
+                      "Die Ein-Zeichen-Grenze der **Suche** darf bleiben, wo sie war")
     }
 
     /// Gewertet wird das **letzte** Wort: Wer „bio mil" tippt, meint „mil".

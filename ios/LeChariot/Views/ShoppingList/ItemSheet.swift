@@ -1,16 +1,36 @@
 import SwiftUI
 
-/// Sheet listing every offer matched for one list item — direct hits and
-/// category hits labeled — with per-offer rejection. Rejections persist via
-/// MatchRejectionStore and expire with the offer week.
+/// **Ein Artikel, ein Bildschirm: Angaben *und* Treffer** (10.08., Punkt A der
+/// Bedienrunde).
 ///
-/// **Und seit dem Tester-Wunsch vom 2026-07-31 der Ort, an dem man wählt.**
-/// Vorher konnte man hier nur wegwerfen: Das ✕ ist Rückmeldung, keine Auswahl,
-/// und wer den zweitbilligsten Käse lieber mochte, hatte keinen Knopf dafür.
-/// Jetzt heftet die Reißzwecke ein Angebot an den Listeneintrag — es steht dann
-/// dauerhaft auf der Hauptseite, statt jede Woche vom billigsten überschrieben
-/// zu werden.
-struct MatchDetailView: View {
+/// Scott, nach Bring!: „Das Präferenzen menu button I don't like, bring opens
+/// it by long pressing the product, so I would share that screen aswell." Das
+/// Halten auf einer Kachel führte seit #91 auf die **Treffer**; die Angaben
+/// lagen daneben, erst im ⋯-Menü dieses Blattes, seit #97 zusätzlich hinter
+/// einem Eck-Knopf auf der Kachel. Drei Türen für zwei Auskünfte über
+/// denselben Artikel.
+///
+/// Jetzt ist es eine: Das Halten öffnet dieses Blatt, und es trägt beides.
+///
+/// **Die Reihenfolge ist die Antwort auf den Feldtest vom 09.08.** Oben die
+/// Angaben, darunter die Treffer — nicht umgekehrt. „Kohl steht auf der Liste
+/// und ich komme an seine Angaben nicht mehr heran" war die Meldung, und der
+/// Bildschirm, auf dem sie entstand, hieß „Treffer für ‚Kohl'" und meldete
+/// „Keine Treffer". Wer einen Artikel lange hält, meint erst einmal ihn selbst;
+/// was diese Woche im Prospekt dazu steht, ist die zweite Frage.
+///
+/// **Kein „Fertig", das etwas bestätigt.** Jeder Chip, jede Reißzwecke, jedes ✕
+/// schreibt sofort durch — dieselbe Zusage wie in `ItemDetailPanel`. Der Knopf
+/// oben rechts schließt nur das Blatt.
+///
+/// **Und das Löschen steht ganz unten**, so weit wie möglich von den Angaben
+/// weg. Scott wollte den Eck-Knopf ausdrücklich ohne Löschen („the button in
+/// the left corner is only the Präferenzen menu and not löschen"); auf der
+/// Kachel bleibt es im Kontextmenü. Ein Weg für den Finger muss es trotzdem
+/// geben — gemessen ist, dass das Kontextmenü nicht mehr erscheint, sobald das
+/// Halten ein Blatt öffnet (`TileGestureJourneyTests`). Also hier, am Ende
+/// eines langen Bildschirms, wo Apple es in den eigenen Apps auch hinlegt.
+struct ItemSheet: View {
     let item: ShoppingItem
     let offers: [Offer]
     /// The chosen branches — only used to name the branch in the detail view,
@@ -29,47 +49,21 @@ struct MatchDetailView: View {
     /// The match whose rejection is currently being asked about, if any.
     @State private var askingAbout: OfferMatch?
 
-    /// Ob das Angaben-Blatt über diesem hier steht.
-    @State private var editingDetails = false
+    /// Der Freitext, während er getippt wird. **Das einzige Stück Zustand, das
+    /// dieses Blatt hält** — Chips und Heftungen gehen ohne Umweg in den
+    /// Speicher, aber ein Textfeld braucht eine Bindung, und die kann nicht bei
+    /// jedem Zeichen aus der Liste zurückgelesen werden.
+    @State private var note: String
 
-    /// **Die übrigen Handgriffe am Artikel — hier, seit das Halten die Treffer
-    /// öffnet** (08.08.).
-    ///
-    /// Bis heute lagen Angebote, Angaben und Löschen zusammen im Kontextmenü
-    /// der Kachel. Scott wollte das Halten selbst als Weg zu den Treffern („ein
-    /// Griff weniger"), und **gemessen** ist: Sobald der lange Druck dieses
-    /// Blatt öffnet, kommt das Kontextmenü nicht mehr — bei 0,4 s nicht, bei
-    /// 0,7 s nicht und bei 1,2 s nicht (`TileGestureJourneyTests`). Zwei
-    /// Erkenner auf einer Geste, einer gewinnt; die Fläche darunter ist weg,
-    /// sobald ein Blatt darüberliegt.
-    ///
-    /// Damit brauchten Angaben und Löschen einen Weg, den ein Finger
-    /// **sicher** erreicht, und der liegt jetzt dort, wo das Halten ohnehin
-    /// hinführt. Das Kontextmenü der Kachel bleibt trotzdem stehen, weil es
-    /// nichts kostet. Für den Finger ist dieses Menü hier der Weg — und nur
-    /// der ist geprüft.
-    @ViewBuilder
-    private var artikelmenü: some View {
-        Menu {
-            Button {
-                editingDetails = true
-            } label: {
-                Label("Angaben", systemImage: "square.and.pencil")
-            }
-            .accessibilityIdentifier("matches.item.detail")
-
-            Button(role: .destructive) {
-                list?.remove(item)
-                dismiss()
-            } label: {
-                Label("Löschen", systemImage: "trash")
-            }
-            .accessibilityIdentifier("matches.item.delete")
-        } label: {
-            Image(systemName: "ellipsis.circle")
-        }
-        .accessibilityLabel("Weitere Handlungen für \(item.text)")
-        .accessibilityIdentifier("matches.more")
+    init(item: ShoppingItem,
+         offers: [Offer],
+         favoriteMarkets: [Market] = [],
+         priceHistoryRepository: PriceHistoryRepositoryProtocol = AppRepositories.priceHistory) {
+        self.item = item
+        self.offers = offers
+        self.favoriteMarkets = favoriteMarkets
+        self.priceHistoryRepository = priceHistoryRepository
+        _note = State(initialValue: item.note ?? "")
     }
 
     private var allMatches: [OfferMatch] {
@@ -130,6 +124,11 @@ struct MatchDetailView: View {
     var body: some View {
         NavigationStack {
             List {
+                angabenSection
+                notizSection
+                if !fremdwörter.isEmpty { fremdwortSection }
+
+                trefferKopf
                 understandingSection
 
                 // Je Heftung, die unten nicht vorkommt, eine eigene Zeile:
@@ -169,19 +168,16 @@ struct MatchDetailView: View {
                     }
                     .listRowBackground(Theme.surface)
                 }
+
+                löschenSection
             }
             .themedScreen()
-            .navigationTitle("Treffer für „\(item.text)\u{201C}")
+            .navigationTitle(item.text)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { artikelmenü }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Fertig") { dismiss() }
-                }
-            }
-            .sheet(isPresented: $editingDetails) {
-                ItemDetailSheet(item: item) { detail, note in
-                    list?.setDetail(detail, note: note, for: item)
+                        .accessibilityIdentifier("itemSheet.done")
                 }
             }
             .sheet(item: $askingAbout) { match in
@@ -202,6 +198,213 @@ struct MatchDetailView: View {
                 )
             }
         }
+        // **Der durchsichtige schwarze Behälter oben** (Punkt B-1, Scott:
+        // „when preferences menu opens there is small visual bug at the top, a
+        // transparent black container").
+        //
+        // Er ist keine Ansicht dieser App, sondern **die Abdunklung, die iOS
+        // hinter ein Blatt legt**. Ein Blatt reicht nicht bis an die
+        // Statusleiste; der Streifen darüber zeigt die Liste, und über der
+        // liegt der Schleier. Am gerenderten Bild nachgemessen: Die Creme
+        // #E3DEB8 steht dort als #B6B293 — Faktor 0,80, also Schwarz mit rund
+        // 20 %. Auf einem hellen, warmen Hintergrund liest sich das nicht als
+        // Tiefe, sondern als ein Kasten, der dort nichts zu suchen hat. Auf
+        // Apples eigenem Grau fällt derselbe Schleier kaum auf — deshalb ist
+        // es „Standardverhalten" und trotzdem hier ein Fehler.
+        //
+        // `presentationBackgroundInteraction` nimmt dem Blatt seine Modalität,
+        // und damit fällt die Abdunklung weg. Der Preis ist, dass der Streifen
+        // oben antippbar bleibt — dort liegt die sichere Fläche mit der Uhr,
+        // also nichts, was auf einen Tipp reagiert.
+        //
+        // **`upThrough:` ist nicht Zierrat, sondern der Unterschied.** Das
+        // bloße `.enabled` war der erste Versuch und hat den Streifen am
+        // gerenderten Bild bei #B6B293 gelassen — Deckkraft unverändert. Erst
+        // `.enabled(upThrough: .large)` misst sich als #E3DEB8, also volle
+        // Creme. Die Abdunklung hängt am **größten** Halt, und den muss man
+        // ausdrücklich nennen.
+        .presentationDetents([.large])
+        .presentationBackgroundInteraction(.enabled(upThrough: .large))
+    }
+
+    // MARK: Die Angaben
+
+    /// Die Angaben **live aus dem Speicher** — `item` ist die Kopie vom Moment
+    /// des Öffnens und wüsste von einem Chip, der hier gerade gesetzt wurde,
+    /// nichts. Dieselbe Begründung wie bei `pins`.
+    private var gewählt: [String] {
+        guard let list else { return item.detail ?? [] }
+        return list.items.first { $0.id == item.id }?.detail ?? []
+    }
+
+    /// Die Reihen dieses Artikels — dieselbe Quelle wie die Schicht beim
+    /// Anlegen (`ItemDetailPanel`). Zwei Wege zu denselben Angaben dürfen
+    /// nicht zwei Wortschätze sein.
+    private var reihen: [ItemDetailVocabulary.Group] {
+        ItemDetailVocabulary.groups(for: item.query)
+    }
+
+    /// Gewählte Wörter aus einem älteren Wortschatz — sie behalten ihren Platz
+    /// und bleiben abwählbar. Siehe `ItemDetailVocabulary.group(of:)`.
+    private var fremdwörter: [String] {
+        gewählt.filter { ItemDetailVocabulary.group(of: $0, in: reihen) == nil }
+    }
+
+    /// **Ganz oben, und mit dem Satz, der die Angaben von der Suche trennt.**
+    ///
+    /// Der Satz stand seit dem 01.08. im alten Angaben-Blatt und ist der
+    /// Grund, aus dem hier niemand „Bio" wählt und dann ein anderes Angebot
+    /// erwartet: Was hier steht, steht unter dem Artikel — und nirgends sonst.
+    /// Auf diesem Bildschirm wiegt er schwerer als vorher, weil die Treffer
+    /// jetzt direkt darunter stehen.
+    private var angabenSection: some View {
+        Section {
+            ForEach(reihen) { group in
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    Text(group.title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.secondaryText)
+                    // **Eine Reihe je Gruppe, die zur Seite scrollt — wie in
+                    // der Schicht beim Anlegen.** Der erste Entwurf ließ die
+                    // Chips umbrechen, und am gerenderten Bild war das
+                    // Ergebnis eindeutig: „Angebote diese Woche" fing erst
+                    // nach rund 1000 pt an, also zwei vollen Wischern. Auf
+                    // einem Bildschirm, der beides tragen soll, darf der eine
+                    // Teil den anderen nicht unter den Rand schieben.
+                    scrollendeChips(group.chips)
+                }
+                .padding(.vertical, Theme.Spacing.xs)
+            }
+        } header: {
+            Text("Angaben")
+        } footer: {
+            Text("Steht unter dem Artikel — für dich im Laden. Die Suche nach Angeboten benutzt weiter nur „\(item.text)\u{201C}.")
+        }
+        .listRowBackground(Theme.surface)
+    }
+
+    private var notizSection: some View {
+        Section("Notiz") {
+            TextField("z. B. die im blauen Becher", text: $note, axis: .vertical)
+                .lineLimit(1...3)
+                .textFieldStyle(.plain)
+                // **Durchgeschrieben beim Tippen, nicht auf Knopfdruck.** Das
+                // Blatt hat kein „Sichern"; ein Freitext, der nur mit einem
+                // Knopf überlebt, wäre der einzige Teil davon, der es hat.
+                .onChange(of: note) { _, neu in
+                    list?.setDetail(gewählt, note: neu, for: item)
+                }
+                .accessibilityIdentifier("itemDetail.note")
+                .accessibilityLabel("Notiz zum Artikel")
+                .accessibilityHint("Bleibt auf dem Gerät und geht nicht in die Suche")
+        }
+        .listRowBackground(Theme.surface)
+    }
+
+    private var fremdwortSection: some View {
+        Section("Sonst notiert") {
+            umbrechendeChips(fremdwörter)
+                .padding(.vertical, Theme.Spacing.xs)
+        }
+        .listRowBackground(Theme.surface)
+    }
+
+    private func scrollendeChips(_ words: [String]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Spacing.sm) {
+                ForEach(words, id: \.self) { word in
+                    chip(word)
+                }
+            }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+    }
+
+    /// Die Fassung mit Umbruch — für „Sonst notiert", wo es selten mehr als
+    /// zwei Wörter sind und eine scrollende Reihe nur Mechanik wäre.
+    private func umbrechendeChips(_ words: [String]) -> some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 84), spacing: Theme.Spacing.sm)],
+            alignment: .leading,
+            spacing: Theme.Spacing.sm
+        ) {
+            ForEach(words, id: \.self) { word in
+                chip(word)
+            }
+        }
+    }
+
+    private func chip(_ word: String) -> some View {
+        let isOn = gewählt.contains(word)
+        return Button {
+            withAnimation(.snappy) { toggle(word) }
+        } label: {
+            Text(word)
+                .font(.subheadline.weight(.medium))
+                .lineLimit(1)
+                .foregroundStyle(isOn ? Theme.onAccent : Color.primary)
+                .padding(.horizontal, Theme.Spacing.md)
+                .frame(minWidth: 64)
+                .frame(height: 44)
+                .background(
+                    isOn ? Theme.accent : Theme.surface,
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.inner, style: .continuous)
+                        .strokeBorder(isOn ? Color.clear : Theme.stroke)
+                )
+        }
+        .buttonStyle(TactileButtonStyle())
+        // Farbe allein sagt es nicht — `.isSelected` ist, was VoiceOver
+        // vorliest, und der Audit prüft auf die Beschriftung.
+        .accessibilityLabel(word)
+        .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+    }
+
+    /// Ein Chip schreibt sofort durch — wie in der Schicht beim Anlegen.
+    private func toggle(_ word: String) {
+        list?.setDetail(
+            ItemDetailVocabulary.toggling(word, in: gewählt, reihen: reihen),
+            note: note,
+            for: item
+        )
+    }
+
+    // MARK: Der Übergang zu den Treffern
+
+    /// **Eine Überschrift, damit der Bildschirm zwei Hälften hat und nicht
+    /// eine lange Rutsche.** Ohne sie stünden Chipreihen und Angebotszeilen
+    /// als derselbe Stoff untereinander; mit ihr sagt der Bildschirm, wo die
+    /// eigene Angabe aufhört und die Auskunft der App anfängt.
+    private var trefferKopf: some View {
+        Section { EmptyView() } header: {
+            Text("Angebote diese Woche")
+                .accessibilityIdentifier("itemSheet.offers.header")
+        }
+    }
+
+    // MARK: Löschen
+
+    /// **Am Ende, allein, und ohne Nachfrage** — wie „Liste leeren" oben im
+    /// Menü der Liste eine hat, hier aber nicht: Ein Artikel ist ein Wort, und
+    /// wer ihn versehentlich löscht, tippt ihn in drei Sekunden wieder.
+    private var löschenSection: some View {
+        Section {
+            Button(role: .destructive) {
+                list?.remove(item)
+                dismiss()
+            } label: {
+                Label("Löschen", systemImage: "trash")
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    // Die Rolle allein färbt hier nicht: Die Zeile erbt den
+                    // Akzent der App (grün), und ein grünes „Löschen" ist die
+                    // falsche Ansage. Am gerenderten Bild gesehen.
+                    .foregroundStyle(Color.red)
+            }
+            .accessibilityIdentifier("itemSheet.delete")
+        }
+        .listRowBackground(Theme.surface)
     }
 
     // MARK: Was die App aus dem Wort gemacht hat
@@ -474,7 +677,7 @@ struct PinnedBadge: View {
 }
 
 #Preview {
-    MatchDetailView(item: ShoppingItem(text: "Milch"), offers: MockFixtures.offers)
+    ItemSheet(item: ShoppingItem(text: "Milch", detail: ["1 l"]), offers: MockFixtures.offers)
         .environment(MatchRejectionStore())
         // Beide neu seit der Rückfrage: die Ablehnung liest den Schalter,
         // das Sheet die install_id. Fehlt einer, stürzt die Preview beim

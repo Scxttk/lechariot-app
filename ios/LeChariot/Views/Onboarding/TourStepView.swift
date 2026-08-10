@@ -51,7 +51,6 @@ struct TourStepView: View {
         deeds.compactMap { step in
             switch step.deed {
             case .addsItem: ("square.and.pencil", "Einen Artikel aufschreiben")
-            case .opensSuggestions: ("sparkles", "Die Vorschläge aufklappen")
             case .checksItem: ("checkmark.circle", "Im Laden abhaken")
             case .opensOffersTab: ("tag", "Die Angebote deiner Filialen ansehen")
             case .opensNextWeek: ("calendar", "In die nächste Woche schauen")

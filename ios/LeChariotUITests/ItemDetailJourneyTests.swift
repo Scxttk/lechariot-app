@@ -20,13 +20,11 @@ final class ItemDetailJourneyTests: XCTestCase {
         waitForList()
         addItem("Vollmilch")
 
-        app.tapInItemMenu("matches.item.detail")
-        XCTAssertTrue(app.buttons["itemDetail.done"].waitForExistence(timeout: 10),
-                      "Das Blatt mit den Angaben ist nicht aufgegangen")
+        app.openItemSheet(ofItem: "Vollmilch")
 
         tapChip("1 l")
         tapChip("Bio")
-        app.buttons["itemDetail.done"].tap()
+        app.buttons["itemSheet.done"].tap()
 
         XCTAssertTrue(app.buttons["Vollmilch, 1 l · Bio"].waitForExistence(timeout: 10),
                       "Die Angabe muss unter dem Artikel stehen\n" + app.debugDescription)
@@ -38,21 +36,25 @@ final class ItemDetailJourneyTests: XCTestCase {
                        "Der Listeneintrag darf sich nicht in die Angabe verwandeln")
     }
 
-    /// „Abbrechen" heißt abbrechen. Ein Blatt, das die Auswahl trotzdem behält,
-    /// wäre schlimmer als eines ohne Abbrechen-Knopf.
-    func testCancellingKeepsNothing() {
+    /// **Es gibt nichts mehr abzubrechen — und das ist die Zusage** (10.08.).
+    ///
+    /// Hier stand bis heute „Abbrechen heißt abbrechen": Das alte Angaben-Blatt
+    /// sammelte die Auswahl und schrieb sie erst auf „Fertig" durch. Das
+    /// Artikelblatt macht es wie die Schicht beim Anlegen — jeder Chip schreibt
+    /// **sofort** durch. Geprüft wird deshalb das Gegenteil von damals: Die
+    /// Angabe steht unter dem Artikel, **bevor** irgendein Knopf gedrückt wurde.
+    func testEveryChipWritesThroughImmediately() {
         waitForList()
         addItem("Vollmilch")
 
-        app.tapInItemMenu("matches.item.detail")
-        XCTAssertTrue(app.buttons["itemDetail.cancel"].waitForExistence(timeout: 10))
+        app.openItemSheet(ofItem: "Vollmilch")
         tapChip("Bio")
-        app.buttons["itemDetail.cancel"].tap()
 
-        XCTAssertTrue(app.buttons["Vollmilch"].waitForExistence(timeout: 10),
-                      "Ohne Angabe ist die Beschriftung genau der Artikelname")
-        XCTAssertFalse(app.buttons["Vollmilch, Bio"].exists,
-                       "Abgebrochen ist abgebrochen")
+        // Ohne „Fertig": Die Kachel darunter trägt die Angabe schon.
+        XCTAssertTrue(app.buttons["Vollmilch, Bio"].waitForExistence(timeout: 10),
+                      "Der Chip schreibt nicht sofort durch\n" + app.debugDescription)
+        XCTAssertFalse(app.buttons["itemDetail.cancel"].exists,
+                       "Ein Abbrechen-Knopf verspricht ein Zurück, das es nicht gibt")
     }
 
     /// **Das Mengen-Menü kommt von selbst** ([UI-8], Scott 01.08.) — **seit dem
@@ -76,7 +78,7 @@ final class ItemDetailJourneyTests: XCTestCase {
                       "Nach dem Anlegen muss die Angaben-Schicht dastehen")
         XCTAssertTrue(app.staticTexts["Menge"].exists)
         XCTAssertTrue(app.staticTexts["Größe"].exists)
-        XCTAssertFalse(app.buttons["itemDetail.done"].exists,
+        XCTAssertFalse(app.buttons["itemSheet.done"].exists,
                        "Es gibt nichts zu bestätigen — jeder Chip schreibt sofort durch")
     }
 
@@ -100,8 +102,8 @@ final class ItemDetailJourneyTests: XCTestCase {
         XCTAssertTrue(kachel.waitForExistence(timeout: 10))
 
         // Seit dem Raster (07.08.) ist die Kachel selbst das bedienbare Ding
-        // unter der Schicht — sie hakt ab. Der Weg zu den Angaben liegt in
-        // ihrem Kontextmenü.
+        // unter der Schicht — sie hakt ab. Der Weg zu den Angaben ist das
+        // Halten (10.08.).
         let zeile = app.buttons["list.tile"].firstMatch
         XCTAssertTrue(zeile.exists && zeile.isHittable,
                       "Die Liste unter der Schicht muss bedienbar bleiben\n"
@@ -121,8 +123,9 @@ final class ItemDetailJourneyTests: XCTestCase {
     }
 
     /// Der Freitext landet unter dem Artikel — und nirgends sonst. Er liegt
-    /// seit dem 03.08. in der vollen Fassung hinter „Notiz …", weil ein
-    /// Textfeld in der Schicht genau den Fokus nähme, den sie schützt.
+    /// seit dem 03.08. hinter „Notiz …", weil ein Textfeld in der Schicht genau
+    /// den Fokus nähme, den sie schützt; seit dem 10.08. führt dieser Knopf auf
+    /// dasselbe Artikelblatt, das auch das Halten öffnet.
     func testTheFreeTextNoteEndsUpUnderTheItem() {
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15))
@@ -138,7 +141,7 @@ final class ItemDetailJourneyTests: XCTestCase {
         XCTAssertTrue(notiz.waitForExistence(timeout: 10), "Kein Freitextfeld")
         notiz.tap()
         notiz.typeText("die im blauen Becher")
-        app.buttons["itemDetail.done"].tap()
+        app.buttons["itemSheet.done"].tap()
 
         XCTAssertTrue(
             app.staticTexts.containing(
@@ -182,8 +185,6 @@ final class ItemDetailJourneyTests: XCTestCase {
     /// Blatt, sondern eine Schicht über der Eingabezeile, und sie geht mit dem
     /// Fokus. Ein Wisch über die Liste tut das (`scrollDismissesKeyboard`).
     private func dismissQuantitySheet() {
-        let abbrechen = app.buttons["itemDetail.cancel"]
-        if abbrechen.exists { abbrechen.tap(); return }
         let panel = app.buttons["list.detailPanel.more"]
         guard panel.waitForExistence(timeout: 3) else { return }
         // Auf der Liste ziehen, nicht in der Bildschirmmitte — die liegt mit

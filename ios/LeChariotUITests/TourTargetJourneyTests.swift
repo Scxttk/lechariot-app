@@ -130,16 +130,11 @@ final class TourTargetJourneyTests: XCTestCase {
 
     // MARK: Die zwei Stellen aus Scotts Liste (Bedienrunde 08.08., Punkt A)
 
-    /// **Das Vorschläge-Menü, das seit dem 08.08. eingeklappt startet.** Ohne
-    /// den Winkel-Knopf ist es nicht zu finden; der Rundgang zeigt genau ihn.
-    /// Der alte Anker `.suggestions` hing an den Kacheln, und die stehen im
-    /// Vorgabefall gerade nicht da.
-    func testTheSuggestionsFrameHighlightsTheToggleAndNotTheTiles() {
-        startTourFromSettings()
-        advance(to: "Du musst nicht alles tippen")
-        settle()
-        assertHoleCovers(app.buttons["list.suggestions.toggle"], "der Winkel-Knopf")
-    }
+    /// **Der Rahmen zum Vorschläge-Menü ist am 10.08. ausgefallen**, und mit
+    /// ihm die zwei Journeys, die hier standen (Loch auf dem Winkel-Knopf,
+    /// Warten auf seinen Tipp). Der Knopf existiert nicht mehr: Die Fläche
+    /// steht von selbst, sobald die Tastatur kommt (Punkt E). Was der Rundgang
+    /// stattdessen zeigen soll, entscheidet Punkt F.
 
     /// **Die Schlusskarte steht auf der Vorschau und leuchtet die Hinweiszeile
     /// aus** — die aus #90, die sagt, dass diese Preise noch nicht gelten. Das
@@ -200,28 +195,8 @@ final class TourTargetJourneyTests: XCTestCase {
         feld.typeText("Zahnstocher\n")
 
         XCTAssertTrue(
-            waitForCard(toContain: "Du musst nicht alles tippen"),
-            "Die Handlung hat nicht weitergeschaltet: \(card.label)"
-        )
-    }
-
-    /// Dieselbe Zusicherung noch einmal mitten im Rundgang, damit sie nicht nur
-    /// für den ersten Rahmen gilt — und an einem Rahmen, dessen Ziel ein Knopf
-    /// ist und kein Textfeld.
-    func testTheSuggestionsFrameWaitsForTheToggleToo() {
-        startTourFromSettings()
-        advance(to: "Du musst nicht alles tippen")
-
-        Thread.sleep(forTimeInterval: 4.0)
-        XCTAssertTrue(
-            card.label.contains("Du musst nicht alles tippen"),
-            "Der Rahmen ist von allein weitergegangen: \(card.label)"
-        )
-
-        app.buttons["list.suggestions.toggle"].tap()
-        XCTAssertTrue(
             waitForCard(toContain: "Im Laden abhaken"),
-            "Der Winkel-Knopf hat nicht weitergeschaltet: \(card.label)"
+            "Die Handlung hat nicht weitergeschaltet: \(card.label)"
         )
     }
 
