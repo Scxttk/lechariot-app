@@ -93,7 +93,12 @@ while [ $# -gt 0 ]; do
 		# fehlt, damit `tools/tests.sh AddFlowJourneyTests` tut, was es sagt.
 		*) case "$1" in
 			*/*) only+=("$1") ;;
-			*Journey*|*Audit*) only+=("LeChariotUITests/$1") ;;
+			# `*Shots*` steht hier seit dem 09.08., und es hat einen Lauf
+			# gekostet: `tools/tests.sh FeldtestShots` landete als
+			# `LeChariotTests/FeldtestShots` im UI-losen Ziel, führte **null**
+			# Tests aus und meldete Erfolg. Ein grüner Lauf ohne einen
+			# einzigen gelaufenen Test ist die teuerste Sorte Grün.
+			*Journey*|*Audit*|*Shots*) only+=("LeChariotUITests/$1") ;;
 			*) only+=("LeChariotTests/$1") ;;
 		   esac
 		   shift ;;
@@ -296,8 +301,21 @@ fi
 # wackliger Test zwei Zeilen, und dann meldete dieser Wächter beim nächsten,
 # ruhigeren Lauf „ein Test fehlt" — am 09.08. genau so passiert: 824 gegen 823
 # bei zweimal denselben 823 Journeys.
-gelaufen=$(grep -oE "Test case '[A-Za-z0-9_]+\.[A-Za-z0-9_]+\(\)'|Test Case '-\[[A-Za-z0-9_.]+ [A-Za-z0-9_]+\]'" \
-	"$protokoll" | sort -u | wc -l | tr -d ' ')
+# **Und der Anker ist `ase '`, nicht `Test case '` — dritte Runde desselben
+# Wächters, 09.08. abends.** Drei Klone schreiben in dasselbe Protokoll, und
+# gelegentlich zerreisst eine Zeile: In `suite2.log` stand
+# `st case 'AreaRequestStoreTests.testTwoAreasAreBothRequested()' passed` —
+# die ersten zwei Zeichen sind unterwegs verlorengegangen. Der Test war
+# gelaufen und grün, nur sein Name zählte nicht mehr mit, und der Wächter
+# meldete „832 statt 833, ein Arbeiter ist ausgefallen". Ein Fehlalarm, der
+# einen grünen 37-Minuten-Lauf rot färbt.
+#
+# Nachgerechnet über beide Protokolle: Mit `Test case '` kommen 833 und 832
+# heraus, mit `ase '` **833 und 833** — dieselbe Zahl, und für den unzerissenen
+# Lauf dieselbe wie vorher. Es ist also keine neue Zählweise, nur eine, der ein
+# paar verlorene Zeichen am Zeilenanfang nichts ausmachen.
+gelaufen=$(grep -oE "ase '[A-Za-z0-9_]+\.[A-Za-z0-9_]+\(\)'|ase '-\[[A-Za-z0-9_.]+ [A-Za-z0-9_]+\]'" \
+	"$protokoll" | sed "s/^ase //" | sort -u | wc -l | tr -d ' ')
 merker="$DERIVED/.letzte-testzahl"
 vorher=$(cat "$merker" 2>/dev/null || echo 0)
 if [ "$vorher" -gt 0 ] && [ "$gelaufen" -lt "$vorher" ]; then

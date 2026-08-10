@@ -31,6 +31,14 @@ struct AddFlowState: Equatable {
 
     /// Ein Artikel ist entstanden: Er wird der aktive und rückt in die Zeile.
     mutating func added(_ id: UUID) {
+        aufnehmen(id)
+    }
+
+    /// Artikel nach hinten in die Zeile und aktiv machen. Zwei Aufrufer mit
+    /// zwei Anlässen (`added`, `reopen`) und **einer** Regel dahinter — die
+    /// Länge der Zeile ist eine davon, und sie darf nicht an zwei Stellen
+    /// stehen.
+    private mutating func aufnehmen(_ id: UUID) {
         recent.removeAll { $0 == id }
         recent.append(id)
         if recent.count > Self.recentLimit {
@@ -45,6 +53,23 @@ struct AddFlowState: Equatable {
     mutating func focus(_ id: UUID) {
         guard recent.contains(id) else { return }
         activeID = id
+    }
+
+    /// **Ein Artikel, der schon auf der Liste steht, bekommt seine Angaben
+    /// wieder** — Scotts Feldtest vom 09.08.: „Kohl steht da und ich komme an
+    /// seine Angaben nicht mehr heran."
+    ///
+    /// Der Unterschied zu `focus` ist die einzige Zeile, die es hier braucht:
+    /// `focus` wechselt **innerhalb** der Kachelzeile und lehnt alles ab, was
+    /// nicht schon darin steht — genau richtig für einen Tipp auf die Zeile,
+    /// und genau falsch für einen Artikel von weiter oben aus der Liste. Der
+    /// kommt hier dazu, statt abzuprallen.
+    ///
+    /// Der Unterschied zu `added` ist, dass hier nichts entstanden ist. Für die
+    /// Zeile ist das dasselbe (der Artikel rückt nach hinten und wird aktiv),
+    /// für alles, was am Anlegen hängt, nicht — deshalb ein eigener Name.
+    mutating func reopen(_ id: UUID) {
+        aufnehmen(id)
     }
 
     /// Der Fluss ist vorbei — die Tastatur ist unten, oder es wurde etwas

@@ -88,6 +88,7 @@
 		63180789A2A84F7B04AE4C96 /* DataExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 274CCDD6435C2FD2A0635A59 /* DataExport.swift */; };
 		63A4FC3FC6CF796D17DF7355 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5414C5611E9D4E8F9AFDA07 /* ContentView.swift */; };
 		63D39D7DCEFC804DA46FB0E5 /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12F8D70A89A245C75C6851F4 /* SupabaseClient.swift */; };
+		64D4CC09F8E7D664D781456C /* FeldtestShots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 946F0CBE2771FFB9409F5568 /* FeldtestShots.swift */; };
 		66A6752207308A217A62899A /* AppBrand.swift in Sources */ = {isa = PBXBuildFile; fileRef = E54D57D254A5E683BFD0D713 /* AppBrand.swift */; };
 		66AB74E4C7EE9A750D51A8CD /* TourTargetJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7134351276D0200290C51CE9 /* TourTargetJourneyTests.swift */; };
 		67CC198574C33DED44D8A078 /* PrivacyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F62B006DAF3B9E320FC69A17 /* PrivacyTests.swift */; };
@@ -180,6 +181,7 @@
 		CAD7F365827A486CE2491E62 /* ContextTipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89B0F6D055B939A84086552D /* ContextTipStore.swift */; };
 		CB1C9727FB60B36201B58B81 /* NearbyMarketsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EDABD7B58A24A9CB6728983 /* NearbyMarketsTests.swift */; };
 		CCAA533E7672482404F17545 /* OfferStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F76269277934B796DC60F20 /* OfferStore.swift */; };
+		CCBB3720A76E216183D95EC5 /* ListItemDetailPathJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F44AA5C1E7655C0141A439B /* ListItemDetailPathJourneyTests.swift */; };
 		CDB262E119B7D20EB9338EE3 /* SetupChecklistCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700B6B3F30E8DC2C2BAFE924 /* SetupChecklistCard.swift */; };
 		CDFF19AE2AEA4E426691CE6A /* WeekBoundaryFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D3BD57793F6559B36F3CC2 /* WeekBoundaryFixtureTests.swift */; };
 		CF069A07BD1A761E11E3A48F /* ItemDetailVocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62BDE33263A95B533A0BEF91 /* ItemDetailVocabulary.swift */; };
@@ -362,9 +364,11 @@
 		8B69F4B5F8C8FB958DFEEDB7 /* TourStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourStepView.swift; sourceTree = "<group>"; };
 		8D4AD1E596FEA2CA58F58BB7 /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
 		8DA43B01EBACACABD3767306 /* MetricsArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsArchive.swift; sourceTree = "<group>"; };
+		8F44AA5C1E7655C0141A439B /* ListItemDetailPathJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListItemDetailPathJourneyTests.swift; sourceTree = "<group>"; };
 		93148C43EB4AA2F6D4BB5CA6 /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfig.swift; sourceTree = "<group>"; };
 		93BC18BC46BCE0928582C823 /* SpotlightShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightShape.swift; sourceTree = "<group>"; };
 		93EA1D8120FEE3E7BB4EF154 /* AreaNoticeJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaNoticeJourneyTests.swift; sourceTree = "<group>"; };
+		946F0CBE2771FFB9409F5568 /* FeldtestShots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeldtestShots.swift; sourceTree = "<group>"; };
 		9476B754D24CEEA148265365 /* SpotlightRingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightRingTests.swift; sourceTree = "<group>"; };
 		9498A62F720A4CDF60E7C822 /* MotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionTests.swift; sourceTree = "<group>"; };
 		958C374B89EC9DFB532A2B28 /* AddFlowJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFlowJourneyTests.swift; sourceTree = "<group>"; };
@@ -614,11 +618,13 @@
 				27D78051BC5949971330C6E3 /* CityNameJourneyTests.swift */,
 				13CC4C8399D25DD45B84F33F /* ContextTipJourneyTests.swift */,
 				DF64CDAC0DBA6DC149FEB94F /* DiagnosticsJourneyTests.swift */,
+				946F0CBE2771FFB9409F5568 /* FeldtestShots.swift */,
 				141B9CC84363FF348F50DE7D /* FirstValueJourneyTests.swift */,
 				A2442ECD347A27BB39A66696 /* InstallIdJourneyTests.swift */,
 				F2AA8BB9D5D18F2F1B08421B /* ItemDetailJourneyTests.swift */,
 				5AEBC07E09EFF6A6DFA5FFFE /* KeyboardBackgroundJourneyTests.swift */,
 				E6129A433A9225C8B20B7E19 /* KeyboardWait.swift */,
+				8F44AA5C1E7655C0141A439B /* ListItemDetailPathJourneyTests.swift */,
 				A2D54CA2F7CD6F69B202434E /* LocatedPLZJourneyTests.swift */,
 				7A9D8435B451C3CC5B59F2F3 /* MatchFeedbackJourneyTests.swift */,
 				CEA2327E3E29216356945CA3 /* MultiRegionJourneyTests.swift */,
@@ -1227,11 +1233,13 @@
 				E55CBFA76531348520A526F4 /* CityNameJourneyTests.swift in Sources */,
 				4EF5D5D9826BCA3E7E7B1E1B /* ContextTipJourneyTests.swift in Sources */,
 				E60CE599D00A801164892D54 /* DiagnosticsJourneyTests.swift in Sources */,
+				64D4CC09F8E7D664D781456C /* FeldtestShots.swift in Sources */,
 				35CB289D1B121FE3FEE73D9A /* FirstValueJourneyTests.swift in Sources */,
 				BA221A4765A54BAF58B86BD3 /* InstallIdJourneyTests.swift in Sources */,
 				1D7DDB33025FB9054ECF7E3F /* ItemDetailJourneyTests.swift in Sources */,
 				FB6F4D5012F3B86E32ABD4E8 /* KeyboardBackgroundJourneyTests.swift in Sources */,
 				131CD5E735785362CC38B735 /* KeyboardWait.swift in Sources */,
+				CCBB3720A76E216183D95EC5 /* ListItemDetailPathJourneyTests.swift in Sources */,
 				81EE8A4DF06EE1589DEF42F5 /* LocatedPLZJourneyTests.swift in Sources */,
 				3D129061277F9F5EC5A41C76 /* MatchFeedbackJourneyTests.swift in Sources */,
 				9BAB0623FF44A06D536E0CDD /* MultiRegionJourneyTests.swift in Sources */,

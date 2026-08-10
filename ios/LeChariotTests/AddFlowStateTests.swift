@@ -53,6 +53,48 @@ final class AddFlowStateTests: XCTestCase {
         XCTAssertEqual(flow.activeID, a)
     }
 
+    /// **Der Feldtest vom 09.08. in Zahlen.** „Kohl" steht seit gestern auf
+    /// der Liste, der Tipp-Fluss ist längst beendet, und jetzt sollen seine
+    /// Angaben her. `focus` kann das nicht — es lehnt alles ab, was die Zeile
+    /// nicht schon trägt (siehe oben), und das ist für einen Tipp *in* die
+    /// Zeile auch richtig. `reopen` ist der Weg von aussen hinein.
+    func testReopeningAnItemFromTheListPutsItIntoTheRow() {
+        var flow = AddFlowState()
+
+        flow.reopen(a)
+
+        XCTAssertEqual(flow.activeID, a)
+        XCTAssertEqual(flow.recent, [a], "Der Artikel muss in der Zeile stehen, sonst "
+                       + "kann man von ihm aus nirgendwohin wechseln")
+    }
+
+    /// Und er rückt nach hinten, statt die Zeile zu verdoppeln — dieselbe
+    /// Regel wie beim Anlegen, weil dieselbe Rechnung dahintersteht.
+    func testReopeningSomethingAlreadyInTheRowDoesNotDuplicateIt() {
+        var flow = AddFlowState()
+        flow.added(a)
+        flow.added(b)
+
+        flow.reopen(a)
+
+        XCTAssertEqual(flow.activeID, a)
+        XCTAssertEqual(flow.recent, [b, a], "Von aussen geöffnet ist der Artikel der "
+                       + "jüngste Anlass — anders als beim Blättern in der Zeile")
+    }
+
+    /// Die Zeile bleibt kurz, auch wenn nacheinander fünf Artikel von der
+    /// Liste geöffnet werden.
+    func testReopeningKeepsTheRowShort() {
+        var flow = AddFlowState()
+        let ids = (0..<6).map { _ in UUID() }
+
+        for id in ids { flow.reopen(id) }
+
+        XCTAssertEqual(flow.recent.count, AddFlowState.recentLimit)
+        XCTAssertEqual(flow.recent, Array(ids.suffix(AddFlowState.recentLimit)))
+        XCTAssertEqual(flow.activeID, ids.last)
+    }
+
     /// Derselbe Artikel zweimal (Kachel antippen, was schon auf der Liste
     /// steht) darf die Zeile nicht verdoppeln.
     func testAddingTheSameItemTwiceKeepsOneTile() {
