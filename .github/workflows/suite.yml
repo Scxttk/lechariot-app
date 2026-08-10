@@ -28,9 +28,18 @@ on:
       scherben:
         description: 'Auf wie viele Runner die Journeys verteilt werden'
         default: '4'
+      # **Auf dem Runner bringen Klone nichts, sie kosten.** Gemessen am 10.08.
+      # mit `OfferHitsJourneyTests` (3 Tests) auf `macos-26`:
+      #
+      #   ohne Klone   417 s, Auslagerung 0
+      #   zwei Klone   508 s, Auslagerung 480 MB
+      #
+      # Derselbe Befund wie lokal beim vierten Klon, nur eine Stufe tiefer: Die
+      # Maschine hat drei Kerne und 7 GB, der zweite Klon nimmt den anderen mehr
+      # weg, als er dazulegt. Die Parallelität kommt hier aus den Scherben.
       klone:
-        description: 'Simulator-Klone je Runner'
-        default: '2'
+        description: 'Simulator-Klone je Runner (1 = ohne Klone, direkt auf dem Gerät)'
+        default: '1'
 
 concurrency:
   group: suite-${{ github.ref }}
@@ -190,11 +199,11 @@ jobs:
           # Durchgang direkt auf dem Gerät — das erspart genau den Wettlauf beim
           # Klon-Start, der lokal in vier von sechs Läufen einmal je Lauf
           # zuschlug („Failed to launch …xctrunner").
-          if [ '${{ inputs.klone || 2 }}' = '1' ]; then
+          if [ '${{ inputs.klone || 1 }}' = '1' ]; then
             args=(-parallel-testing-enabled NO)
           else
             args=(-parallel-testing-enabled YES
-                  -parallel-testing-worker-count '${{ inputs.klone || 2 }}')
+                  -parallel-testing-worker-count '${{ inputs.klone || 1 }}')
           fi
           for k in ${{ matrix.scherbe.klassen }}; do args+=(-only-testing:"$k"); done
           xcodebuild test-without-building "${gemeinsam[@]}" "${args[@]}" 2>&1 | tee -a lauf-${{ matrix.scherbe.nr }}.log

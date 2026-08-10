@@ -1,0 +1,47 @@
+# WEGWERF — Runde 7, parallel zu Runde 6, weil Zeit die knappe Grösse ist.
+#
+# Zweiter Verdacht für „NOCH KEIN TREFFER" auf dem Runner: die **Zeitzone**.
+# Der Simulator übernimmt sie vom Wirt, GitHub-Runner stehen auf UTC, Scotts
+# Mac auf Europe/Berlin. Die Fixture-Angebote hängen an
+# `Calendar(identifier: .iso8601).dateInterval(of: .weekOfYear, for: .now)`,
+# und diese Rechnung benutzt `TimeZone.current`.
+name: Probe7
+
+on:
+  push:
+    branches: [ci-suite]
+    paths: ['.github/workflows/probe7.yml']
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          sudo systemsetup -settimezone Europe/Berlin || true
+          date
+          sudo xcode-select -s /Applications/Xcode_26.3.app
+          cp ios/LeChariot/Resources/APIKeys.example.plist ios/LeChariot/Resources/APIKeys.plist
+
+      - name: Bauen
+        run: |
+          xcodebuild build-for-testing \
+            -project ios/LeChariot.xcodeproj -scheme LeChariot \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -derivedDataPath build/tests-dd -quiet
+
+      - name: Eine Klasse, Zeitzone Berlin
+        timeout-minutes: 25
+        run: |
+          set +e
+          xctestrun="$(ls -t build/tests-dd/Build/Products/*.xctestrun | head -1)"
+          xcodebuild test-without-building -xctestrun "$xctestrun" \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES -maximum-test-execution-time-allowance 300 \
+            -only-testing:LeChariotUITests/OfferHitsJourneyTests 2>&1 | tee lauf.log
+          grep -aE "^Test Case .*(passed|failed)|Executed [0-9]+ test" lauf.log | tail -6
+          echo "--- Plan-Überschrift, wie die App sie meldet ---"
+          grep -ao "identifier: 'list.plan.headline', label: '[^']*'" lauf.log | sort -u | head -3
