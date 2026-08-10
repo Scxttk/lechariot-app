@@ -373,9 +373,31 @@ Der Rückfall ist mit einem Unit-Test zugenagelt
 (`testTheFixtureOffersAreValidTodayWhereverTheClockStands`): Er braucht keinen
 Simulator und läuft in jedem Unit-Lauf mit.
 
+**Und es war nicht die einzige Stelle.** Derselbe Lauf hat drei Unit-Tests rot
+gemeldet, alle aus derselben Familie — die Suite setzte voraus, dass die
+Maschine deutsch eingestellt ist:
+
+| Test | Befund auf dem Runner | Ursache |
+|---|---|---|
+| `PriceHistoryDecodingTests.testDecodeIgnoresRecordedAt` | „22.7. – 28.7." statt „23.7. – 29.7." | `DateFormatter.offerDay` **liest** Berliner Mitternachte (`supabaseDay`), **schrieb** sie aber ohne Zone — westlich von Berlin ist eine Berliner Mitternacht noch der Vortag |
+| `MarketFilterTests.testTheChainLineLeadsWithTheDistanceNotTheCount` | „1.2 km" statt „1,2 km" | `distanceLabel` formatierte mit `locale: .current` |
+| `MarketFilterTests.testDistanceLosesItsDecimalBeyondTenKilometres` | „9.9 km" statt „9,9 km" | dieselbe Zeile |
+
+Beide sind repariert, und beide Male am Bestand statt an der Umgebung:
+`offerDay`/`offerDayLong` tragen jetzt `Europe/Berlin`, `distanceLabel` nagelt
+`de_DE` fest — wie die Datumsformatierer daneben es längst tun. Der verrutschte
+Tag war dabei kein reines Testproblem: Wer mit der App nach London fährt, sah
+dort jede Gültigkeit einen Tag zu früh.
+
+**Die Uhr und die Sprache des Runners bleiben, wie sie sind** (UTC, englisch).
+Sie umzustellen wäre ein Zweizeiler gewesen und hätte jede dieser vier Stellen
+versteckt statt entfernt — und die nächste fremde Maschine hätte sie wieder
+gefunden.
+
 **Merksatz: Wer Datum und Uhrzeit prüft, prüft auch die Zeitzone der Maschine.**
 Zwei Kalender im selben Bestand müssen dieselbe Zone haben, sonst stimmen sie
-nur dort überein, wo entwickelt wurde.
+nur dort überein, wo entwickelt wurde. Dasselbe gilt für die Sprache: Ein
+deutsches „1,2 km" ist eine Zusage und kommt aus `de_DE`, nicht aus `.current`.
 
 ### Geurteilt wird nach Tests, nicht nach Ampeln
 
