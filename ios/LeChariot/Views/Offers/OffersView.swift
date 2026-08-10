@@ -12,9 +12,19 @@ enum NoOffersReason {
     /// `upcomingFrom` schlägt jeden Zustand: Wenn der nächste Prospekt schon
     /// da ist, ist die Frage „warum steht hier nichts" beantwortet — mit einem
     /// Datum statt mit einer Vermutung über den Markt.
-    static func text(for state: BranchSyncState, upcomingFrom: Date? = nil) -> String {
+    static func text(
+        for state: BranchSyncState, upcomingFrom: Date? = nil, endedOn: Date? = nil
+    ) -> String {
         if let start = upcomingFrom {
-            return "Der neue Prospekt gilt ab \(Self.dayFormatter.string(from: start)) — bis dahin steht hier nichts."
+            // **Das Ende gehört dazu, sobald wir es kennen** (10.08.). Ohne
+            // es sagt der Satz nur, dass etwas kommt, und lässt offen, ob
+            // hier je etwas stand — genau die Lücke, die am Sonntag wie ein
+            // Ausfall aussieht. Fehlt das Datum, fällt der halbe Satz weg;
+            // behauptet wird nichts.
+            guard let ended = endedOn else {
+                return "Der neue Prospekt gilt ab \(Self.dayFormatter.string(from: start)) — bis dahin steht hier nichts."
+            }
+            return "Die Angebote endeten \(Self.dayFormatter.string(from: ended)). Der neue Prospekt gilt ab \(Self.dayFormatter.string(from: start))."
         }
         switch state {
         case .requested, .syncing:
@@ -29,6 +39,16 @@ enum NoOffersReason {
             // nichts über den Markt. Alles andere wäre geraten.
             return "Die Angebote sind noch unterwegs. Sie erscheinen, sobald der Markt gesynct ist — spätestens mit dem nächsten Nachtlauf."
         case .ready:
+            // **Ein bekanntes Ende schlägt diesen Satz** (10.08.). „Dieser
+            // Markt veröffentlicht seinen Prospekt nicht online" ist eine
+            // Aussage über den Markt, und über eine Kette, deren Woche
+            // nachweislich am Samstag geendet hat, ist sie falsch — dieselbe
+            // Klasse Fehler wie am 02.08. in Ahlbeck, nur aus der anderen
+            // Richtung. Der Satz bleibt für den Fall, für den er gedacht war:
+            // Wir waren da, es gab nie etwas.
+            if let ended = endedOn {
+                return "Die Angebote endeten \(Self.dayFormatter.string(from: ended)). Der neue Prospekt ist noch nicht da."
+            }
             // Das Backend war da und hat nichts gefunden. Bei EDEKA Böse in
             // Ahlbeck ist das der Dauerzustand: `edeka.de` gibt für diesen
             // Markt die Marktseite statt einer Angebotsliste zurück.
@@ -81,6 +101,10 @@ struct OffersView: View {
     /// anderen sehen.
     @State private var browser = OfferBrowser()
     @State private var selectedOffer: Offer?
+    /// Der zweite Weg in die Vorschau — für den Knopf im Leerzustand einer
+    /// ruhenden Kette. Der Knopf in der Werkzeugleiste bleibt ein
+    /// `NavigationLink`; beide landen auf demselben Bildschirm.
+    @State private var showsNextWeek = false
 
     /// Die Einmal-Tipps und die Ernährungsfrage — optional, damit Previews
     /// ohne sie auskommen. Siehe `ContextTipStore`.
@@ -135,6 +159,13 @@ struct OffersView: View {
                         offer: offer,
                         favoriteMarkets: favoriteMarkets,
                         historyRepository: priceHistoryRepository
+                    )
+                }
+                .navigationDestination(isPresented: $showsNextWeek) {
+                    NextWeekView(
+                        favoriteMarkets: favoriteMarkets,
+                        store: store,
+                        priceHistoryRepository: priceHistoryRepository
                     )
                 }
                 // Jeder Tab-Wechsel hierher ruft das erneut; einmal je Sitzung
@@ -197,13 +228,32 @@ struct OffersView: View {
 
     // MARK: Markt-Leiste
 
-    /// Siehe `MarketChipBar` — gebaut aus den Zeilen **dieses** Bildschirms.
+    /// Siehe `MarketChipBar` — gebaut aus den Zeilen **dieses** Bildschirms,
+    /// plus den Ketten, die gerade ruhen (`restingChains`).
     private var marketChips: some View {
         MarketChipBar(
-            chains: browser.chipChains(in: store.offers),
+            chains: browser.chipChains(in: store.offers, resting: restingChains),
             selection: $browser.market,
-            identifier: "offers.marketChips"
+            identifier: "offers.marketChips",
+            resting: restingChains
         )
+    }
+
+    /// Gewählte Ketten ohne gültige Angebote, deren Grund wir kennen.
+    private var restingChains: Set<String> {
+        OfferCoverage.restingChains(
+            favorites: favoriteMarkets,
+            current: store.offers,
+            windows: store.chainWindows
+        )
+    }
+
+    /// Gesetzt, wenn die Liste gerade auf eine ruhende Kette gefiltert ist —
+    /// dann steht hinter dem leeren Ergebnis der Grund und nicht „Nichts für
+    /// diesen Filter".
+    private var restingWindow: OfferCoverage.ChainOfferWindow? {
+        guard let chain = browser.market, restingChains.contains(chain) else { return nil }
+        return store.chainWindows[chain]
     }
 
     /// Region is ready, but there are no offers to show.
@@ -309,7 +359,8 @@ struct OffersView: View {
     private func reasonForNoOffers(_ market: Market) -> String {
         NoOffersReason.text(
             for: branchRequests.state(for: market.marketId),
-            upcomingFrom: OfferCoverage.upcomingStart(for: market, in: store.upcomingOffers)
+            upcomingFrom: OfferCoverage.upcomingStart(for: market, in: store.upcomingOffers),
+            endedOn: store.chainWindows[market.chain]?.endedOn
         )
     }
 
@@ -350,8 +401,24 @@ struct OffersView: View {
                     browser: browser,
                     scope: .current,
                     onResetFilters: { browser.resetFilters() },
-                    onClearMarket: { browser.market = nil }
+                    onClearMarket: { browser.market = nil },
+                    restingWindow: restingWindow,
+                    // **Am selben Schalter wie der Knopf in der
+                    // Werkzeugleiste.** Ohne diese Bedingung böte der
+                    // Leerzustand einen Weg in einen Bildschirm an, den der
+                    // Rest der App gerade versteckt — und `nextWeekLink` ist
+                    // die einzige andere Tür dorthin.
+                    onShowNextWeek: FeatureFlags.nextWeekPreview
+                        ? { showsNextWeek = true } : nil
                 )
+                // **Der weiße Kasten war keiner der drei Sackgassen zugedacht,
+                // er war schlicht die Vorgabe** — am gerenderten Bild gesehen:
+                // Der Leertext saß als einzige Zeile dieser Liste auf
+                // `systemBackground`, ein weißer Block auf Creme. Jede andere
+                // Zeile dieses Bildschirms setzt das seit dem 06.08.; diese
+                // war beim Herausziehen nach `OfferEmptyResultView`
+                // übersehen worden.
+                .listRowBackground(Color.clear)
             } else {
                 topDealsSection
                 ForEach(Array(OfferQuery.grouped(visible, by: browser.grouping).enumerated()), id: \.element.key) { index, section in

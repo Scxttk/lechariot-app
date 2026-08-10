@@ -130,6 +130,63 @@ final class AddFlowZonesJourneyTests: XCTestCase {
     }
 
 
+    /// **Der aktive Chip steht ganz im Bild** (10.08.).
+    ///
+    /// Die Kachelzeile der Angaben-Schicht endet an „Notiz …", und der aktive
+    /// Chip ist immer der **letzte** — also genau der, den die Kante frisst.
+    /// Am gerenderten Bild vom 08.08. war er ab dem vierten Artikel halb
+    /// abgeschnitten und ab dem fünften gar nicht mehr da: gefärbt, aber
+    /// unlesbar.
+    ///
+    /// **Gefunden hat das kein Test, und das ist der Grund für diesen hier.**
+    /// Die bestehenden Journeys fragen `frame` und `label` der Zeile, und
+    /// beide stimmen auch für einen Chip, von dem die Hälfte fehlt. Geprüft
+    /// wird deshalb die eine Frage, die das Bild stellt: Liegt der aktive Chip
+    /// **vollständig** links von „Notiz …" und rechts vom Bildschirmrand?
+    func testTheActiveChipStaysFullyVisibleNextToTheNoteButton() {
+        waitForList()
+        input.tapAndAwaitKeyboard(in: app)
+
+        let wörter = ["Vollmilch", "Bananen", "Waschmittel", "Kaffeebohnen", "Zahnpasta"]
+        for wort in wörter { app.typeText("\(wort)\n") }
+
+        let notiz = app.buttons["list.detailPanel.more"]
+        XCTAssertTrue(notiz.waitForExistence(timeout: 15),
+                      "Die Angaben-Schicht steht nicht\n" + app.debugDescription)
+
+        // Der aktive Chip trägt den zuletzt getippten Artikel — siehe
+        // `ItemDetailPanel.recentChip`; sein Name ist „Angaben zu …", damit er
+        // nicht mit der Kachelzeile der Liste kollidiert.
+        let aktiv = app.buttons["Angaben zu \(wörter.last!)"].firstMatch
+        XCTAssertTrue(aktiv.waitForExistence(timeout: 10),
+                      "Der aktive Chip steht nicht in der Zeile\n" + app.debugDescription)
+        let rahmen = settled(aktiv)
+        let notizRahmen = settled(notiz)
+
+        XCTAssertGreaterThanOrEqual(
+            rahmen.minX, 0,
+            "Der aktive Chip fängt links außerhalb des Bildschirms an: \(rahmen)"
+        )
+        XCTAssertLessThanOrEqual(
+            rahmen.maxX, notizRahmen.minX,
+            "Der aktive Chip läuft unter „Notiz …“: Chip \(rahmen), Notiz \(notizRahmen)"
+        )
+
+        // **Die Gegenprobe.** Ohne sie hieße „der letzte ist ganz sichtbar"
+        // nur, dass fünf Chips nebeneinander passen — der Test wäre auch gegen
+        // den Stand von gestern grün. Nach dem Nachziehen muss der **erste**
+        // links hinausgescrollt sein.
+        let erster = app.buttons["Angaben zu \(wörter.first!)"].firstMatch
+        XCTAssertTrue(!erster.exists || erster.frame.minX < 0,
+                      "Nichts ist nachgezogen — die Probe misst nichts: \(erster.frame)")
+
+        // Und der Fluss hat es überlebt: Weitertippen geht ohne einen Tipp
+        // ins Feld.
+        app.typeText("Zucker\n")
+        XCTAssertTrue(app.buttons["Angaben zu Zucker"].firstMatch.waitForExistence(timeout: 10),
+                      "Nach dem Nachziehen der Kachelzeile war die Tastatur weg")
+    }
+
     // MARK: Die Aufteilung selbst
 
     /// **Die drei Zonen als Zahlen** — Scotts Nachrunde vom 08.08.: „Bring!
@@ -231,7 +288,7 @@ final class AddFlowZonesJourneyTests: XCTestCase {
                       "\u{201E}Fertig\u{201C} ist kein Abbrechen \u{2014} der Artikel bleibt")
     }
 
-    /// **Und ohne Tastatur genauso.** Der Weg über „Häufig gekauft" war
+    /// **Und ohne Tastatur genauso.** Der Weg über „Häufig auf der Liste" war
     /// Scotts Punkt 9 vom 03.08.; bis heute trug ihn das ✗ der Schicht.
     func testDoneIsTheWayOutWithoutAnyKeyboardToo() {
         waitForList()

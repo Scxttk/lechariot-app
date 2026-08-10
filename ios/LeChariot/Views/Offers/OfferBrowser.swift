@@ -50,8 +50,19 @@ struct OfferBrowser: Equatable {
     /// Die aktive Kette bleibt drin, auch wenn sie gerade aus den Zeilen fällt
     /// (eine Aktualisierung kann das). Sonst verschwände mit dem Chip der
     /// einzige sichtbare Hinweis darauf, warum die Liste leer ist.
-    func chipChains(in offers: [Offer]) -> [String] {
-        var ketten = Set(offers.map(\.market))
+    ///
+    /// **`resting` kehrt die Regel für einen benannten Fall um** (10.08.).
+    /// Der Absatz oben bleibt richtig, solange „diese Kette hat hier nichts"
+    /// alles ist, was wir wissen. Am Sonntag wissen wir mehr: Die Woche endete
+    /// Samstag, die neue fängt Montag an — und dann ist der fehlende Chip
+    /// keine ersparte Sackgasse mehr, sondern eine verschwiegene Auskunft.
+    /// Es ist dieselbe Umkehrung wie bei den Vorschau-Chips am 03.08., aus
+    /// demselben Grund: **Ein Reiter, der fehlt, beantwortet „wo ist mein
+    /// Aldi" nicht.** Welche Ketten das sind, rechnet
+    /// `OfferCoverage.restingChains` — und die verlangt ein Fenster, also
+    /// einen Grund, der hinter dem Chip auch dasteht.
+    func chipChains(in offers: [Offer], resting: Set<String> = []) -> [String] {
+        var ketten = Set(offers.map(\.market)).union(resting)
         if let market { ketten.insert(market) }
         return ketten.sorted()
     }
@@ -106,6 +117,12 @@ struct MarketChipBar: View {
     /// Eigener Griff je Bildschirm — die Journeys müssen die Leiste der
     /// Vorschau von der der laufenden Woche unterscheiden können.
     let identifier: String
+    /// Ketten, die gerade **keine gültigen** Angebote haben und den Chip
+    /// trotzdem behalten — siehe `OfferBrowser.chipChains`. Sie stehen zurück
+    /// gezeichnet da, damit der Unterschied schon vor dem Tipp zu sehen ist:
+    /// Ein Chip, der aussieht wie die anderen und dann in einen Leertext
+    /// führt, ist die Sackgasse mit einem Umweg davor.
+    var resting: Set<String> = []
 
     var body: some View {
         if chains.count > 1 {
@@ -127,23 +144,51 @@ struct MarketChipBar: View {
     /// `AccessibilityAuditTests` unter Gate.
     private func chip(_ title: String, chain: String?) -> some View {
         let aktiv = selection == chain
+        let ruht = chain.map(resting.contains) ?? false
         return Button {
             // Ein zweiter Tipp auf den aktiven Chip hebt ihn auf. „Alle" liegt
             // am anderen Ende der Leiste, und dorthin zurückzuscrollen wäre
             // wieder genau die Lotterie, gegen die die Leiste gebaut ist.
             selection = aktiv ? nil : chain
         } label: {
-            Text(title)
+            HStack(spacing: Theme.Spacing.xs) {
+                if ruht {
+                    // **Das Zeichen sagt es, nicht die Farbe.** Ein bloß
+                    // blasserer Chip wäre für jemanden mit Farbschwäche
+                    // dasselbe wie ein normaler — dieselbe Regel, die die
+                    // Chips im Angaben-Panel `.isSelected` tragen lässt.
+                    Image(systemName: "calendar")
+                        .font(.caption)
+                        .accessibilityHidden(true)
+                }
+                Text(title)
+            }
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(aktiv ? Theme.onAccent : Color.primary)
+                .foregroundStyle(chipVordergrund(aktiv: aktiv, ruht: ruht))
                 .padding(.horizontal, Theme.Spacing.lg)
                 .frame(minHeight: 44)
                 .background(aktiv ? Theme.accent : Theme.surface, in: Capsule())
-                .overlay(Capsule().strokeBorder(aktiv ? Color.clear : Theme.stroke))
+                .overlay(
+                    Capsule().strokeBorder(
+                        aktiv ? Color.clear : Theme.stroke,
+                        style: StrokeStyle(lineWidth: 1, dash: ruht && !aktiv ? [4, 3] : [])
+                    )
+                )
         }
         .buttonStyle(TactileButtonStyle())
-        .accessibilityLabel(chain == nil ? "Alle Märkte" : title)
+        .accessibilityLabel(
+            chain == nil
+                ? "Alle Märkte"
+                : (ruht ? "\(title), zurzeit ohne Angebote" : title)
+        )
         .accessibilityAddTraits(aktiv ? [.isSelected] : [])
+    }
+
+    /// Aktiv schlägt ruhend: Wer den Chip gewählt hat, sieht die Auswahl, und
+    /// der Grund steht dann ohnehin in ganzen Sätzen unter der Leiste.
+    private func chipVordergrund(aktiv: Bool, ruht: Bool) -> Color {
+        if aktiv { return Theme.onAccent }
+        return ruht ? Theme.secondaryText : Color.primary
     }
 }
 
@@ -194,9 +239,18 @@ struct OfferEmptyResultView: View {
     let scope: OfferWeekScope
     let onResetFilters: () -> Void
     let onClearMarket: () -> Void
+    /// Das Fenster der gefilterten Kette, wenn sie gerade **ruht** — siehe
+    /// `OfferCoverage.ChainOfferWindow`. Gesetzt heißt: Der Filter ist nicht
+    /// im Weg, die Woche ist es.
+    var restingWindow: OfferCoverage.ChainOfferWindow?
+    /// Der Weg in die Vorschau. `nil` auf der Vorschau selbst — dort wäre er
+    /// ein Knopf auf den Bildschirm, auf dem man schon steht.
+    var onShowNextWeek: (() -> Void)?
 
     var body: some View {
-        if browser.isSearching {
+        if let restingWindow, let market = browser.market, !browser.isSearching {
+            restingChain(market, window: restingWindow)
+        } else if browser.isSearching {
             if let market = browser.market {
                 noSearchHit(in: market)
             } else {
@@ -206,6 +260,72 @@ struct OfferEmptyResultView: View {
             noFilterMatch
         }
     }
+
+    /// **Die vierte Sackgasse, und die einzige, die keine ist.**
+    ///
+    /// Bis zum 10.08. gab es diesen Bildschirm nicht, weil es den Chip nicht
+    /// gab: Eine Kette ohne gültige Zeilen verschwand aus der Leiste, und die
+    /// Frage „wo ist mein Netto" blieb unbeantwortet (Scotts Feldtest 09.08.,
+    /// acht Filialen gewählt, zwei sichtbar). „Nichts für diesen Filter" wäre
+    /// hier dieselbe Halbwahrheit wie bei `noSearchHit`: Es liegt nicht am
+    /// Filter, sondern daran, dass Prospektwochen Montag bis Samstag laufen.
+    ///
+    /// Beide Daten stehen ausgeschrieben da, weil „ab Montag" ohne Kalender
+    /// niemand einordnet — dieselbe Begründung wie bei
+    /// `NoOffersReason.dayFormatter`. Fehlt eins von beidem, fällt sein Satz
+    /// weg; behauptet wird nur, was gemessen im Fenster steht.
+    private func restingChain(
+        _ chain: String, window: OfferCoverage.ChainOfferWindow
+    ) -> some View {
+        ContentUnavailableView {
+            Label("Bei \(chain) läuft gerade kein Prospekt", systemImage: "calendar")
+        } description: {
+            // **Ohne die zwei Zeilen wird der Satz abgeschnitten**, am
+            // gerenderten Bild gesehen: „Die Angebote endeten Sa. 8. August.
+            // Die n…". In einer `List`-Zeile bekommt die Beschreibung sonst
+            // genau eine Zeile — und ein Satz, der die Hälfte seiner Auskunft
+            // verschluckt, ist schlimmer als keiner.
+            Text(Self.restingText(window))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        } actions: {
+            if window.startsOn != nil, let onShowNextWeek {
+                Button("Nächste Woche ansehen", action: onShowNextWeek)
+                    .buttonStyle(.borderedProminent)
+                    .foregroundStyle(Theme.onAccent)
+            }
+            Button("Alle Märkte zeigen", action: onClearMarket)
+                .buttonStyle(.bordered)
+        }
+        .accessibilityIdentifier("offers.restingChain")
+    }
+
+    /// „Die Angebote endeten Sa. 8. August. Die neuen gelten ab Mo. 17.
+    /// August." — als reine Rechnung, damit der Satz ohne eine Ansicht prüfbar
+    /// ist. Dieselbe Bauart wie `NoOffersReason.text`, aus demselben Grund: An
+    /// diesem Satz ist schon zweimal etwas behauptet worden, was niemand
+    /// gemessen hatte.
+    static func restingText(_ window: OfferCoverage.ChainOfferWindow) -> String {
+        var teile: [String] = []
+        if let ended = window.endedOn {
+            teile.append("Die Angebote endeten \(dayFormatter.string(from: ended)).")
+        }
+        if let start = window.startsOn {
+            teile.append("Die neuen gelten ab \(dayFormatter.string(from: start)).")
+        }
+        return teile.joined(separator: " ")
+    }
+
+    /// „Sa. 8. August" — der Wochentag gehört dazu, abgekürzt: Der Satz trägt
+    /// zwei davon, und „Samstag, 8. August. … Montag, 17. August." liest sich
+    /// wie ein Formular. (Die Beispiele sind aus dem gerenderten Bild
+    /// abgeschrieben, nicht aus dem Kopf.)
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "de_DE")
+        f.setLocalizedDateFormatFromTemplate("EEE d. MMMM")
+        return f
+    }()
 
     /// Der Filter ist im Weg, nicht die Datenlage. Der Unterschied: Hier ist
     /// die Behebung ein Tipp.

@@ -20,7 +20,7 @@ struct LocalDataExport: Codable, Equatable {
     let regions: [String]
     let branches: [Branch]
     let shoppingList: [Item]
-    /// Was „Häufig gekauft" gelernt hat. Gewicht statt Zähler, weil die
+    /// Was „Häufig auf der Liste" gelernt hat. Gewicht statt Zähler, weil die
     /// Käufe altern — siehe `PurchaseHistoryStore.halfLife`.
     let purchaseWeights: [String: Double]
 

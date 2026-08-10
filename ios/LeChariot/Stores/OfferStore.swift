@@ -155,6 +155,22 @@ enum OfferQuery {
         return offers.filter { $0.validFrom > today }
     }
 
+    /// Die Zeilen, deren Woche **schon vorbei** ist.
+    ///
+    /// Bis zum 10.08. fielen sie zwischen `current` und `upcoming` heraus und
+    /// wurden nirgends mehr angefasst — sachlich richtig, denn zeigen darf man
+    /// sie nicht. Nur beantworten sie die eine Frage, die der Sonntag stellt:
+    /// **Wann hat die letzte Woche geendet?** Ohne sie kann die App über eine
+    /// Kette, die gerade nichts hat, nur schweigen oder raten.
+    ///
+    /// Gelesen wird davon **kein Preis und kein Produkt**, nur das Datum in
+    /// `OfferCoverage.windows` — deshalb hält der Store auch nicht die Zeilen,
+    /// sondern das Ergebnis der Rechnung.
+    static func ended(_ offers: [Offer], now: Date = .now) -> [Offer] {
+        let today = Calendar.supabase.startOfDay(for: now)
+        return offers.filter { $0.validUntil < today }
+    }
+
     /// Which of two rows sharing a `duplicateKey` the user should see:
     /// a row valid today beats one that only starts later, then the wider
     /// window (the week beats the one-day row), then the earlier start — and
@@ -246,6 +262,11 @@ final class OfferStore {
     /// The offers that only start next week. Fed from the same fetch, kept in
     /// its own property so no caller can reach them by accident.
     private(set) var upcomingOffers: [Offer] = []
+    /// Je Kette: wann ihre letzte Woche geendet hat und wann die nächste
+    /// anfängt. **Das Ergebnis der Rechnung, nicht die Zeilen** — die
+    /// abgelaufenen sind für den Bildschirm tot und bleiben es; gebraucht wird
+    /// von ihnen ein Datum. Siehe `OfferCoverage.windows`.
+    private(set) var chainWindows: [String: OfferCoverage.ChainOfferWindow] = [:]
     private(set) var fetchedAt: Date?
     /// True while a background refresh is running behind cached data.
     private(set) var isRefreshing = false
@@ -380,6 +401,13 @@ final class OfferStore {
         offers = OfferQuery.deduplicated(OfferQuery.current(mine, now: now), now: now)
         upcomingOffers = OfferQuery.deduplicated(
             OfferQuery.upcoming(mine, now: now), now: now, separateWindows: true
+        )
+        // Aus dem **ungefilterten** Topf, nicht aus `upcomingOffers`: Der
+        // Dedupe kann die früheste Zeile einer Kette gegen eine spätere
+        // tauschen, und dann stünde ein Anfangsdatum da, das es so nie gab.
+        chainWindows = OfferCoverage.windows(
+            ended: OfferQuery.ended(mine, now: now),
+            upcoming: OfferQuery.upcoming(mine, now: now)
         )
     }
 

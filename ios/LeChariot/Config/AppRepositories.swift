@@ -71,6 +71,10 @@ enum AppRepositories {
                     MockFixtures.bulk(perChain: count)
                     + MockFixtures.bulk(perChain: count / 2, weeksAhead: 1))
             }
+            // Der Sonntagszustand — siehe `MockFixtures.sunday`.
+            if UITestSupport.servesSundayOffers {
+                return MockOfferRepository(fixtures: MockFixtures.sunday)
+            }
             #endif
             return MockOfferRepository()
         }

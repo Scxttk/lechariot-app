@@ -44,6 +44,64 @@ enum OfferCoverage {
             .min()
     }
 
+    /// **Was von einer Kette zu sagen ist, die gerade nichts Gültiges hat.**
+    ///
+    /// Zwei Daten und sonst nichts: wann ihre letzte Woche geendet hat und wann
+    /// die nächste anfängt. Beide dürfen fehlen — eine Kette, von der wir keins
+    /// von beidem wissen, bekommt keinen Chip (siehe `restingChains`), weil ein
+    /// Chip ohne Grund dahinter genau die Sackgasse wäre, gegen die
+    /// `OfferBrowser.chipChains` seit dem 31.07. gebaut ist.
+    struct ChainOfferWindow: Equatable {
+        var endedOn: Date?
+        var startsOn: Date?
+
+        var isKnown: Bool { endedOn != nil || startsOn != nil }
+    }
+
+    /// Je Kette das Fenster aus abgelaufenen und kommenden Zeilen.
+    ///
+    /// **Der Sonntag ist der Fall, für den es das gibt** (Scotts Feldtest
+    /// 09.08.): Prospektwochen laufen Montag bis Samstag, der Sonntag ist das
+    /// Loch dazwischen. Für die sieben Filialen in 01219 galten an diesem Tag
+    /// 68 von 3 038 Zeilen — Netto, Penny, ALDI Nord und NORMA fingen alle am
+    /// Montag an. Die App filterte das korrekt und **sagte es nicht**.
+    static func windows(ended: [Offer], upcoming: [Offer]) -> [String: ChainOfferWindow] {
+        var result: [String: ChainOfferWindow] = [:]
+        for offer in ended {
+            let bisher = result[offer.market]?.endedOn
+            if bisher == nil || offer.validUntil > bisher! {
+                result[offer.market, default: ChainOfferWindow()].endedOn = offer.validUntil
+            }
+        }
+        for offer in upcoming {
+            let bisher = result[offer.market]?.startsOn
+            if bisher == nil || offer.validFrom < bisher! {
+                result[offer.market, default: ChainOfferWindow()].startsOn = offer.validFrom
+            }
+        }
+        return result
+    }
+
+    /// Die Ketten, die einen Chip behalten, **obwohl** heute keine Zeile von
+    /// ihnen gilt: gewählt, ohne gültige Angebote, und mit einem Fenster, das
+    /// den Grund nennen kann.
+    ///
+    /// Gerechnet über die Ketten der gewählten Filialen und nicht über alle
+    /// Fenster: Wer Netto nie gewählt hat, will auch sonntags keinen
+    /// Netto-Chip.
+    static func restingChains(
+        favorites: [Market],
+        current: [Offer],
+        windows: [String: ChainOfferWindow]
+    ) -> Set<String> {
+        let versorgt = Set(current.map(\.market))
+        return Set(
+            favorites
+                .map(\.chain)
+                .filter { !versorgt.contains($0) && windows[$0]?.isKnown == true }
+        )
+    }
+
     static func branchesWithoutOffers(favorites: [Market], offers: [Offer]) -> [Market] {
         let coveredBranches = Set(offers.compactMap(\.marketId))
         let nationwideChains = Set(offers.filter(\.isNationwide).map(\.market))

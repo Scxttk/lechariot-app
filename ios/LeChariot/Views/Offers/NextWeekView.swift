@@ -193,6 +193,10 @@ struct NextWeekView: View {
                     onResetFilters: { browser.resetFilters() },
                     onClearMarket: { browser.market = nil }
                 )
+                // Siehe `OffersView.offerList` — derselbe weiße Kasten, und er
+                // gehört auf beiden Bildschirmen weg, sonst sähe die Vorschau
+                // an derselben Stelle anders aus als die laufende Woche.
+                .listRowBackground(Color.clear)
             } else {
                 ForEach(sections, id: \.key) { section in
                     Section(sectionTitle(section.key)) {

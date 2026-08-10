@@ -3,7 +3,7 @@ import XCTest
 /// **Ein Vertrag, drei Wege hinein.**
 ///
 /// Scotts Feldtest von Build `2026.0803.1440`, Punkte 8 und 9: Das Mengen-Menü
-/// sei „schlecht skaliert", wenn man von Hand tippt — und aus „Häufig gekauft"
+/// sei „schlecht skaliert", wenn man von Hand tippt — und aus „Häufig auf der Liste"
 /// heraus gebe es „keinen Weg hinaus".
 ///
 /// Beides ist derselbe Fund aus zwei Richtungen: Die Angaben-Schicht hing an
@@ -39,7 +39,7 @@ final class AddFlowContractJourneyTests: XCTestCase {
     /// Die Oberkante des Blocks unten — der Vorschlagsfläche, wo sie steht,
     /// sonst der Angaben-Schicht.
     private var blockTop: CGFloat {
-        let surface = app.staticTexts["Häufig gekauft"]
+        let surface = app.staticTexts["Häufig auf der Liste"]
         // **Die Kachelzeile, nicht „Notiz …".** Seit dem 08.08. steht die
         // Notiz **unten** im hohen Panel; sie als Oberkante zu nehmen maß den
         // Block um seine ganzen Chipreihen zu kurz — der Deckel hätte dann
@@ -98,7 +98,7 @@ final class AddFlowContractJourneyTests: XCTestCase {
     /// und auch heute risse.
     ///
     /// **Ohne Tastatur ist die Zahl eine andere Geschichte** (08.08.): Auf dem
-    /// Weg über „Häufig gekauft" steht keine Tastatur, der Block misst dann
+    /// Weg über „Häufig auf der Liste" steht keine Tastatur, der Block misst dann
     /// 58 % — und lässt trotzdem **mehr** Liste stehen als der Tastaturweg
     /// (rund 300 pt gegen 121). Genau daran zeigt sich, dass ein Anteil die
     /// falsche Frage ist; die richtige stellt `assertATileRowFits`.
@@ -148,7 +148,7 @@ final class AddFlowContractJourneyTests: XCTestCase {
                       "Weglegen ist kein Abbrechen — der Artikel bleibt")
     }
 
-    // MARK: Weg 2 — aus „Häufig gekauft"
+    // MARK: Weg 2 — aus „Häufig auf der Liste"
 
     /// **Scotts Punkt 9, wörtlich.** Auf diesem Weg steht keine Tastatur, also
     /// half auch der bisherige Ausgang nicht: Gegen `4311709` bleibt die Schicht
@@ -160,11 +160,11 @@ final class AddFlowContractJourneyTests: XCTestCase {
         XCTAssertTrue(panel.waitForExistence(timeout: 10), "Die Schicht steht nicht")
         XCTAssertEqual(app.keyboards.count, 0,
                        "Dieser Weg soll ohne Tastatur laufen — sonst prüft die Journey den anderen")
-        assertBlockFits("aus „Häufig gekauft“")
+        assertBlockFits("aus „Häufig auf der Liste“")
 
         dismiss.tap()
         XCTAssertTrue(panel.waitForNonExistence(timeout: 5),
-                      "Aus „Häufig gekauft“ heraus gibt es keinen Weg hinaus")
+                      "Aus „Häufig auf der Liste“ heraus gibt es keinen Weg hinaus")
         XCTAssertTrue(app.buttons["Milch"].exists, "Der Artikel bleibt auf der Liste")
     }
 
