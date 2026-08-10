@@ -27,7 +27,29 @@ on:
     inputs:
       scherben:
         description: 'Auf wie viele Runner die Journeys verteilt werden'
-        default: '4'
+        # **Fünf statt vier, seit dem 10.08. — nachgerechnet, nicht geschätzt.**
+        #
+        # Die Wanduhr eines Laufs ist die **längste** Scherbe, nicht die Summe.
+        # Mit den gemessenen Klassenzeiten aus Lauf 31422359776
+        # (`tools/testzeiten.sh`) und der Verteilung, die `testlauf.sh`
+        # tatsächlich baut, ergibt sich für die längste Scherbe:
+        #
+        #   4 Scherben  1539 s   (Ideal 1233 s)
+        #   5 Scherben  1244 s   (Ideal  986 s)
+        #   6 Scherben  1020 s   (Ideal  822 s)
+        #
+        # Der Schritt von vier auf fünf spart rund **fünf Minuten**, ohne dass
+        # ein Test wegfällt — es läuft nur anderes gleichzeitig.
+        #
+        # **Warum nicht gleich sechs.** Sechs wäre nochmal vier Minuten besser,
+        # aber jede Scherbe ist ein eigener `macos-26`-Runner, und wie viele
+        # davon gleichzeitig laufen dürfen, entscheidet das Konto, nicht diese
+        # Datei. Vier liefen nachweislich parallel; ob sechs es tun oder in der
+        # Warteschlange stehen (und den Gewinn wieder auffressen), ist von hier
+        # aus nicht zu sehen. Fünf ist der Schritt, der sich an einem Lauf
+        # ablesen lässt — steht in der Zusammenfassung des Workflows je Scherbe
+        # die Wanduhr, ist sechs danach eine Entscheidung mit Zahlen.
+        default: '5'
       # **Auf dem Runner bringen Klone nichts, sie kosten.** Gemessen am 10.08.
       # mit `OfferHitsJourneyTests` (3 Tests) auf `macos-26`:
       #
@@ -80,7 +102,7 @@ jobs:
       - uses: actions/checkout@v7
       - id: teilen
         run: |
-          tools/testlauf.sh scherben '${{ inputs.scherben || 4 }}' > scherben.txt
+          tools/testlauf.sh scherben '${{ inputs.scherben || 5 }}' > scherben.txt
           # `seriell` trägt nur Scherbe 1 — dass ihre parallele Ladung dafür
           # kleiner ausfällt, hat `tools/testlauf.sh` schon eingerechnet.
           matrix=$(awk '{printf "%s{\"nr\":%d,\"klassen\":\"%s\",\"seriell\":%s}", (NR>1?",":""), NR, $0, (NR==1?"true":"false")}' scherben.txt)
