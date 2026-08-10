@@ -1,13 +1,19 @@
-# WEGWERF — Runde 5.
+# WEGWERF — Runde 6.
 #
-# Stand: Bauen 52–63 s, Unit-Tests 3:33, Simulator bootet in 1:26. Offen ist
-# nur noch, was eine Journey auf diesem Runner kostet — und ob Klone dort etwas
-# bringen oder schaden (3 Kerne, 7 GB; lokal hat schon der vierte Klon auf
-# 16 GB ausgelagert).
+# Runde 5 hat die eigentliche Frage beantwortet, nur anders als erwartet: Die
+# Journeys sind auf dem Runner nicht bloss langsam, sie sind **rot**. Alle drei
+# Tests von `OfferHitsJourneyTests` fallen an derselben Zeile (`:40`), und der
+# Barrierefreiheits-Baum sagt, warum: Die Plan-Karte steht da und meldet „NOCH
+# KEIN TREFFER — Für deine Liste gibt es diese Woche keine Angebote in deinen
+# Filialen." Die Artikel sind also angelegt, es passt nur nichts dazu.
 #
-# Runde 4 war ein Eigentor: `timeout` gibt es auf macOS nicht, der Schritt war
-# nach 0 s „grün". Der Deckel sitzt jetzt da, wo er hingehört —
-# `timeout-minutes` am Schritt.
+# Verdacht: Der Simulator des Runners ist frisch und damit englisch/US, Scotts
+# ist deutsch. Getestet wird das mit `-testLanguage de -testRegion DE` gegen
+# einen Kontrolllauf ohne — dieselbe Klasse, sonst nichts geändert.
+#
+# Nebenbefund aus Runde 5, schon verwertet: **Klone schaden hier.**
+# 3 Tests ohne Klone 417 s, mit zwei Klonen 508 s, und nur mit Klonen taucht
+# Auslagerung auf (480 MB gegen 0).
 name: Probe3
 
 on:
@@ -19,15 +25,15 @@ on:
 jobs:
   probe:
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         include:
-          - klone: 'NO'
-            arg: '-parallel-testing-enabled NO'
-          - klone: '2'
-            arg: '-parallel-testing-enabled YES -parallel-testing-worker-count 2'
+          - sprache: 'de-DE'
+            arg: '-testLanguage de -testRegion DE'
+          - sprache: 'Vorgabe'
+            arg: ''
     steps:
       - uses: actions/checkout@v7
       - run: |
@@ -41,7 +47,7 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
             -derivedDataPath build/tests-dd -quiet
 
-      - name: Eine Klasse, Klone=${{ matrix.klone }}
+      - name: Eine Klasse, Sprache=${{ matrix.sprache }}
         timeout-minutes: 25
         run: |
           set +e
@@ -49,13 +55,10 @@ jobs:
           start=$SECONDS
           xcodebuild test-without-building -xctestrun "$xctestrun" \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
-            ${{ matrix.arg }} \
+            -parallel-testing-enabled NO ${{ matrix.arg }} \
             -test-timeouts-enabled YES -maximum-test-execution-time-allowance 300 \
             -only-testing:LeChariotUITests/OfferHitsJourneyTests 2>&1 | tee lauf.log
-          echo "::notice::KLASSENZEIT Klone=${{ matrix.klone }}: $((SECONDS - start)) s"
-          echo "--- je Test ---"
-          grep -aoE "[Tt]est [Cc]ase '[^']+' (passed|failed)[^(]*\([0-9.]+ seconds\)" lauf.log | tail -20
-          echo "--- Auslagerung ---"
-          sysctl vm.swapusage
-          echo "--- Symptome ---"
-          grep -aoE "Timed out while [a-zA-Z ]+|Failed to launch|preflight checks|to idle|Unknown application" lauf.log | sort | uniq -c | sort -rn | head
+          echo "::notice::Sprache=${{ matrix.sprache }}: $((SECONDS - start)) s"
+          grep -aE "^Test Case .*(passed|failed)|Executed [0-9]+ test" lauf.log | tail -6
+          echo "--- Plan-Überschrift, wie die App sie meldet ---"
+          grep -ao "identifier: 'list.plan.headline', label: '[^']*'" lauf.log | sort -u | head -3

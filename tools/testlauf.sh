@@ -224,7 +224,8 @@ scherben() {
 # „Test Case '-[Ziel.Klasse test]' passed".
 namen_mit_ausgang() {   # $1 = Protokoll, $2 = passed|failed
 	grep -oE "Test case '[A-Za-z0-9_]+\.[A-Za-z0-9_]+\(\)' $2|Test Case '-\[[A-Za-z0-9_.]+ [A-Za-z0-9_]+\]' $2" "$1" 2>/dev/null \
-		| sed -E "s/Test [Cc]ase '(-\[)?//; s/(\]|\(\))?' $2\$//; s/ /./" | sort -u
+		| sed -E "s/Test [Cc]ase '(-\[)?//; s/(\]|\(\))?' $2\$//; s/ /./" \
+		| sed -E 's/^[A-Za-z0-9_]+\.([A-Za-z0-9_]+\.[A-Za-z0-9_]+)$/\1/' | sort -u
 }
 
 # Gefallen **und** nicht danach doch noch durchgekommen.
@@ -246,9 +247,17 @@ namen_wackelig() {
 # gelaufen und grün, nur sein Name zählte nicht mehr mit. Nachgerechnet über
 # beide Protokolle: mit `Test case '` kommen 833 und 832 heraus, mit `ase '`
 # **833 und 833**.
+#
+# **Und beide Schreibweisen ergeben denselben Namen.** Parallel meldet
+# `Klasse.test`, seriell `Ziel.Klasse.test` — derselbe Test unter zwei Namen.
+# Solange kein Durchgang eine Klasse teilt, fällt das nicht auf; Scherbe 1
+# schreibt aber ihren parallelen **und** ihren seriellen Durchgang in dasselbe
+# Protokoll. Das Ziel wird deshalb abgeschnitten, bevor irgendetwas verglichen
+# wird.
 namen_gelaufen() {
 	grep -oE "ase '[A-Za-z0-9_]+\.[A-Za-z0-9_]+\(\)'|ase '-\[[A-Za-z0-9_.]+ [A-Za-z0-9_]+\]'" "$1" 2>/dev/null \
-		| sed -E "s/^ase '(-\[)?//; s/(\]|\(\))?'\$//; s/ /./" | sort -u
+		| sed -E "s/^ase '(-\[)?//; s/(\]|\(\))?'\$//; s/ /./" \
+		| sed -E 's/^[A-Za-z0-9_]+\.([A-Za-z0-9_]+\.[A-Za-z0-9_]+)$/\1/' | sort -u
 }
 
 # Die Klassen, von denen mindestens ein Test gelaufen ist.
