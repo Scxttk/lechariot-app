@@ -57,7 +57,13 @@ env:
   # Auf dem Runner liegen iOS 26.2, 26.4 und 26.5 nebeneinander — `OS=latest`
   # hiesse hier **26.5** und damit ein anderes Gerät als auf Scotts Mac. Der
   # Lauf sagt also, was er meint.
-  ZIEL: 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2'
+  #
+  # Gesucht wird das Gerät von `.github/simulator.sh`, und gefahren wird dann
+  # auf seiner **UDID**: Ein frischer Runner hat den Simulator-Dienst beim
+  # ersten Zugriff noch nicht wach, und `xcodebuild` sieht dann eine Liste aus
+  # lauter Platzhaltern. Siehe den Kopf des Skripts.
+  LAUFZEIT: com.apple.CoreSimulator.SimRuntime.iOS-26-2
+  GERAET_NAME: iPhone 17 Pro
   # Xcode 26.3 ist auch das, was auf Scotts Mac steht. Die Vorgabe des Images
   # ist eine andere und wechselt ohne Vorwarnung.
   XCODE: /Applications/Xcode_26.3.app
@@ -95,6 +101,13 @@ jobs:
       - name: Xcode nageln
         run: sudo xcode-select -s "$XCODE"
 
+      - name: Simulator bereitstellen
+        run: |
+          # Als Zuweisung und nicht als `echo "$(…)"`: So faellt der Schritt,
+          # wenn das Skript aufgibt, statt ein leeres `GERAET` weiterzureichen.
+          udid=$(.github/simulator.sh "$LAUFZEIT" "$GERAET_NAME")
+          echo "GERAET=$udid" >> "$GITHUB_ENV"
+
       # Die Datei ist gitignoriert (Geheimnis), das Projekt verweist aber auf
       # sie. Für die Tests reicht die Vorlage: Journeys starten die App mit
       # `-uiTesting` gegen Fixtures, nicht gegen Supabase.
@@ -106,7 +119,7 @@ jobs:
           start=$SECONDS
           xcodebuild build-for-testing \
             -project ios/LeChariot.xcodeproj -scheme LeChariot \
-            -destination "$ZIEL" -derivedDataPath "$DERIVED" -quiet
+            -destination "id=$GERAET" -derivedDataPath "$DERIVED" -quiet
           echo "bauen_sekunden=$((SECONDS - start))" >> "$GITHUB_ENV"
 
       - name: Unit-Tests
@@ -115,7 +128,7 @@ jobs:
           start=$SECONDS
           xctestrun="$(ls -t "$DERIVED"/Build/Products/*.xctestrun | head -1)"
           xcodebuild test-without-building -xctestrun "$xctestrun" \
-            -destination "$ZIEL" -only-testing:LeChariotTests \
+            -destination "id=$GERAET" -only-testing:LeChariotTests \
             -test-timeouts-enabled YES -maximum-test-execution-time-allowance 600 \
             -retry-tests-on-failure -test-iterations 2 2>&1 | tee unit.log
           set -e
@@ -175,6 +188,13 @@ jobs:
       - name: Xcode nageln
         run: sudo xcode-select -s "$XCODE"
 
+      - name: Simulator bereitstellen
+        run: |
+          # Als Zuweisung und nicht als `echo "$(…)"`: So faellt der Schritt,
+          # wenn das Skript aufgibt, statt ein leeres `GERAET` weiterzureichen.
+          udid=$(.github/simulator.sh "$LAUFZEIT" "$GERAET_NAME")
+          echo "GERAET=$udid" >> "$GITHUB_ENV"
+
       - uses: actions/download-artifact@v8
         with:
           name: produkte
@@ -194,7 +214,7 @@ jobs:
           set +e
           start=$SECONDS
           xctestrun="$(ls -t "$DERIVED"/Build/Products/*.xctestrun | head -1)"
-          gemeinsam=(-xctestrun "$xctestrun" -destination "$ZIEL"
+          gemeinsam=(-xctestrun "$xctestrun" -destination "id=$GERAET"
                      -test-timeouts-enabled YES -maximum-test-execution-time-allowance 600
                      -retry-tests-on-failure -test-iterations 2)
 
