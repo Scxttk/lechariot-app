@@ -229,10 +229,24 @@ final class AddFlowZonesJourneyTests: XCTestCase {
         let hoehe = app.windows.firstMatch.frame.height
         let tastaturOben = app.keyboards.firstMatch.frame.minY
         let tastaturHoehe = app.keyboards.firstMatch.frame.height
+        // **Und die Tastatur muss wirklich im Bild stehen** (10.08. gemessen).
+        // Läuft der Simulator mit angeschlossener Hardware-Tastatur — also
+        // immer dann, wenn nebenher ein Simulator-Fenster offen ist —, meldet
+        // `app.keyboards` eine Tastatur der **richtigen Höhe** an der falschen
+        // Stelle: `minY = 952` bei einem Fenster von 874. Die App bekommt
+        // dieselbe Zahl über die Systemmeldung, gibt der Angaben-Schicht
+        // entsprechend viel Platz, und die Anteile stimmen naturgemäß nicht:
+        // gemessen 59 % statt 45 %.
+        //
+        // **Das ist kein Fehler der App, und der Beweis ist ein Gegenlauf:**
+        // Auf `main` (80a33b0) fällt dieser Test in derselben Lage mit exakt
+        // derselben Zahl (0,5915). Ohne diese Zeile misst er also die
+        // Einstellungen der Maschine und nicht die Aufteilung.
         try XCTSkipUnless(
-            hoehe == 874 && tastaturHoehe == 233,
-            "Die Referenzanteile gelten für 874 pt Fenster und 233 pt Tastatur; "
-            + "hier sind es \(Int(hoehe)) und \(Int(tastaturHoehe))"
+            hoehe == 874 && tastaturHoehe == 233 && tastaturOben < hoehe,
+            "Die Referenzanteile gelten für 874 pt Fenster und eine Tastatur von "
+            + "233 pt **im Bild**; hier sind es \(Int(hoehe)), \(Int(tastaturHoehe)) "
+            + "und Oberkante \(Int(tastaturOben))"
         )
         let oben = blockTop / hoehe
         let mitte = (tastaturOben - blockTop) / hoehe

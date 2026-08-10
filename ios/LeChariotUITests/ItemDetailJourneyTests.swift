@@ -22,17 +22,17 @@ final class ItemDetailJourneyTests: XCTestCase {
 
         app.openItemSheet(ofItem: "Vollmilch")
 
-        tapChip("1 l")
+        tapChip("klein")
         tapChip("Bio")
         app.buttons["itemSheet.done"].tap()
 
-        XCTAssertTrue(app.buttons["Vollmilch, 1 l · Bio"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["Vollmilch, klein · Bio"].waitForExistence(timeout: 10),
                       "Die Angabe muss unter dem Artikel stehen\n" + app.debugDescription)
         // Der Artikel selbst bleibt das Gattungswort — daran hängt, dass die
         // Suche ihn weiter findet. Die Beschriftung oben beweist das schon
         // („Vollmilch, 1 l · Bio", nicht „1 l Bio Vollmilch"); hier steht die
         // Gegenprobe, dass die Angabe **allein** keinen Artikel bildet.
-        XCTAssertFalse(app.buttons["1 l · Bio"].exists,
+        XCTAssertFalse(app.buttons["klein · Bio"].exists,
                        "Der Listeneintrag darf sich nicht in die Angabe verwandeln")
     }
 
@@ -161,13 +161,18 @@ final class ItemDetailJourneyTests: XCTestCase {
         dismissQuantitySheet()
         XCTAssertTrue(app.buttons[text].waitForExistence(timeout: 10))
     }
-    /// Tippt einen Chip im Mengen-Menü an und scrollt vorher, falls er unter
-    /// der Blattkante liegt.
+    /// Tippt einen Chip auf dem Artikelblatt an und scrollt vorher, falls er
+    /// unter der Kante liegt.
     ///
-    /// Nötig seit dem halben Blatt (02.08.): Auf `.medium` steht „Menge" oben,
-    /// „Art" liegt darunter — genau wie bei Bring!. Ein Test, der ohne Scrollen
+    /// Nötig seit dem halben Blatt (02.08.): Ein Test, der ohne Scrollen
     /// tippt, prüft nicht das Vokabular, sondern die Blatthöhe, und die hat
     /// ihren eigenen Fall weiter oben.
+    ///
+    /// **Nur senkrecht, und das ist Absicht.** Seit dem 10.08. scrollt jede
+    /// Wortschatz-Reihe zur Seite (siehe `ItemSheet`); ein Chip weit hinten in
+    /// seiner Reihe ist damit nur über eine waagerechte Geste erreichbar. Wer
+    /// hier einen solchen wählt, prüft die Geste und nicht das Vokabular — die
+    /// Chips in diesen Journeys stehen deshalb vorn in ihrer Reihe.
     private func tapChip(_ label: String) {
         let chip = app.buttons[label].firstMatch
         for _ in 0..<4 {
