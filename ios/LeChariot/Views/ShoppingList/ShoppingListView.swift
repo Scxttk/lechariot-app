@@ -320,6 +320,7 @@ struct ShoppingListView: View {
                 }
             }
             .themedScreen()
+            .overlay(alignment: .top) { obereBlende }
             .navigationTitle("Einkaufsliste")
             // **Kompakt statt groß.** Der große Titel kostet oben rund 56 pt
             // für ein Wort, das die Tab-Leiste unten ohnehin schon sagt. Auf
@@ -572,6 +573,57 @@ struct ShoppingListView: View {
     }
 
     private var openGroups: [ShoppingSection] { openGroups(plan: ranks).groups }
+
+    /// **Die obere Kante beim Tippen** (10.08., erster Befund des Zonen-Bildes
+    /// vom 08.08.).
+    ///
+    /// Sobald die Titelleiste abtritt (`flowIsUp`), hat die Liste über sich
+    /// nichts mehr — und die Kacheln der oberen Zone fahren **hart** unter die
+    /// Uhr. Solange die Leiste stand, machte deren Unschärfe diese Arbeit; mit
+    /// ihr ist sie ersatzlos weggefallen, und das war an dem Umbau nicht
+    /// beabsichtigt.
+    ///
+    /// **Kein Balken, sondern ein Verlauf, und keine Höhe zurück.** Ein
+    /// undurchsichtiger Streifen wäre die Titelleiste unter anderem Namen —
+    /// die 54 pt, um die es am 08.08. ging. Der Verlauf liegt **über** der
+    /// Liste, nimmt ihr also nichts: Die Kachelreihe steht, wo sie steht, sie
+    /// verschwindet nur, statt abgeschnitten zu werden.
+    ///
+    /// `sicherOben` ist die gemessene sichere Fläche (dasselbe Maß, mit dem
+    /// `platzFuerAngaben` rechnet), nicht eine Zahl für ein Gerät — auf einem
+    /// SE sind es 20 pt statt 59, und ein fester Wert wäre dort ein Balken über
+    /// dem Inhalt.
+    ///
+    /// **Die Blende hört an der sicheren Fläche auf, und das ist die
+    /// Korrektur am ersten Entwurf.** Der deckte 59 pt voll und blendete 24 pt
+    /// darunter aus — am gerenderten Bild hat er die obere Kachelreihe damit
+    /// nicht ausgeblendet, sondern **verschwinden lassen**: In derselben Lage,
+    /// in der vorher drei Kacheln halb unter der Uhr standen, stand nachher
+    /// eine leere Fläche. Das ist die Titelleiste unter anderem Namen, also
+    /// genau das, was am 08.08. abgeräumt wurde.
+    ///
+    /// Voll deckt sie deshalb nur die **obere Hälfte** der sicheren Fläche —
+    /// dort steht die Uhr, und die muss lesbar bleiben —, und an deren
+    /// Unterkante ist sie durchsichtig. Unterhalb der sicheren Fläche liegt
+    /// nichts von ihr; keine Kachel, die im Bild steht, wird dunkler.
+    @ViewBuilder
+    private var obereBlende: some View {
+        if flowIsUp, sicherOben > 0 {
+            LinearGradient(
+                stops: [
+                    .init(color: Theme.background, location: 0),
+                    .init(color: Theme.background, location: 0.5),
+                    .init(color: Theme.background.opacity(0), location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: sicherOben)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+            .ignoresSafeArea(edges: .top)
+        }
+    }
 
     private var itemList: some View {
         ScrollViewReader { proxy in
@@ -948,7 +1000,7 @@ struct ShoppingListView: View {
     }
 
     /// Ob der Tipp-Fluss gerade läuft — Tastatur oben **oder** eine
-    /// Angaben-Schicht, die über „Häufig gekauft" entstanden ist.
+    /// Angaben-Schicht, die über „Häufig auf der Liste" entstanden ist.
     private var flowIsUp: Bool { inputFocused || addFlow.isActive }
 
     /// **Die Plan-Karte tritt beim Tippen zurück** (2026-08-08, Punkt C-2,
@@ -1028,8 +1080,8 @@ struct ShoppingListView: View {
     /// nicht. Beim zweiten Artikel lagen damit zwei Flächen übereinander — das
     /// Raster über den Angaben des ersten — und die Liste, in die man gerade
     /// etwas einträgt, war ein Streifen. Der Winkel-Knopf links im Feld holt
-    /// das Raster zurück; er war schon der Weg zurück zu „Häufig gekauft" und
-    /// ist jetzt der Weg zu beiden Fassungen.
+    /// das Raster zurück; er war schon der Weg zurück zu „Häufig auf der
+    /// Liste" und ist jetzt der Weg zu beiden Fassungen.
     ///
     /// **Eine feste Höhe, und der Grund dafür ist nachgemessen ein anderer als
     /// der naheliegende.** Die Vermutung war: Wächst die Fläche, schiebt sie
@@ -1083,7 +1135,7 @@ struct ShoppingListView: View {
         let remaining = suggestions
         if !remaining.isEmpty && showsStapleSurface {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                Text("Häufig gekauft")
+                Text("Häufig auf der Liste")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Theme.secondaryText)
                 // **Neben der Angaben-Schicht schrumpft der Streifen auf eine
@@ -1338,8 +1390,8 @@ struct ShoppingListView: View {
     /// ganze Kachelreihe. Vorher, mit einer Chipreihe, ging das Stapeln
     /// gerade so durch.
     ///
-    /// Ohne Tastatur (Weg über „Häufig gekauft") bleibt es beim Nebeneinander:
-    /// Dort ist der Bildschirm nicht geteilt, und der nächste Vorschlag soll
+    /// Ohne Tastatur (Weg über „Häufig auf der Liste") bleibt es beim
+    /// Nebeneinander: Dort ist der Bildschirm nicht geteilt, und der nächste Vorschlag soll
     /// **einen Tipp** weit weg bleiben — genau der Fehler vom 26.07.
     private var surfaceTakesOver: Bool { isTyping && surfaceIsExpanded }
 
@@ -1461,8 +1513,8 @@ struct ShoppingListView: View {
     /// und noch gar kein Artikel angelegt wurde.
     ///
     /// **Und er ist der einzige Ausgang ohne Tastatur.** Auf dem Weg über
-    /// „Häufig gekauft" steht keine — genau Scotts Punkt 9 vom 03.08., den bis
-    /// heute das ✗ der Schicht getragen hat.
+    /// „Häufig auf der Liste" steht keine — genau Scotts Punkt 9 vom 03.08.,
+    /// den bis heute das ✗ der Schicht getragen hat.
     @ViewBuilder
     private var doneButton: some View {
         if flowIsUp {
@@ -1598,8 +1650,8 @@ struct ShoppingListView: View {
     /// **Der Ausgang, der keine Tastatur braucht.**
     ///
     /// Bis zum 03.08. gab es nur einen: „die Tastatur ist unten". Auf dem Weg
-    /// über „Häufig gekauft" stand aber nie eine — und damit war die Schicht
-    /// dort nicht verlassbar (Scotts Punkt 9). Der Fokus wird trotzdem
+    /// über „Häufig auf der Liste" stand aber nie eine — und damit war die
+    /// Schicht dort nicht verlassbar (Scotts Punkt 9). Der Fokus wird trotzdem
     /// mitgenommen, wo einer liegt: Sonst zöge `keepTyping` die Schicht im
     /// nächsten Durchgang wieder auf.
     private func endFlow() {

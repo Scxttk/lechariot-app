@@ -112,13 +112,44 @@ struct ItemDetailPanel: View {
     /// muss eine **ganze Kachelreihe** stehen bleiben (112 pt seit den drei
     /// Spalten aus #91). Mit der Notizzeile blieben 73 pt — also keine
     /// Kachel; ohne sie 121 pt — also eine ganze.
+    /// **Die Zeile scrollt dem aktiven Artikel nach** (10.08., zweiter Befund
+    /// des Zonen-Bildes vom 08.08.).
+    ///
+    /// Der aktive Chip ist der zuletzt angelegte, also **der letzte** der
+    /// Reihe — und die Reihe endet an `noteRow`, das sich seine Breite mit
+    /// `layoutPriority` nimmt. Ab dem dritten, vierten Artikel steht der Chip,
+    /// auf den es gerade ankommt, damit halb unter der Kante: gefärbt, aber
+    /// nicht lesbar. Aufgefallen ist das am gerenderten Bild und an keinem
+    /// Test — die Journeys fragen `frame` und `label`, und beide stimmen auch
+    /// für einen Chip, von dem die Hälfte fehlt.
+    ///
+    /// `.trailing` und nicht `.center`: Der neue Artikel gehört ans Ende, und
+    /// mittig gezogen stünde rechts von ihm eine Lücke, in der nichts ist.
+    /// Ohne Bewegung, weil der Wechsel selbst schon einer ist — die Schicht
+    /// blendet im selben Moment ein.
     private var header: some View {
         HStack(spacing: Theme.Spacing.sm) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Spacing.sm) {
-                    ForEach(recent) { entry in
-                        recentChip(entry)
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        ForEach(recent) { entry in
+                            recentChip(entry)
+                                .id(entry.id)
+                        }
+                        // **Ein Streifen Nichts am Ende, und er ist gemessen.**
+                        // Am Anschlag rechts liegt die Kante der Scroll-Fläche
+                        // nicht dort, wo „Notiz …" anfängt: Der aktive Chip
+                        // endete bei 287,7, der Knopf beginnt bei 285,7 — zwei
+                        // Punkte darunter. Der Streifen schiebt den letzten
+                        // Chip um seine Breite nach links, und damit steht er
+                        // ganz im Bild statt fast.
+                        Color.clear
+                            .frame(width: Theme.Spacing.md, height: 1)
+                            .accessibilityHidden(true)
                     }
+                }
+                .onChange(of: item.id, initial: true) { _, id in
+                    proxy.scrollTo(id, anchor: .trailing)
                 }
             }
             // Vorrang, sonst nimmt die gierige Scroll-Ansicht daneben die ganze

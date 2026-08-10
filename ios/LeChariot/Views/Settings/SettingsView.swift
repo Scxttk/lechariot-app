@@ -247,7 +247,7 @@ struct SettingsView: View {
                 Button("Vergessen", role: .destructive) { history.forget() }
                 Button("Abbrechen", role: .cancel) {}
             } message: {
-                Text("\(AppBrand.name) vergisst, was du bisher abgehakt hast. „Häufig gekauft“ zeigt danach wieder die Standardvorschläge. Deine Liste, deine Filialen und deine Angaben bleiben.")
+                Text("\(AppBrand.name) vergisst, was du bisher abgehakt hast. „Häufig auf der Liste“ zeigt danach wieder die Standardvorschläge. Deine Liste, deine Filialen und deine Angaben bleiben.")
             }
 
             // Der Notausgang, und ab 2026-07-30 in **jedem** Build. Vorher gab

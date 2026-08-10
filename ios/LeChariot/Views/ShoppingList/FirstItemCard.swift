@@ -84,7 +84,7 @@ struct FirstItemCard: View {
                 )
             }
             .buttonStyle(TactileButtonStyle())
-            // Bewusst nicht „… hinzufügen": Die Kacheln in „Häufig gekauft"
+            // Bewusst nicht „… hinzufügen": Die Kacheln in „Häufig auf der Liste"
             // heißen so, und zwei gleich benannte Knöpfe auf einem Bildschirm
             // sind für VoiceOver wie für die Journeys nicht zu unterscheiden.
             .accessibilityLabel("\(example.word) auf die Liste legen — \(example.reason)")

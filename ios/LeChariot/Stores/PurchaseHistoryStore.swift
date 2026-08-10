@@ -7,13 +7,21 @@ import Observation
 /// zeigte bis hierher acht feste Grundnahrungsmittel; die erste Testerin von
 /// außen (Scotts Mutter) hat dazu gesagt, was Bring! besser macht: Es zeigt,
 /// was *sie* kauft. Das ist ein Zähler mit Alterung, und mehr soll es nicht
-/// werden — die Überschrift bleibt deshalb „Häufig gekauft" und nicht „Du
-/// brauchst vermutlich", weil das zweite eine Aussage über die Zukunft wäre.
+/// werden — die Überschrift ist deshalb eine Beobachtung und keine Vorhersage,
+/// nie „Du brauchst vermutlich".
 ///
 /// **Gezählt wird beim Abhaken, nicht beim Hinzufügen.** Hinzufügen heißt „ich
 /// denke daran", Abhaken heißt „ich habe es gekauft". Ein versehentlich
 /// getippter und wieder weggewischter Artikel darf nichts lehren, und
 /// „Liste leeren" darf es auch nicht.
+///
+/// **Seit dem 10.08. heißt die Überschrift „Häufig auf der Liste", gezählt
+/// wird aber weiter das Abhaken** — Scotts Wortwahl, und der Widerspruch ist
+/// benannt statt stillschweigend behoben. Wer die Überschrift wörtlich nimmt,
+/// erwartet einen Zähler auf `add`; das wäre die Umkehrung der Entscheidung
+/// vom 2026-07-31 (der Absatz darüber) und beträfe jede Zeile hier. Ob der
+/// Name der Rechnung folgt oder die Rechnung dem Namen, entscheidet Scott
+/// getrennt; bis dahin gilt der Absatz oben unverändert.
 ///
 /// **Was hier liegt, ist heikler als eine Einkaufsliste.** Eine Kaufhistorie
 /// sagt etwas über Ernährung, Alkohol, Kinder, Gesundheit. Sie bleibt

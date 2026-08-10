@@ -206,6 +206,136 @@ enum MockFixtures {
     /// Was `MockOfferRepository` normalerweise ausliefert.
     static let standard: [Offer] = offers + nextWeekOffers + thirdChainOffers
 
+    // MARK: Der Sonntag
+
+    /// **Der Sonntagszustand, ohne auf einen Sonntag zu warten** (10.08.).
+    ///
+    /// Scotts Feldtest vom 09.08.: acht Filialen gewählt, sichtbar nur zwei —
+    /// die Prospektwochen der übrigen sechs endeten Samstag, die neuen fingen
+    /// Montag an. Für 01219 galten an dem Tag **68 von 3 038** Zeilen. Der
+    /// Zustand hängt am Kalender und ist damit einen Tag die Woche prüfbar;
+    /// das ist keine Grundlage für einen Test und erst recht keine, um ein
+    /// Bild anzusehen.
+    ///
+    /// **Nachgestellt wird der Zustand, nicht das Datum.** Die Zeilen hängen
+    /// am letzten Samstag **vor** und am nächsten Montag **nach** heute, also
+    /// an einem abgelaufenen und einem künftigen Fenster — an einem echten
+    /// Sonntag sind das gestern und morgen, an jedem anderen Tag dasselbe
+    /// Muster mit weiteren Abständen. Ein festes Datum wäre nach einer Woche
+    /// wieder die Sorte Fixture, die den Bildschirm anlügt (siehe `weekStart`).
+    ///
+    /// Drei Ketten, drei Zustände — genau die, die der Bildschirm
+    /// auseinanderhalten muss:
+    ///  · **Lidl** hat ein längeres Fenster und steht ganz normal da (bei Scott
+    ///    war das Kaufland, 01.–31.08.).
+    ///  · **Aldi** ruht mit beiden Daten: endete Samstag, fängt Montag an.
+    ///  · **Netto** ruht mit **nur** dem Ende — ohne Vorschau, also auch ohne
+    ///    Knopf „Nächste Woche". Ohne diesen dritten Fall stünde der halbe Satz
+    ///    in keinem Bild.
+    static let letzterSamstag: Date = zurueck(zuWochentag: 7, vor: .now)
+    static let naechsterMontag: Date = vor(zuWochentag: 2, nach: .now)
+
+    /// Der letzte/nächste Wochentag (Gregorianisch: 1 = Sonntag … 7 = Samstag)
+    /// **streng** vor bzw. nach dem Stichtag — „streng", damit an genau dem
+    /// Wochentag selbst nicht null Tage herauskommen und die Zeile dann heute
+    /// gälte statt gestern.
+    private static func zurueck(zuWochentag ziel: Int, vor tag: Date) -> Date {
+        let kalender = Calendar.supabase
+        let heute = kalender.startOfDay(for: tag)
+        let ist = kalender.component(.weekday, from: heute)
+        let abstand = (ist - ziel + 7 - 1) % 7 + 1
+        return kalender.date(byAdding: .day, value: -abstand, to: heute) ?? heute
+    }
+
+    private static func vor(zuWochentag ziel: Int, nach tag: Date) -> Date {
+        let kalender = Calendar.supabase
+        let heute = kalender.startOfDay(for: tag)
+        let ist = kalender.component(.weekday, from: heute)
+        let abstand = (ziel - ist + 7 - 1) % 7 + 1
+        return kalender.date(byAdding: .day, value: abstand, to: heute) ?? heute
+    }
+
+    static let sunday: [Offer] = [
+        // Die Kette mit dem langen Fenster — sie überlebt den Sonntag.
+        Offer(
+            marketId: "lidl-01219-1",
+            market: "Lidl",
+            product: "Bio Vollmilch",
+            price: 0.99,
+            regularPrice: 1.29,
+            unit: "je 1 l",
+            category: "Molkerei & Eier",
+            emoji: "🥛",
+            validFrom: letzterSamstag.addingTimeInterval(-20 * 24 * 60 * 60),
+            validUntil: naechsterMontag.addingTimeInterval(20 * 24 * 60 * 60),
+            basePrice: 0.99,
+            baseUnit: "1 l",
+            nationwide: false
+        ),
+        Offer(
+            marketId: "lidl-01219-1",
+            market: "Lidl",
+            product: "Landliebe Frische Vollmilch",
+            price: 1.49,
+            regularPrice: nil,
+            unit: "je 1 l",
+            category: "Molkerei & Eier",
+            emoji: "🥛",
+            validFrom: letzterSamstag.addingTimeInterval(-20 * 24 * 60 * 60),
+            validUntil: naechsterMontag.addingTimeInterval(20 * 24 * 60 * 60),
+            basePrice: 1.49,
+            baseUnit: "1 l",
+            nationwide: false
+        ),
+        // Aldi: abgelaufen — und die neue Woche liegt schon vor.
+        Offer(
+            marketId: "aldi-01219-1",
+            market: "Aldi",
+            product: "Spanische Orangen",
+            price: 2.49,
+            regularPrice: nil,
+            unit: "je 2 kg Netz",
+            category: "Obst & Gemüse",
+            emoji: "🍊",
+            validFrom: letzterSamstag.addingTimeInterval(-5 * 24 * 60 * 60),
+            validUntil: letzterSamstag,
+            basePrice: 1.25,
+            baseUnit: "1 kg",
+            nationwide: false
+        ),
+        Offer(
+            marketId: "aldi-01219-1",
+            market: "Aldi",
+            product: "Rispentomaten",
+            price: 1.79,
+            regularPrice: 2.49,
+            unit: "je 500 g",
+            category: "Obst & Gemüse",
+            emoji: "🍅",
+            validFrom: naechsterMontag,
+            validUntil: naechsterMontag.addingTimeInterval(5 * 24 * 60 * 60),
+            basePrice: 3.58,
+            baseUnit: "1 kg",
+            nationwide: false
+        ),
+        // Netto: abgelaufen, und **keine** Vorschau.
+        Offer(
+            marketId: "netto-01219-1",
+            market: "Netto",
+            product: "Deutsche Erdbeeren",
+            price: 1.99,
+            regularPrice: 2.99,
+            unit: "je 500 g Schale",
+            category: "Obst & Gemüse",
+            emoji: "🍓",
+            validFrom: letzterSamstag.addingTimeInterval(-5 * 24 * 60 * 60),
+            validUntil: letzterSamstag,
+            basePrice: 3.98,
+            baseUnit: "1 kg",
+            nationwide: false
+        ),
+    ]
+
     // MARK: Ein Prospekt in echter Größe
 
     /// **Der Vorrat für das Messgeschirr** (2026-08-02).

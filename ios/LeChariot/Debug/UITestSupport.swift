@@ -115,6 +115,16 @@ enum UITestSupport {
 
     static let seededPLZ = "01219"
 
+    /// Launched with `-uiTestingSunday`: der Sonntagszustand — zwei gewählte
+    /// Ketten ohne gültige Angebote, eine mit.
+    ///
+    /// Siehe `MockFixtures.sunday`. Ein eigener Schalter und nicht das
+    /// Standard-Saatgut: Ein halbes Dutzend Journeys prüft gegen
+    /// `MockFixtures.offers`, und eine Kette, die über Nacht keine Zeilen mehr
+    /// hat, würde sie alle umwerfen, ohne dass an ihnen etwas kaputt wäre.
+    static let servesSundayOffers =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingSunday")
+
     /// `-uiTestingBulkOffers <n>`: `n` Zeilen **je Kette** für die laufende
     /// Woche, halb so viele für die Vorschau.
     ///
