@@ -51,6 +51,22 @@ struct MarketPickerView: View {
     @State private var deviceAnchor: (lat: Double, lon: Double)?
     @State private var locator = PLZLocator()
     @State private var locationOffered = false
+    /// Die Titel aller Zeilen — **einmal** gerechnet, beim Laden.
+    ///
+    /// Stand bis zum 10.08. als berechnete Eigenschaft da, und das war der
+    /// gemessene Grund für #124. `rowTitle(for:)` liest sie **je Zeile**, und
+    /// jeder Zugriff baute die Karte über **alle** Filialen neu: bei den 113,
+    /// die Dresden hat, 113 x 113 Titelvergaben. Offline gemessen (`-O`,
+    /// dieselbe Logik nachgebaut): 4,6 ms bei 20 Filialen, **120 ms bei 113**,
+    /// 273 ms bei 200 — quadratisch. Neu gezeichnet wird bei **jedem** Tipp,
+    /// weil `store.favoriteMarkets` sich ändert und der Rumpf sie liest.
+    ///
+    /// Die Rückmeldung kam also nicht zu spaet, weil die Animation lahm war,
+    /// sondern weil der Hauptfaden in dem Moment Zeichenketten kürzte.
+    ///
+    /// Die Titel hängen an `markets` und `plan`, und beide setzt genau eine
+    /// Stelle: `loadMarkets()`. Dort gehört die Karte hin.
+    @State private var rowTitles: [String: String] = [:]
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var query = ""
@@ -66,13 +82,38 @@ struct MarketPickerView: View {
         MarketFilter.filter(markets, query: query)
     }
 
-    /// Local branches grouped by chain, chains alphabetical. Within a chain the
-    /// nearest store first — with three REWE in one postcode, alphabetical
-    /// order says nothing about which one the user means.
+    /// Local branches grouped by chain. Within a chain the nearest store
+    /// first — with three REWE in one postcode, alphabetical order says
+    /// nothing about which one the user means.
+    ///
+    /// **Ungewählte Ketten oben, gewählte sinken, die zuletzt gewählte ganz
+    /// unten** (seit dem 10.08., #123). Dieselbe Ordnung wie „Deine Filialen"
+    /// seit dem 08.08. und wie „Erledigt" in der Einkaufsliste: Was
+    /// entschieden ist, geht aus dem Weg. Wer drei Ketten nacheinander
+    /// durchgeht, findet die noch offenen oben, statt an den schon erledigten
+    /// vorbeizuscrollen — und der Weg ist genau der, den Scott am 01.08.
+    /// beschrieben hat (Kette antippen, wählen, „Fertig", nächste Kette).
+    ///
+    /// Die Reihenfolge der Wahl musste nicht erfunden werden, sie steht schon
+    /// da — siehe `RegionStore.chainSelectionOrder`.
+    ///
+    /// **Hier wird nur sortiert, nichts gefiltert.** Die Regeln des Wählers
+    /// vom 03.08. (Umkreis, Obergrenzen) sitzen in `loadDirectory` und
+    /// `nearbyWideningIfSparse` und bleiben unberührt.
     private var chainGroups: [(chain: String, markets: [Market])] {
-        Dictionary(grouping: filtered.filter { !$0.isNationwide }, by: \.chain)
+        let gewählt = store.chainSelectionOrder
+        return Dictionary(grouping: filtered.filter { !$0.isNationwide }, by: \.chain)
             .map { (chain: $0.key, markets: $0.value.sorted(by: nearerFirst)) }
-            .sorted { $0.chain < $1.chain }
+            .sorted { lhs, rhs in
+                switch (gewählt[lhs.chain], gewählt[rhs.chain]) {
+                // Beide ungewählt: alphabetisch, wie vor dem 10.08.
+                case (nil, nil): return lhs.chain < rhs.chain
+                case (nil, _): return true
+                case (_, nil): return false
+                // Beide gewählt: die ältere Wahl steht höher.
+                case let (l?, r?): return l < r
+                }
+            }
     }
 
     /// Ob gerade gesucht wird. Die Suche ist die Einschränkung — dann stehen
@@ -432,15 +473,17 @@ struct MarketPickerView: View {
             ?? MarketFilter.branchLabel(name: market.branchName, chain: market.chain)
     }
 
-    /// Die Titel aller Zeilen auf einmal — siehe `MarketFilter.titles`.
+    /// Rechnet die Zeilentitel neu — nach jedem Laden, sonst nie.
     ///
     /// Auf einmal und nicht je Zeile, weil ein Titel erst im Vergleich mit den
     /// **anderen** gezeigten Zeilen gut oder schlecht ist: „Dresden" ist als
     /// einzelne Zeile schon nichtssagend, „Striesen-Süd" erst als zweite.
     /// Straße und Stadt kommen aus dem Verzeichnis; Zeilen aus `markets`
     /// tragen sie nicht und behalten den gekürzten Namen.
-    private var rowTitles: [String: String] {
-        MarketFilter.titles(for: markets.map { market in
+    ///
+    /// Warum das *nicht* mehr im Rumpf läuft, steht an `rowTitles`.
+    private func refreshRowTitles() {
+        rowTitles = MarketFilter.titles(for: markets.map { market in
             let branch = plan?.byMarketId[market.marketId]?.branch
             return MarketFilter.Row(
                 id: market.marketId,
@@ -506,6 +549,9 @@ struct MarketPickerView: View {
             }
             errorMessage = LoadFailure.message(for: error, subject: "Die Filialen")
         }
+        // Genau hier und nur hier: `markets` und `plan` stehen jetzt fest, und
+        // bis zum nächsten Laden ändern sie sich nicht mehr.
+        refreshRowTitles()
         isLoading = false
     }
 

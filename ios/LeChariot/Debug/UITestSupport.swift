@@ -139,6 +139,24 @@ enum UITestSupport {
         return n
     }
 
+    /// `-uiTestingDichtesVerzeichnis <n>`: `n` Filialen im Mock-Verzeichnis
+    /// statt der neun Fixtures.
+    ///
+    /// Neun Filialen sind kein Dresden. Der Wähler rechnet an seinen
+    /// Zeilentiteln quadratisch (siehe `MarketPickerView.rowTitles`), und bei
+    /// neun Zeilen ist das nicht zu sehen — bei den 113, die Scott wirklich
+    /// hat, sind es über hundert Millisekunden je Neuzeichnung. Ein Messstand,
+    /// der den Fall des Nutzers nicht herstellen kann, misst am Fehler vorbei.
+    ///
+    /// Dieselbe Bauart wie `bulkOfferCount` eine Zeile höher: Die Größe steht
+    /// im Test, der sie braucht, nicht im App-Quelltext.
+    static var dichteVerzeichnisGroesse: Int? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-uiTestingDichtesVerzeichnis"),
+              i + 1 < args.count, let n = Int(args[i + 1]), n > 0 else { return nil }
+        return n
+    }
+
     /// Eine, zwei oder drei Filialen — je nachdem, was der Lauf braucht. Die
     /// Reihenfolge ist die von `seededBranches`, damit ein Lauf mit zwei
     /// Filialen genau den Zustand bekommt, den er vor dem 2026-08-02 hatte.

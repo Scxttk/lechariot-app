@@ -480,6 +480,47 @@ enum MockFixtures {
                lat: 54.0500, lon: 13.8167),
     ]
 
+    /// Ein Verzeichnis in Dresdner Größe — für den Messlauf des Wählers.
+    ///
+    /// Die Verteilung ist die **gemessene** aus `MarketFilter.titles`: ALDI
+    /// Nord 25 und Netto 24 heißen wörtlich alle gleich, Lidl 22 und EDEKA 14
+    /// fast alle verschieden. Das ist kein Beiwerk, sondern genau der Fall,
+    /// den die Titelvergabe teuer macht — ein Verzeichnis aus lauter
+    /// eindeutigen Namen liefe durch den billigen Zweig und misst am Fehler
+    /// vorbei.
+    ///
+    /// Alle liegen um die Dresdner Mitte, damit der 10-km-Kreis sie fasst und
+    /// die Regel „unter sechs Filialen wird aufgemacht" nicht anspringt.
+    static func dichtesVerzeichnis(_ anzahl: Int) -> [Branch] {
+        // (Kette, Anteil, tragen alle denselben Namen)
+        let verteilung: [(String, Int, Bool)] = [
+            ("ALDI Nord", 25, true), ("Netto", 24, true), ("Lidl", 22, false),
+            ("EDEKA", 14, false), ("REWE", 13, false), ("Kaufland", 9, false),
+            ("Penny", 6, false),
+        ]
+        let gesamt = verteilung.reduce(0) { $0 + $1.1 }
+        var out: [Branch] = []
+        var i = 0
+        for (kette, anteil, gleicherName) in verteilung {
+            let n = max(1, anzahl * anteil / gesamt)
+            for k in 0..<n where out.count < anzahl {
+                i += 1
+                // Ein Gitter von ~50 m Schrittweite um die Dresdner Mitte:
+                // nah genug, dass keine Filiale aus dem Kreis fällt.
+                let lat = dresden.lat + Double(i % 12) * 0.0005
+                let lon = dresden.lon + Double(i / 12) * 0.0005
+                out.append(Branch(
+                    marketId: "dicht-\(i)",
+                    chain: kette,
+                    name: gleicherName ? "\(kette) Dresden" : "\(kette) Stadtteil \(k)",
+                    street: "Teststraße \(i)",
+                    plz: "01219", city: "Dresden", lat: lat, lon: lon
+                ))
+            }
+        }
+        return out
+    }
+
     /// Postcode centres for mock runs. Real geocoding talks to Apple's servers,
     /// which a test must never do.
     ///
