@@ -184,8 +184,6 @@ final class PinnedOfferJourneyTests: XCTestCase {
     /// aufgeht. Die Journeys unten testen nicht das Menü, sondern was danach
     /// kommt — für sie ist es ein Zwischenschritt.
     private func dismissQuantitySheet() {
-        let abbrechen = app.buttons["itemDetail.cancel"]
-        if abbrechen.exists { abbrechen.tap(); return }
         // Seit dem 03.08. ist das Mengen-Menue kein Blatt mehr, sondern eine
         // Schicht ueber der Eingabezeile — sie geht mit dem Fokus, nicht mit
         // einem Knopf. Ein Wisch ueber die Liste tut das.

@@ -113,8 +113,6 @@ final class ReviewNoteJourneyTests: XCTestCase {
     /// die Journey hing an 10 pt Tastaturhöhe. „Fertig" unten links ist der
     /// Weg, den die App seit C-3 anbietet, und der, den ein Prüfer nimmt.
     private func dismissQuantitySheet() {
-        let abbrechen = app.buttons["itemDetail.cancel"]
-        if abbrechen.exists { abbrechen.tap(); return }
         let panel = app.buttons["list.detailPanel.more"]
         guard panel.waitForExistence(timeout: 3) else { return }
         app.buttons["list.input.done"].tap()

@@ -400,7 +400,11 @@ struct ItemSheet: View {
                     // Die Rolle allein färbt hier nicht: Die Zeile erbt den
                     // Akzent der App (grün), und ein grünes „Löschen" ist die
                     // falsche Ansage. Am gerenderten Bild gesehen.
-                    .foregroundStyle(Color.red)
+                    //
+                    // `Theme.error` und nicht `.red`: Systemrot steht auf der
+                    // Creme bei rund 3,3:1 und fiele im Kontrast-Audit durch.
+                    // Der Token ist genau dafür da (20.07.).
+                    .foregroundStyle(Theme.error)
             }
             .accessibilityIdentifier("itemSheet.delete")
         }

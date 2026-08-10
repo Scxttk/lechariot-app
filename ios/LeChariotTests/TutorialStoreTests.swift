@@ -291,8 +291,8 @@ final class TutorialStoreTests: XCTestCase {
         let without = TutorialStep.tour(hasMarkets: false)
 
         XCTAssertEqual(withMarkets.map(\.id),
-                       ["input", "suggestions", "check", "offers", "nextWeek", "done"])
-        XCTAssertEqual(without.map(\.id), ["input", "suggestions", "check", "done"])
+                       ["input", "check", "offers", "nextWeek", "done"])
+        XCTAssertEqual(without.map(\.id), ["input", "check", "done"])
 
         XCTAssertFalse(
             without.contains { $0.tab != .liste },
@@ -310,7 +310,7 @@ final class TutorialStoreTests: XCTestCase {
     func testWithoutTheNextWeekPreviewTheOffersFramesAreGoneToo() {
         let ohneVorschau = TutorialStep.tour(hasMarkets: true, showsNextWeek: false)
 
-        XCTAssertEqual(ohneVorschau.map(\.id), ["input", "suggestions", "check", "done"])
+        XCTAssertEqual(ohneVorschau.map(\.id), ["input", "check", "done"])
         XCTAssertFalse(ohneVorschau.contains { $0.tab != .liste })
         XCTAssertFalse(
             ohneVorschau.last!.text.contains("Filiale gewählt"),
@@ -439,7 +439,7 @@ final class TutorialStoreTests: XCTestCase {
         XCTAssertEqual(TourStepView.frameCount, handgriffe.count)
         XCTAssertEqual(TourStepView.points.count, handgriffe.count)
         XCTAssertFalse(TourStepView.points.contains { $0.text.isEmpty })
-        XCTAssertTrue(TourStepView.subtitle.hasPrefix("Drei Handgriffe"),
+        XCTAssertTrue(TourStepView.subtitle.hasPrefix("Zwei Handgriffe"),
                       "Das Zahlwort muss zur Zahl passen: \(TourStepView.subtitle)")
     }
 

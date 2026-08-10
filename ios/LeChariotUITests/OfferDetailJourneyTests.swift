@@ -127,8 +127,6 @@ final class OfferDetailJourneyTests: XCTestCase {
     /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst
     /// aufgeht.
     private func dismissQuantitySheet() {
-        let abbrechen = app.buttons["itemDetail.cancel"]
-        if abbrechen.exists { abbrechen.tap(); return }
         // Seit dem 03.08. ist das Mengen-Menue kein Blatt mehr, sondern eine
         // Schicht ueber der Eingabezeile — sie geht mit dem Fokus, nicht mit
         // einem Knopf. Ein Wisch ueber die Liste tut das.

@@ -116,6 +116,15 @@ extension XCUIApplication {
     /// dadurch je nach Wortschatz des Artikels ein Stück tiefer, und ein
     /// `tap()` auf etwas außerhalb des Bildes schlägt fehl. Wer die Treffer
     /// meint, ruft das hier.
+    ///
+    /// **Gescrollt wird bis ans Ende, nicht bis zur Überschrift** — und das
+    /// ist gemessen, nicht vorsichtshalber. Der erste Anlauf hielt an, sobald
+    /// „Angebote diese Woche" erreichbar war; `OfferDetailJourneyTests`
+    /// suchte danach die Fußnote („… Preisverlauf …") und fand sie nicht.
+    /// Eine `List` baut nur, was im Bild ist: Was unter der Kante liegt, steht
+    /// in keinem Bedienungshilfen-Baum. Am Ende des Blatts stehen Zeilen,
+    /// Fußnote und Löschen zusammen im Bild — bei den Testdaten sind es ein
+    /// bis drei Angebote.
     @discardableResult
     func openTileMatches(
         ofItem itemLabel: String? = nil,
@@ -123,11 +132,11 @@ extension XCUIApplication {
         line: UInt = #line
     ) -> XCUIElement {
         let fertig = openItemSheet(ofItem: itemLabel, file: file, line: line)
-        let überschrift = staticTexts["itemSheet.offers.header"].firstMatch
-        for _ in 0..<6 where !überschrift.exists || !überschrift.isHittable {
+        let ende = buttons["itemSheet.delete"].firstMatch
+        for _ in 0..<8 where !ende.exists || !ende.isHittable {
             swipeUp()
         }
-        XCTAssertTrue(überschrift.exists,
+        XCTAssertTrue(staticTexts["itemSheet.offers.header"].exists,
                       "Auf dem Artikelblatt stehen keine Angebote", file: file, line: line)
         return fertig
     }

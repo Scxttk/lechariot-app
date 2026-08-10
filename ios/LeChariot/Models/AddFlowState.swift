@@ -68,6 +68,13 @@ struct AddFlowState: Equatable {
     /// Der Unterschied zu `added` ist, dass hier nichts entstanden ist. Für die
     /// Zeile ist das dasselbe (der Artikel rückt nach hinten und wird aktiv),
     /// für alles, was am Anlegen hängt, nicht — deshalb ein eigener Name.
+    ///
+    /// **Ohne Aufrufer seit dem 10.08.** Der Weg, für den es das gab — der
+    /// Eck-Knopf auf der Kachel —, führt seit Punkt A auf ein eigenes Blatt
+    /// und nicht mehr in die Schicht. Die Regel bleibt trotzdem stehen und
+    /// geprüft (`AddFlowStateTests`): Sie beantwortet die Frage „ein Artikel
+    /// von weiter oben kommt in die Zeile" für den Fall, dass eine spätere
+    /// Runde ihn wieder braucht — und sie ist drei Zeilen groß.
     mutating func reopen(_ id: UUID) {
         aufnehmen(id)
     }
