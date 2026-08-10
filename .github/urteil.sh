@@ -48,7 +48,9 @@ echo "|---|---|---|---|---|"
 for b in $(printf '%s\n' "${berichte[@]}" | sort); do
 	nr=$(wert "$b" scherbe)
 	gelaufen=$(wert "$b" gelaufen)
-	sek=$(wert "$b" sekunden)
+	# Leer, wenn der Job gestorben ist, bevor er die Zeit schreiben konnte —
+	# und `$(( / 60))` wäre dann ein Syntaxfehler statt einer Zeile.
+	sek=$(wert "$b" sekunden); sek=${sek:-0}
 	rot=$(wert "$b" rot)
 	wackelig=$(wert "$b" wackelig)
 	klassen=$(wert "$b" klassen)

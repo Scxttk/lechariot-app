@@ -8,6 +8,14 @@ tools/tests.sh --workers 2           # weniger Klone, wenn der Mac zu tun hat
 tools/tests.sh RundgangShots --result /tmp/bogen.xcresult   # mit Bildern
 ```
 
+**Zwei Wege, ein Regelwerk.** Lokal läuft die Suite über `tools/tests.sh`, in
+CI über `.github/workflows/suite.yml`. Was beide wissen müssen — welche Klassen
+seriell laufen, wie ein Klassenname zu seinem Ziel kommt, wie ein Protokoll zu
+urteilen ist — steht **einmal** in `tools/testlauf.sh`; das Skript sourcet es,
+der Workflow ruft es auf. Wer eine Klasse in `SERIELL` einträgt, hat damit
+beide Wege umgestellt. Welcher Weg wann dran ist, steht unter
+[Die Politik](#die-politik).
+
 **Die Bilderbögen brauchen `--result`.** `RundgangShots` und `BedienrundeShots`
 hängen ihre PNGs (und den Barrierefreiheits-Baum dazu) ans Ergebnisbündel; ohne
 Pfad gibt es keins, und die Bilder sind weg. Herausholen:
@@ -250,6 +258,90 @@ noch so da und sind bewusst nicht angefasst worden, weil die Suite auf dem
 - `testAWholeTileRowStaysAboveTheBlock` prüft `minY >= 44` — die Statusleiste
   eines Geräts mit Dynamic Island. Auf einem iPhone SE sind es 20, und der Test
   fällt dort, obwohl die Kachel korrekt sitzt.
+
+## Der Nachweis auf geliehenen Macs
+
+`.github/workflows/suite.yml` fährt dieselbe Suite auf GitHubs macOS-Runnern.
+Das Repo ist öffentlich, also kostet das nichts ausser Wartezeit — und die
+Wartezeit ist nicht Scotts Mac. Der bleibt frei fürs Iterieren; genau das war
+der Zweck.
+
+**`tools/tests.sh` bleibt und bleibt unverändert.** Offline, ohne Warteschlange,
+mit Bilderbögen und mit dem Messgeschirr. Der Workflow ersetzt nicht das
+Arbeiten, sondern den einen vollen Lauf vor dem PR.
+
+### Wie verteilt wird
+
+Ein Job baut, drei laufen. Verteilt wird **je Klasse** — dieselbe Körnung wie
+lokal, nur über Maschinen statt über Klone:
+
+| Job | was er tut |
+|---|---|
+| `verteilen` | Ubuntu. Rechnet aus, welche Klasse auf welche Scherbe geht. |
+| `bauen` | `build-for-testing` **einmal**, dann die Unit-Tests. Das Ergebnis geht als Tar an die Scherben. |
+| `journeys` | Drei Runner, je ein Drittel der Journeys. Scherbe 1 hängt den seriellen Durchgang hinten dran. |
+| `urteil` | Ubuntu. Liest die Befunde und fällt **ein** Urteil. |
+
+Die Verteilung ist „grösste Klasse zuerst auf die leerste Scherbe" (LPT), und
+das Gewicht einer Klasse ist die **Zahl ihrer Testmethoden**. Eine Kostentabelle
+wäre genauer — `AccessibilityAuditTests` kostet je Test 43 s,
+`OnboardingJourneyTests` 25 s — und stünde in einem halben Jahr falsch im Repo.
+Die Zahl der Methoden ist grob und stimmt immer. Ob die Grobheit reicht, sagt
+der Lauf selbst: `urteil` druckt je Scherbe die Wanduhr.
+
+Die Untergrenze bleibt dieselbe wie lokal: **die längste einzelne Klasse.** Wer
+eine anlegt, die allein sechs Minuten läuft, hebt damit die Untergrenze — lieber
+zwei Klassen.
+
+### `PerformanceJourneyTests` läuft dort nicht
+
+Als einzige Klasse ist sie ausgeschlossen (`OHNE_CI` in `tools/testlauf.sh`).
+Sie vergleicht CPU- und Speicherzahlen gegen `tools/perf-baseline.json` —
+Grundwerte von Scotts Mac im Leerlauf. Auf drei geliehenen Kernen wäre jede
+dieser Zahlen eine Aussage über den Nachbarn im Rechenzentrum. Die Klasse sagt
+das seit dem 01.08. selbst in ihrem Kopfkommentar.
+
+Ausgeschlossen und nicht stillschweigend geduldet: Ein Messstand, dem niemand
+glaubt, wird abgeschaltet statt gelesen — und eine Ampel, die in jedem zweiten
+PR grundlos rot ist, erzieht dazu, rote Ampeln zu überblättern.
+
+### Gerät und Fassung sind genagelt
+
+| | Scotts Mac | Runner |
+|---|---|---|
+| Xcode | 26.3 | Vorgabe **26.6**, genagelt auf 26.3 |
+| iOS-Laufzeiten | 26.1, 26.2 | 26.2, 26.4, **26.5** |
+| Ziel | `iPhone 17 Pro, OS=latest` → 26.2 | `OS=latest` wäre **26.5**, genagelt auf 26.2 |
+
+`OS=latest` heisst auf dem Runner etwas anderes als hier. Das ist keine
+Kleinigkeit, sondern genau der Befund vom 09.08.: Die Tastatur unter iOS 26.1
+ist 10 pt höher als unter 26.2, und daran hingen zwei rote Journeys auf `main`
+(siehe [Das Gerät ist Teil des Ergebnisses](#das-gerät-ist-teil-des-ergebnisses)).
+Zwei Zusicherungen der Suite halten ausserdem Zahlen fest, die für dieses Gerät
+gelten. Der Workflow sagt deshalb, was er meint.
+
+### Geurteilt wird nach Tests, nicht nach Ampeln
+
+Dieselbe Regel wie lokal, und auf einem geliehenen Mac eher noch wichtiger.
+Jede Scherbe schreibt ihren Befund in eine Datei; `.github/urteil.sh` liest die
+Dateien. **Rot** ist ein Lauf nur, wenn eines davon zutrifft:
+
+1. Ein Test ist gefallen und im zweiten Anlauf nicht wieder aufgestanden
+   (`-retry-tests-on-failure -test-iterations 2`, wie lokal).
+2. Eine Klasse aus dem Quellbaum hat **keinen einzigen Test gemeldet**.
+
+Der zweite Punkt ist die Gegenprobe zum Freispruch im ersten. Lokal vergleicht
+`tools/tests.sh` dafür die Testzahl mit dem letzten Lauf *dieser Maschine*; auf
+einem Runner gibt es kein „letztes Mal". Der Sollwert kommt deshalb aus
+`tools/testlauf.sh soll`, also aus demselben Quellbaum wie die Tests — und er
+fängt beides: den ausgefallenen Arbeiter und die ganze Scherbe, deren Job
+gestorben ist. (Bewusst nicht aus den Befunden: Ein fehlender Befund prüfte
+sich sonst selbst.)
+
+Alles andere — ein Runner, der beim Klon-Start stolpert, ein Durchgang, der
+Fehlschlag meldet, ohne dass eine Zusicherung gefallen ist — wird gemeldet und
+nicht bestraft. Wer nur im zweiten Anlauf grün wurde, steht namentlich in der
+Zusammenfassung.
 
 ## Wenn etwas kaputt aussieht
 

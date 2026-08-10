@@ -177,6 +177,7 @@ jobs:
       # wird unten aus dem Protokoll. Fiele der Schritt hier, gäbe es kein
       # Protokoll zum Urteilen — nur eine rote Ampel ohne Befund.
       - name: Journeys
+        timeout-minutes: 100
         run: |
           set +e
           start=$SECONDS
