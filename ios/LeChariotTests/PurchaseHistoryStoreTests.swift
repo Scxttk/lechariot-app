@@ -141,6 +141,31 @@ final class PurchaseHistoryStoreTests: XCTestCase {
         s.record("Brot", now: heute)
         XCTAssertEqual(s.top(2, excluding: ["milch"], now: heute), ["brot"])
     }
+
+    // MARK: Alterung des Vorrats (Scott, 10.08., Punkt D)
+
+    /// **Der Vorrat vergisst von selbst.** Bis zum 10.08. fiel ein Eintrag nur
+    /// dann heraus, wenn die Obergrenze überschritten war — wer 30 Wörter
+    /// benutzt, trug seinen Ausrutscher von vor einem Jahr für immer mit.
+    /// Jetzt fällt heraus, was unter `forgetThreshold` gealtert ist.
+    func testAWordFallsOutOfThePoolOnceItHasDecayedAway() {
+        let s = store()
+        s.record("Sonnencreme", now: wochen(60))
+        // Ein frischer Kauf setzt den Stichtag der Alterung.
+        s.record("Milch", now: heute)
+        XCTAssertNil(s.entries["sonnencreme"],
+                     "Nach 60 Wochen wiegt ein einzelner Kauf fast nichts mehr")
+        XCTAssertNotNil(s.entries["milch"])
+    }
+
+    /// Und was noch benutzt wird, bleibt — auch wenn der erste Kauf alt ist.
+    func testARepeatedWordStaysInThePool() {
+        let s = store()
+        s.record("Kaffee", now: wochen(60))
+        s.record("Kaffee", now: wochen(1))
+        s.record("Milch", now: heute)
+        XCTAssertNotNil(s.entries["kaffee"])
+    }
 }
 
 // MARK: - Der Streifen
@@ -231,5 +256,27 @@ final class PersonalSuggestionStripTests: XCTestCase {
             offers: [], history: ["hafermilch", "gulasch"], includeStaples: false
         )
         XCTAssertEqual(strip, ["Gulasch"])
+    }
+
+    /// **Abgehakt heißt: zurück in den Vorrat** (Scott, 10.08., Punkt D).
+    ///
+    /// Vorher zählte ein abgehakter Artikel als „steht schon auf der Liste" —
+    /// er lag also im Abschnitt „Erledigt" *und* war aus dem Streifen gesperrt.
+    /// Damit gab es für ein gerade gekauftes Produkt gar keinen kurzen Weg
+    /// zurück auf die Liste; genau das hat Scott gemeldet.
+    func testACheckedItemIsOfferedAgain() {
+        let strip = ShoppingSuggestions.strip(
+            for: [ShoppingItem(text: "Hafermilch", isChecked: true)],
+            offers: [], history: ["hafermilch", "gulasch"], includeStaples: false
+        )
+        XCTAssertEqual(strip, ["Hafermilch", "Gulasch"])
+    }
+
+    /// Und die festen Grundnahrungsmittel folgen derselben Regel.
+    func testACheckedStapleIsOfferedAgain() {
+        let übrig = ShoppingSuggestions.remaining(
+            for: [ShoppingItem(text: "Milch", isChecked: true)]
+        )
+        XCTAssertTrue(übrig.contains("Milch"))
     }
 }

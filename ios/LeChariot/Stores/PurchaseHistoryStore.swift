@@ -15,6 +15,21 @@ import Observation
 /// getippter und wieder weggewischter Artikel darf nichts lehren, und
 /// „Liste leeren" darf es auch nicht.
 ///
+/// **Dieser Speicher ist der Vorrat, den Scott am 10.08. „Zuletzt verwendet"
+/// genannt hat** („the products clicked should go into zuletzt verwendet,
+/// that's the pool for the recommendation"). Er existiert seit dem 31.07. und
+/// wird schon beim Abhaken gefüllt — was gefehlt hat, war der Rückweg: Ein
+/// abgehakter Artikel zählte für den Streifen als „steht schon auf der Liste"
+/// und war damit aus dem Vorrat gesperrt, während er im Abschnitt „Erledigt"
+/// stehen blieb. Seit dem 10.08. zählen dort nur noch die **offenen** Artikel
+/// (`ShoppingSuggestions.openWords`), und der Abschnitt räumt sich selbst auf
+/// (`ShoppingListStore.checkedRetention`). Ein zweiter Zähler wäre die
+/// falsche Antwort gewesen: Es gibt genau einen, und er steht hier.
+///
+/// **Die Größe des Vorrats, ausgeschrieben:** höchstens `capacity` Wörter,
+/// jedes altert mit `halfLife`, und unter `forgetThreshold` fällt es ganz
+/// heraus. Angezeigt werden davon `ShoppingSuggestions.personalLength`.
+///
 /// **Seit dem 10.08. heißt die Überschrift „Häufig auf der Liste", gezählt
 /// wird aber weiter das Abhaken** — Scotts Wortwahl, und der Widerspruch ist
 /// benannt statt stillschweigend behoben. Wer die Überschrift wörtlich nimmt,
@@ -54,6 +69,21 @@ final class PurchaseHistoryStore {
     /// weg — das sind die ältesten oder die seltensten, also genau die, deren
     /// Verlust niemandem auffällt.
     static let capacity = 200
+
+    /// **Wann ein Wort ganz aus dem Vorrat fällt.**
+    ///
+    /// Die Obergrenze allein war keine Alterung: Wer 30 verschiedene Wörter
+    /// benutzt, blieb ewig unter `capacity` — und trug damit jeden einmaligen
+    /// Ausrutscher für immer mit, nur immer leiser. Unter diesem Gewicht wird
+    /// der Eintrag gelöscht statt weitergerechnet.
+    ///
+    /// 0,05 sind bei `halfLife` von acht Wochen gut **vier Halbwertszeiten**,
+    /// also rund acht Monate für einen einzelnen Kauf. Wer etwas zweimal
+    /// gekauft hat, behält es entsprechend länger. Die Zahl ist bewusst so
+    /// niedrig, dass sie nur wegräumt, was den Streifen ohnehin nie wieder
+    /// erreicht hätte — der Zweck ist der Vorrat, der sich selbst begrenzt,
+    /// nicht ein schärferes Vergessen.
+    static let forgetThreshold = 0.05
 
     /// Ab so vielen **verschiedenen** abgehakten Wörtern trägt der persönliche
     /// Teil den Streifen allein, und die festen Grundnahrungsmittel
@@ -160,12 +190,19 @@ final class PurchaseHistoryStore {
         return entry.weight * pow(2, -age / Self.halfLife)
     }
 
-    /// Über der Grenze fallen die leichtesten Einträge weg. Gemessen wird zum
-    /// Zeitpunkt des jüngsten Eintrags, nicht `.now` — sonst hinge das
-    /// Ergebnis an der Uhr und wäre nicht prüfbar.
+    /// Zwei Grenzen, in dieser Reihenfolge: **weggealtert** (unter
+    /// `forgetThreshold`) und **zu viele** (über `capacity`).
+    ///
+    /// Gemessen wird zum Zeitpunkt des jüngsten Eintrags, nicht `.now` — sonst
+    /// hinge das Ergebnis an der Uhr und wäre nicht prüfbar. Für die Alterung
+    /// heißt das: Sie greift, wenn der Vorrat benutzt wird, und nicht,
+    /// während das Telefon in der Tasche liegt. Genau das ist gewollt — wer
+    /// die App einen Sommer lang nicht aufmacht, findet danach seinen Vorrat
+    /// vor und nicht einen leeren Streifen.
     private func trim() {
-        guard entries.count > Self.capacity else { return }
         let stichtag = entries.values.map(\.updatedAt).max() ?? .now
+        entries = entries.filter { decayed($0.value, to: stichtag) >= Self.forgetThreshold }
+        guard entries.count > Self.capacity else { return }
         let behalten = Set(ranking(excluding: [], at: stichtag).prefix(Self.capacity))
         entries = entries.filter { behalten.contains($0.key) }
     }

@@ -807,6 +807,30 @@ struct ShoppingListView: View {
             if !list.checkedItems.isEmpty {
                 Section("Erledigt") {
                     raster(list.checkedItems, plan: plan, firstOpenItem: nil)
+                    // **Der eine Satz, der Scotts Frage beantwortet** („when
+                    // does erledigt products get deleted", 10.08.). Sonst gilt
+                    // hier die Regel gegen erklärenden Beitext — die Ausnahme
+                    // ist, dass etwas von selbst verschwindet: Wer das nicht
+                    // weiß, hält den nächsten leeren Abschnitt für einen
+                    // Fehler.
+                    //
+                    // **Als letzte Zeile des Abschnitts, nicht als `footer`.**
+                    // Gerendert (10.08.) war der Fußbereich einer `.plain`-Liste
+                    // ein weißes, klebendes Band quer über die Fläche, mit
+                    // Fließtext in voller Größe — er sah aus wie eine Meldung,
+                    // nicht wie eine Fußnote.
+                    Text("Nach einer Woche räumt \(AppBrand.name) das hier weg. Die Wörter bleiben als Vorschlag.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("list.checked.retention")
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(
+                            top: 0, leading: Theme.Spacing.lg,
+                            bottom: Theme.Spacing.sm, trailing: Theme.Spacing.lg
+                        ))
                 }
             }
 
@@ -993,7 +1017,10 @@ struct ShoppingListView: View {
             offers: offerStore.offers,
             history: history.top(
                 ShoppingSuggestions.personalLength,
-                excluding: Set(list.items.map { PurchaseHistoryStore.normalized($0.text) })
+                // **Nur die offenen sperren.** Ein abgehakter Artikel gehört in
+                // den Vorrat zurück, nicht aus ihm heraus — siehe
+                // `ShoppingSuggestions.openWords`.
+                excluding: Set(list.uncheckedItems.map { PurchaseHistoryStore.normalized($0.text) })
             ),
             includeStaples: history.needsStaples
         )

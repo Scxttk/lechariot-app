@@ -131,7 +131,7 @@ final class PrivacyStoreTests: XCTestCase {
             )],
             shoppingList: [LocalDataExport.Item(
                 text: "Vollmilch", isChecked: false, addedAt: .init(timeIntervalSince1970: 0),
-                detail: ["1 l"], pinnedProducts: [], pinnedMarkets: []
+                checkedAt: nil, detail: ["1 l"], pinnedProducts: [], pinnedMarkets: []
             )],
             purchaseWeights: ["milch": 2.5]
         )

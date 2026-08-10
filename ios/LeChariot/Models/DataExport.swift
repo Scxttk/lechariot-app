@@ -36,6 +36,11 @@ struct LocalDataExport: Codable, Equatable {
         let text: String
         let isChecked: Bool
         let addedAt: Date
+        /// Wann abgehakt — seit dem 10.08. gespeichert, weil die Lebensdauer
+        /// des Erledigten daran hängt. Steht hier, weil der Export die Zusage
+        /// ist: Ein neu gespeichertes Feld, das hier fehlt, fehlt in der
+        /// Auskunft, ohne dass irgendwo etwas fehlschlägt.
+        let checkedAt: Date?
         let detail: [String]?
         let pinnedProducts: [String]
         let pinnedMarkets: [String]
@@ -72,7 +77,7 @@ extension LocalDataExport {
             },
             shoppingList: list.items.map {
                 Item(text: $0.text, isChecked: $0.isChecked, addedAt: $0.addedAt,
-                     detail: $0.detail,
+                     checkedAt: $0.checkedAt, detail: $0.detail,
                      pinnedProducts: $0.pinnedOffers.map(\.product),
                      pinnedMarkets: $0.pinnedOffers.map(\.market))
             },
