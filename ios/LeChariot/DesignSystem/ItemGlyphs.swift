@@ -441,6 +441,13 @@ enum ItemGlyph {
         },
 
         // Pilz: Hut als Halbkreis, Stiel mit rundem Fuß.
+        // Hut, Stiel — und **drei Tupfen auf dem Hut**.
+        //
+        // Der glatte Hut war eine Kuppe auf einem Sockel und damit dieselbe
+        // Figur wie ein Türbogen oder ein Grabstein. Tupfen sagen „Pilz" ohne
+        // ein zweites Bauteil; Lamellen unter dem Hut wären das naheliegendere
+        // Detail gewesen, brauchen aber sechs Striche auf 0,08 Abstand — bei
+        // 40 pt ein schwarzer Balken.
         "pilze": { p in
             p.begin(p.at(0.10, 0.48))
             p.bow(p.at(0.90, 0.48), p.at(0.12, 0.08), p.at(0.88, 0.08))
@@ -449,6 +456,9 @@ enum ItemGlyph {
             p.to(p.at(0.36, 0.82))
             p.bow(p.at(0.64, 0.82), p.at(0.36, 0.94), p.at(0.64, 0.94))
             p.to(p.at(0.64, 0.48))
+            p.dot(p.at(0.32, 0.30), 0.050)
+            p.dot(p.at(0.54, 0.26), 0.050)
+            p.dot(p.at(0.69, 0.32), 0.045)
         },
 
         // Aubergine: schlanker Hals oben rechts, bauchiger Fuß unten links,
@@ -779,11 +789,29 @@ enum ItemGlyph {
         // mit dem Randfalz zu einem Klotz zusammen — auf dem Prüfbogen eine
         // **leere Karte**. Ein Stück weiter unten gelesen ist dieselbe Ellipse
         // ein Deckel.
+        // Glas, Füllstand, drei Perlen — und **die Zitronenscheibe auf dem
+        // Rand**.
+        //
+        // Vorher stand hier ein Rechteck mit einer Ellipse obenauf, und das war
+        // im Getränkeregal des Satzes nichts: `wasser` ist ein Glas mit
+        // Füllstand, `cola` eine Dose, `saft` ein Glas mit Halm. Ein Becher
+        // ohne Merkmal ist der Platzhalter zwischen dreien, die eines haben.
+        //
+        // Die Scheibe ist das Merkmal, das noch frei war — sie sitzt auf dem
+        // Rand statt im Glas, damit sie den Füllstand nicht kreuzt.
         "limonade": { p in
-            p.stroke.addRoundedRect(in: p.box(0.50, 0.56, 0.44, 0.72),
-                                    cornerSize: p.corner(0.06))
-            p.stroke.addEllipse(in: p.box(0.50, 0.32, 0.36, 0.14))
-            p.line([p.at(0.44, 0.32), p.at(0.58, 0.32)])
+            p.begin(p.at(0.28, 0.30))
+            p.to(p.at(0.34, 0.86))
+            p.bow(p.at(0.66, 0.86), p.at(0.40, 0.92), p.at(0.60, 0.92))
+            p.to(p.at(0.72, 0.30))
+            p.close()
+            p.line([p.at(0.30, 0.44), p.at(0.70, 0.44)])
+            p.dot(p.at(0.44, 0.60), 0.035)
+            p.dot(p.at(0.58, 0.68), 0.030)
+            p.dot(p.at(0.47, 0.78), 0.028)
+            p.begin(p.at(0.64, 0.30))
+            p.bow(p.at(0.92, 0.30), p.at(0.64, 0.10), p.at(0.92, 0.10))
+            p.close()
         },
 
         // Bierkrug: Körper mit Henkel, Schaumkrone, zwei Blasen.
@@ -3360,10 +3388,15 @@ private let tranche6: [String: ItemGlyph.Rezept] = [
         p.bow(p.at(0.44, 0.84), p.at(0.26, 0.30), p.at(0.26, 0.68))
         p.bow(p.at(0.44, 0.14), p.at(0.62, 0.68), p.at(0.62, 0.30))
         p.close()
-        p.line([p.at(0.30, 0.36), p.at(0.58, 0.36)])
-        p.line([p.at(0.28, 0.50), p.at(0.60, 0.50)])
-        p.line([p.at(0.30, 0.64), p.at(0.58, 0.64)])
-        p.line([p.at(0.44, 0.20), p.at(0.44, 0.80)])
+        // **Vier Querreihen, keine Längslinie.** Drei Reihen *und* eine Linie
+        // durch die Mitte ergaben ein Gitter, und ein Gitter aus Feldern von
+        // 0,14 × 0,13 ist bei 22 pt eine graue Fläche — der Kolben war dort ein
+        // dunkler Fleck mit einem Blatt daneben. Die Reihen allein tragen die
+        // Körnung; die Längslinie war die eine Linie zu viel.
+        p.line([p.at(0.33, 0.28), p.at(0.55, 0.28)])
+        p.line([p.at(0.29, 0.42), p.at(0.59, 0.42)])
+        p.line([p.at(0.29, 0.56), p.at(0.59, 0.56)])
+        p.line([p.at(0.33, 0.70), p.at(0.55, 0.70)])
         blatt(&p, von: (0.56, 0.66), nach: (0.90, 0.44), bauch: -0.10)
     },
 
