@@ -67,11 +67,11 @@ final class ErledigtJourneyTests: XCTestCase {
         kachel.tap()
         XCTAssertTrue(wartetAuf(kachel, zustand: "erledigt"), "Der Tipp hakt nicht ab")
 
-        // Die Fläche ist nach dem Anlegen zu (`SuggestionSurface`), der Knopf
-        // links im Feld holt sie zurück.
-        let knopf = app.buttons["list.suggestions.toggle"]
-        XCTAssertTrue(knopf.waitForExistence(timeout: 10), "Kein Knopf für die Vorschläge")
-        knopf.tap()
+        // **Die Fläche kommt mit der Tastatur** (10.08., Punkt E). Hier stand
+        // bis zum Zusammenführen ein Tipp auf den Winkel-Knopf; den gibt es
+        // nicht mehr, und er wird auch nicht gebraucht: Tastatur auf und Feld
+        // leer heißt Vorschläge.
+        app.textFields["list.input"].tapAndAwaitKeyboard(in: app)
 
         XCTAssertTrue(
             app.buttons["Milch hinzufügen"].waitForExistence(timeout: 10),
