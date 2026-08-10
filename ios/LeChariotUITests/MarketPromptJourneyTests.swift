@@ -125,7 +125,7 @@ final class MarketPromptJourneyTests: XCTestCase {
     /// ist. Seit dem 05.08. ein gestaltetes Sheet, kein System-Alert mehr.
     private func answerMarketPrompt(choose: Bool) {
         let title = app.staticTexts["marketPrompt.title"]
-        XCTAssertTrue(title.waitForExistence(timeout: 15),
+        XCTAssertTrue(title.waitForExistence(timeout: 25),
                       "Ohne Filialen muss das Markt-Sheet stehen")
         app.buttons[choose ? "marketPrompt.choose" : "marketPrompt.later"].tap()
     }

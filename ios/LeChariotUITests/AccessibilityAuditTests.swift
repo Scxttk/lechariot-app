@@ -79,6 +79,15 @@ final class AccessibilityAuditTests: XCTestCase {
         // sehen bekommt, und er trägt einen Knopf und zwei Absätze, die es
         // vorher nirgends gab.
         app.tippe(app.buttons["onboarding.primary"], "Weiter auf der Einwilligung")
+        // **Neu seit dem 10.08.:** Die Frage nach den Filialen hängt am
+        // Abschluss des Assistenten statt am Ende des Rundgangs, den es nicht
+        // mehr gibt. Sie ist damit der erste Bildschirm nach dem Assistenten —
+        // und gehört gemessen, bevor sie beantwortet wird.
+        XCTAssertTrue(app.staticTexts["marketPrompt.title"].waitForExistence(timeout: 15),
+                      "Ohne Filiale muss die Frage stehen")
+        try audit("Frage nach den Filialen")
+        app.tippe(app.buttons["marketPrompt.later"], "Später im Markt-Sheet")
+
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
         try audit("Einkaufsliste ohne Filiale")
 

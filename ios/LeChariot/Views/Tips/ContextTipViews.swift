@@ -141,8 +141,14 @@ struct EnamelSignTipViewStyle: TipViewStyle {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // **Kein eigener Bezeichner — er käme nicht an.** Am Simulator
+            // gemessen: `TipView` setzt seinen eigenen Bezeichner auf jedes
+            // Kind, im Baum steht am ✗ `identifier: 'TipView'`. Dieselbe Falle
+            // wie beim Behälter der Angaben-Schicht (siehe `ItemDetailPanel`),
+            // nur von außen. Gegriffen wird deshalb über das Label — das
+            // überlebt, und ein Bezeichner, der nie ankommt, wäre eine Zusage
+            // an Journeys, die er nicht hält.
             .accessibilityLabel("Hinweis ausblenden")
-            .accessibilityIdentifier("tip.dismiss")
         }
         .padding(Theme.Spacing.lg)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card))

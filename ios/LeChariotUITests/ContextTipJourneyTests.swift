@@ -20,9 +20,17 @@ final class ContextTipJourneyTests: XCTestCase {
         app = XCUIApplication()
     }
 
-    /// Der Titel der Sprechblase — derselbe Text wie in `NextWeekContextTip`.
+    /// Der Titel des Schilds — derselbe Text wie in `NextWeekContextTip`.
     private var tipTitle: XCUIElement {
         app.staticTexts["Was ab Montag billiger wird"]
+    }
+
+    /// **Über das Label, nicht über einen Bezeichner.** `TipView` überschreibt
+    /// den Bezeichner jedes Kindes mit seinem eigenen (`identifier: 'TipView'`,
+    /// am 10.08. im Baum nachgelesen); das Label überlebt. Siehe
+    /// `EnamelSignTipViewStyle`.
+    private var dismissButton: XCUIElement {
+        app.buttons["Hinweis ausblenden"].firstMatch
     }
 
     func testTheNextWeekTipShowsOnceAndOnlyOnce() {
@@ -173,9 +181,8 @@ final class ContextTipJourneyTests: XCTestCase {
                       "…und das Schild steht danach noch")
 
         // 2. Das ✗ nimmt das Schild weg, ohne sonst etwas anzufassen.
-        let close = app.buttons["tip.dismiss"].firstMatch
-        XCTAssertTrue(close.waitForExistence(timeout: 5), "Das Schild trägt sein ✗")
-        close.tap()
+        XCTAssertTrue(dismissButton.waitForExistence(timeout: 5), "Das Schild trägt sein ✗")
+        dismissButton.tap()
         XCTAssertTrue(tipTitle.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.navigationBars["Angebote"].exists,
                       "Weggetippt heißt: Schild weg, Bildschirm bleibt")
@@ -203,7 +210,7 @@ final class ContextTipJourneyTests: XCTestCase {
 
         app.tabBars.buttons["Angebote"].tap()
         XCTAssertTrue(tipTitle.waitForExistence(timeout: 15))
-        app.buttons["tip.dismiss"].firstMatch.tap()
+        dismissButton.tap()
         XCTAssertTrue(tipTitle.waitForNonExistence(timeout: 5))
 
         // Ohne Zurücksetzen bliebe es weg — das ist der Vertrag von
