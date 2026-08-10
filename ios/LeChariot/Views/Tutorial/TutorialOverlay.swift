@@ -1,5 +1,23 @@
 import SwiftUI
 
+/// **Wann die Karte eines Rahmens stehen darf** — als Regel, nicht als
+/// Ausdruck mitten in einer Ansicht.
+///
+/// Eigener Typ aus demselben Grund wie `SuggestionSurface.isExpanded` und
+/// `SpotlightTransition.move`: Die Aussage ist prüfbar, die Ansicht darum
+/// herum nicht. Sie steht hier und nicht in einer eigenen Datei, weil sie zum
+/// Overlay gehört und man sie zusammen liest.
+enum TutorialCardVisibility {
+    /// - Parameters:
+    ///   - deed: Was der Rahmen erwartet. `.reads` hat kein Ziel und wartet
+    ///     deshalb auf nichts — sonst stünde die Schlusskarte nie.
+    ///   - sawTargetFor: Der Rahmen, dessen Ziel schon einmal gemeldet wurde.
+    ///   - index: Der Rahmen, der gerade dran ist.
+    static func isReady(deed: TutorialStep.Deed, sawTargetFor: Int?, index: Int) -> Bool {
+        deed == .reads || sawTargetFor == index
+    }
+}
+
 /// The tour itself: a scrim over the whole app with a hole cut around exactly
 /// one control, and a card that says what that control does — and why.
 ///
@@ -74,7 +92,32 @@ struct TutorialOverlay: View {
             scrim
             blockers
             holeProbe
-            cardLayer
+            // **Die Karte kommt erst, wenn ihr Ziel da ist** (10.08.).
+            //
+            // Scotts Meldung aus Build `2026.810.705`: „the tours first stop
+            // also gets automatically skipped". Der Rahmen, der sich selbst
+            // überspringt, war schon vorgesehen — ein Rahmen ohne Ziel ist eine
+            // Sackgasse, und `skipIfNothingToShow` räumt ihn nach 1,2 s weg.
+            // Der Fehler ist nicht das Wegräumen, sondern dass er **vorher zu
+            // sehen war**: Karte steht, Text steht, und dann springt sie ohne
+            // Zutun weiter. Genau das liest sich von außen als Fehler.
+            //
+            // Jetzt wartet die Karte auf `sawTargetFor` (siehe dort). Ein
+            // Rahmen, dessen Ziel nie erscheint, wird damit **nie gezeigt** —
+            // er wird still übersprungen, wie es immer gemeint war. Nebenbei
+            // fällt der Sprung weg, mit dem die Karte bisher jeden Rahmen
+            // anfing: Ohne Loch stand sie mittig und wanderte erst mit dem
+            // eintreffenden Anker an ihren Platz.
+            // **Ohne eigene Kurve auf `cardIsReady`.** Der erste Entwurf
+            // blendete die Karte ein (`.transition(.opacity)` plus
+            // `.animation(…, value: cardIsReady)` am Behälter). Gemessen am
+            // 10.08. kostete das fünf Journeys: Eine Kurve auf dem Behälter
+            // animiert **alles**, was in derselben Transaktion steht — auch die
+            // vier Sperrflächen und das Loch. Der Tipp der Journey landete
+            // dann auf einer Fläche, die noch flog, die Handlung kam nie an,
+            // und der Rundgang lief in seinen Deckel („Der Rundgang hört nicht
+            // auf", zehn Runden auf dem Abhak-Rahmen).
+            if cardIsReady { cardLayer }
         }
         .frame(width: proxy.size.width, height: proxy.size.height)
         // Auf den Schritt animiert, nicht auf das Rechteck: Das Rechteck ändert
@@ -113,6 +156,12 @@ struct TutorialOverlay: View {
             try? await Task.sleep(for: Self.anchorGrace - Self.settleWindow)
             guard !Task.isCancelled else { return }
             graceExpiredFor = index
+        }
+        // Der Vorlesefokus gehört auf die Karte — und die steht jetzt erst,
+        // wenn ihr Ziel gemeldet ist. Ein `cardFocused = true` auf eine Ansicht,
+        // die es noch gar nicht gibt, verpufft.
+        .onChange(of: cardIsReady) { _, bereit in
+            if bereit { enterStep() }
         }
         .onChange(of: graceExpiredFor) { _, _ in skipIfNothingToShow() }
         // Zweiter Auslöser: ein Anker, der erst nach Ablauf der Schonfrist
@@ -207,6 +256,21 @@ struct TutorialOverlay: View {
 
     /// Der Rahmen, dessen Ziel schon einmal gemeldet wurde.
     @State private var sawTargetFor: Int?
+
+    /// **Darf die Karte dieses Rahmens stehen?**
+    ///
+    /// Ein Rahmen, der auf eine Handlung wartet, redet über ein Bedienelement.
+    /// Solange dieses Element nicht gemeldet ist, hat die Karte nichts, worauf
+    /// sie zeigt — und sie kann in derselben Sekunde wieder verschwinden, weil
+    /// `skipIfNothingToShow` genau darauf wartet. Deshalb wartet sie mit.
+    ///
+    /// **Rahmen zum Lesen sind ausgenommen**, dieselbe Grenze wie beim
+    /// Überspringen: Die Schlusskarte verabschiedet sich auch ohne Ziel.
+    private var cardIsReady: Bool {
+        TutorialCardVisibility.isReady(
+            deed: step.deed, sawTargetFor: sawTargetFor, index: tutorial.index
+        )
+    }
 
     private func noteTarget() {
         guard resolvedHole != nil else { return }

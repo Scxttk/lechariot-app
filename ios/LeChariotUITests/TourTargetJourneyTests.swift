@@ -260,3 +260,88 @@ final class TourTargetJourneyTests: XCTestCase {
         XCTAssertTrue(card.exists, "und der Rundgang muss stehen geblieben sein")
     }
 }
+
+/// **Ein Rahmen ohne Ziel darf gar nicht erst zu sehen sein** (10.08.).
+///
+/// Scotts Meldung aus Build `2026.810.705`: „the tours first stop also gets
+/// automatically skipped". Gemessen am Simulator ist es **nicht der erste**
+/// Rahmen — der geht nur weiter, wenn man wirklich einen Artikel anlegt. Es ist
+/// der **Vorschläge-Rahmen**, und er ist der erste, der sich *von selbst*
+/// bewegen kann.
+///
+/// **Die Lage dazu ist herstellbar, nicht theoretisch.** `surfaceToggle` wird
+/// nur gebaut, solange es etwas vorzuschlagen gibt (`surfaceHasContent ||
+/// surfaceIsExpanded`). Läuft `ShoppingSuggestions.strip` leer — Sonntagsvorrat
+/// ohne gültige Angebote zum Auffüllen, dazu alle acht festen Wörter schon auf
+/// der Liste —, dann gibt es den Winkel-Knopf nicht, und der Rahmen, der auf
+/// ihn zeigt, hat kein Ziel.
+///
+/// **Übersprungen werden darf er, gezeigt nicht.** Bis heute stand seine Karte
+/// 1,2 s lang da und sprang dann ohne Zutun weiter — das ist die gemeldete
+/// Beobachtung. Diese Journey tastet die Karte im 100-ms-Raster ab: Der Text
+/// des Rahmens darf **nie** erscheinen, und der Rundgang muss trotzdem
+/// durchlaufen.
+final class TourSkippedFrameJourneyTests: XCTestCase {
+    private var app: XCUIApplication!
+
+    /// Alle acht Wörter aus `ShoppingSuggestions.staples`.
+    private let staples = ["Milch", "Brot", "Butter", "Eier",
+                           "Käse", "Bananen", "Kaffee", "Nudeln"]
+
+    override func setUp() {
+        super.setUp()
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-uiTestingTutorial",
+                               "-uiTestingOnboarded", "-uiTestingSunday"]
+        app.launch()
+    }
+
+    func testAFrameWithoutATargetIsNeverSeen() {
+        let feld = app.textFields["list.input"]
+        XCTAssertTrue(feld.waitForExistence(timeout: 20))
+        feld.tap()
+        for wort in staples {
+            feld.typeText(wort + "\n")
+            Thread.sleep(forTimeInterval: 0.35)
+        }
+        if app.buttons["list.input.done"].exists { app.buttons["list.input.done"].tap() }
+        Thread.sleep(forTimeInterval: 0.8)
+
+        // Die Voraussetzung sagen, statt sie anzunehmen: Ohne diesen Befund
+        // prüfte der Rest nur, dass ein Rahmen mit Ziel steht.
+        XCTAssertFalse(app.buttons["list.suggestions.toggle"].exists,
+                       "Vorbedingung: Der Streifen ist leer, also gibt es den Winkel nicht")
+
+        app.buttons["Einstellungen"].firstMatch.tap()
+        app.scrollToTutorialButton().tap()
+
+        let karte = app.staticTexts["tutorial.card"]
+        XCTAssertTrue(karte.waitForExistence(timeout: 20))
+        XCTAssertTrue(karte.label.contains("Schreib deinen ersten Artikel auf"), karte.label)
+
+        // Rahmen 1 erledigen — ein Wort, das noch nicht auf der Liste steht.
+        let imLoch = app.textFields["list.input"]
+        XCTAssertTrue(imLoch.waitForExistence(timeout: 15))
+        imLoch.tap()
+        imLoch.typeText("Zahnstocher\n")
+
+        // Ab hier zählt jedes Zehntel: Die Schonfrist ist 1,2 s, die alte Karte
+        // stand genau diese Zeit.
+        var gesehen: [String] = []
+        let start = Date()
+        while Date().timeIntervalSince(start) < 3.5 {
+            if karte.exists { gesehen.append(karte.label) }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+
+        XCTAssertFalse(
+            gesehen.contains { $0.contains("Du musst nicht alles tippen") },
+            "Ein Rahmen ohne Ziel darf nicht erst stehen und sich dann selbst überspringen"
+        )
+        XCTAssertTrue(
+            gesehen.contains { $0.contains("Im Laden abhaken") },
+            "übersprungen heißt weiter, nicht stehengeblieben — zuletzt: \(gesehen.last ?? "—")"
+        )
+    }
+}

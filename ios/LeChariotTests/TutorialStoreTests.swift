@@ -522,3 +522,43 @@ final class TutorialStoreTests: XCTestCase {
         XCTAssertFalse(fresh.hasAnsweredMarketPrompt)
     }
 }
+
+// MARK: - Die Karte wartet auf ihr Ziel
+
+/// **Was Scott am 10.08. gemeldet hat, als Regel** (`the tours first stop also
+/// gets automatically skipped`).
+///
+/// Dass ein Rahmen ohne Ziel übersprungen wird, ist seit dem 03.08. Absicht —
+/// er wäre sonst eine Sackgasse. Der Fehler war, dass er **vorher zu sehen
+/// war**: Die Karte stand, und 1,2 s später sprang sie ohne Zutun weiter.
+/// `TutorialCardVisibility` hält jetzt die Karte zurück, bis ihr Ziel gemeldet
+/// ist — dann ist das Überspringen still, wie gemeint.
+final class TutorialCardVisibilityTests: XCTestCase {
+    func testAFrameWaitsForItsTarget() {
+        XCTAssertFalse(
+            TutorialCardVisibility.isReady(deed: .addsItem, sawTargetFor: nil, index: 0),
+            "ohne gemeldetes Ziel darf die Karte nicht stehen"
+        )
+        XCTAssertTrue(
+            TutorialCardVisibility.isReady(deed: .addsItem, sawTargetFor: 0, index: 0),
+            "sobald das Ziel einmal da war, steht sie"
+        )
+    }
+
+    /// Der Merker gehört zum **Rahmen**, nicht zum Rundgang: Sonst erbt der
+    /// nächste Rahmen die Bereitschaft des vorigen und steht wieder zu früh.
+    func testTheTargetOfTheLastFrameDoesNotCountForTheNext() {
+        XCTAssertFalse(
+            TutorialCardVisibility.isReady(deed: .checksItem, sawTargetFor: 0, index: 1),
+            "das Ziel von Rahmen 1 sagt nichts über Rahmen 2"
+        )
+    }
+
+    /// Die Schlusskarte hat kein Ziel und darf trotzdem stehen — dieselbe
+    /// Ausnahme, die auch das Überspringen kennt.
+    func testTheClosingCardNeedsNoTarget() {
+        XCTAssertTrue(
+            TutorialCardVisibility.isReady(deed: .reads, sawTargetFor: nil, index: 5)
+        )
+    }
+}
