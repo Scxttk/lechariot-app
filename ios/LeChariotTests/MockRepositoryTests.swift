@@ -2,6 +2,32 @@ import XCTest
 @testable import LeChariot
 
 final class MockRepositoryTests: XCTestCase {
+    /// **Die Fixtures müssen in derselben Zeitzone rechnen wie die Abfrage.**
+    ///
+    /// `MockFixtures.weekStart` sagt, ab wann ein Fixture-Angebot gilt;
+    /// `OfferQuery.current` entscheidet, was „heute" ist — und zwar fest in
+    /// Europe/Berlin, weil Angebotsdaten Berliner Mitternachte sind. Rechnete
+    /// eine der beiden Seiten in der Zone des Geräts, fielen sie überall
+    /// auseinander, wo die Uhr nicht deutsch geht.
+    ///
+    /// Genau das war bis zum 10.08. der Fall, und niemand hat es gemerkt: Auf
+    /// Scotts Mac fallen beide auf denselben Augenblick. Auf einem
+    /// GitHub-Runner (UTC) liegt `weekStart` zwei Stunden dahinter, kein
+    /// einziges Angebot gilt, und die App zeigt „NOCH KEIN TREFFER" — alle drei
+    /// Tests von `OfferHitsJourneyTests` fielen dort an derselben Zeile.
+    ///
+    /// Dieser Test kostet nichts und fängt den Rückfall. Er ist die billigste
+    /// Stelle dafür: Er braucht keinen Simulator und läuft in jedem Unit-Lauf
+    /// mit.
+    func testTheFixtureOffersAreValidTodayWhereverTheClockStands() {
+        XCTAssertFalse(
+            OfferQuery.current(MockFixtures.offers).isEmpty,
+            "Kein einziges Fixture-Angebot gilt heute. Fast immer heisst das: "
+            + "`MockFixtures.weekStart` rechnet wieder in der Zeitzone des "
+            + "Geräts statt in `Calendar.supabase`."
+        )
+    }
+
     func testMockOfferRepositoryFiltersByBranch() async throws {
         let repository = MockOfferRepository()
 

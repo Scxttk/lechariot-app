@@ -342,6 +342,41 @@ Testzeit gegen rund 45 s lokal sind grob das Vierfache; die Differenz zwischen
 170 s und 417 s ist Simulator-Start, Installieren und Abräumen — ein Posten je
 Scherbe, kein Posten je Test.
 
+### Was der erste Lauf auf einer fremden Uhr gefunden hat
+
+Der erste Versuch war rot, und zwar nicht wegen des Runners: **Die Fixtures
+setzten stillschweigend voraus, dass die Maschine in deutscher Zeit steht.**
+
+`MockFixtures.weekStart` rechnete mit `Calendar(identifier: .iso8601)`, also in
+der Zeitzone des *Geräts*. `OfferQuery.current` fragt aber in
+`Calendar.supabase`, fest in Europe/Berlin — „Angebotsdaten sind Berliner
+Mitternachte". In Berlin fallen beide auf denselben Augenblick, der Unterschied
+war unsichtbar. Auf einem Runner in UTC liegt `weekStart` zwei Stunden **hinter**
+dem „heute" der Abfrage, `validFrom <= today` ist falsch, und **kein einziges
+Fixture-Angebot gilt**.
+
+Zweimal belegt, bevor eine Zeile geändert wurde:
+
+| Probe | Ergebnis |
+|---|---|
+| `OfferHitsJourneyTests` auf dem Runner (UTC) | **3 von 3 rot**, alle an derselben Zeile, App zeigt „NOCH KEIN TREFFER" |
+| dieselbe Klasse, Runner-Uhr auf Europe/Berlin | **3 von 3 grün** |
+| drei Klassen ohne Angebotsbezug, Runner (UTC) | **6 von 6 grün** |
+
+Repariert wurde die Ursache und nicht das Symptom: `MockFixtures.weekStart`
+rechnet jetzt in `Calendar.supabase`. In Berlin kommt derselbe Augenblick heraus
+wie vorher — **lokal ändert sich nichts** —, überall sonst kommt jetzt auch der
+richtige heraus. Die Uhr des Runners bleibt auf UTC; sie umzustellen hätte die
+Annahme versteckt statt entfernt.
+
+Der Rückfall ist mit einem Unit-Test zugenagelt
+(`testTheFixtureOffersAreValidTodayWhereverTheClockStands`): Er braucht keinen
+Simulator und läuft in jedem Unit-Lauf mit.
+
+**Merksatz: Wer Datum und Uhrzeit prüft, prüft auch die Zeitzone der Maschine.**
+Zwei Kalender im selben Bestand müssen dieselbe Zone haben, sonst stimmen sie
+nur dort überein, wo entwickelt wurde.
+
 ### Geurteilt wird nach Tests, nicht nach Ampeln
 
 Dieselbe Regel wie lokal, und auf einem geliehenen Mac eher noch wichtiger.
