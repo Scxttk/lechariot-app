@@ -69,8 +69,9 @@ final class ErledigtShots: XCTestCase {
         tastaturWeg()
         abhaken("Milch")
 
-        let knopf = app.buttons["list.suggestions.toggle"]
-        if knopf.waitForExistence(timeout: 10) { knopf.tap() }
+        // Seit Punkt E holt die Tastatur die Vorschläge, nicht mehr ein
+        // Winkel-Knopf.
+        app.textFields["list.input"].tapAndAwaitKeyboard(in: app)
         _ = app.staticTexts.matching(
             NSPredicate(format: "label BEGINSWITH %@", "Häufig")
         ).firstMatch.waitForExistence(timeout: 10)

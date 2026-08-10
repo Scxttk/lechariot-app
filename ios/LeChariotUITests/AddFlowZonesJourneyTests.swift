@@ -12,8 +12,8 @@ import XCTest
 ///
 /// Drei Änderungen daraus, und jede hat hier ihre Journey:
 ///
-/// 1. Die Vorschlagsfläche startet beim Tippen **zugeklappt**, bleibt aber
-///    einen Knopf weit weg.
+/// 1. Die Vorschlagsfläche und die Angaben-Schicht teilen sich einen Platz —
+///    es steht immer genau eine da (am 10.08. umgedreht, siehe unten).
 /// 2. Der obere Rest **folgt dem zuletzt angelegten Artikel**.
 /// 3. „Fertig" sitzt **unten links** an der Tastatur.
 ///
@@ -33,42 +33,53 @@ final class AddFlowZonesJourneyTests: XCTestCase {
     }
 
     private var input: XCUIElement { app.textFields["list.input"] }
+    /// Den Knopf gibt es seit dem 10.08. nicht mehr (Punkt B-2) — er steht
+    /// hier nur noch, damit die Gegenproben ihn benennen können.
     private var toggle: XCUIElement { app.buttons["list.suggestions.toggle"] }
     private var done: XCUIElement { app.buttons["list.input.done"] }
 
-    // MARK: C-1 · Die Fläche startet zugeklappt
+    // MARK: C-1 · Die Fläche folgt dem Tippen (umgedreht am 10.08.)
 
-    /// **Vorher stand sie beim ersten Buchstaben offen** — und zwar nicht über
-    /// die Regel in `SuggestionSurface`, sondern an ihr vorbei: Das
-    /// Wörterbuch-Raster hing bedingungslos an „steht etwas im Feld".
+    /// **Hier stand bis zum 10.08. das Gegenteil.** Der Test hieß
+    /// „testTypingStartsWithTheSurfaceCollapsedAndTheChevronOpensIt" und hielt
+    /// fest, was Scott am 08.08. wollte: Die Fläche startet beim Tippen
+    /// zugeklappt, der Winkel-Knopf holt sie zurück.
     ///
-    /// Geprüft wird beides in einem Test, weil eine zugeklappte Fläche allein
-    /// nicht von einer abgeschafften zu unterscheiden ist.
-    func testTypingStartsWithTheSurfaceCollapsedAndTheChevronOpensIt() {
+    /// Punkt E der Bedienrunde vom 10.08. dreht es um — nach demselben
+    /// Referenzvideo, nur eine Stelle weiter: Bring! zeigt die Vorschläge,
+    /// sobald die Tastatur steht, und tauscht sie ab dem ersten Buchstaben
+    /// gegen passende Produkte. Der Anlass der alten Regel bleibt trotzdem
+    /// gültig und wird hier mitgeprüft: **zwei Schichten übereinander gibt es
+    /// nicht.** Nur weicht jetzt die Angaben-Schicht statt der Fläche.
+    func testTypingSwapsTheSurfaceInsteadOfStackingTwoLayers() {
         waitForList()
-        XCTAssertTrue(app.buttons["Milch hinzufügen"].waitForExistence(timeout: 10),
-                      "Vor dem ersten Buchstaben steht die Fläche offen")
 
         input.tapAndAwaitKeyboard(in: app)
         app.typeText("Mil")
+        XCTAssertTrue(app.staticTexts["list.terms.title"].waitForExistence(timeout: 10),
+                      "Die Produkte kommen beim Tippen nicht von selbst\n"
+                      + app.debugDescription)
+        XCTAssertFalse(toggle.exists, "Der Winkel-Knopf ist wieder da")
 
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5),
-                      "Ohne Knopf wäre die Fläche beim Tippen unerreichbar")
-        XCTAssertEqual(toggle.label, "Vorschläge einblenden",
-                       "Der Zustand gehört in den Namen")
+        // Anlegen: Jetzt steht die Angaben-Schicht dort, wo eben die Produkte
+        // standen — eine Schicht, nie zwei.
+        app.typeText("ch\n")
+        XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10),
+                      "Nach dem Anlegen fehlt die Angaben-Schicht")
         XCTAssertFalse(app.staticTexts["list.terms.title"].exists,
-                       "Das Wörterbuch-Raster zieht beim Tippen wieder von selbst auf\n"
-                       + app.debugDescription)
+                       "Produkte und Angaben stehen übereinander")
 
-        toggle.tap()
-        XCTAssertTrue(app.staticTexts["list.terms.title"].waitForExistence(timeout: 5),
-                      "Der Knopf holt die Wörter nicht zurück")
-        XCTAssertTrue(app.buttons["Milch hinzufügen"].exists)
+        // Und beim nächsten Buchstaben tauschen sie zurück.
+        app.typeText("B")
+        XCTAssertTrue(app.staticTexts["list.terms.title"].waitForExistence(timeout: 10),
+                      "Der nächste Buchstabe holt die Produkte nicht zurück")
+        XCTAssertFalse(app.buttons["list.detailPanel.more"].exists,
+                       "Die Angaben-Schicht bleibt beim Weitertippen stehen")
 
         // Und der Fokus hat das überstanden: Weitertippen ohne Tipp ins Feld.
-        app.typeText("ch\n")
-        XCTAssertTrue(app.buttons["Milch"].waitForExistence(timeout: 10),
-                      "Nach dem Aufklappen war die Tastatur weg")
+        app.typeText("utter\n")
+        XCTAssertTrue(app.buttons["Butter"].waitForExistence(timeout: 10),
+                      "Nach dem Tauschen war die Tastatur weg")
     }
 
     // MARK: C-2 · Der obere Rest folgt dem letzten Artikel
@@ -218,10 +229,24 @@ final class AddFlowZonesJourneyTests: XCTestCase {
         let hoehe = app.windows.firstMatch.frame.height
         let tastaturOben = app.keyboards.firstMatch.frame.minY
         let tastaturHoehe = app.keyboards.firstMatch.frame.height
+        // **Und die Tastatur muss wirklich im Bild stehen** (10.08. gemessen).
+        // Läuft der Simulator mit angeschlossener Hardware-Tastatur — also
+        // immer dann, wenn nebenher ein Simulator-Fenster offen ist —, meldet
+        // `app.keyboards` eine Tastatur der **richtigen Höhe** an der falschen
+        // Stelle: `minY = 952` bei einem Fenster von 874. Die App bekommt
+        // dieselbe Zahl über die Systemmeldung, gibt der Angaben-Schicht
+        // entsprechend viel Platz, und die Anteile stimmen naturgemäß nicht:
+        // gemessen 59 % statt 45 %.
+        //
+        // **Das ist kein Fehler der App, und der Beweis ist ein Gegenlauf:**
+        // Auf `main` (80a33b0) fällt dieser Test in derselben Lage mit exakt
+        // derselben Zahl (0,5915). Ohne diese Zeile misst er also die
+        // Einstellungen der Maschine und nicht die Aufteilung.
         try XCTSkipUnless(
-            hoehe == 874 && tastaturHoehe == 233,
-            "Die Referenzanteile gelten für 874 pt Fenster und 233 pt Tastatur; "
-            + "hier sind es \(Int(hoehe)) und \(Int(tastaturHoehe))"
+            hoehe == 874 && tastaturHoehe == 233 && tastaturOben < hoehe,
+            "Die Referenzanteile gelten für 874 pt Fenster und eine Tastatur von "
+            + "233 pt **im Bild**; hier sind es \(Int(hoehe)), \(Int(tastaturHoehe)) "
+            + "und Oberkante \(Int(tastaturOben))"
         )
         let oben = blockTop / hoehe
         let mitte = (tastaturOben - blockTop) / hoehe
@@ -270,8 +295,8 @@ final class AddFlowZonesJourneyTests: XCTestCase {
                       "Kein Weg hinaus\n" + app.debugDescription)
         XCTAssertLessThanOrEqual(done.frame.maxX, input.frame.minX + 1,
                                  "\u{201E}Fertig\u{201C} geh\u{00F6}rt links neben das Feld")
-        XCTAssertLessThanOrEqual(done.frame.minX, toggle.frame.minX,
-                                 "\u{201E}Fertig\u{201C} steht ganz au\u{00DF}en links")
+        XCTAssertFalse(toggle.exists,
+                       "Neben \u{201E}Fertig\u{201C} steht wieder ein zweiter Knopf")
         XCTAssertEqual(done.frame.midY, input.frame.midY, accuracy: 4,
                        "\u{201E}Fertig\u{201C} geh\u{00F6}rt auf die H\u{00F6}he der Eingabezeile, an die Tastatur")
         XCTAssertGreaterThan(done.frame.minY, app.frame.midY,

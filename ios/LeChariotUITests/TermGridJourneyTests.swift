@@ -7,6 +7,10 @@ import XCTest
 /// eine Kachel wirklich das Wort auf die Liste legt, und dass die Fläche auch
 /// dann etwas sagt, wenn nichts passt. Die Auswahlregel selbst steht in
 /// `TermSuggestionsTests`.
+///
+/// **Seit dem 10.08. steht die Fläche beim Tippen von selbst da** (Punkt E).
+/// Zwischen dem 08.08. und heute lag sie hinter einem Winkel-Knopf, und jeder
+/// Test hier fing mit einem Tipp darauf an; diese Zeilen sind ersatzlos weg.
 final class TermGridJourneyTests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -22,7 +26,6 @@ final class TermGridJourneyTests: XCTestCase {
         let feld = input()
         feld.tap()
         feld.typeText("voll")
-        openTheSurface()
 
         let kachel = app.buttons["Vollmilch hinzufügen"]
         XCTAssertTrue(kachel.waitForExistence(timeout: 10),
@@ -44,13 +47,10 @@ final class TermGridJourneyTests: XCTestCase {
     func testAPrefixWithoutAnyMatchSaysSo() {
         let feld = input()
         feld.tap()
-        // **Erst ein Anfang mit Treffern, dann der ohne.** Den Winkel-Knopf
-        // gibt es nur, wo es etwas aufzuklappen gibt — „xyzq" von Anfang an
-        // hätte hier nichts zu öffnen gehabt. Geprüft wird ohnehin der
-        // Übergang: Die Fläche steht offen und **bleibt** stehen, wenn der
-        // nächste Buchstabe alle Treffer wegnimmt.
+        // **Erst ein Anfang mit Treffern, dann der ohne.** Geprüft wird der
+        // Übergang: Die Fläche steht und **bleibt** stehen, wenn der nächste
+        // Buchstabe alle Treffer wegnimmt.
         feld.typeText("mil")
-        openTheSurface()
         feld.typeText("chxyzq")
 
         let hinweis = app.staticTexts["list.terms.empty"]
@@ -80,10 +80,7 @@ final class TermGridJourneyTests: XCTestCase {
     func testNothingMovesUnderTheThumbWhileTyping() {
         let feld = input()
         feld.tap()
-        // „v" kennt das Wörterbuch nicht, „vo" schon — und ohne Treffer gibt
-        // es den Winkel-Knopf nicht. Die Messung fängt deshalb bei „vo" an.
         feld.typeText("vo")
-        openTheSurface()
 
         var zeile: [CGRect] = []
         var oberkante: [CGFloat] = []
@@ -120,22 +117,6 @@ final class TermGridJourneyTests: XCTestCase {
         let feld = app.textFields["list.input"]
         XCTAssertTrue(feld.waitForExistence(timeout: 15), "Keine Eingabezeile")
         return feld
-    }
-
-    /// **Seit dem 08.08. startet die Fläche beim Tippen zugeklappt** (Punkt
-    /// C-1): Zwei Schichten übereinander — Wörterbuch-Raster über den Angaben
-    /// des vorigen Artikels — ließen von der Liste einen Streifen übrig. Was
-    /// diese Datei prüft, liegt jetzt einen Winkel-Knopf weiter; die Fläche
-    /// selbst ist dieselbe geblieben.
-    ///
-    /// **Ohne getippten Text gibt es den Knopf nicht** in dem Zustand, den er
-    /// hier öffnen soll — deshalb steht in jedem Test erst ein Buchstabe im
-    /// Feld, dann dieser Aufruf.
-    private func openTheSurface() {
-        let knopf = app.buttons["list.suggestions.toggle"]
-        XCTAssertTrue(knopf.waitForExistence(timeout: 10),
-                      "Der Weg zu den Wörtern fehlt")
-        knopf.tap()
     }
 
     private func attach(_ name: String) {

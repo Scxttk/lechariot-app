@@ -275,7 +275,7 @@ final class PinnedOfferTests: XCTestCase {
     /// Heften und Weglegen sind zwei Aussagen über dasselbe Angebot. Steht
     /// beides gleichzeitig da, gewinnt die Heftung — sie ist die deutlichere.
     /// (Die Oberfläche lässt es gar nicht so weit kommen, siehe
-    /// `MatchDetailView.setPin`; die Regel steht trotzdem fest, weil ein
+    /// `ItemSheet.setPin`; die Regel steht trotzdem fest, weil ein
     /// undefinierter Fall irgendwann einer wird.)
     func testAPinnedOfferStaysEvenWhenItIsAlsoRejected() {
         let gruenlaender = offer("GRÜNLÄNDER Schnittkäse", price: 0.99)

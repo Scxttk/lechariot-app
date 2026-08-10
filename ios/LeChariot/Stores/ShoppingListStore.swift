@@ -38,7 +38,7 @@ enum ShoppingListMatcher {
     /// **Und bewusst an den Ablehnungen vorbei.** Anheften ist die deutlichere
     /// der beiden Aussagen; stünden beide gegeneinander, gewinnt die Heftung.
     /// Die Oberfläche lässt es gar nicht erst so weit kommen — ein ✕ auf dem
-    /// gehefteten Angebot nimmt die Heftung mit, siehe `MatchDetailView`.
+    /// gehefteten Angebot nimmt die Heftung mit, siehe `ItemSheet`.
     static func pinnedOffer(_ pin: PinnedOffer, in offers: [Offer]) -> Offer? {
         offers.first { $0.matches(pin) }
     }
@@ -48,7 +48,7 @@ enum ShoppingListMatcher {
     /// wenn keine der beiden Stufen es findet — `category` ist dann die
     /// zurückhaltendere der beiden Antworten. Die Zeile behauptet daraus nichts
     /// mehr: Wo eine Heftung steht, sagt das Abzeichen „Deine Wahl", und die
-    /// Herkunftszeile schweigt (siehe `MatchDetailView.rowSubtitle`).
+    /// Herkunftszeile schweigt (siehe `ItemSheet.rowSubtitle`).
     static func kind(of offer: Offer, for query: String) -> MatchKind {
         OfferMatcher.matches(for: query, in: [offer]).first?.kind ?? .category
     }

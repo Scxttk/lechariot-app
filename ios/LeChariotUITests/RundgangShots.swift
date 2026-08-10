@@ -60,10 +60,15 @@ final class RundgangShots: XCTestCase {
             frame += 1
         }
 
-        // **Sechs Rahmen, und zwar alle.** Der Bogen war das Werkzeug, mit dem
+        // **Fünf Rahmen, und zwar alle.** Der Bogen war das Werkzeug, mit dem
         // aufgefallen ist, dass sich ein Rahmen still übersprang — dann muss er
         // das auch melden und nicht nur zeigen.
-        XCTAssertEqual(frame - 1, 6, "Nicht jeder Rahmen kam dran")
+        //
+        // **Sechs waren es bis zum 10.08.** Der Rahmen „Du musst nicht alles
+        // tippen" zeigte auf den Winkel-Knopf, und den gibt es seit Punkt B-2
+        // nicht mehr; die Vorschlagsfläche kommt seit Punkt E von selbst. Wer
+        // die Zahl hier ändert, ändert sie auch in `TutorialStoreTests`.
+        XCTAssertEqual(frame - 1, 5, "Nicht jeder Rahmen kam dran")
     }
 
     private func attachTree(name: String, note: String) {

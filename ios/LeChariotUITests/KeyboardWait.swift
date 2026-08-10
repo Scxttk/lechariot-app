@@ -77,21 +77,20 @@ extension XCUIApplication {
 /// **Seit dem 07.08. ist die Liste ein Raster** (`ShoppingGridTile`), und die
 /// Kachel trägt genau eine Trefferfläche: den Tipp, der abhakt.
 ///
-/// **Seit dem 08.08. führt das Halten direkt ins Trefferblatt** (Scotts „ein
-/// Griff weniger"). Vorher ging es über das Kontextmenü, und die Journeys
-/// tippten dort auf `list.matches`. Dieser Punkt ist damit weg — der lange
-/// Druck *ist* er. Angaben und Löschen liegen jetzt im ⋯-Menü desselben
-/// Blattes.
+/// **Seit dem 10.08. führt das Halten auf das Artikelblatt** (Punkt A) — auf
+/// **einen** Bildschirm mit Angaben *und* Treffern (`ItemSheet`). Vorher (seit
+/// dem 08.08.) waren dort nur die Treffer, und Angaben und Löschen lagen im
+/// ⋯-Menü desselben Blattes; davor lag beides im Kontextmenü der Kachel.
 ///
-/// Beides steht hier und nur hier: Sonst stünde der lange Druck zwanzigmal im
-/// Testbestand und wäre beim nächsten Umbau zwanzigmal falsch.
+/// Der lange Druck steht deshalb hier und nur hier: Sonst stünde er zwanzigmal
+/// im Testbestand und wäre beim nächsten Umbau zwanzigmal falsch.
 extension XCUIApplication {
-    /// Hält die Kachel und wartet, bis das Trefferblatt oben steht.
+    /// Hält die Kachel und wartet, bis das Artikelblatt oben steht.
     ///
     /// `press(forDuration:)` statt `tap()`: Ein kurzer Tipp würde den Artikel
     /// abhaken — genau die Handlung, die die Kachel im Laden können muss.
     @discardableResult
-    func openTileMatches(
+    func openItemSheet(
         ofItem itemLabel: String? = nil,
         file: StaticString = #filePath,
         line: UInt = #line
@@ -103,34 +102,43 @@ extension XCUIApplication {
                       "Keine Kachel \(itemLabel ?? "list.tile") gefunden", file: file, line: line)
         kachel.press(forDuration: 0.6)
 
-        let blatt = navigationBars.matching(
-            NSPredicate(format: "identifier BEGINSWITH %@", "Treffer für")
-        ).firstMatch
-        XCTAssertTrue(blatt.waitForExistence(timeout: 15),
-                      "Das Halten hat das Trefferblatt nicht geöffnet", file: file, line: line)
-        return blatt
+        let fertig = buttons["itemSheet.done"].firstMatch
+        XCTAssertTrue(fertig.waitForExistence(timeout: 15),
+                      "Das Halten hat das Artikelblatt nicht geöffnet", file: file, line: line)
+        return fertig
     }
 
-    /// Öffnet das Trefferblatt und darin den Punkt aus dem ⋯-Menü —
-    /// `matches.item.detail` oder `matches.item.delete`.
-    func tapInItemMenu(
-        _ menuIdentifier: String,
+    /// Öffnet das Artikelblatt und scrollt bis zu den Angeboten.
+    ///
+    /// **Warum das Scrollen zum Helfer gehört und nicht in jede Journey.** Auf
+    /// dem geteilten Bildschirm stehen die Angaben oben — das ist die Antwort
+    /// auf den Feldtest vom 09.08. und Absicht. Die Angebotszeilen liegen
+    /// dadurch je nach Wortschatz des Artikels ein Stück tiefer, und ein
+    /// `tap()` auf etwas außerhalb des Bildes schlägt fehl. Wer die Treffer
+    /// meint, ruft das hier.
+    ///
+    /// **Gescrollt wird bis ans Ende, nicht bis zur Überschrift** — und das
+    /// ist gemessen, nicht vorsichtshalber. Der erste Anlauf hielt an, sobald
+    /// „Angebote diese Woche" erreichbar war; `OfferDetailJourneyTests`
+    /// suchte danach die Fußnote („… Preisverlauf …") und fand sie nicht.
+    /// Eine `List` baut nur, was im Bild ist: Was unter der Kante liegt, steht
+    /// in keinem Bedienungshilfen-Baum. Am Ende des Blatts stehen Zeilen,
+    /// Fußnote und Löschen zusammen im Bild — bei den Testdaten sind es ein
+    /// bis drei Angebote.
+    @discardableResult
+    func openTileMatches(
         ofItem itemLabel: String? = nil,
         file: StaticString = #filePath,
         line: UInt = #line
-    ) {
-        openTileMatches(ofItem: itemLabel, file: file, line: line)
-
-        let mehr = buttons["matches.more"].firstMatch
-        XCTAssertTrue(mehr.waitForExistence(timeout: 10),
-                      "Im Trefferblatt fehlt das ⋯-Menü", file: file, line: line)
-        mehr.tap()
-
-        let punkt = buttons[menuIdentifier].firstMatch
-        XCTAssertTrue(punkt.waitForExistence(timeout: 10),
-                      "Der Punkt \(menuIdentifier) steht nicht im ⋯-Menü",
-                      file: file, line: line)
-        punkt.tap()
+    ) -> XCUIElement {
+        let fertig = openItemSheet(ofItem: itemLabel, file: file, line: line)
+        let ende = buttons["itemSheet.delete"].firstMatch
+        for _ in 0..<8 where !ende.exists || !ende.isHittable {
+            swipeUp()
+        }
+        XCTAssertTrue(staticTexts["itemSheet.offers.header"].exists,
+                      "Auf dem Artikelblatt stehen keine Angebote", file: file, line: line)
+        return fertig
     }
 }
 

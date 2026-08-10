@@ -50,12 +50,15 @@ final class SuggestionSurfaceJourneyTests: XCTestCase {
         )
     }
 
-    /// Tippen schließt die Fläche, der Knopf holt sie zurück.
+    /// **Die zwei Zustände beim Schreiben** (10.08., Punkt E).
     ///
-    /// Die beiden Richtungen zusammen in einem Test, weil ein zugeklappter
-    /// Streifen allein nicht zu unterscheiden ist von einem, der gar nicht
-    /// mehr da ist.
-    func testTypingClosesTheSurfaceAndTheButtonBringsItBack() {
+    /// Bis heute stand hier das Gegenteil: „Tippen schließt die Fläche, der
+    /// Knopf holt sie zurück." Beides ist weg — die Fläche folgt dem Tippen,
+    /// und den Knopf gibt es nicht mehr (Punkt B-2).
+    ///
+    /// Beide Zustände in einem Test, weil der Übergang der Prüfgegenstand ist:
+    /// An derselben Stelle stehen erst Vorschläge und dann Produkte.
+    func testTheKeyboardBringsSuggestionsAndTypingSwapsThemForProducts() {
         waitForList()
 
         let feld = app.textFields["list.input"]
@@ -63,23 +66,29 @@ final class SuggestionSurfaceJourneyTests: XCTestCase {
         XCTAssertTrue(app.buttons["Milch hinzufügen"].waitForExistence(timeout: 10),
                       "Vor dem ersten Artikel steht die Fläche offen")
 
+        // Ein Artikel, damit die Liste nicht mehr leer ist — sonst stünde die
+        // Fläche ohnehin, und der Test bewiese nichts über die Tastatur.
         feld.tapAndAwaitKeyboard(in: app)
         feld.typeText("Vollmilch\n")
         dismissQuantitySheet()
         XCTAssertTrue(app.buttons["Vollmilch"].waitForExistence(timeout: 10),
                       "Der Artikel ist nicht auf der Liste gelandet")
 
-        let knopf = app.buttons["list.suggestions.toggle"]
-        XCTAssertTrue(knopf.waitForExistence(timeout: 5), "Der Knopf muss bleiben")
-        XCTAssertEqual(knopf.label, "Vorschläge einblenden",
-                       "Der Zustand gehört in den Namen, ein gedrehtes Winkelzeichen sagt nichts")
-        XCTAssertFalse(app.buttons["Milch hinzufügen"].exists,
-                       "Wer tippt, weiß was er braucht — die Fläche gibt den Platz zurück")
+        // **Erster Zustand:** Tastatur auf, Feld leer → Vorschläge.
+        feld.tapAndAwaitKeyboard(in: app)
+        XCTAssertTrue(app.buttons["Milch hinzufügen"].waitForExistence(timeout: 10),
+                      "Die Tastatur allein holt die Vorschläge nicht:\n" + app.debugDescription)
 
-        knopf.tap()
-        XCTAssertTrue(app.buttons["Milch hinzufügen"].waitForExistence(timeout: 5),
-                      "Der Knopf muss sie zurückholen")
-        XCTAssertEqual(app.buttons["list.suggestions.toggle"].label, "Vorschläge ausblenden")
+        // **Zweiter Zustand:** ein Buchstabe → Produkte an derselben Stelle.
+        feld.typeText("k")
+        XCTAssertTrue(app.staticTexts["list.terms.title"].waitForExistence(timeout: 10),
+                      "Der erste Buchstabe bringt keine Produkte:\n" + app.debugDescription)
+        XCTAssertFalse(app.buttons["Milch hinzufügen"].exists,
+                       "Vorschläge und Produkte stehen gleichzeitig da")
+
+        // Und es gibt keinen Knopf mehr, der irgendetwas einklappt.
+        XCTAssertFalse(app.buttons["list.suggestions.toggle"].exists,
+                       "Der Winkel-Knopf ist wieder da")
     }
 
     // MARK: Helfer
@@ -99,8 +108,6 @@ final class SuggestionSurfaceJourneyTests: XCTestCase {
     /// aufgeht. Diese Journey testet nicht das Menü, sondern die
     /// Vorschlagsfläche darunter.
     private func dismissQuantitySheet() {
-        let abbrechen = app.buttons["itemDetail.cancel"]
-        if abbrechen.exists { abbrechen.tap(); return }
         // Seit dem 03.08. ist das Mengen-Menue kein Blatt mehr, sondern eine
         // Schicht ueber der Eingabezeile — sie geht mit dem Fokus, nicht mit
         // einem Knopf. Ein Wisch ueber die Liste tut das.

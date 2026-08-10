@@ -40,12 +40,6 @@ extension XCUIApplication {
             // stand „Zahnstocher" schon da.
             feld.typeText(nextWord() + "\n")
 
-        case rahmen.contains("Du musst nicht alles tippen"):
-            let winkel = buttons["list.suggestions.toggle"]
-            XCTAssertTrue(winkel.waitForExistence(timeout: 15),
-                          "Kein Winkel-Knopf:\n" + debugDescription, file: file, line: line)
-            winkel.tap()
-
         case rahmen.contains("Im Laden abhaken"):
             tapTheHole(what: "die Kachel", file, line)
 

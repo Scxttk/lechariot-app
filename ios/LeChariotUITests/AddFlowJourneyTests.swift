@@ -35,7 +35,7 @@ final class AddFlowJourneyTests: XCTestCase {
             XCTAssertTrue(app.buttons[name].waitForExistence(timeout: 10),
                           "\(name) ist nicht auf der Liste gelandet\n" + app.debugDescription)
         }
-        XCTAssertFalse(app.buttons["itemDetail.done"].exists,
+        XCTAssertFalse(app.buttons["itemSheet.done"].exists,
                        "Auf dem Weg lag ein Blatt mit \u{201E}Fertig\u{201C}")
     }
 
@@ -123,7 +123,9 @@ final class AddFlowJourneyTests: XCTestCase {
                       "Die Angaben-Schicht steht nach dem Anlegen nicht da")
         app.buttons["list.detailPanel.more"].tap()
 
-        XCTAssertTrue(app.buttons["itemDetail.done"].waitForExistence(timeout: 10),
+        // Seit dem 10.08. führt „Notiz …" auf dasselbe Artikelblatt, das auch
+        // das Halten öffnet (Punkt A) — nicht mehr auf ein eigenes Blatt.
+        XCTAssertTrue(app.buttons["itemSheet.done"].waitForExistence(timeout: 10),
                       "Der Weg in die volle Fassung ist zu")
         XCTAssertTrue(app.staticTexts["Notiz"].exists, "Der Freitext steht dort")
     }

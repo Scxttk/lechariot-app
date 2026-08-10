@@ -291,8 +291,8 @@ final class TutorialStoreTests: XCTestCase {
         let without = TutorialStep.tour(hasMarkets: false)
 
         XCTAssertEqual(withMarkets.map(\.id),
-                       ["input", "suggestions", "check", "offers", "nextWeek", "done"])
-        XCTAssertEqual(without.map(\.id), ["input", "suggestions", "check", "done"])
+                       ["input", "check", "offers", "nextWeek", "done"])
+        XCTAssertEqual(without.map(\.id), ["input", "check", "done"])
 
         XCTAssertFalse(
             without.contains { $0.tab != .liste },
@@ -310,7 +310,7 @@ final class TutorialStoreTests: XCTestCase {
     func testWithoutTheNextWeekPreviewTheOffersFramesAreGoneToo() {
         let ohneVorschau = TutorialStep.tour(hasMarkets: true, showsNextWeek: false)
 
-        XCTAssertEqual(ohneVorschau.map(\.id), ["input", "suggestions", "check", "done"])
+        XCTAssertEqual(ohneVorschau.map(\.id), ["input", "check", "done"])
         XCTAssertFalse(ohneVorschau.contains { $0.tab != .liste })
         XCTAssertFalse(
             ohneVorschau.last!.text.contains("Filiale gewählt"),
@@ -333,8 +333,8 @@ final class TutorialStoreTests: XCTestCase {
     /// Kürzung nicht versehentlich zurückgedreht wird — hier wird sie
     /// **absichtlich** verändert: Der Plan-Rahmen fällt weg (die Karte
     /// erscheint jetzt als Folge der eigenen ersten Eingabe, der Satz dazu steht
-    /// in Rahmen 1), und zwei Stellen kommen dazu, die Scott ausdrücklich
-    /// genannt hat — das Vorschläge-Menü und die Vorschau „Nächste Woche".
+    /// in Rahmen 1), und eine Stelle kommt dazu, die Scott ausdrücklich genannt
+    /// hat — die Vorschau „Nächste Woche".
     ///
     /// Was von der Lehre vom 06.08. bleibt: **kein Rahmen, der zeigt, was man
     /// ohnehin sieht.** Deshalb ist es hier eine Aussage über Handlungen und
@@ -344,22 +344,26 @@ final class TutorialStoreTests: XCTestCase {
 
         XCTAssertEqual(
             tour.map(\.deed),
-            [.addsItem, .opensSuggestions, .checksItem, .opensOffersTab, .opensNextWeek, .reads]
+            [.addsItem, .checksItem, .opensOffersTab, .opensNextWeek, .reads]
         )
         XCTAssertEqual(tour.filter { $0.deed == .reads }.map(\.id), ["done"],
                        "genau eine Karte ist zum Lesen da, und das ist der Abschied")
         XCTAssertEqual(tour.last?.id, "done", "und sie steht am Ende")
     }
 
-    /// Die zwei Stellen aus Scotts Liste, jede an ihrem Anker — beide sind ohne
-    /// Rundgang praktisch nicht zu finden: Das Vorschläge-Menü startet seit dem
-    /// 08.08. eingeklappt, und die Vorschau liegt hinter einem Knopf in der
+    /// Die Stelle aus Scotts Liste, an ihrem Anker — ohne Rundgang praktisch
+    /// nicht zu finden: Die Vorschau liegt hinter einem Knopf in der
     /// Navigationsleiste des Angebote-Tabs.
-    func testTheTourShowsTheTwoPlacesNobodyFindsOnTheirOwn() {
+    ///
+    /// **Die zweite Stelle ist am 10.08. weggefallen.** Sie war das
+    /// Vorschläge-Menü hinter dem Winkel-Knopf; seit Punkt E steht die Fläche
+    /// von selbst da, sobald die Tastatur kommt, und der Knopf existiert nicht
+    /// mehr. Die Gegenprobe steht gleich darunter.
+    func testTheTourShowsThePlaceNobodyFindsOnTheirOwn() {
         let tour = TutorialStep.tour(hasMarkets: true)
 
-        XCTAssertEqual(tour.first { $0.id == "suggestions" }?.spotlight,
-                       .anchor(.suggestionsToggle))
+        XCTAssertNil(tour.first { $0.id == "suggestions" },
+                     "Der Rahmen zeigt auf einen Knopf, den es nicht mehr gibt")
         XCTAssertEqual(tour.first { $0.id == "nextWeek" }?.spotlight, .navBar)
         XCTAssertEqual(tour.first { $0.id == "done" }?.spotlight,
                        .anchor(.nextWeekNotice),
@@ -375,11 +379,10 @@ final class TutorialStoreTests: XCTestCase {
         }
     }
 
-    /// **Und er bleibt kurz.** Sechs Rahmen sind mehr als die fünf aus der
-    /// Onboarding-Forschung — die Zahl kam aber aus Touren zum *Lesen*. Hier ist
-    /// jeder Rahmen ein Tipp und der letzte der Abschied. Die Grenze steht
-    /// trotzdem, damit „noch einer" eine Entscheidung bleibt und keine
-    /// Gewohnheit.
+    /// **Und er bleibt kurz.** Seit dem 10.08. sind es fünf Rahmen — die Zahl
+    /// aus der Onboarding-Forschung, wenn auch aus Touren zum *Lesen*. Hier ist
+    /// jeder Rahmen ein Tipp und der letzte der Abschied. Die Grenze steht,
+    /// damit „noch einer" eine Entscheidung bleibt und keine Gewohnheit.
     func testTheTourStaysShort() {
         XCTAssertLessThanOrEqual(
             TutorialStep.tour(hasMarkets: true).count, 6,
@@ -418,7 +421,7 @@ final class TutorialStoreTests: XCTestCase {
         store.report(.addsItem)
         XCTAssertEqual(store.index, 1, "und dieselbe zweimal auch nicht")
 
-        store.report(.opensSuggestions)
+        store.report(.checksItem)
         XCTAssertEqual(store.index, 2)
     }
 
@@ -436,7 +439,7 @@ final class TutorialStoreTests: XCTestCase {
         XCTAssertEqual(TourStepView.frameCount, handgriffe.count)
         XCTAssertEqual(TourStepView.points.count, handgriffe.count)
         XCTAssertFalse(TourStepView.points.contains { $0.text.isEmpty })
-        XCTAssertTrue(TourStepView.subtitle.hasPrefix("Drei Handgriffe"),
+        XCTAssertTrue(TourStepView.subtitle.hasPrefix("Zwei Handgriffe"),
                       "Das Zahlwort muss zur Zahl passen: \(TourStepView.subtitle)")
     }
 

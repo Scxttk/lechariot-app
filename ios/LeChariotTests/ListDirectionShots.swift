@@ -175,7 +175,7 @@ private struct DirectionD: View {
                             detail: eintrag.unterzeile.map { [$0] }
                         ),
                         suggestion: vorschlag(eintrag),
-                        onToggle: {}, onShowMatches: {}, onEditDetail: {}, onDelete: {}
+                        onToggle: {}, onOpenItem: {}, onDelete: {}
                     )
                 }
             }

@@ -35,6 +35,10 @@ import SwiftUI
 /// zu den Angeboten ist seit dem 08.08. **das Halten selbst** (vorher ein
 /// Umweg über das Kontextmenü) und, prominenter, die Plan-Karte über dem
 /// Raster.
+///
+/// **Zwei Griffe, mehr hat die Kachel nicht** (10.08., Punkt A): tippen hakt
+/// ab, halten öffnet das Artikelblatt. Der Eck-Knopf aus #97 ist damit weg —
+/// die Begründung steht bei `body`.
 struct ShoppingGridTile: View {
     /// **Die Spalten des Rasters — drei je Reihe auf dem iPhone** (08.08.).
     ///
@@ -64,87 +68,30 @@ struct ShoppingGridTile: View {
     /// Einmaliges Aufleuchten beim **allerersten** Treffer überhaupt.
     var highlightsFirstMatch = false
     let onToggle: () -> Void
-    var onShowMatches: (() -> Void)? = nil
-    var onEditDetail: (() -> Void)? = nil
+    /// Öffnet das Artikelblatt — Angaben **und** Treffer auf einem Bildschirm.
+    /// Das ist seit dem 10.08. das Ziel des Haltens; siehe `haltenÖffnetDasBlatt`.
+    var onOpenItem: (() -> Void)? = nil
     var onDelete: (() -> Void)? = nil
 
     /// Der Begriff, dessen Zeichnung die Kachel trägt. Aufgelöst über dasselbe
     /// Wörterbuch, das der Zuordner benutzt — siehe `ItemGlyphTerm`.
     private var glyphTerm: String? { ItemGlyphTerm.term(for: item.text) }
 
+    /// **Die Kachel trägt wieder genau eine Fläche** (10.08., Punkt A).
+    ///
+    /// Von gestern bis heute lag oben links ein sichtbarer Knopf zu den
+    /// Angaben (#97). Er ist weg, und der Grund ist Scotts Satz aus der
+    /// Bedienrunde: „Das Präferenzen menu button I don't like, bring opens it
+    /// by long pressing the product." Der Knopf war die Antwort auf ein
+    /// Problem, das es nicht mehr gibt — die Angaben lagen drei Griffe hinter
+    /// einer Geste, die zum **Trefferblatt** führte. Jetzt führt dieselbe
+    /// Geste auf einen Bildschirm, der beides trägt (`ItemSheet`), und ein
+    /// zweiter Weg daneben wäre nur noch Zierrat auf einer Fläche von 100 pt.
     var body: some View {
-        // **Oben links, und beide anderen Ecken sind durchgefallen — an
-        // gerenderten Bildern, nicht im Kopf.**
-        //
-        // *Oben rechts:* Dort hängt das Preisfähnchen. Es sitzt an der Ecke des
-        // Zeichens und ragt 4 pt nach außen; auf der Vollmilch-Kachel
-        // berührten sich „0,99 €" und der Knopf fast, und auf einer schmaleren
-        // Kachel derselben Reihe wäre daraus eine Überlappung geworden.
-        //
-        // *Unten rechts:* Dort steht die Beschriftung. „Bananen" reicht bis
-        // fast an den Rand, und der Knopf klebte am Wort, als gehörte er dazu.
-        //
-        // Oben links ist auf jeder Kachel frei — das Zeichen steht mittig, das
-        // Fähnchen rechts davon, die Reißzwecke ebenfalls.
-        ZStack(alignment: .topLeading) {
-            kachel
-            // **Die sichtbare Tür zu den Angaben** (Feldtest 09.08.). Sie liegt
-            // über der Kachelfläche, nicht darin: Die Kachel ist ein Knopf, und
-            // ein Knopf im Knopf bekommt seinen Tipp nur, wenn er obenauf liegt.
-            if onEditDetail != nil {
-                angabenKnopf
-            }
-        }
-        // **Das Zurücktreten gilt der ganzen Kachel, nicht nur ihrer Fläche.**
-        // Bis zum 09.08. sass dieser Modifikator am Knopf der Kachel selbst;
-        // seit der Angaben-Knopf als Geschwister daneben liegt, wäre er sonst
-        // der einzige Teil einer abgehakten Kachel in voller Deckkraft — ein
-        // helles Bedienelement auf etwas, das gerade in den Hintergrund tritt.
-        // Eine Regel, eine Stelle.
-        .opacity(item.isChecked ? 0.45 : 1)
-    }
-
-    /// **Warum die Kachel überhaupt eine sichtbare Tür braucht.**
-    ///
-    /// Seit #91 führt das Halten zum Trefferblatt, und damit ist das
-    /// Kontextmenü der Kachel für den Finger tot (gemessen, siehe `menü`).
-    /// Übrig blieb ein Weg zu den Angaben, der durch das Trefferblatt und dort
-    /// durch das ⋯-Menü führt — drei Griffe hinter einer Geste, die nichts
-    /// ankündigt. Scotts Feldtest am 09.08. ist genau darüber gestolpert:
-    /// „Kohl steht auf der Liste und ich komme an seine Angaben nicht mehr
-    /// heran." Das Bild dazu ist eindeutig — ein Bildschirm mit der
-    /// Überschrift „Treffer für ‚Kohl'", der „Keine Treffer" meldet, und die
-    /// einzige Tür zu den Angaben ist das ⋯ in seiner Ecke.
-    ///
-    /// Der Knopf hier ist die Antwort darauf: ein Griff, sichtbar, und er
-    /// führt in **dieselbe** Angaben-Schicht wie das Anlegen (`ItemDetailPanel`)
-    /// — nicht in eine zweite Fassung mit eigenem Wortschatz.
-    private var angabenKnopf: some View {
-        Button {
-            onEditDetail?()
-        } label: {
-            Image(systemName: "slider.horizontal.3")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Theme.secondaryText)
-                // Die Fläche zum Treffen ist größer als das Zeichen: 44 pt sind
-                // Apples Maß, und die Ecke einer Kachel ist der Ort, an dem ein
-                // Daumen am ehesten danebengreift.
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        // **Nicht „Angaben zu Butter" — der Name ist vergeben**, und zwar an
-        // die Kachelzeile der Angaben-Schicht (`ItemDetailPanel.recentChip`).
-        // Steht die Schicht über der Liste, tragen sonst zwei Knöpfe auf einem
-        // Bildschirm denselben Namen; gemessen am 09.08. hieß das „Multiple
-        // matching elements found" in zwei Journeys, die es vorher gab. Genau
-        // die Falle, vor der `recentChip` an Ort und Stelle warnt.
-        //
-        // „ändern" ist außerdem das ehrlichere Wort: Auf der Kachel steht ein
-        // Artikel, den es schon gibt, und der Knopf ändert seine Angaben. Die
-        // Kachelzeile wechselt nur den Blick.
-        .accessibilityLabel("Angaben zu \(item.text) ändern")
-        .accessibilityIdentifier("list.tile.detail")
+        kachel
+            // **Das Zurücktreten gilt der ganzen Kachel.** Eine Regel, eine
+            // Stelle — auch jetzt, wo nichts mehr daneben liegt.
+            .opacity(item.isChecked ? 0.45 : 1)
     }
 
     private var kachel: some View {
@@ -182,10 +129,16 @@ struct ShoppingGridTile: View {
         .accessibilityIdentifier("list.tile")
         .tutorialAnchor(.rowCheck, when: carriesTutorialAnchors)
         .contextMenu { menü }
-        .simultaneousGesture(haltenÖffnetDieTreffer)
+        .simultaneousGesture(haltenÖffnetDasBlatt)
     }
 
-    /// **Halten führt zu den Treffern** (08.08., Scott: „ein Griff weniger").
+    /// **Halten führt auf das Artikelblatt** (10.08., Punkt A) — und das ist
+    /// derselbe Griff wie seit dem 08.08., nur mit einem anderen Ziel.
+    ///
+    /// Bis heute lagen dahinter die **Treffer**; die Angaben lagen im ⋯-Menü
+    /// desselben Blattes. Scott will es wie bei Bring!: Halten öffnet die
+    /// Präferenzen — und der Bildschirm dahinter darf beides tragen. Genau das
+    /// tut `ItemSheet`; die Geste bleibt, das Ziel ist gewachsen.
     ///
     /// `simultaneousGesture` und nicht `onLongPressGesture`: Letzteres schiebt
     /// sich vor den Tipp des Knopfes, und der Tipp ist die eine Handlung, die
@@ -203,9 +156,9 @@ struct ShoppingGridTile: View {
     /// Die Schwelle des Kontextmenüs selbst ist **nicht** nachgemessen; sie ist
     /// hier auch nicht nötig, weil der Test das Ergebnis festhält statt die
     /// Rechnung dahinter.
-    private var haltenÖffnetDieTreffer: some Gesture {
+    private var haltenÖffnetDasBlatt: some Gesture {
         LongPressGesture(minimumDuration: 0.35)
-            .onEnded { _ in onShowMatches?() }
+            .onEnded { _ in onOpenItem?() }
     }
 
     // MARK: Zeichen und Fahne
@@ -231,11 +184,23 @@ struct ShoppingGridTile: View {
                 // verlorengehen — ein leeres Feld wäre genau der stille
                 // Zustand von damals.
                 //
-                // Der ganze Satz steht weiter im Trefferblatt, das das
-                // Kachelmenü öffnet („Warum kein Angebot?").
+                // Der ganze Satz steht weiter im Artikelblatt, das das Halten
+                // öffnet („Warum kein Angebot?").
+                //
+                // **Grün wie jedes andere Zeichen** (10.08., Punkt B-4, Scott:
+                // „das fragezeichen ist okay aber bitte in grün"). Es stand
+                // hier in Grau, und das war eine stille Behauptung: Grau ist in
+                // dieser App die Farbe des Nebensächlichen. Das Fragezeichen
+                // ist aber nicht weniger wichtig als eine Erdbeere — es steht
+                // an genau derselben Stelle und sagt genau dasselbe, nämlich
+                // „das ist der Artikel". Nur eben: den kenne ich nicht.
+                //
+                // Abgehakt wechselt es die Farbe wie die gezeichneten Zeichen
+                // auch — sonst wäre es das einzige Zeichen im Raster, das auf
+                // einer erledigten Kachel noch leuchtet.
                 Image(systemName: "questionmark")
                     .font(.system(size: 26, weight: .light))
-                    .foregroundStyle(Theme.secondaryText)
+                    .foregroundStyle(item.isChecked ? Theme.secondaryText : Theme.accent)
                     .frame(width: 52, height: 46)
                     .accessibilityHidden(true)
             }
@@ -343,28 +308,20 @@ struct ShoppingGridTile: View {
     /// Hilfstechnik es über andere Wege als den Fingerdruck ansteuern —
     /// **nachgemessen ist das nicht**, deshalb hängt nichts daran.
     ///
-    /// **Was der Finger stattdessen erreicht:** Angebote über das Halten,
-    /// Angaben und Löschen über das ⋯-Menü in genau dem Blatt, das dabei
-    /// aufgeht (`MatchDetailView.artikelmenü`). Nur dieser Weg ist geprüft.
+    /// **Was der Finger stattdessen erreicht:** alles über das Halten — es
+    /// öffnet das Artikelblatt, und dort stehen Angaben, Treffer und ganz
+    /// unten das Löschen (`ItemSheet`). Nur dieser Weg ist geprüft.
     ///
-    /// Das Trefferblatt bleibt darüber hinaus über die Plan-Karte erreichbar —
-    /// die Angebote sind der Kern der App und dürfen nicht nur hinter einem
-    /// langen Druck liegen.
+    /// Die Treffer bleiben darüber hinaus über die Plan-Karte erreichbar — die
+    /// Angebote sind der Kern der App und dürfen nicht nur hinter einem langen
+    /// Druck liegen.
     @ViewBuilder
     private var menü: some View {
-        if let onShowMatches {
-            Button(action: onShowMatches) {
-                Label(angebotstext, systemImage: "tag")
+        if let onOpenItem {
+            Button(action: onOpenItem) {
+                Label("Angaben und Angebote", systemImage: "slider.horizontal.3")
             }
-            .accessibilityIdentifier(
-                suggestion.positions.isEmpty ? "list.matches.empty" : "list.matches"
-            )
-        }
-        if let onEditDetail {
-            Button(action: onEditDetail) {
-                Label("Angaben", systemImage: "square.and.pencil")
-            }
-            .accessibilityIdentifier("list.item.detail")
+            .accessibilityIdentifier("list.item.sheet")
         }
         if let onDelete {
             Button(role: .destructive, action: onDelete) {
@@ -372,12 +329,6 @@ struct ShoppingGridTile: View {
             }
             .accessibilityIdentifier("list.item.delete")
         }
-    }
-
-    /// Der Menüpunkt sagt, was dahinter steht — „Angebote" über einer leeren
-    /// Liste wäre ein Versprechen, das der nächste Bildschirm bricht.
-    private var angebotstext: String {
-        suggestion.positions.isEmpty ? "Warum kein Angebot?" : "Angebote"
     }
 
     /// Was zu diesem Artikel gerade bekannt ist: erledigt, das Angebot, und

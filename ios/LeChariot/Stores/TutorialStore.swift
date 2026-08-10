@@ -62,8 +62,6 @@ struct TutorialStep: Identifiable, Equatable {
         case reads
         /// Ein Artikel steht auf der Liste, der vorher nicht dort stand.
         case addsItem
-        /// Die Vorschlagsfläche über der Eingabezeile steht offen.
-        case opensSuggestions
         /// Ein Artikel ist abgehakt.
         case checksItem
         /// Der Angebote-Tab steht.
@@ -101,11 +99,11 @@ struct TutorialStep: Identifiable, Equatable {
     ///
     /// **Eine Vermutung, die hier stand und falsch war, gehört mit hierher:**
     /// Als der Vorschläge-Rahmen sich still übersprang, sah es aus, als fehle
-    /// der Winkel-Knopf während des Tipp-Flusses. Er ist die ganze Zeit da —
-    /// der Grund war ein verschluckter Anker (siehe `TutorialAnchor`). Für
-    /// diesen Rahmen ist das Wegräumen deshalb kein Muss, für den Rahmen zur
-    /// Tab-Leiste schon; einheitlich bleibt es trotzdem, weil „wer etwas
-    /// antippen soll, braucht den Bildschirm" die einfachere Regel ist als eine
+    /// der Winkel-Knopf während des Tipp-Flusses. Er war die ganze Zeit da —
+    /// der Grund war ein verschluckter Anker (siehe `TutorialAnchor`). Den
+    /// Rahmen gibt es seit dem 10.08. nicht mehr (Punkt E hat den Knopf
+    /// abgeschafft); die Regel bleibt trotzdem einheitlich, weil „wer etwas
+    /// antippen soll, braucht den Bildschirm" einfacher ist als eine
     /// Ausnahmeliste.
     var clearsInputFlow: Bool {
         switch deed {
@@ -133,16 +131,24 @@ struct TutorialStep: Identifiable, Equatable {
     /// steht in Rahmen 1. Was man durch die eigene Handlung entstehen sieht,
     /// braucht keinen eigenen Rahmen.
     ///
-    /// **Zwei Stellen kommen dazu, beide aus Scotts Liste** (Bedienrunde,
-    /// Punkt A): Das Vorschläge-Menü, das seit dem 08.08. eingeklappt startet
-    /// (es ist ohne den Winkel-Knopf schlicht nicht zu finden), und die Vorschau
-    /// „Nächste Woche" samt der Hinweiszeile aus #90. Beides sind Wege, die
-    /// niemand von allein geht.
+    /// **Eine Stelle kommt dazu, aus Scotts Liste** (Bedienrunde 08.08., Punkt
+    /// A): die Vorschau „Nächste Woche" samt der Hinweiszeile aus #90 — ein
+    /// Weg, den niemand von allein geht.
     ///
-    /// **Sechs statt der fünf aus der Onboarding-Forschung — mit Begründung.**
-    /// Die Zahl kam aus Touren zum *Lesen*; hier ist jeder Rahmen ein Tipp, und
-    /// der letzte ist der Abschied. Wer abbrechen will, hat auf jedem Rahmen
-    /// „Tour beenden".
+    /// **Der Rahmen zum Vorschläge-Menü ist am 10.08. ersatzlos ausgefallen.**
+    /// Er zeigte auf den Winkel-Knopf („Hinter dem Winkel liegen deine
+    /// Vorschläge"), und den gibt es nicht mehr: Seit Punkt E steht die
+    /// Vorschlagsfläche von selbst da, sobald die Tastatur kommt. Ein Rahmen,
+    /// der auf ein Ziel wartet, das es nicht gibt, überspringt sich selbst —
+    /// genau der Fehler, den Scott am Rundgang meldet (Punkt F-1). Was der
+    /// Rundgang stattdessen zeigen soll — Marktauswahl, Angebote nächster
+    /// Woche, was Tippen tut, was **Halten** tut —, steht in Punkt F und ist
+    /// ein eigenes Arbeitspaket; hier bleibt vorerst der kürzere Rundgang.
+    ///
+    /// **Fünf Rahmen, und das ist jetzt die Zahl aus der Onboarding-Forschung.**
+    /// Sie kam aus Touren zum *Lesen*; hier ist jeder Rahmen ein Tipp, und der
+    /// letzte ist der Abschied. Wer abbrechen will, hat auf jedem Rahmen „Tour
+    /// beenden".
     ///
     /// `hasMarkets` streicht die zwei Angebote-Rahmen, statt nur ihren Text zu
     /// drehen: Ohne gewählte Filiale steht auf dem Angebote-Tab „Keine Filiale
@@ -168,13 +174,6 @@ struct TutorialStep: Identifiable, Equatable {
                     : "Tipp ins Feld und leg einen Artikel an.",
                 spotlight: .anchor(.inputBar),
                 deed: .addsItem
-            ),
-            TutorialStep(
-                id: "suggestions",
-                title: "Du musst nicht alles tippen",
-                text: "Hinter dem Winkel liegen deine Vorschläge. Tipp ihn an.",
-                spotlight: .anchor(.suggestionsToggle),
-                deed: .opensSuggestions
             ),
             TutorialStep(
                 id: "check",
