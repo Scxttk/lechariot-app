@@ -506,6 +506,22 @@ final class OnboardingJourneyTests: XCTestCase {
         // Journeys handeln nicht von der Einwilligung; sie sollen den Weg
         // nehmen, der nichts nebenbei anstößt.
         tapSkip()                          // consent
+        answerMarketPromptWithLater()
+    }
+
+    /// **Die Frage nach den Filialen, seit dem 10.08.** Sie hing am Ende des
+    /// Rundgangs; mit seinem Abriss hängt sie am Abschluss des Assistenten und
+    /// steht damit vor jeder dieser Journeys. „Später" ist der Weg, der nichts
+    /// nebenbei ändert — die Filialen holen sich diese Journeys da, wo sie es
+    /// prüfen wollen: auf der Liste.
+    private func answerMarketPromptWithLater() {
+        let title = app.staticTexts["marketPrompt.title"]
+        guard title.waitForExistence(timeout: 20) else {
+            return XCTFail("Ohne Filiale muss die Frage stehen:\n\(app.debugDescription)")
+        }
+        app.buttons["marketPrompt.later"].tap()
+        XCTAssertTrue(title.waitForNonExistence(timeout: 10),
+                      "\u{201E}Später\u{201C} muss das Blatt schließen")
     }
 
     /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst

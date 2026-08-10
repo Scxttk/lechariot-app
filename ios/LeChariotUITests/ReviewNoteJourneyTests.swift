@@ -64,14 +64,18 @@ final class ReviewNoteJourneyTests: XCTestCase {
         app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")   // Belohnung
         app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")   // Einwilligung
 
-        // 3. Der Assistent endet in der Einkaufsliste — **ohne** Filialauswahl.
+        // 3. Der Assistent endet in der Einkaufsliste — **ohne** Filialauswahl
+        //    im Assistenten selbst; gefragt wird danach.
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 20),
                       "Schritt 3: Der Assistent endet nicht in der Einkaufsliste")
 
-        // 4. „Filialen wählen" steht auf der Liste, nicht im Assistenten.
-        let choose = app.buttons["list.chooseMarkets"]
-        XCTAssertTrue(choose.waitForExistence(timeout: 15),
-                      "Schritt 4: Auf der Liste fehlt der Weg zu den Filialen")
+        // 4. Darüber steht die Frage nach den Filialen. **Seit dem 10.08. hängt
+        //    sie am Abschluss des Assistenten** statt am Ende des Rundgangs,
+        //    den es nicht mehr gibt — und damit ist sie der Weg, den ein Prüfer
+        //    zuerst sieht. „Märkte wählen" führt in dieselbe Filialauswahl.
+        let choose = app.buttons["marketPrompt.choose"]
+        XCTAssertTrue(choose.waitForExistence(timeout: 20),
+                      "Schritt 4: Nach dem Assistenten fehlt die Frage nach den Filialen")
         choose.tap()
         let chain = app.buttons["picker.chain.Lidl"]
         XCTAssertTrue(chain.waitForExistence(timeout: 20),
