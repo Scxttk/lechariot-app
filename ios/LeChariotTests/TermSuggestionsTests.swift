@@ -3,11 +3,14 @@ import XCTest
 
 /// **Das Raster darf nur Wörter zeigen, die halten, was die Kachel verspricht.**
 ///
-/// Ein Vorschlag ist ein Versprechen: Wer ihn antippt, bekommt etwas. Zwei
-/// Wege, es zu brechen — ein Wort, das der Matcher nicht kennt (dann steht es
-/// als toter Eintrag auf der Liste), und ein Wort, zu dem es diese Woche in
-/// den gewählten Filialen nichts gibt (dann liest man nach dem Tippen „Diese
-/// Woche nirgends im Angebot"). Beide werden hier zugehalten.
+/// Ein Vorschlag ist ein Versprechen — und seit #142 steht fest, **welches**:
+/// Die App versteht dieses Wort. Nicht: Es ist diese Woche im Angebot. Der
+/// Unterschied ist der ganze Fehler vom 11.08. gewesen; die zweite Lesart hing
+/// am Vorrat, und ohne gewählte Filiale ist der leer.
+///
+/// Geprüft wird deshalb hier: dass nur Wörterbuchwörter kommen (sonst steht ein
+/// toter Eintrag auf der Liste), dass sie **auch ohne Vorrat** kommen, und dass
+/// der Vorrat sie ordnet, statt sie wegzunehmen.
 final class TermSuggestionsTests: XCTestCase {
 
     private static func offer(_ product: String, tags: [String] = []) -> Offer {
@@ -123,8 +126,9 @@ final class TermSuggestionsTests: XCTestCase {
     /// Zwei Reihen zu dritt — mehr passt nicht in die Fläche, ohne die
     /// Eingabezeile zu verschieben.
     ///
-    /// Gemessen auf dem **vollen** Regal: Ohne ein Angebot je Begriff siebt der
-    /// Vorrat so viel weg, dass die Kappe nie greift und der Test nichts sagt.
+    /// Gemessen auf dem **vollen** Regal, obwohl der Vorrat seit #142 nichts
+    /// mehr wegsiebt: Die Kappe greift jetzt in jedem Fall, und das volle Regal
+    /// hält den Test an derselben Zahl wie vorher.
     func testNeverMoreThanTheGridHolds() {
         for prefix in ["ka", "sc", "br", "kä", "ge", "to"] {
             let words = TermSuggestions.words(for: prefix, in: Self.vollesRegal)
