@@ -27,6 +27,23 @@ on:
     inputs:
       scherben:
         description: 'Auf wie viele Runner die Journeys verteilt werden'
+        # **Vier, und das ist gemessen — fünf war schlechter.**
+        #
+        # Am 10.08. auf fünf gestellt, weil die Rechnung es nahelegte: Mit den
+        # echten Klassenzeiten (`tools/testzeiten.sh`) fällt die längste Scherbe
+        # rechnerisch von 1539 s auf 1244 s. Der Lauf danach war trotzdem
+        # **langsamer** — 52 min statt 35.
+        #
+        # Der Grund stand nicht in der Rechnung: **Das Konto lässt vier
+        # macOS-Jobs gleichzeitig laufen, nicht fünf.** Nachgezählt über die
+        # Start- und Endzeiten zweier Läufe (höchste Gleichzeitigkeit: 4). Vier
+        # Scherben starteten um 21:46:56 zusammen, die fünfte erst um 22:10:22 —
+        # sie hat 23 Minuten auf einen freien Runner gewartet und die Wanduhr
+        # damit verlängert statt verkürzt.
+        #
+        # Mehr Scherben helfen also erst, wenn das Konto mehr gleichzeitige
+        # macOS-Runner erlaubt. Bis dahin ist die Zahl hier an die
+        # Gleichzeitigkeit gebunden, nicht an die Verteilung.
         default: '4'
       # **Auf dem Runner bringen Klone nichts, sie kosten.** Gemessen am 10.08.
       # mit `OfferHitsJourneyTests` (3 Tests) auf `macos-26`:
