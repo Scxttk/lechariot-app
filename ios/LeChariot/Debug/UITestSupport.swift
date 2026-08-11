@@ -37,6 +37,21 @@ enum UITestSupport {
 
     static let seededAreaAnchor = "lidl-01219-1"
 
+    /// Launched with `-uiTestingGegendWirdFertig`: die frische Gegend wird
+    /// während des Laufs versorgt — erst „läuft noch", dann fertig, und das
+    /// Verzeichnis hat mehr Filialen.
+    ///
+    /// Der Zustand, den #144 verlangt, ist ein **Übergang**, und ein fester
+    /// Fixture-Satz hat nur einen Zustand. Siehe `MockGegendsLauf`.
+    static let gegendWirdFertig =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingGegendWirdFertig")
+
+    /// Launched with `-uiTestingGegendScheitert`: Die Gebiets-Anforderung geht
+    /// nicht heraus. Prüft, dass der Wähler das **sagt**, statt weiter einen
+    /// Kreisel zu drehen.
+    static let gegendScheitert =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingGegendScheitert")
+
     /// Launched with `-uiTestingTips`: die Einmal-Tipps und die
     /// Ernährungsfrage anschalten.
     ///

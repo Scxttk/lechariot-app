@@ -117,4 +117,92 @@ final class RegionQueryTests: XCTestCase {
         let candidate = PlaceCandidate(plz: "17389", ort: "Anklam", land: nil)
         XCTAssertEqual(candidate.label, "Anklam · 17389")
     }
+
+    // MARK: Der Vorschlag als Frage (#143)
+
+    /// **Der gemessene Fehler vom 11.08.**
+    ///
+    /// Apples Vervollständiger antwortet auf „Stuttgart" mit dem Paar
+    /// „Stuttgart" / „Baden-Württemberg, Deutschland", und die App schickte
+    /// beides zusammen als *Ortsnamen* los. Der Geocoder hat es sogar richtig
+    /// beantwortet (locality Stuttgart, 70173) — nur hieß der Ort danach nicht
+    /// so wie die Frage, und der eigene Filter warf die richtige Antwort weg.
+    func testASuggestionIsAPlaceAndAState() {
+        let frage = PlaceQuery.parse("Stuttgart, Baden-Württemberg, Deutschland")
+        XCTAssertEqual(frage.name, "Stuttgart")
+        XCTAssertEqual(frage.land, "Baden-Württemberg")
+    }
+
+    /// Ohne Zusatz bleibt alles, wie es war.
+    func testABareNameStaysABareName() {
+        XCTAssertEqual(PlaceQuery.parse("Anklam"), PlaceQuery(name: "Anklam", land: nil))
+        XCTAssertEqual(PlaceQuery.parse("Anklam, Deutschland"), PlaceQuery(name: "Anklam", land: nil))
+    }
+
+    /// Eine Adresse behält ihre Kommata — sie **ist** der Name, und nur das
+    /// Land hinten ist Kontext.
+    func testAnAddressKeepsItsParts() {
+        let frage = PlaceQuery.parse("Karl-Laux-Straße 6, 01219 Dresden, Deutschland")
+        XCTAssertEqual(frage.name, "Karl-Laux-Straße 6, 01219 Dresden")
+        XCTAssertNil(frage.land)
+    }
+
+    /// Wer „Bayern" tippt, hat einen Namen genannt und keine Einschränkung.
+    /// Ohne diesen Fall wäre die Frage leer und der Geocoder bekäme
+    /// „, Bayern, Deutschland".
+    func testAStateOnItsOwnIsTheQuestion() {
+        XCTAssertEqual(PlaceQuery.parse("Bayern"), PlaceQuery(name: "Bayern", land: nil))
+    }
+
+    /// **Die Frage, die am 11.08. sechzehnmal gestellt wurde.** Ohne Zerleger
+    /// hängte der Fächer sein Land an eine Zeichenkette, die schon eines hatte:
+    /// „Stuttgart, Baden-Württemberg, Deutschland, Bayern, Deutschland".
+    func testTheFanAsksOneCleanQuestionPerState() {
+        let frage = PlaceQuery.parse("Stuttgart, Baden-Württemberg, Deutschland")
+        XCTAssertEqual(frage.im("Bayern").geocoderString, "Stuttgart, Bayern, Deutschland")
+        XCTAssertEqual(PlaceQuery.parse("Neustadt").im("Sachsen").geocoderString,
+                       "Neustadt, Sachsen, Deutschland")
+    }
+
+    // MARK: Was die App aus der Antwort macht (#143)
+
+    /// Die gemessene Antwort auf „Stuttgart, Baden-Württemberg, Deutschland":
+    /// Vorwärts ohne PLZ, rückwärts 70173. Mit der zerlegten Frage als Maß
+    /// **zählt** sie — vorher nicht.
+    func testTheBigCityAnswerCounts() {
+        let hit = CityLookup.entscheide(
+            vorwärts: CityLookup.Antwort(locality: "Stuttgart", administrativeArea: "Baden-Württemberg"),
+            rückwärts: CityLookup.Antwort(locality: "Stuttgart", administrativeArea: "Baden-Württemberg", postalCode: "70173"),
+            mass: PlaceQuery.parse("Stuttgart, Baden-Württemberg, Deutschland")
+        )
+        XCTAssertEqual(hit?.candidate.plz, "70173")
+        XCTAssertEqual(hit?.answersQuery, true, "Der Vorschlag scheitert an seinem eigenen Ergebnis")
+    }
+
+    /// Und ohne den Zerleger — der Zustand vor dem Fix — hieße die Antwort
+    /// „passt nicht zur Frage". Steht hier, damit der Unterschied prüfbar ist
+    /// und nicht nur behauptet.
+    func testTheRawSuggestionTextWouldNotHaveCounted() {
+        let hit = CityLookup.entscheide(
+            vorwärts: CityLookup.Antwort(locality: "Stuttgart", administrativeArea: "Baden-Württemberg"),
+            rückwärts: CityLookup.Antwort(locality: "Stuttgart", administrativeArea: "Baden-Württemberg", postalCode: "70173"),
+            mass: PlaceQuery(name: "Stuttgart, Baden-Württemberg, Deutschland", land: nil)
+        )
+        XCTAssertEqual(hit?.answersQuery, false)
+    }
+
+    /// **Eine Straße beantwortet sich weiter selbst** (06.08.) — die Regel,
+    /// die nicht kaputtgehen darf.
+    func testAnAddressStillAnswersItself() {
+        let hit = CityLookup.entscheide(
+            vorwärts: CityLookup.Antwort(
+                locality: "Dresden", subLocality: "Prohlis", thoroughfare: "Karl-Laux-Straße",
+                administrativeArea: "Sachsen", postalCode: "01219"
+            ),
+            rückwärts: nil,
+            mass: PlaceQuery.parse("Dresden Karl-Laux-Straße 6")
+        )
+        XCTAssertEqual(hit?.candidate.plz, "01219")
+        XCTAssertEqual(hit?.answersQuery, true)
+    }
 }

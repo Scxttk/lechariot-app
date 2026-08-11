@@ -480,6 +480,24 @@ enum MockFixtures {
                lat: 54.0500, lon: 13.8167),
     ]
 
+    /// **Was der Gebiets-Lauf einer frischen Gegend hinzufügt.**
+    ///
+    /// Um 17419 steht im Grund-Verzeichnis ausschließlich Penny — der Zustand,
+    /// den Scott am 11.08. in Stuttgart hatte (dort Penny und Kaufland). Diese
+    /// drei kommen dazu, wenn das Verzeichnis geholt wurde, und erst dann darf
+    /// die Ladezeile im Wähler verschwinden.
+    static let gegendNachDemLauf: [Branch] = [
+        Branch(marketId: "netto-17419-1", chain: "Netto", name: "Netto Ahlbeck",
+               street: "Dünenstr. 2", plz: "17419", city: "Heringsdorf",
+               lat: 53.9420, lon: 14.1790),
+        Branch(marketId: "edeka-17419-1", chain: "EDEKA", name: "EDEKA Heringsdorf",
+               street: "Seestr. 40", plz: "17424", city: "Heringsdorf",
+               lat: 53.9500, lon: 14.1600),
+        Branch(marketId: "lidl-17419-1", chain: "Lidl", name: "Lidl Ahlbeck",
+               street: "Bahnhofstr. 1", plz: "17419", city: "Heringsdorf",
+               lat: 53.9390, lon: 14.1900),
+    ]
+
     /// Ein Verzeichnis in Dresdner Größe — für den Messlauf des Wählers.
     ///
     /// Die Verteilung ist die **gemessene** aus `MarketFilter.titles`: ALDI
@@ -578,6 +596,47 @@ struct MockBranchRepository: BranchRepositoryProtocol {
     }
 }
 
+/// **Ein Verzeichnis, das nachwächst** — die Attrappe des Gebiets-Laufs.
+///
+/// Ohne sie lässt sich die eine Zusage aus #144 nicht prüfen: dass die Zeile
+/// „Neue Märkte werden gerade geladen …" wieder **verschwindet**, sobald wirklich
+/// mehr dasteht. Eine Journey kann nicht drei Minuten auf einen echten Lauf
+/// warten, und ein fester Fixture-Satz kann den Übergang gar nicht abbilden —
+/// er hat nur einen Zustand.
+///
+/// Umgelegt wird es von der Gebiets-Attrappe, nicht von einer Stoppuhr: Das
+/// Verzeichnis wächst genau dann, wenn `area_requests` den Lauf als fertig
+/// meldet — dieselbe Reihenfolge wie hinten.
+final class MockWachsendesVerzeichnis: BranchRepositoryProtocol, @unchecked Sendable {
+    private let grund: [Branch]
+    private let nachschub: [Branch]
+
+    init(grund: [Branch] = MockFixtures.branches,
+         nachschub: [Branch] = MockFixtures.gegendNachDemLauf) {
+        self.grund = grund
+        self.nachschub = nachschub
+    }
+
+    private var bestand: [Branch] {
+        MockGegendsLauf.shared.fertig ? grund + nachschub : grund
+    }
+
+    func nearby(lat: Double, lon: Double, radiusKm: Double) async throws -> [Branch] {
+        bestand
+            .compactMap { branch -> (Branch, Double)? in
+                guard let distance = branch.distanceKm(from: lat, lon), distance <= radiusKm
+                else { return nil }
+                return (branch, distance)
+            }
+            .sorted { $0.1 < $1.1 }
+            .map(\.0)
+    }
+
+    func branch(marketId: String) async throws -> Branch? {
+        (grund + nachschub).first { $0.marketId == marketId }
+    }
+}
+
 /// Records requests instead of sending them, and can be told which stores the
 /// backend already has — so tests can drive the wait state without a network.
 ///
@@ -626,6 +685,23 @@ final class MockBranchRequestRepository: BranchRequestRepositoryProtocol, @unche
 
     func requestBranch(marketId: String) async throws {
         lock.withLock { requestedStorage.append(marketId) }
+    }
+}
+
+/// **Der eine Schalter, den der nachgestellte Gebiets-Lauf umlegt.**
+///
+/// Zwei Attrappen müssen sich denselben Übergang teilen: `area_requests` meldet
+/// den Lauf als fertig, und im selben Moment hat das Verzeichnis mehr Filialen.
+/// Getrennt gehalten wären es zwei Wahrheiten, und die Journey prüfte einen
+/// Zustand, den es hinten nie gibt.
+final class MockGegendsLauf: @unchecked Sendable {
+    static let shared = MockGegendsLauf()
+    private let lock = NSLock()
+    private var fertigStorage = false
+
+    var fertig: Bool {
+        get { lock.withLock { fertigStorage } }
+        set { lock.withLock { fertigStorage = newValue } }
     }
 }
 
@@ -681,14 +757,40 @@ final class MockAreaRequestRepository: AreaRequestRepositoryProtocol, @unchecked
         lock.withLock { row(for: marketId) }
     }
 
+    /// Unter `-uiTestingGegendWirdFertig`: Der Lauf wird beim **zweiten**
+    /// Nachfragen fertig. Einmal „läuft noch", einmal „fertig" — beide
+    /// Zustände, die der Wähler zeigen muss, in einem Testlauf.
+    var wirdFertig = false
+    private var nachfragenStorage = 0
+
+    /// Welche PLZ die Zeile eines Ankers trägt. Ohne Eintrag bleibt es bei
+    /// 04639 aus Gößnitz — `AreaRequestStoreTests` prüft damit die Regel „die
+    /// PLZ des Backends schlägt unsere", und die braucht eine, die sich von
+    /// unserer unterscheidet.
+    ///
+    /// Gesetzt wird sie nur für die Bilder der frischen Gegend: Dort stand
+    /// „wir haben um 04639 nachgeladen", während auf dem Schirm 17419 lief —
+    /// eine Attrappe, die eine falsche Zahl erfindet, erzeugt Fehlerberichte
+    /// über sich selbst.
+    var plzJeAnker: [String: String] = [:]
+
     /// Nur unter gehaltenem Schloss aufrufen — die eine Stelle, an der die
     /// Zeile gebaut wird, damit `request(areaKey:)` nicht durch einen zweiten
     /// Griff zum selben Schloss muss (NSLock kennt kein Wiedereintreten).
     private func row(for marketId: String) -> AreaRequest? {
+        if wirdFertig, requestedStorage.contains(marketId) || pendingStorage.contains(marketId) {
+            nachfragenStorage += 1
+            if nachfragenStorage >= 2 {
+                readyStorage.insert(marketId)
+                // Im selben Moment hat auch das Verzeichnis mehr — siehe
+                // `MockGegendsLauf`.
+                MockGegendsLauf.shared.fertig = true
+            }
+        }
         let point = coordinatesStorage[marketId]
         if readyStorage.contains(marketId) {
             return AreaRequest(
-                marketId: marketId, plz: "04639",
+                marketId: marketId, plz: plzJeAnker[marketId] ?? "04639",
                 lastSynced: "2026-07-26T08:36:50Z", active: true,
                 areaKey: point.map { AreaRequestStore.areaKey(lat: $0.lat, lon: $0.lon) },
                 lat: point?.lat, lon: point?.lon
@@ -696,7 +798,7 @@ final class MockAreaRequestRepository: AreaRequestRepositoryProtocol, @unchecked
         }
         if pendingStorage.contains(marketId) || requestedStorage.contains(marketId) {
             return AreaRequest(
-                marketId: marketId, plz: "04639", lastSynced: nil, active: true,
+                marketId: marketId, plz: plzJeAnker[marketId] ?? "04639", lastSynced: nil, active: true,
                 areaKey: point.map { AreaRequestStore.areaKey(lat: $0.lat, lon: $0.lon) },
                 lat: point?.lat, lon: point?.lon
             )
@@ -720,7 +822,12 @@ final class MockAreaRequestRepository: AreaRequestRepositoryProtocol, @unchecked
         }
     }
 
+    /// Unter `-uiTestingGegendScheitert`: Die Anforderung geht nicht heraus.
+    /// Der Zustand, den der Wähler bis zum 11.08. verschwiegen hat.
+    var scheitert = false
+
     func requestArea(marketId: String, lat: Double?, lon: Double?) async throws {
+        if lock.withLock({ scheitert }) { throw URLError(.notConnectedToInternet) }
         lock.withLock {
             requestedStorage.append(marketId)
             requestedCoordinatesStorage[marketId] = (lat, lon)
