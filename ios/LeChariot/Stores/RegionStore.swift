@@ -200,6 +200,24 @@ final class RegionStore {
         favoriteMarkets.contains { $0.marketId == market.marketId }
     }
 
+    /// Für jede Kette der Platz ihrer **zuletzt** gewählten Filiale in
+    /// `favoriteMarkets`. Größer heisst später gewählt; Ketten ohne Wahl
+    /// fehlen.
+    ///
+    /// Es braucht dafür keinen neuen Merker: `favoriteMarkets` ist ein Feld,
+    /// und `toggleFavorite` hängt hinten an — die Reihenfolge des Feldes
+    /// *ist* die Reihenfolge der Wahl, und sie überlebt den Neustart, weil
+    /// das Feld als Ganzes gespeichert wird. Wer eine zweite Filiale derselben
+    /// Kette nachwählt, rückt die Kette ans Ende, und das ist genau die
+    /// gemeinte Bedeutung von „zuletzt gewählt".
+    var chainSelectionOrder: [String: Int] {
+        var out: [String: Int] = [:]
+        // Später Eingetragenes überschreibt Früheres, übrig bleibt der
+        // größte Platz je Kette.
+        for (i, market) in favoriteMarkets.enumerated() { out[market.chain] = i }
+        return out
+    }
+
     func toggleFavorite(_ market: Market) {
         if let idx = favoriteMarkets.firstIndex(where: { $0.marketId == market.marketId }) {
             favoriteMarkets.remove(at: idx)

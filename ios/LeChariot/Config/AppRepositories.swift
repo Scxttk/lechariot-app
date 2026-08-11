@@ -29,7 +29,17 @@ enum AppRepositories {
     /// The store directory. Read-only and public, so there is nothing to gate
     /// beyond the usual mock/live decision.
     static let branches: BranchRepositoryProtocol = {
-        guard let client else { return MockBranchRepository() }
+        guard let client else {
+            #if DEBUG
+            // Der Messlauf des Wählers braucht ein Verzeichnis in echter Größe
+            // — neun Filialen rechnen nicht lange. Siehe
+            // `MockFixtures.dichtesVerzeichnis`.
+            if let n = UITestSupport.dichteVerzeichnisGroesse {
+                return MockBranchRepository(fixtures: MockFixtures.dichtesVerzeichnis(n))
+            }
+            #endif
+            return MockBranchRepository()
+        }
         return LiveBranchRepository(client: client)
     }()
 
