@@ -286,13 +286,23 @@ Die Untergrenze bleibt dieselbe wie lokal: **die längste einzelne Klasse.** Wer
 eine anlegt, die allein sechs Minuten läuft, hebt damit die Untergrenze — lieber
 zwei Klassen.
 
-### `PerformanceJourneyTests` läuft dort nicht
+### Die Messstände laufen dort nicht
 
-Als einzige Klasse ist sie ausgeschlossen (`OHNE_CI` in `tools/testlauf.sh`).
-Sie vergleicht CPU- und Speicherzahlen gegen `tools/perf-baseline.json` —
-Grundwerte von Scotts Mac im Leerlauf. Auf drei geliehenen Kernen wäre jede
-dieser Zahlen eine Aussage über den Nachbarn im Rechenzentrum. Die Klasse sagt
-das seit dem 01.08. selbst in ihrem Kopfkommentar.
+Drei Klassen sind ausgeschlossen (`OHNE_CI` in `tools/testlauf.sh`), und alle
+drei aus demselben Grund: **Sie messen Zeit.**
+
+`PerformanceJourneyTests` vergleicht CPU- und Speicherzahlen gegen
+`tools/perf-baseline.json` — Grundwerte von Scotts Mac im Leerlauf. Auf drei
+geliehenen Kernen wäre jede dieser Zahlen eine Aussage über den Nachbarn im
+Rechenzentrum. Die Klasse sagt das seit dem 01.08. selbst in ihrem
+Kopfkommentar.
+
+`MarktwahlProbe` (seit 10.08.) und `TippLatenzProbe` (seit 11.08.) messen
+Tippdauern, und ihr Befund ist jeweils ein *Unterschied* zwischen zwei Läufen.
+Wie viel davon die Maschine ist, steht als Zahl da: Dieselbe Sonde meldete für
+denselben Griff **662 ms auf ruhiger Maschine und 735 ms**, während eine zweite
+Sitzung nebenher baute — 11 %, mehr als die Regression, die sie suchte. Beide
+gehören an den Mac, an dem jemand die Zahlen liest.
 
 Ausgeschlossen und nicht stillschweigend geduldet: Ein Messstand, dem niemand
 glaubt, wird abgeschaltet statt gelesen — und eine Ampel, die in jedem zweiten

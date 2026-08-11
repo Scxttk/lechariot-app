@@ -24,11 +24,38 @@ import XCTest
 /// (die ganze Hierarchie), Blatt auf und zu (#132), Filialzeile im Wähler
 /// (#129).
 ///
-/// **Zwei Läufe, weil die Schilder unter `-uiTesting` aus sind.** Ohne
-/// `-uiTestingTips` baut `ContextTipStore` gar nichts (`isEnabled`) — ein Lauf
-/// ohne das Argument könnte eine Regression in der Schilder-Schicht nicht
-/// sehen. Der Unterschied zwischen den beiden Läufen ist deshalb selbst eine
-/// Messung.
+/// **Ein eigener Lauf für die Schilder, weil sie unter `-uiTesting` aus sind.**
+/// Ohne `-uiTestingTips` baut `ContextTipStore` gar nichts (`isEnabled`) — ein
+/// Lauf ohne das Argument könnte eine Regression in der Schilder-Schicht nicht
+/// sehen. Der Unterschied zwischen den Läufen ist deshalb selbst eine Messung.
+/// Und weil „mit Schildern" nichts wert ist, wenn keines steht, schreibt die
+/// Sonde mit, **welches** stand.
+///
+/// **Zwei Grenzen dieser Sonde, beide am 11.08. gemessen und beide wichtig:**
+///
+/// - **Sie misst die Maschine mit.** Derselbe Griff, dieselbe Fassung: 667 ms
+///   auf ruhiger Maschine, 735 ms während eine zweite Sitzung baute. 11 %
+///   Rauschen sind mehr, als eine Regression dieser Art groß ist — die Klasse
+///   steht deshalb in `SERIELL` und `OHNE_CI` (`tools/testlauf.sh`).
+/// - **Sie sieht keine Kosten, die kleiner sind als die Animation, die sie
+///   abwartet.** `tap()` kehrt erst bei Ruhe zurück; eine Kachel wird animiert.
+///   Zwischen fünf Fixture-Zeilen und 1 200 Prospektzeilen bewegte sich das
+///   Abhaken um 2 ms — obwohl die App dabei nachweislich zehnmal mehr rechnet
+///   (`TippKostenProbe`). Wer Rechenzeit sucht, nimmt `XCTCPUMetric`
+///   (`testRechenzeitDerAppJeTipp`) und nicht die Wanduhr.
+///
+/// **Was hier offen bleibt: das Messwerkzeug selbst.** Scott sieht die
+/// Verzögerung *am Messtool*, und dessen Live-Anzeige hängt an einem
+/// `CADisplayLink` im Bildschirmtakt (`PerformanceHUD`) — ein Werkzeug, das
+/// selbst kostet, wäre eine Erklärung für „bei **jedem** Antippen", die keinem
+/// Merge zuzuordnen ist. Ein Lauf, der das Werkzeug über die Einstellungen
+/// anschaltet, stand hier und ist **wieder herausgenommen**: Er ist dreimal an
+/// der Bedienung gescheitert (der Schalter liegt nicht in der Mitte seiner
+/// Zeile; der Tab behält seinen Stapel; die Liste behält ihren Scrollstand) und
+/// danach zweimal an `Mach error -308` des Simulator-Dienstes, auch auf einem
+/// frisch gelöschten Gerät. Ein wackelnder Test ist schlimmer als keiner — die
+/// Frage ist damit **ungemessen**, nicht beantwortet, und gehört an ein ruhiges
+/// Gerät und in einen eigenen Posten.
 final class TippLatenzProbe: XCTestCase {
     /// Eine Messreihe: derselbe Griff mehrfach, in Millisekunden.
     private struct Reihe {
@@ -44,7 +71,7 @@ final class TippLatenzProbe: XCTestCase {
         var groesste: Double { ms.max() ?? 0 }
     }
 
-    // MARK: Die zwei Läufe
+    // MARK: Die Läufe
 
     func testTippdauerOhneSchilder() {
         miss(schilder: false)
@@ -54,12 +81,96 @@ final class TippLatenzProbe: XCTestCase {
         miss(schilder: true)
     }
 
+    /// **Der Lauf mit einem Prospekt in Scotts Größe** — drei Ketten, je 400
+    /// Zeilen.
+    ///
+    /// Das Fixture-Verzeichnis hat eine Handvoll Angebote; Scott hat eine
+    /// Woche. Und die Liste rechnet an der Zahl der Angebote: `firstOpenHasMatch`
+    /// sucht im Rumpf von `ShoppingListView` den billigsten Treffer der ersten
+    /// offenen Zeile, und der Rumpf läuft bei **jeder** Zustandsänderung. Was
+    /// mit der Eingabegröße wächst, ist an fünf Fixture-Zeilen nicht zu sehen —
+    /// dieselbe Lehre wie am Wähler (`MarktwahlProbe`, #124).
+    ///
+    /// 400 ist die Zahl des Messgeschirrs (`tools/perf.sh`), damit die beiden
+    /// Messstände dieselbe Größe meinen.
+    func testTippdauerMitVollemProspekt() {
+        miss(schilder: true, vollerProspekt: true)
+    }
+
+    /// **Die Rechenzeit der App je Tipp — und nicht die des Messgeräts.**
+    ///
+    /// Die Zahlen oben tragen den Aufschlag von XCUITest mit, und der ist hier
+    /// groß: Ein Tipp kostet allein für das Finden des Elements, das Bauen des
+    /// Ereignisses und das Warten auf Ruhe rund 380 ms. Schlimmer noch, er
+    /// **wächst mit dem Bedienungshilfen-Baum** — gemessen an `boden-abfrage`:
+    /// mit stehendem Schild 82 ms je Abfrage statt 49. Ein Tipp, der langsamer
+    /// wird, weil der Baum größer wurde, ist für einen Menschen kein Tipp, der
+    /// langsamer wurde.
+    ///
+    /// `XCTCPUMetric` fragt deshalb den **Prozess der App**: Was hat sie
+    /// gerechnet, während vier Griffe passiert sind? Dieselbe Metrik benutzt
+    /// `PerformanceJourneyTests` fürs Scrollen, und derselbe Vorrat (400 Zeilen
+    /// je Kette) — damit sind die beiden Messstände vergleichbar.
+    func testRechenzeitDerAppJeTipp() {
+        rechenzeit(vollerProspekt: true)
+    }
+
+    /// **Dieselben vier Griffe, aber mit einer Handvoll Angebote.**
+    ///
+    /// Der Vergleich der beiden Zahlen sagt, **wie viel von der Rechenzeit je
+    /// Tipp an der Menge der Angebote hängt** — und damit, ob die Ursache in
+    /// den Funktionen liegt, die den Prospekt durchgehen (`ShoppingListRanking.rank`,
+    /// `ShoppingListMatcher.cheapestMatch`). Eine Einzelzahl könnte das nicht
+    /// sagen; erst die Steigung über die Eingabegröße kann es (Lehre von
+    /// `MarktwahlProbe`).
+    func testRechenzeitDerAppJeTippOhneProspekt() {
+        rechenzeit(vollerProspekt: false)
+    }
+
+    /// **Dieselben vier Griffe mit abgeschaltetem Plan-Merker** — der Zustand
+    /// vor dem Fix, im selben Bauwerk und derselben Minute gemessen.
+    ///
+    /// Ein Vorher/Nachher über zwei Builds wäre hier nicht zu trauen: Zwischen
+    /// zwei Läufen derselben Sonde lagen am 11.08. 20 %, weil nebenher eine
+    /// zweite Sitzung baute. Siehe `UITestSupport.bypassesPlanMemo`.
+    func testRechenzeitDerAppJeTippOhneMerker() {
+        rechenzeit(vollerProspekt: true, ohneMerker: true)
+    }
+
+    private func rechenzeit(vollerProspekt: Bool, ohneMerker: Bool = false) {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded", "-uiTestingTips"]
+            + (vollerProspekt
+               ? ["-uiTestingOnboardedThreeChains", "-uiTestingBulkOffers", "400"]
+               : [])
+            + (ohneMerker ? ["-uiTestingOhnePlanMerker"] : [])
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 60))
+        for wort in ["Vollmilch", "Butter", "Kartoffeln"] { lege(wort, in: app) }
+        XCTAssertTrue(kachel("Vollmilch", in: app).waitForExistence(timeout: 20))
+
+        let optionen = XCTMeasureOptions()
+        optionen.iterationCount = 5
+        // Vier Griffe je Durchlauf, und sie stellen den Ausgangszustand wieder
+        // her: abhaken, aufmachen, Tab hin, Tab zurück.
+        measure(metrics: [XCTCPUMetric(application: app)], options: optionen) {
+            kachel("Vollmilch", in: app).tap()
+            kachel("Vollmilch", in: app).tap()
+            app.tabBars.buttons["Angebote"].tap()
+            app.tabBars.buttons["Liste"].tap()
+        }
+    }
+
     // MARK: Ein Lauf
 
-    private func miss(schilder: Bool) {
+    private func miss(schilder: Bool, vollerProspekt: Bool = false) {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-uiTestingOnboarded"]
             + (schilder ? ["-uiTestingTips"] : [])
+            + (vollerProspekt
+               ? ["-uiTestingOnboardedThreeChains", "-uiTestingBulkOffers", "400"]
+               : [])
         app.launch()
         defer { app.terminate() }
 
@@ -73,11 +184,20 @@ final class TippLatenzProbe: XCTestCase {
         reihen.append(bodenAbfrage(app))
         reihen.append(bodenTipp(app))
         reihen.append(kachelAbhaken(app))
+        // **Aufschreiben, ob wirklich ein Schild stand.** Ohne diese Zeile
+        // vergleicht der A/B-Lauf womöglich „Schild" gegen „kein Schild" und
+        // nennt das eine Regression der Zeichnung. Wer eine Anwesenheit
+        // annimmt, braucht eine Stelle, die sie aufschreibt (Lehre vom 10.08.).
+        print("PROBE schild-nach-dem-abhaken=\(sichtbaresSchild(app) ?? "keins")")
         reihen.append(tabWechsel(app))
+        reihen.append(tabWechselNachKoordinate(app))
         reihen.append(blatt(app))
         reihen.append(waehler(app))
 
-        let kopf = schilder ? "mit-schildern" : "ohne-schilder"
+        let kopf: String
+        if vollerProspekt { kopf = "voller-prospekt" }
+        else if schilder { kopf = "mit-schildern" }
+        else { kopf = "ohne-schilder" }
         print("PROBE ---- Tippdauer (\(kopf)) ----")
         for r in reihen {
             print(String(format: "PROBE %@ %-22@ median=%6.0f ms  min=%6.0f  max=%6.0f  n=%d  alle=%@",
@@ -151,6 +271,36 @@ final class TippLatenzProbe: XCTestCase {
         return Reihe(name: "tab-wechsel", ms: ms)
     }
 
+    /// **Derselbe Tab-Wechsel, aber auf einen Punkt statt auf ein Element.**
+    ///
+    /// Der Grund ist ein Messfehler, den die Reihe darüber nicht ausschließen
+    /// kann: `app.tabBars.buttons["Angebote"]` muss erst gefunden werden, und
+    /// **Suchen kostet mit der Größe des Bedienungshilfen-Baums** — mit
+    /// stehendem Schild misst `boden-abfrage` 82 ms je Abfrage statt 49. Ein
+    /// Tipp, der nur deshalb länger dauert, ist für einen Menschen kein
+    /// langsamerer Tipp.
+    ///
+    /// Ein Punkt in Fensterkoordinaten braucht keinen Baum. Die Tab-Leiste liegt
+    /// unten und rührt sich nicht, egal ob über der Liste ein Schild steht —
+    /// dieselben zwei Punkte treffen auf beiden Ständen dieselben zwei Knöpfe.
+    private func tabWechselNachKoordinate(_ app: XCUIApplication) -> Reihe {
+        // Drei Tab-Knöpfe: Mitten bei 1/6, 3/6, 5/6 der Breite. Senkrecht in
+        // der Leiste über der sicheren Fläche.
+        let liste = app.coordinate(withNormalizedOffset: CGVector(dx: 1.0 / 6, dy: 0.933))
+        let angebote = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.933))
+        var ms: [Double] = []
+        for i in 0..<6 {
+            let ziel = i % 2 == 0 ? angebote : liste
+            let t0 = Date()
+            ziel.tap()
+            ms.append(Date().timeIntervalSince(t0) * 1000)
+        }
+        // Der Lauf geht auf der Liste weiter.
+        liste.tap()
+        _ = app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 20)
+        return Reihe(name: "tab-koordinate", ms: ms)
+    }
+
     /// Das Artikelblatt auf und zu (#132). Das Aufmachen ist ein **Halten**;
     /// die 0,6 s Haltezeit stecken in der Zahl und sind in jedem Lauf gleich —
     /// vergleichbar bleibt sie damit, absolut lesbar nicht.
@@ -184,6 +334,14 @@ final class TippLatenzProbe: XCTestCase {
     private func waehler(_ app: XCUIApplication) -> Reihe {
         app.tabBars.buttons["Einstellungen"].tap()
         let orte = app.buttons["settings.places"]
+        // **Erst nach oben, dann fragen.** Ein Tab merkt sich, wie weit seine
+        // Liste gescrollt war — und der Messtool-Lauf hat sie vorher bis zur
+        // „Version" ganz unten gezogen. `settings.places` steht oben, war damit
+        // außerhalb des Bildes, und eine `List` baut nicht, was niemand sieht:
+        // Die Reihe kam leer zurück und der Lauf war rot, ohne dass an der App
+        // etwas war. Dieselbe Falle wie am 03.08. („Erst scrollen, dann
+        // fragen"), nur in die andere Richtung.
+        for _ in 0..<6 where !orte.exists { app.swipeDown() }
         guard orte.waitForExistence(timeout: 30) else {
             return Reihe(name: "waehler-zeile", ms: [])
         }
@@ -218,6 +376,15 @@ final class TippLatenzProbe: XCTestCase {
     }
 
     // MARK: Helfer
+
+    /// Welches der vier Schilder gerade auf dem Bildschirm steht — erkannt an
+    /// seiner Überschrift, denn einen Bezeichner setzt `TipView` selbst
+    /// (`ContextTipViews`).
+    private func sichtbaresSchild(_ app: XCUIApplication) -> String? {
+        let titel = ["Mehr als das eine Angebot", "Menge, Größe, Notiz",
+                     "Abhaken und Löschen", "Was ab Montag billiger wird"]
+        return titel.first { app.staticTexts[$0].exists }
+    }
 
     /// Die Kachel über ihren Namen, nicht über `list.tile`: Abgehakt wandert
     /// sie in den Abschnitt „Erledigt", und `firstMatch` zeigte danach auf eine

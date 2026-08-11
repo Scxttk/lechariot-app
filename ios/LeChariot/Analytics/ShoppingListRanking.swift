@@ -203,3 +203,93 @@ enum ShoppingListRanking {
         return living
     }
 }
+
+// MARK: - Der Plan, einmal je Änderung
+
+/// **Die Wertung ist teuer, und der Rumpf ruft sie mehrfach** — dieser Merker
+/// steht dazwischen.
+///
+/// Gemessen am 11.08. (`TippKostenProbe`, Debug/Simulator, 1 200 Prospektzeilen,
+/// fünf Artikel, drei Ketten): **42 ms je `rank`-Aufruf** — und 52 ms, wenn
+/// nebenher eine zweite Sitzung baut. Im Rumpf von
+/// `ShoppingListView` hängen drei Leser daran — `listBody`, `openGroups` und
+/// `firstMatchArrived` —, und ein Rumpf läuft bei **jeder** Zustandsänderung:
+/// jeder Haken, jeder Buchstabe im Eingabefeld, jedes Blatt, jeder Tab-Wechsel.
+/// Ein Tipp kostete damit ein Mehrfaches der Wertung, und das ist genau die
+/// „Verzögerung bei jedem Antippen", die das Messwerkzeug meldete
+/// ([#138](https://github.com/Scxttk/lechariot-app/issues/138)).
+///
+/// **Der Merker rechnet nur neu, wenn sich eine Eingabe geändert hat**, und
+/// „Eingabe" heißt hier genau das, was `rank` liest: die offenen Artikel mit
+/// ihren Heftungen, der Vorrat, die Ketten, die Ablehnungen. Was davon nicht im
+/// Schlüssel steht, wäre ein stehengebliebener Plan — deshalb steht der
+/// Schlüssel neben der Funktion, die er schützt, und nicht in der Ansicht.
+///
+/// **Der Vorrat steht als Kennung im Schlüssel, nicht als Feld.** Zwei
+/// Prospekte auf Gleichheit zu prüfen kostet selbst über tausend Vergleiche.
+/// Die Kennung ist `OfferStore.generation`, ein Zähler über jede Zuweisung an
+/// `offers`. Zeitpunkt plus Zeilenzahl waren der erste Entwurf und **wären
+/// falsch gewesen**: Wer die Filiale wechselt, bekommt aus dem Cache denselben
+/// `fetchedAt`, und die Zeilenzahl kann dieselbe sein — der Plan hätte auf die
+/// alte Filiale gezeigt.
+///
+/// **Kein `@Observable`.** Der Merker wird *aus dem Rumpf heraus* beschrieben.
+/// Beobachtete Eigenschaften wären damit eine Änderung während des Zeichnens
+/// und würden den nächsten Rumpf auslösen — eine Schleife. Hier wird nichts
+/// beobachtet: Die Ansicht liest ihn, wo sie vorher die Funktion gerufen hat.
+@MainActor
+final class ShoppingListPlan {
+    private struct ItemKey: Equatable {
+        let id: UUID
+        let query: String
+        let pins: [PinnedOffer]
+    }
+
+    private struct Key: Equatable {
+        let items: [ItemKey]
+        let offerGeneration: Int
+        let chains: [String]
+        let rejections: Set<String>
+    }
+
+    private var key: Key?
+    private var value: [MarketListRank] = []
+
+    /// Wie oft wirklich gerechnet wurde — nur für die Tests, die genau das
+    /// zusichern (`ShoppingListPlanTests`).
+    private(set) var berechnungen = 0
+
+    /// Ob der Merker abgeschaltet ist. Nur im Messlauf, siehe
+    /// `UITestSupport.bypassesPlanMemo` — im Release-Bauwerk gibt es die Stelle
+    /// nicht, und damit auch keinen Weg, sie versehentlich anzuschalten.
+    private static var bypasses: Bool {
+        #if DEBUG
+        UITestSupport.bypassesPlanMemo
+        #else
+        false
+        #endif
+    }
+
+    func ranks(
+        items: [ShoppingItem],
+        offers: [Offer],
+        offerGeneration: Int,
+        chains: [String],
+        rejections: Set<String>,
+        isRejected: (String, Offer) -> Bool
+    ) -> [MarketListRank] {
+        let neu = Key(
+            items: items.map { ItemKey(id: $0.id, query: $0.query, pins: $0.pinnedOffers) },
+            offerGeneration: offerGeneration,
+            chains: chains,
+            rejections: rejections
+        )
+        if neu == key, !Self.bypasses { return value }
+        key = neu
+        berechnungen += 1
+        value = ShoppingListRanking.rank(
+            items: items, offers: offers, chains: chains, isRejected: isRejected
+        )
+        return value
+    }
+}

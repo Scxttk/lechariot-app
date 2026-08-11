@@ -52,6 +52,17 @@ enum UITestSupport {
     static let gegendScheitert =
         ProcessInfo.processInfo.arguments.contains("-uiTestingGegendScheitert")
 
+    /// Launched with `-uiTestingOhnePlanMerker`: den Merker der Marktwertung
+    /// abschalten (`ShoppingListPlan`), also je Rumpf neu rechnen.
+    ///
+    /// **Nur fürs Messen, und aus einem gemessenen Grund.** Ein Vorher/Nachher
+    /// über zwei Builds hängt an der Laune der Maschine — am 11.08. lagen
+    /// zwischen zwei Läufen derselben Sonde 20 %, weil nebenher eine zweite
+    /// Sitzung baute. Mit diesem Schalter stehen beide Zahlen im **selben**
+    /// Lauf, auf demselben Simulator, in derselben Minute.
+    static let bypassesPlanMemo =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingOhnePlanMerker")
+
     /// Launched with `-uiTestingTips`: die Einmal-Tipps und die
     /// Ernährungsfrage anschalten.
     ///

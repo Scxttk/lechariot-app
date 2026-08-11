@@ -282,6 +282,20 @@ final class OfferStore {
     /// von ihnen ein Datum. Siehe `OfferCoverage.windows`.
     private(set) var chainWindows: [String: OfferCoverage.ChainOfferWindow] = [:]
     private(set) var fetchedAt: Date?
+
+    /// **Die Kennung des Vorrats: zählt jede Zuweisung an `offers`.**
+    ///
+    /// Merker, die eine Rechnung über den ganzen Prospekt aufbewahren
+    /// (`ShoppingListPlan`), brauchen die Frage „ist das noch derselbe Vorrat?"
+    /// als *einen* Vergleich. Zwei Prospekte Zeile für Zeile zu prüfen kostet
+    /// über tausend, und die naheliegende Abkürzung — Zeitpunkt plus Anzahl —
+    /// ist keine: Wer die Filiale wechselt, bekommt aus dem Cache denselben
+    /// `fetchedAt`, und die Zeilenzahl kann zufällig dieselbe sein.
+    ///
+    /// Verlässlich ist die Zahl, weil `apply(_:)` die **einzige** Stelle ist,
+    /// die `offers` schreibt — das stand schon vor diesem Zähler in seinem
+    /// Kommentar und ist jetzt eine Zusage, an der etwas hängt.
+    private(set) var generation = 0
     /// True while a background refresh is running behind cached data.
     private(set) var isRefreshing = false
     /// Set when a refresh failed but cached data is still shown.
@@ -412,6 +426,7 @@ final class OfferStore {
     private func apply(_ raw: [Offer]) {
         let now = clock()
         let mine = filteredToChosenStores(raw)
+        generation += 1
         offers = OfferQuery.deduplicated(OfferQuery.current(mine, now: now), now: now)
         upcomingOffers = OfferQuery.deduplicated(
             OfferQuery.upcoming(mine, now: now), now: now, separateWindows: true
