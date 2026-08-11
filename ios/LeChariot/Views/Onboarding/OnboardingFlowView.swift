@@ -4,7 +4,10 @@ enum OnboardingStep {
     /// Screens that carry a progress dot. **Every** screen has its own dot
     /// since 2026-08-05 — consent and the tour offer shared dot 6 before,
     /// which made the bar claim one screen less than the flow had.
-    static let total = 7
+    ///
+    /// **Sechs seit dem 10.08.:** Das Rundgang-Angebot war der siebte, und den
+    /// Rundgang gibt es nicht mehr.
+    static let total = 6
 }
 
 /// Drives the onboarding. Shown by ContentView until `RegionStore.isOnboardingComplete`.
@@ -24,14 +27,18 @@ enum OnboardingStep {
 /// **Die Filialauswahl steht seit dem 2026-07-31 nicht mehr im Weg.** Sie war
 /// der letzte Schritt, und sie war der Schritt, an dem Scott am Gerät hängen
 /// blieb: eine lange, gesuchte Liste, bevor man überhaupt gesehen hat, wofür
-/// man sie braucht („unübersichtlich", „das nervt"). Der Assistent endet jetzt
-/// mit dem Angebot des Rundgangs und danach in der Einkaufsliste — dem
-/// Bildschirm, für den es die App gibt. Der Rundgang zeigt unterwegs, wo
-/// Filialen herkommen, und fragt am Ende danach.
+/// man sie braucht („unübersichtlich", „das nervt").
+///
+/// **Der Assistent endet seit dem 10.08. in der Einkaufsliste** — dem
+/// Bildschirm, für den es die App gibt. Davor lag das Angebot des Rundgangs;
+/// mit dem Abriss (Rundgang-Konzept §4) fällt der siebte Schritt weg. Was die
+/// App kann, sagt sie jetzt am Ort: vier Einmal-Schilder statt einer Führung.
+/// Die Frage nach den Filialen bleibt und hängt jetzt direkt am Abschluss
+/// (`MarketPromptStore`) statt am Ende des Rundgangs.
 struct OnboardingFlowView: View {
     @Environment(RegionStore.self) private var store
     @Environment(ProfileStore.self) private var profile
-    @Environment(TutorialStore.self) private var tutorial
+    @Environment(MarketPromptStore.self) private var marketPrompt
 
     @State private var phase: Phase = .welcome
     /// PLZ currently going through the flow; nil while none was submitted yet.
@@ -41,7 +48,7 @@ struct OnboardingFlowView: View {
     @State private var nearby: NearbyMarkets?
 
     private enum Phase: Equatable {
-        case welcome, name, region, chains, payoff, consent, tour
+        case welcome, name, region, chains, payoff, consent
 
         /// Welcher Punkt leuchtet. Eins zu eins, seit jeder Bildschirm seinen
         /// eigenen Punkt hat — siehe `OnboardingStep.total`.
@@ -58,7 +65,6 @@ struct OnboardingFlowView: View {
             case .chains: 4
             case .payoff: 5
             case .consent: 6
-            case .tour: 7
             }
         }
     }
@@ -124,25 +130,6 @@ struct OnboardingFlowView: View {
                 profile.markQuestionsCompleted()
                 let plz = currentPLZ
                 Task { await profile.sync(plz: plz) }
-                // Der Rundgang wird angeboten, bevor abgeschlossen wird —
-                // sonst stünde das Angebot schon über der fertigen App.
-                if offersTour {
-                    phase = .tour
-                } else {
-                    finishOnboarding()
-                }
-            }
-        case .tour:
-            TourStepView {
-                // Erst starten, dann abschließen: Beides passiert in derselben
-                // Aktualisierung, die Tabs erscheinen also schon mit dem
-                // Rundgang darüber.
-                tutorial.start(origin: .onboarding, hasMarkets: store.hasFavorites)
-                finishOnboarding()
-            } onSkip: {
-                // Auch „Später" führt zur Markt-Frage, wenn Filialen fehlen —
-                // Überspringer sahen sie vorher nie (05.08.).
-                tutorial.decline(hasMarkets: store.hasFavorites)
                 finishOnboarding()
             }
         }
@@ -157,52 +144,38 @@ struct OnboardingFlowView: View {
     /// **Ohne Filiale.** Bis zum 2026-07-31 kam man hier nur mit einer an, weil
     /// das „Fertig" des Pickers bis dahin gesperrt war; jetzt ist die Liste der
     /// erste Bildschirm und die Filialen werden dort gewählt. Der zweite
-    /// Profil-Upload bleibt trotzdem stehen: Wer die Frage am Ende des
-    /// Rundgangs mit Ja beantwortet, hat danach Filialen, und der Upload aus
-    /// der Filialauswahl heraus gibt es nicht — die Spalte aus Migration v15
-    /// füllt sich beim nächsten Start.
+    /// Profil-Upload bleibt trotzdem stehen: Wer die Frage danach mit Ja
+    /// beantwortet, hat Filialen, und einen Upload aus der Filialauswahl heraus
+    /// gibt es nicht — die Spalte aus Migration v15 füllt sich beim nächsten
+    /// Start.
+    ///
+    /// **Hier hängt seit dem 10.08. die Frage nach den Filialen.** Sie hing
+    /// vorher am Ende des Rundgangs und am „Später" seines Angebots; beide
+    /// Türen sind mit ihm weg, die Frage nicht — ohne Filiale kann die App
+    /// nichts vergleichen.
     private func finishOnboarding() {
         store.completeOnboarding()
+        marketPrompt.onboardingFinished(hasMarkets: store.hasFavorites)
         guard let plz = currentPLZ else { return }
         store.selectRegion(plz)
         let branchIds = store.favoriteMarkets.map(\.marketId)
         Task { await profile.sync(plz: plz, branchIds: branchIds) }
     }
 
-    /// Der Rundgang wird angeboten — einmal, und außer in UI-Läufen, die ihn
-    /// nicht meinen.
-    ///
-    /// Er hängt einen Bildschirm ans Onboarding und sperrt danach die Liste
-    /// hinter Sperrflächen; jede bestehende Journey würde daran hängenbleiben,
-    /// ohne dass an ihr etwas kaputt wäre. Wer ihn prüfen will, startet mit
-    /// `-uiTestingTutorial`.
-    ///
-    /// **„Einmal" stand bis zum 2026-08-02 nur im Kommentar des Merkers.** Hier
-    /// stand `return true`, also wurde der Rundgang jedes Mal angeboten, wenn
-    /// der Assistent lief — siehe `TutorialStore.offersTourAfterOnboarding`.
-    private var offersTour: Bool {
-        #if DEBUG
-        if UITestSupport.isActive, !UITestSupport.showsTutorial { return false }
-        #endif
-        return tutorial.offersTourAfterOnboarding
-    }
-
     /// Picks up where the user left off: they got through the consent step
     /// before (`hasCompletedQuestions` — der Name stammt aus der Zeit der
-    /// Profilfragen, gesetzt wird er unverändert am Einwilligungsschritt) but
-    /// never got past the tour offer. Ohne Region fehlt der Ort und der Rest
-    /// des Wegs läuft ab dort noch einmal; sonst steht nur noch das Angebot
-    /// aus — auf keinen Fall wieder ganz von vorn. Die gemerkten Ketten
-    /// überleben beides, sie liegen im `ProfileStore`.
+    /// Profilfragen, gesetzt wird er unverändert am Einwilligungsschritt).
+    /// Ohne Region fehlt der Ort und der Rest des Wegs läuft ab dort noch
+    /// einmal; sonst ist der Assistent an dieser Stelle schlicht fertig — auf
+    /// keinen Fall wieder ganz von vorn. Die gemerkten Ketten überleben beides,
+    /// sie liegen im `ProfileStore`.
     private func resume() {
         guard profile.profile.hasCompletedQuestions else { return }
         guard !store.orderedReadyRegions.isEmpty else {
             phase = .region
             return
         }
-        // Ohne Rundgang-Angebot (UI-Läufe) gäbe es nichts mehr zu zeigen — dann
-        // ist der Assistent an dieser Stelle schlicht fertig.
-        if offersTour { phase = .tour } else { finishOnboarding() }
+        finishOnboarding()
     }
 }
 
@@ -210,5 +183,5 @@ struct OnboardingFlowView: View {
     OnboardingFlowView()
         .environment(RegionStore())
         .environment(ProfileStore())
-        .environment(TutorialStore())
+        .environment(MarketPromptStore())
 }

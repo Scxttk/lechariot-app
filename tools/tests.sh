@@ -6,7 +6,7 @@
 #   tools/tests.sh AddFlowJourneyTests      # nur diese Klassen (beim Arbeiten)
 #   tools/tests.sh --unit                   # nur die Unit-Tests (~25 s)
 #   tools/tests.sh --workers 2              # weniger Klone, wenn der Mac zu tun hat
-#   tools/tests.sh RundgangShots --result /tmp/bogen.xcresult   # mit Bildern
+#   tools/tests.sh SchilderShots --result /tmp/bogen.xcresult   # mit Bildern
 #
 # **Warum ein Skript und nicht `xcodebuild test`.** Auf der Kommandozeile lässt
 # sich nicht in *einem* Lauf sagen „verteile auf Klone, aber diese eine Klasse
@@ -43,7 +43,7 @@ only=()
 unit_only=0
 # Wohin das Ergebnisbündel geht. Leer heisst: keins — der Normalfall, denn ein
 # Bündel je Lauf kostet Platte und wird nie gelesen. Gebraucht wird es von den
-# Bilderbögen (`RundgangShots`, `BedienrundeShots`): Sie hängen ihre PNGs ans
+# Bilderbögen (`SchilderShots`, `BedienrundeShots`): Sie hängen ihre PNGs ans
 # Ergebnis, und ohne Bündel gibt es nichts, woraus man sie holen könnte.
 RESULT=""
 while [ $# -gt 0 ]; do

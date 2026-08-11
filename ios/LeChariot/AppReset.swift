@@ -32,7 +32,7 @@ enum AppReset {
         list: ShoppingListStore,
         rejections: MatchRejectionStore,
         feedback: MatchFeedbackStore,
-        tutorial: TutorialStore,
+        marketPrompt: MarketPromptStore,
         tips: ContextTipStore,
         setup: SetupProgressStore,
         areaRequests: AreaRequestStore,
@@ -45,7 +45,11 @@ enum AppReset {
         list.resetAllData()
         rejections.resetAllData()
         feedback.resetAllData()
-        tutorial.resetAllData()
+        marketPrompt.resetAllData()
+        // Was der alte Rundgang auf Platte gelassen hat, gehört ebenfalls
+        // abgeräumt — sonst trüge eine „neue" Installation seine Schlüssel
+        // weiter. Siehe `TourResidue`.
+        for key in TourResidue.keys { AppDefaults.shared.removeObject(forKey: key) }
         // Die Einmal-Tipps und die Ernährungsfrage. Ohne dies wüsste eine
         // „neue" Installation noch, was der alten schon gezeigt wurde — und
         // der Reset wäre nicht mehr exakt.

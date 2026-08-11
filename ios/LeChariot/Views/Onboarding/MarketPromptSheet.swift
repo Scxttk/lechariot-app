@@ -12,7 +12,7 @@ import SwiftUI
 ///
 /// **Nie blockierend.** Wegwischen ist eine Antwort, „Später" ist eine
 /// Antwort, und jede Antwort zählt als gegeben — das Sheet kommt genau einmal
-/// (`TutorialStore.hasAnsweredMarketPrompt`). Danach bleiben der Leerzustand
+/// (`MarketPromptStore.hasAnsweredMarketPrompt`). Danach bleiben der Leerzustand
 /// der Liste und die Einstellungen als dauerhafte Wege.
 ///
 /// Die Filialauswahl selbst liegt als Navigationsziel **im** Sheet: Erst das

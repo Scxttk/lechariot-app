@@ -24,11 +24,12 @@ struct ContentView: View {
     /// exists for. Deliberately not persisted: reopening the app mid-week must
     /// not drop the user wherever they happened to leave off.
     @State private var selectedTab: Tab = .liste
-    /// Der Rundgang. Lebt hier, weil ihn beide Hälften brauchen: Das Onboarding
-    /// bietet ihn an, die Tabs zeigen ihn.
-    @State private var tutorial = TutorialStore()
-    /// Die Einmal-Tipps nach dem Rundgang. Lebt hier, weil beide Inhalts-Tabs
-    /// ihm Momente melden und die Einstellungen ihn zurücksetzen.
+    /// Die Frage nach den Filialen am Ende des Assistenten. Lebt hier, weil sie
+    /// beide Hälften betrifft: Der Assistent löst sie aus, die Tabs zeigen sie.
+    @State private var marketPrompt = MarketPromptStore()
+    /// Die vier Einmal-Schilder — seit dem Abriss des Rundgangs die ganze
+    /// Erklärschicht. Lebt hier, weil beide Inhalts-Tabs ihm Momente melden
+    /// und die Einstellungen ihn zurücksetzen.
     @State private var tips = ContextTipStore()
     /// Die zwei ersten Male (Artikel, Treffer) und die Einrichtungs-Checkliste.
     /// Hier statt in der Liste, weil auch die Einstellungen ihn brauchen
@@ -38,26 +39,6 @@ struct ContentView: View {
     /// Liste; die Markt-Frage nach dem Onboarding bringt ihre eigene Fassung
     /// mit (`MarketPromptSheet`).
     @State private var showsMarketPicker = false
-    /// Deckkraft der Überblendung beim Tab-Wechsel des Rundgangs — siehe
-    /// `TourTabTransition`. 0, solange nicht gewechselt wird.
-    @State private var tourVeil: Double = 0
-    /// Ob das Aufräumen nach dem Rundgang durch ist. Hält die Filialen-Frage so
-    /// lange zurück — sonst fährt sie über einen Bildschirm, der sich gerade
-    /// selbst umbaut. Siehe `marketQuestion`.
-    ///
-    /// **Anfangs `true`, und das ist die Korrektur vom 07.08.** Der Merker
-    /// stand auf `false` und wurde **nur** am Ende eines gelaufenen Rundgangs
-    /// gesetzt. Wer das Angebot ablehnt („Später"), lässt aber gar keinen
-    /// Rundgang laufen — der Zweig, der ihn wahr macht, kam nie dran, und die
-    /// Filialfrage blieb für immer stumm. Genau das trifft den Nutzer, der die
-    /// Frage am nötigsten hat: den ohne Filiale, der sich durchgeklickt hat.
-    ///
-    /// Vier Journeys haben es gefangen (`TutorialJourneyTests`, „Ohne Filialen
-    /// muss das Markt-Sheet stehen"), und zwar erst nach dem Merge: Das
-    /// Ablehnen ohne Filialen kam am 05.08. aus `main`, die Sperre am 06.08.
-    /// aus diesem Zweig. **Keine der beiden Seiten war für sich falsch.**
-    @State private var cleanupDone = true
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
     private enum Tab {
@@ -80,7 +61,7 @@ struct ContentView: View {
             }
         }
         .stateAnimation(.screen, value: store.isOnboardingComplete)
-        .environment(tutorial)
+        .environment(marketPrompt)
         .environment(tips)
     }
 
@@ -100,24 +81,11 @@ struct ContentView: View {
                     onShowOffers: { selectedTab = .angebote }
                 )
             }
-            // Nullhoher Marker auf der Unterkante der sicheren Fläche dieses
-            // Tabs — also genau auf der Oberkante der Tab-Leiste. Die Leiste
-            // selbst zeichnet UIKit und trägt keinen Anker; das hier ist der
-            // einzige Griff, den SwiftUI darauf hergibt.
-            .overlay(alignment: .bottom) {
-                Color.clear
-                    .frame(height: 0)
-                    .allowsHitTesting(false)
-                    .tutorialAnchor(.tabBarTop)
-            }
             .tabItem {
                 Label("Liste", systemImage: "checklist")
             }
             .tag(Tab.liste)
 
-            // Der Marker für `.navBarBottom` sitzt **in** `OffersView`, also
-            // innerhalb ihres `NavigationStack` — von hier aus läge er über der
-            // Leiste statt darunter. Siehe dort.
             offersTab
                 .tabItem {
                     Label("Angebote", systemImage: "tag")
@@ -134,34 +102,6 @@ struct ContentView: View {
         .environment(rejections)
         .environment(feedback)
         .environment(setup)
-        // Die Tab-Leiste ist die eine Stelle, an der man aus dem Rundgang
-        // herausspaziert: Sie zeichnet UIKit **über** dem Overlay, die
-        // Sperrflächen darunter erreichen sie nicht. Am Simulator nachgestellt —
-        // ein Tipp auf „Angebote" wechselte mitten in der Führung den Tab.
-        //
-        // **Aber nicht auf den Rahmen, die zum Anfassen einladen** — und das
-        // ist der Fund vom 03.08.: `disabled` auf der `TabView` sperrt den
-        // ganzen Baum darunter, also auch das Eingabefeld. Der erste Rahmen
-        // sagt „Probier es gleich aus", und im Testlauf meldete XCUITest genau
-        // dort `TextField … Disabled`. Die Zusage war seit dem Bau des
-        // Rundgangs nicht einlösbar. Außerhalb des Lochs sperren weiter die
-        // Sperrflächen des Overlays; für die Tab-Leiste steht der Riegel unten.
-        .disabled(tutorial.isRunning && !tutorial.step.allowsInteraction)
-        // Der Riegel für die Tab-Leiste auf den Mitmach-Rahmen: Wer sie dort
-        // antippt, steht sofort wieder auf dem Tab des Rundgangs.
-        //
-        // **Mit einer Ausnahme, und die ist ein ganzer Rahmen** (09.08.): Der
-        // Rundgang bittet an einer Stelle ausdrücklich darum, unten auf
-        // „Angebote" zu tippen. Der Riegel greift trotzdem — nur meldet er den
-        // Wechsel vorher, und danach *gehört* der neue Tab zum Rundgang. Die
-        // Reihenfolge ist die ganze Logik: erst melden, dann fragen, wohin der
-        // Rahmen gehört.
-        .onChange(of: selectedTab) { _, chosen in
-            guard tutorial.isRunning else { return }
-            if chosen == .angebote { tutorial.report(.opensOffersTab) }
-            let belongs = tab(for: tutorial.step.tab)
-            if chosen != belongs { selectedTab = belongs }
-        }
         .tint(Theme.accent)
         // Über den Tabs, nicht in einem davon: Der Lauf ist minuten- bis
         // tagelang her, der Nutzer kann überall stehen.
@@ -170,99 +110,10 @@ struct ContentView: View {
                 areaCompletedNotice
             }
         }
-        // **Die Überblendung liegt über der App und unter dem Rundgang.**
-        //
-        // Bis zum 03.08. lag sie über allem, auch über der Karte — und damit
-        // war der Wechsel vom vorletzten zum letzten Rahmen für eine knappe
-        // halbe Sekunde ein **vollständig schwarzer Bildschirm**, Karte und
-        // Statusleiste eingeschlossen. Am Simulator Bild für Bild belegt
-        // (0,12 s nach dem Tipp: nichts als Schwarz). Scott am 03.08.:
-        // „visuell desaströs".
-        //
-        // Was gewechselt werden muss, ist der Inhalt darunter; die Karte, die
-        // man gerade liest, ist genau der Halt, den das Auge dabei braucht.
-        // Sie bleibt jetzt stehen, hinter ihr tauscht der Tab. Siehe
-        // `TourTabTransition`.
-        .overlay {
-            if tourVeil > 0 {
-                Color.black
-                    .opacity(tourVeil)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
-        }
-        .overlayPreferenceValue(TutorialAnchorKey.self) { anchors in
-            if tutorial.isRunning {
-                GeometryReader { proxy in
-                    TutorialOverlay(
-                        anchors: anchors,
-                        proxy: proxy,
-                        tutorial: tutorial,
-                        list: shoppingList
-                    )
-                }
-                .ignoresSafeArea()
-                .transition(.opacity)
-            }
-        }
-        // Der Rundgang spielt auf einem bestimmten Tab; der letzte Rahmen zeigt
-        // die Einstellungen. Ohne das zeigte das Loch auf ein Bedienelement,
-        // das gerade auf einem anderen Bildschirm liegt.
-        .onChange(of: tutorial.index) { _, _ in
-            switchTourTab(to: tutorial.step.tab)
-        }
-        .onChange(of: tutorial.isRunning) { _, running in
-            // Während des Rundgangs spricht genau einer: der Rundgang. Die
-            // Tipps zählen und feuern erst wieder, wenn er vorbei ist.
-            tips.tourIsRunning = running
-            if running {
-                // Der Start blendet nicht über: Das Overlay zieht ohnehin
-                // gerade auf, und zwei Überblendungen übereinander sind eine
-                // zu viel.
-                selectedTab = tab(for: tutorial.step.tab)
-                cleanupDone = false
-            } else {
-                tourVeil = 0
-                // **Erst den Vorhang, dann die Bühne** (06.08.).
-                //
-                // Bis dahin passierte im selben Bild dreierlei: Die Abdunklung
-                // verschwand, `removeDemoItems` nahm drei Zeilen aus der Liste
-                // (und kippte sie, wenn der Tester nichts getippt hatte, vom
-                // `itemList` auf den `emptyState` — ein vollständiger
-                // Bildschirmtausch ohne Übergang), und der Filialen-Alert fuhr
-                // darüber. Drei zusammenhanglose Bewegungen auf einmal, und
-                // zusammen waren sie Scotts „weird jump".
-                //
-                // Jeder Ausgang läuft hier durch — „Fertig" wie „Tour beenden".
-                // Deshalb steht das Aufräumen hier und nicht an einem Knopf; es
-                // wartet nur, bis der Ausgang zu Ende gespielt ist.
-                //
-                // Wiederholt aufrufen ist ungefährlich: `removeDemoItems`
-                // steigt bei leerer `seededItems` aus.
-                //
-                // **Der Tab bleibt seit dem 09.08. stehen, wo der Rundgang
-                // endet.** Hier stand `selectedTab = .liste`, weil der Rundgang
-                // die Liste nie verließ. Der Rundgang zum Mitmachen endet auf
-                // der Vorschau „Nächste Woche" — dorthin hat der Nutzer sich
-                // gerade selbst getippt, und ihn im letzten Bild wieder
-                // wegzuschieben nähme ihm genau das Ergebnis weg.
-                Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(Theme.Motion.screen.duration))
-                    withAnimation(Theme.Motion.element.animation(reduceMotion: reduceMotion)) {
-                        tutorial.removeDemoItems(from: shoppingList)
-                    }
-                    cleanupDone = true
-                }
-            }
-        }
-        .task {
-            // Ein Rundgang, den der App-Tod unterbrochen hat, hat seine
-            // Beispiel-Artikel nie abgeräumt. Das wird hier nachgeholt.
-            if !tutorial.isRunning {
-                tutorial.removeDemoItems(from: shoppingList)
-            }
-        }
+        // Der alte Rundgang hat auf manchen Geräten drei geliehene Artikel
+        // hinterlassen; sie kommen hier ein letztes Mal herunter. Siehe
+        // `TourResidue`.
+        .task { TourResidue.sweep(from: shoppingList) }
         // **Die Lebensdauer des Erledigten**, siehe
         // `ShoppingListStore.sweepChecked`. Beim Start und bei jeder Rückkehr,
         // nicht über einen Zeitgeber: Ein Artikel, der verschwindet, während
@@ -277,27 +128,20 @@ struct ContentView: View {
         // vergleichen kann — und sie stand als nackter Alert da. Siehe
         // `MarketPromptSheet`; die Filialauswahl liegt dort als
         // Navigationsziel im selben Sheet.
-        .sheet(isPresented: marketQuestion) { marketPrompt }
+        .sheet(isPresented: marketQuestion) { marketPromptSheet }
         .sheet(isPresented: $showsMarketPicker) { marketPicker }
     }
 
     /// **Der Weg ohne Filialen aus dem Onboarding fragt — einmal.**
     ///
-    /// Nach einem Rundgang aus dem Onboarding wie nach einem abgelehnten
-    /// Angebot; wer ihn aus den Einstellungen noch einmal ansieht, hat seine
-    /// Filialen längst — für bestehende Installationen ändert sich hier
-    /// nichts. Die Bedingung steht im Store (`TutorialStore.asksForMarkets`),
-    /// damit die Ansicht sie nicht ein zweites Mal formuliert. Jede Art des
+    /// Die Bedingung steht im Store (`MarketPromptStore.asksForMarkets`), damit
+    /// die Ansicht sie nicht ein zweites Mal formuliert. Jede Art des
     /// Schließens — Knopf wie Wegwischen — läuft durch den Setter und zählt
     /// damit als Antwort.
     private var marketQuestion: Binding<Bool> {
         Binding(
-            // `cleanupDone` hält die Frage zurück, bis der Rundgang zu Ende
-            // gespielt und die Liste umgebaut ist. Ohne das kam der Alert im
-            // selben Bild wie das Verschwinden der Abdunklung und das Abräumen
-            // der Beispiel-Artikel — drei Bewegungen übereinander.
-            get: { tutorial.asksForMarkets && cleanupDone },
-            set: { if !$0 { tutorial.dismissMarketQuestion() } }
+            get: { marketPrompt.asksForMarkets },
+            set: { if !$0 { marketPrompt.dismissMarketQuestion() } }
         )
     }
 
@@ -305,12 +149,12 @@ struct ContentView: View {
     /// wie beim Picker darunter; ohne Region gibt es nichts zu wählen — der
     /// Fall ist theoretisch, das Onboarding lässt niemanden ohne durch.
     @ViewBuilder
-    private var marketPrompt: some View {
+    private var marketPromptSheet: some View {
         if let plz = store.orderedReadyRegions.first ?? store.regions.first {
             MarketPromptSheet(
                 plz: plz,
                 marketRepository: marketRepository,
-                onDone: { tutorial.dismissMarketQuestion() }
+                onDone: { marketPrompt.dismissMarketQuestion() }
             )
         }
     }
@@ -379,50 +223,6 @@ struct ContentView: View {
                     }
                 }
             }
-        }
-    }
-
-    private func tab(for tutorialTab: TutorialTab) -> Tab {
-        switch tutorialTab {
-        case .liste: return .liste
-        case .angebote: return .angebote
-        case .einstellungen: return .einstellungen
-        }
-    }
-
-    /// Der Tab-Wechsel des Rundgangs — **hinter der Abdunklung, nicht davor.**
-    ///
-    /// Gemeldet am 03.08.: „Beim Wechsel von Tab zu Tab springt es hart um."
-    /// Eine `TabView` blendet ihren Inhalt nicht über, sie tauscht ihn aus; das
-    /// Warum und das Warum-nicht-`matchedGeometryEffect` steht in
-    /// `TourTabTransition`.
-    ///
-    /// Der Zustandswechsel selbst passiert weiterhin sofort — nur eben in dem
-    /// Moment, in dem niemand hinsieht.
-    private func switchTourTab(to tutorialTab: TutorialTab) {
-        let target = tab(for: tutorialTab)
-        guard let plan = TourTabTransition.plan(
-            from: tourTab(of: selectedTab), to: tutorialTab, reduceMotion: reduceMotion
-        ) else {
-            selectedTab = target
-            return
-        }
-        withAnimation(.linear(duration: plan.fadeIn)) { tourVeil = 1 }
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(plan.fadeIn))
-            selectedTab = target
-            try? await Task.sleep(for: .seconds(plan.hold))
-            withAnimation(.linear(duration: plan.fadeOut)) { tourVeil = 0 }
-        }
-    }
-
-    /// Die Rückrichtung von `tab(for:)`. Der Rundgang kennt die Angebote und
-    /// die Einstellungen als eigene Ziele; alles andere ist die Liste.
-    private func tourTab(of tab: Tab) -> TutorialTab {
-        switch tab {
-        case .liste: return .liste
-        case .angebote: return .angebote
-        case .einstellungen: return .einstellungen
         }
     }
 

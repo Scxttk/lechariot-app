@@ -37,29 +37,12 @@ enum UITestSupport {
 
     static let seededAreaAnchor = "lidl-01219-1"
 
-    /// Launched with `-uiTestingTutorial`: offer and show the tour.
-    ///
-    /// Unter `-uiTesting` bleibt er sonst aus. Er hängt einen Bildschirm ans
-    /// Onboarding und sperrt danach die Liste hinter Sperrflächen — jede
-    /// bestehende Journey bliebe daran hängen, ohne dass an ihr etwas kaputt
-    /// wäre. Deshalb: wer den Rundgang prüfen will, schaltet ihn ein.
-    ///
-    /// Das schützt vor dem Rundgang, nicht vor jeder Folge. Zwei Journeys
-    /// mussten trotzdem nachgezogen werden, weil der neue Hilfe-Abschnitt die
-    /// Einstellungen nach unten schiebt und beide an einer festen
-    /// Scrollposition suchten — das ist eine echte Änderung der Oberfläche,
-    /// kein Testartefakt.
-    static let showsTutorial =
-        ProcessInfo.processInfo.arguments.contains("-uiTestingTutorial")
-
     /// Launched with `-uiTestingTips`: die Einmal-Tipps und die
     /// Ernährungsfrage anschalten.
     ///
-    /// Unter `-uiTesting` bleiben sie sonst aus — dieselbe Abwägung wie beim
-    /// Rundgang eine Zeile höher: Eine Sprechblase über der Liste oder eine
-    /// Karte im Angebote-Tab bliebe in jeder bestehenden Journey hängen, ohne
-    /// dass an ihr etwas kaputt wäre. Wer die Tipps prüfen will, schaltet sie
-    /// ein.
+    /// Unter `-uiTesting` bleiben sie sonst aus: Ein Schild über der Liste oder
+    /// im Angebote-Tab bliebe in jeder bestehenden Journey hängen, ohne dass an
+    /// ihr etwas kaputt wäre. Wer die Schilder prüfen will, schaltet sie ein.
     static let showsContextTips =
         ProcessInfo.processInfo.arguments.contains("-uiTestingTips")
 
@@ -73,7 +56,7 @@ enum UITestSupport {
     /// tatsächlich prüfen und 45 nur durchqueren.
     ///
     /// Die Journeys, die den Assistenten *meinen* — `OnboardingJourneyTests`,
-    /// `LocatedPLZJourneyTests`, `TutorialJourneyTests`, `RestartJourneyTests` —
+    /// `LocatedPLZJourneyTests`, `MarketPromptJourneyTests`, `RestartJourneyTests` —
     /// laufen weiter durch ihn hindurch. Ohne diese Trennung würde das Argument
     /// genau die Strecke wegkürzen, die es zu prüfen gilt.
     static let seedsOnboardedState =
@@ -171,9 +154,7 @@ enum UITestSupport {
     ///
     /// Damit lässt sich Scotts Meldung aus Build `2026.0801.1951` nachstellen,
     /// ohne sich auf eine Ursache festzulegen: Der Assistent läuft ein zweites
-    /// Mal, PLZ, Filialen, Profil und der Rundgang-Merker liegen unverändert
-    /// da. Genau in dieser Lage bot der Assistent den Rundgang wieder an —
-    /// und die Journey darüber ist der Nachweis, dass er es nicht mehr tut.
+    /// Mal, PLZ, Filialen und Profil liegen unverändert da.
     ///
     /// Ein eigener Schalter statt „App löschen und neu aufsetzen": Ein Neustart
     /// von Null räumt den Merker mit ab und könnte die Regel deshalb gar nicht

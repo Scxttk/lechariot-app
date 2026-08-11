@@ -1,8 +1,8 @@
 import XCTest
 @testable import LeChariot
 
-/// Die Regeln der Einmal-Tipps — geprüft als Rechnung, ohne eine Sprechblase
-/// zu bauen (dasselbe Muster wie `TourTabTransition`).
+/// Die Regeln der vier Einmal-Schilder — geprüft als Rechnung, ohne ein Schild
+/// zu bauen.
 ///
 /// Was hier auf dem Spiel steht: Ein Tipp, der zweimal kommt, ist schlimmer
 /// als keiner — die Forschungsnotiz nennt ~76 % in unter drei Sekunden
@@ -114,21 +114,24 @@ final class ContextTipRulesTests: XCTestCase {
 
     // MARK: Sitzung
 
-    func testTheTourSilencesEveryTip() {
-        var ledger = ContextTipLedger()
-        ledger.checkedOff = true
-        let touring = ContextTipRules.Moment(tourIsRunning: true, activationsThisSession: 0)
-        XCTAssertNil(ContextTipRules.tipOnOffers(ledger, nextWeekAvailable: true, moment: touring))
-        XCTAssertNil(ContextTipRules.tipOnList(ledger, matchVisible: true, hasOpenItems: true, guidanceVisible: false, moment: touring))
-    }
-
-    func testTheSessionCapSilencesTheSecondTip() {
-        let spent = ContextTipRules.Moment(
-            tourIsRunning: false,
-            activationsThisSession: ContextTipTuning.tipsPerSession
+    /// **Der Deckel gilt je Fläche, nicht je Sitzung** — und das ist der
+    /// Fehler, den Scott am 10.08. abends gemeldet hat: „the tip for the future
+    /// offers is still not in there." Auf der Liste feuert fast immer zuerst
+    /// die Angebotszeile; mit einem sitzungsweiten Deckel war der Angebote-Tab
+    /// danach stumm, Sitzung für Sitzung. Die Rechnung dazu, in beide
+    /// Richtungen.
+    func testAListTipDoesNotEatTheOffersTip() {
+        let spentOnList = ContextTipRules.Moment(
+            activationsOnSurface: ContextTipTuning.tipsPerSurfaceAndSession
         )
         XCTAssertNil(
-            ContextTipRules.tipOnList(ContextTipLedger(), matchVisible: true, hasOpenItems: true, guidanceVisible: false, moment: spent)
+            ContextTipRules.tipOnList(ContextTipLedger(), matchVisible: true, hasOpenItems: true, guidanceVisible: false, moment: spentOnList),
+            "Zwei Schilder auf einer Fläche wären die Tour in Raten"
+        )
+        XCTAssertEqual(
+            ContextTipRules.tipOnOffers(ContextTipLedger(), nextWeekAvailable: true, moment: calm),
+            .nextWeekPreview,
+            "Die Fläche des Angebote-Tabs ist eine eigene — hier ist noch nichts verbraucht"
         )
     }
 
@@ -149,11 +152,19 @@ final class ContextTipRulesTests: XCTestCase {
         )
     }
 
-    /// Der Deckel selbst: **ein** Tipp je Sitzung. Wer ihn anhebt, soll das
-    /// hier absichtlich tun — mit der Begründung in `ContextTipTuning` vor
-    /// Augen, nicht nebenbei.
-    func testOneTipPerSessionIsTheContract() {
-        XCTAssertEqual(ContextTipTuning.tipsPerSession, 1)
+    /// Der Deckel selbst: **ein** Schild je Fläche und Sitzung. Wer ihn
+    /// anhebt, soll das hier absichtlich tun — mit der Begründung in
+    /// `ContextTipTuning` vor Augen, nicht nebenbei.
+    func testOneTipPerSurfaceAndSessionIsTheContract() {
+        XCTAssertEqual(ContextTipTuning.tipsPerSurfaceAndSession, 1)
+    }
+
+    /// Jedes Schild kennt seine Fläche — daran hängt der Deckel.
+    func testEveryTipKnowsItsSurface() {
+        XCTAssertEqual(ContextTip.nextWeekPreview.surface, .offers)
+        for tip in [ContextTip.matchLine, .itemDetails, .checkOff] {
+            XCTAssertEqual(tip.surface, .list, "\(tip) gehört auf die Liste")
+        }
     }
 
     // MARK: Ernährungsfrage
@@ -162,11 +173,11 @@ final class ContextTipRulesTests: XCTestCase {
         var ledger = ContextTipLedger()
         ledger.offersVisits = ContextTipTuning.offersVisitsBeforeDietPrompt - 1
         XCTAssertFalse(
-            ContextTipRules.showsDietPrompt(ledger, dietAnswered: false, tipVisibleHere: false, moment: calm)
+            ContextTipRules.showsDietPrompt(ledger, dietAnswered: false, tipVisibleHere: false)
         )
         ledger.offersVisits = ContextTipTuning.offersVisitsBeforeDietPrompt
         XCTAssertTrue(
-            ContextTipRules.showsDietPrompt(ledger, dietAnswered: false, tipVisibleHere: false, moment: calm)
+            ContextTipRules.showsDietPrompt(ledger, dietAnswered: false, tipVisibleHere: false)
         )
     }
 
@@ -174,7 +185,7 @@ final class ContextTipRulesTests: XCTestCase {
         var ledger = ContextTipLedger()
         ledger.offersVisits = 99
         XCTAssertFalse(
-            ContextTipRules.showsDietPrompt(ledger, dietAnswered: true, tipVisibleHere: false, moment: calm),
+            ContextTipRules.showsDietPrompt(ledger, dietAnswered: true, tipVisibleHere: false),
             "Wer im Profil schon Angaben hat, hat die Frage beantwortet — egal wo"
         )
     }
@@ -184,7 +195,7 @@ final class ContextTipRulesTests: XCTestCase {
         ledger.offersVisits = 99
         ledger.dietPromptDone = true
         XCTAssertFalse(
-            ContextTipRules.showsDietPrompt(ledger, dietAnswered: false, tipVisibleHere: false, moment: calm)
+            ContextTipRules.showsDietPrompt(ledger, dietAnswered: false, tipVisibleHere: false)
         )
     }
 
@@ -192,7 +203,7 @@ final class ContextTipRulesTests: XCTestCase {
         var ledger = ContextTipLedger()
         ledger.offersVisits = 99
         XCTAssertFalse(
-            ContextTipRules.showsDietPrompt(ledger, dietAnswered: false, tipVisibleHere: true, moment: calm),
+            ContextTipRules.showsDietPrompt(ledger, dietAnswered: false, tipVisibleHere: true),
             "Karte und Sprechblase gleichzeitig wären ein Formular"
         )
     }
@@ -219,30 +230,46 @@ final class ContextTipStoreTests: XCTestCase {
         ContextTipStore(defaults: defaults, enabled: true)
     }
 
-    func testOnlyOneTipActivatesPerSession() {
+    /// Auf **einer** Fläche höchstens eines — der zweite Moment der Liste muss
+    /// bis zur nächsten Sitzung warten.
+    func testOnlyOneTipActivatesPerSurfaceAndSession() {
         let store = makeStore()
-        store.offersAppeared(nextWeekAvailable: true)
-        XCTAssertEqual(store.active, .nextWeekPreview)
+        store.checkedOff(matchVisible: false, hasOpenItems: true, guidanceVisible: false)
+        XCTAssertEqual(store.activeTip(on: .list), .checkOff)
 
-        // Der Treffer-Moment kommt in derselben Sitzung — er muss warten.
         store.listSettled(matchVisible: true, hasOpenItems: true, guidanceVisible: false)
-        XCTAssertEqual(store.active, .nextWeekPreview)
+        XCTAssertEqual(store.activeTip(on: .list), .checkOff, "Das zweite Schild derselben Fläche wartet")
 
-        // Nächste Sitzung: Der Moment wiederholt sich, jetzt ist er dran.
         let nextSession = makeStore()
         nextSession.listSettled(matchVisible: true, hasOpenItems: true, guidanceVisible: false)
-        XCTAssertEqual(nextSession.active, .matchLine)
+        XCTAssertEqual(nextSession.activeTip(on: .list), .matchLine)
+    }
+
+    /// **Der Fall aus Scotts Bedienrunde**, eine Ebene über der Regel: Ein
+    /// Schild auf der Liste darf das des Angebote-Tabs nicht verbrauchen — und
+    /// es darf es auch nicht wegnehmen, wenn beide in derselben Sitzung
+    /// standen.
+    func testTheListTipDoesNotSwallowTheOffersTipInTheSameSession() {
+        let store = makeStore()
+        store.checkedOff(matchVisible: false, hasOpenItems: true, guidanceVisible: false)
+        XCTAssertEqual(store.activeTip(on: .list), .checkOff)
+
+        store.offersAppeared(nextWeekAvailable: true)
+        XCTAssertEqual(store.activeTip(on: .offers), .nextWeekPreview,
+                       "Der Vorschau-Tipp hat seine eigene Fläche")
+        XCTAssertEqual(store.activeTip(on: .list), .checkOff,
+                       "…und nimmt der Liste ihr Schild nicht weg")
     }
 
     func testAShownTipSurvivesTheRestart() {
         let store = makeStore()
         store.offersAppeared(nextWeekAvailable: true)
-        XCTAssertEqual(store.active, .nextWeekPreview)
+        XCTAssertEqual(store.activeTip(on: .offers), .nextWeekPreview)
 
         let restarted = makeStore()
-        XCTAssertNil(restarted.active, "Eine Sprechblase überlebt keinen Neustart")
+        XCTAssertNil(restarted.activeTip(on: .offers), "Ein Schild überlebt keinen Neustart")
         restarted.offersAppeared(nextWeekAvailable: true)
-        XCTAssertNil(restarted.active, "Gezeigt heißt gezeigt — auch nach Neustart")
+        XCTAssertNil(restarted.activeTip(on: .offers), "Gezeigt heißt gezeigt — auch nach Neustart")
     }
 
     func testTabSwitchesCountAsOneVisit() {
@@ -267,23 +294,45 @@ final class ContextTipStoreTests: XCTestCase {
         XCTAssertEqual(store.ledger.listSessionsWithoutCheckOff, 1)
     }
 
-    func testTheTourKeepsTheCountersStill() {
+    /// **„Tipps wieder anzeigen"** aus den Einstellungen: Die Merker fallen,
+    /// die Zähler des Verhaltens bleiben — wer die Angaben-Schicht längst
+    /// benutzt, bekommt ihr Schild auch danach nicht.
+    func testShowingTipsAgainClearsWhatWasShownButNotWhatWasDone() {
         let store = makeStore()
-        store.tourIsRunning = true
-        // Der Rundgang legt Beispiel-Artikel — die zählen nicht.
         store.itemAdded()
-        store.itemAdded()
+        store.detailsUsed()
         store.offersAppeared(nextWeekAvailable: true)
-        store.listSettled(matchVisible: true, hasOpenItems: true, guidanceVisible: false)
-        XCTAssertEqual(store.ledger.itemsAdded, 0)
-        XCTAssertEqual(store.ledger.offersVisits, 0)
-        XCTAssertNil(store.active)
+        XCTAssertEqual(store.activeTip(on: .offers), .nextWeekPreview)
+
+        store.showTipsAgain()
+        XCTAssertTrue(store.ledger.shown.isEmpty)
+        XCTAssertNil(store.activeTip(on: .offers))
+        XCTAssertEqual(store.ledger.itemsAdded, 1, "Was der Nutzer getan hat, bleibt gezählt")
+        XCTAssertTrue(store.ledger.usedDetails)
+
+        // Auf Platte auch: Ein Neustart weiß nichts mehr von „schon gezeigt".
+        XCTAssertTrue(makeStore().ledger.shown.isEmpty)
+
+        // Und der Moment darf sofort wieder feuern, nicht erst nach einem
+        // Neustart.
+        store.offersAppeared(nextWeekAvailable: true)
+        XCTAssertEqual(store.activeTip(on: .offers), .nextWeekPreview)
+    }
+
+    /// Weggetippt heißt weg — aber nicht wieder fällig.
+    func testDismissingATipTakesItOffTheScreenForGood() {
+        let store = makeStore()
+        store.offersAppeared(nextWeekAvailable: true)
+        store.dismissTip(on: .offers)
+        XCTAssertNil(store.activeTip(on: .offers))
+        store.offersAppeared(nextWeekAvailable: true)
+        XCTAssertNil(store.activeTip(on: .offers), "Gezeigt bleibt gezeigt")
     }
 
     func testTheFirstCheckOffActivatesTheSwipeTip() {
         let store = makeStore()
         store.checkedOff(matchVisible: false, hasOpenItems: true, guidanceVisible: false)
-        XCTAssertEqual(store.active, .checkOff)
+        XCTAssertEqual(store.activeTip(on: .list), .checkOff)
         XCTAssertTrue(store.ledger.checkedOff)
     }
 
@@ -335,7 +384,7 @@ final class ContextTipStoreTests: XCTestCase {
         let store = ContextTipStore(defaults: defaults, enabled: false)
         store.offersAppeared(nextWeekAvailable: true)
         store.itemAdded()
-        XCTAssertNil(store.active)
+        XCTAssertNil(store.activeTip(on: .offers))
         XCTAssertEqual(store.ledger.itemsAdded, 0)
         XCTAssertFalse(store.showsDietPrompt(dietAnswered: false))
     }
@@ -347,7 +396,7 @@ final class ContextTipStoreTests: XCTestCase {
         store.dismissDietPrompt()
         store.resetAllData()
         XCTAssertEqual(store.ledger, ContextTipLedger())
-        XCTAssertNil(store.active)
+        XCTAssertNil(store.activeTip(on: .offers))
 
         // Und zwar auch auf Platte — der nächste Start weiß nichts mehr.
         let restarted = makeStore()

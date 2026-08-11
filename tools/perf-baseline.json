@@ -20,14 +20,6 @@
       "Memory Peak Physical (lechariot), kB": 85185.203,
       "Memory Physical (lechariot), kB": 0.0
     },
-    "testRundgangStepping": {
-      "Absolute Memory Physical (lechariot), kB": 86954.483,
-      "CPU Cycles (lechariot), kC": 8316427.11,
-      "CPU Instructions Retired (lechariot), kI": 21355109.265,
-      "CPU Time (lechariot), s": 3.236,
-      "Memory Peak Physical (lechariot), kB": 97145.382,
-      "Memory Physical (lechariot), kB": 992.87
-    },
     "testVorschauScrolling": {
       "Absolute Memory Physical (lechariot), kB": 91899.238,
       "CPU Cycles (lechariot), kC": 2838535.383,

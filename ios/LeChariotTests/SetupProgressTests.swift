@@ -118,28 +118,6 @@ final class SetupProgressTests: XCTestCase {
 
     // MARK: Die Vorfahrtsregel
 
-    /// Der Rundgang behält seine Bühne: Seine Rahmen ankern an der
-    /// Filialen-Karte, also sieht die Liste während der Führung aus wie vor
-    /// diesem Umbau — Karte ohne Filialen, sonst nichts.
-    func testTheTourKeepsItsStage() {
-        XCTAssertEqual(
-            ListGuidance.surface(
-                listIsEmpty: true, hasMarkets: false, firstItemAdded: false,
-                checklistVisible: true, tourIsRunning: true,
-                flowActive: false, tipActive: false
-            ),
-            .noMarkets
-        )
-        XCTAssertEqual(
-            ListGuidance.surface(
-                listIsEmpty: false, hasMarkets: true, firstItemAdded: false,
-                checklistVisible: true, tourIsRunning: true,
-                flowActive: false, tipActive: false
-            ),
-            .none
-        )
-    }
-
     /// Direkt nach dem Onboarding (leer, keine Filiale): Die Filialen-Karte
     /// bleibt stehen — vier Journeys halten genau diesen Bildschirm fest. Die
     /// Einladung zum ersten Artikel trägt die Ansprache, keine zweite Karte.
@@ -147,7 +125,7 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: true, hasMarkets: false, firstItemAdded: false,
-                checklistVisible: true, tourIsRunning: false,
+                checklistVisible: true,
                 flowActive: false, tipActive: false
             ),
             .noMarkets
@@ -159,7 +137,7 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: true, hasMarkets: true, firstItemAdded: false,
-                checklistVisible: true, tourIsRunning: false,
+                checklistVisible: true,
                 flowActive: false, tipActive: false
             ),
             .firstItem
@@ -172,7 +150,7 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: false, hasMarkets: false, firstItemAdded: true,
-                checklistVisible: true, tourIsRunning: false,
+                checklistVisible: true,
                 flowActive: false, tipActive: false
             ),
             .checklist
@@ -185,7 +163,7 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: false, hasMarkets: false, firstItemAdded: true,
-                checklistVisible: false, tourIsRunning: false,
+                checklistVisible: false,
                 flowActive: false, tipActive: false
             ),
             .noMarkets
@@ -202,7 +180,7 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: false, hasMarkets: true, firstItemAdded: true,
-                checklistVisible: true, tourIsRunning: false,
+                checklistVisible: true,
                 flowActive: true, tipActive: true
             ),
             .none
@@ -210,7 +188,7 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: false, hasMarkets: false, firstItemAdded: true,
-                checklistVisible: true, tourIsRunning: false,
+                checklistVisible: true,
                 flowActive: true, tipActive: false
             ),
             .noMarkets
@@ -225,7 +203,7 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: false, hasMarkets: true, firstItemAdded: true,
-                checklistVisible: true, tourIsRunning: false,
+                checklistVisible: true,
                 flowActive: false, tipActive: true
             ),
             .tip
@@ -238,7 +216,7 @@ final class SetupProgressTests: XCTestCase {
         XCTAssertEqual(
             ListGuidance.surface(
                 listIsEmpty: false, hasMarkets: true, firstItemAdded: true,
-                checklistVisible: false, tourIsRunning: false,
+                checklistVisible: false,
                 flowActive: false, tipActive: false
             ),
             .none

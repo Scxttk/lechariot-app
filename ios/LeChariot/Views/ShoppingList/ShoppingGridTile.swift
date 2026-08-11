@@ -63,8 +63,6 @@ struct ShoppingGridTile: View {
 
     let item: ShoppingItem
     var suggestion: ItemSuggestion = ItemSuggestion(match: nil)
-    /// Trägt die Anker für den Rundgang. Nur die erste offene Kachel setzt das.
-    var carriesTutorialAnchors = false
     /// Einmaliges Aufleuchten beim **allerersten** Treffer überhaupt.
     var highlightsFirstMatch = false
     let onToggle: () -> Void
@@ -127,7 +125,6 @@ struct ShoppingGridTile: View {
         .accessibilityValue(zustandstext)
         .accessibilityHint(item.isChecked ? "Als offen markieren" : "Als erledigt markieren")
         .accessibilityIdentifier("list.tile")
-        .tutorialAnchor(.rowCheck, when: carriesTutorialAnchors)
         .contextMenu { menü }
         .simultaneousGesture(haltenÖffnetDasBlatt)
     }
@@ -240,7 +237,6 @@ struct ShoppingGridTile: View {
                     .accessibilityHidden(true)
             }
         }
-        .tutorialAnchor(.rowMatch, when: carriesTutorialAnchors)
     }
 
     /// Der Preis als Fähnchen an der Ecke. Es sitzt am Zeichen und nicht unter

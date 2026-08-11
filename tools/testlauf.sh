@@ -54,11 +54,6 @@ TESTLAUF_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # zwei weiteren Simulatoren gemessen wären sie eine Aussage über die Auslastung
 # und über nichts sonst. Deshalb steht die Klasse hier **und** in `OHNE_CI`.
 #
-# Der Rundgang (`TutorialJourneyTests`, `TourTargetJourneyTests`) gehört
-# ausdrücklich **nicht** hierher, obwohl er Zeiten benutzt: Er misst Geometrie —
-# wo das wandernde Loch nach dem Einschwingen liegt —, und die hängt nicht an
-# der Auslastung.
-#
 # Wer hier etwas einträgt, sagt damit „das kostet Wanduhr, seriell" — die Liste
 # ist absichtlich kurz zu halten.
 SERIELL=(
@@ -197,8 +192,8 @@ seriell_fuer_ci() {
 # **Grösste zuerst auf die leerste Scherbe** (LPT). Die Untergrenze eines Laufs
 # bleibt die längste einzelne Klasse — verteilt wird je Klasse, nicht je Test —,
 # und LPT holt aus dieser Grenze heraus, was zu holen ist. Reihum zu verteilen
-# wäre eine Zeile kürzer und legte `OnboardingJourneyTests` (16 Tests) und
-# `TutorialJourneyTests` (15) mit einiger Wahrscheinlichkeit auf dieselbe.
+# wäre eine Zeile kürzer und legte die beiden grössten Klassen mit einiger
+# Wahrscheinlichkeit auf dieselbe.
 #
 # Scherbe 1 trägt zusätzlich den seriellen Durchgang; ihr Gewicht startet
 # deshalb nicht bei null. Sonst bekäme sie genauso viel parallele Arbeit wie

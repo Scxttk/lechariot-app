@@ -20,9 +20,17 @@ final class ContextTipJourneyTests: XCTestCase {
         app = XCUIApplication()
     }
 
-    /// Der Titel der Sprechblase — derselbe Text wie in `NextWeekContextTip`.
+    /// Der Titel des Schilds — derselbe Text wie in `NextWeekContextTip`.
     private var tipTitle: XCUIElement {
         app.staticTexts["Was ab Montag billiger wird"]
+    }
+
+    /// **Über das Label, nicht über einen Bezeichner.** `TipView` überschreibt
+    /// den Bezeichner jedes Kindes mit seinem eigenen (`identifier: 'TipView'`,
+    /// am 10.08. im Baum nachgelesen); das Label überlebt. Siehe
+    /// `EnamelSignTipViewStyle`.
+    private var dismissButton: XCUIElement {
+        app.buttons["Hinweis ausblenden"].firstMatch
     }
 
     func testTheNextWeekTipShowsOnceAndOnlyOnce() {
@@ -144,5 +152,88 @@ final class ContextTipJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Angebote"].waitForExistence(timeout: 15))
         XCTAssertFalse(card.waitForExistence(timeout: 2),
                        "Die Frage kam nach dem Neustart wieder")
+    }
+    /// **Die Umkehrung von `testTheTourCoversTheAppCompletelyWhileItRuns`.**
+    ///
+    /// Der Rundgang legte sich modal über die App: Sperrflächen außen, ein Loch
+    /// innen, das „Mehr"-Menü wurde gar nicht erst gebaut. Genau das war die
+    /// Zusicherung, die diese Journey bis zum 10.08. festhielt — und genau das
+    /// ist mit dem Abriss weg. Die neue Zusage lautet umgekehrt: **Während ein
+    /// Schild steht, bleibt die App vollständig bedienbar.**
+    ///
+    /// Sie wird hier nicht behauptet, sondern durchgetippt: Tab wechseln,
+    /// Menü öffnen, Artikel anlegen — alles, während das Schild dasteht.
+    func testTheAppStaysUsableWhileASignStands() {
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded", "-uiTestingTips"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
+
+        app.tabBars.buttons["Angebote"].tap()
+        XCTAssertTrue(tipTitle.waitForExistence(timeout: 15), "Ohne Schild prüft die Journey nichts")
+
+        // 1. Die Tab-Leiste trägt weiter. Der Rundgang schob hier zurück.
+        app.tabBars.buttons["Liste"].tap()
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 10),
+                      "Der Tab-Wechsel muss durchgehen, während ein Schild steht")
+
+        app.tabBars.buttons["Angebote"].tap()
+        XCTAssertTrue(tipTitle.waitForExistence(timeout: 10),
+                      "…und das Schild steht danach noch")
+
+        // 2. Das ✗ nimmt das Schild weg, ohne sonst etwas anzufassen.
+        XCTAssertTrue(dismissButton.waitForExistence(timeout: 5), "Das Schild trägt sein ✗")
+        dismissButton.tap()
+        XCTAssertTrue(tipTitle.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Angebote"].exists,
+                      "Weggetippt heißt: Schild weg, Bildschirm bleibt")
+
+        // 3. Und das Ziel, auf das es zeigt, ist wirklich erreichbar — der
+        //    Rundgang hat an dieser Stelle einen Riegel gebraucht, das Schild
+        //    braucht keinen.
+        let vorschau = app.buttons["offers.nextWeek"]
+        XCTAssertTrue(vorschau.waitForExistence(timeout: 15))
+        vorschau.tap()
+        XCTAssertTrue(app.navigationBars["Nächste Woche"].waitForExistence(timeout: 20),
+                      "Der Weg, den das Schild nennt, muss offen sein")
+    }
+    /// **Der Wiederholweg** (Rundgang-Konzept §4, Schicht 3): „Tipps wieder
+    /// anzeigen" in den Einstellungen ersetzt „Rundgang erneut ansehen" — und
+    /// muss dasselbe einlösen, nämlich wirklich etwas zeigen.
+    ///
+    /// Diese Journey ist der Grund, warum die Schilder **kein**
+    /// `MaxDisplayCount(1)` mehr tragen: TipKits eigener Merker liegt im
+    /// App-Container und ist zur Laufzeit nicht mehr zurückzusetzen. Mit ihm
+    /// blieb der Knopf ein Knopf, der nichts tut.
+    func testShowingTipsAgainBringsTheSignBack() {
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded", "-uiTestingTips"]
+        app.launch()
+
+        app.tabBars.buttons["Angebote"].tap()
+        XCTAssertTrue(tipTitle.waitForExistence(timeout: 15))
+        dismissButton.tap()
+        XCTAssertTrue(tipTitle.waitForNonExistence(timeout: 5))
+
+        // Ohne Zurücksetzen bliebe es weg — das ist der Vertrag von
+        // „gezeigt heißt gezeigt".
+        app.tabBars.buttons["Liste"].tap()
+        app.tabBars.buttons["Angebote"].tap()
+        XCTAssertFalse(tipTitle.waitForExistence(timeout: 3),
+                       "Ein gezeigtes Schild kommt von allein nicht wieder")
+
+        app.tabBars.buttons["Einstellungen"].tap()
+        let knopf = app.buttons["settings.tips"]
+        var versuche = 0
+        while !knopf.exists && versuche < 8 {
+            app.swipeUp()
+            versuche += 1
+        }
+        XCTAssertTrue(knopf.waitForExistence(timeout: 15),
+                      "Der Knopf steht nicht da:\n\(app.debugDescription)")
+        knopf.tap()
+        app.buttons["Alles klar"].tap()
+
+        app.tabBars.buttons["Angebote"].tap()
+        XCTAssertTrue(tipTitle.waitForExistence(timeout: 15),
+                      "Nach dem Zurücksetzen muss das Schild wieder kommen")
     }
 }

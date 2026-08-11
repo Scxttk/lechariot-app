@@ -14,17 +14,13 @@ import Observation
 ///
 /// Die Fälle, in der Reihenfolge, in der sie gewinnen:
 ///
-/// 1. **Der Rundgang behält seine Bühne.** Seine Rahmen ankern an der
-///    Filialen-Karte (`.planCard`); eine Checkliste an ihrer Stelle ließe den
-///    Rahmen sich selbst überspringen. Während er läuft, sieht die Liste aus
-///    wie vor diesem Umbau.
-/// 2. **Vor dem allerersten Artikel zählt nur der erste Artikel** (NN/g:
+/// 1. **Vor dem allerersten Artikel zählt nur der erste Artikel** (NN/g:
 ///    Machen schlägt Zuschauen). Mit Filialen sind das die Beispiel-Angebote;
 ///    ohne bleibt die Filialen-Karte stehen — vier Journeys halten genau
 ///    diesen Bildschirm fest, und sie behalten recht. Die Einladung zum
 ///    ersten Artikel trägt dann die Ansprache darüber (`FirstItemPrompt`),
 ///    nicht eine zweite Karte.
-/// 3. **Während des Tipp-Flusses führt niemand.** Die Angaben-Schicht steht
+/// 2. **Während des Tipp-Flusses führt niemand.** Die Angaben-Schicht steht
 ///    schon, und mit stehender Tastatur bleiben der Liste rund 180 pt — am
 ///    05.08. auf dem Simulator gemessen: Schicht ab y = 341 von 852, und die
 ///    Checkliste (227 pt) schob die eben angelegte Zeile samt Treffer-Kachel
@@ -33,17 +29,17 @@ import Observation
 ///    die Tastatur weg ist; nur die Filialen-Karte bleibt (sie besetzt den
 ///    Platz der Plan-Karte, und ein Platz, der beim Tippen auf- und zuginge,
 ///    wäre ein springender Bildschirm).
-/// 4. **Ein aktiver Einmal-Tipp schlägt die Checkliste.** Nicht, weil er
+/// 3. **Ein aktives Schild schlägt die Checkliste.** Nicht, weil er
 ///    wichtiger wäre, sondern weil sein Merker beim **Aktivieren** fällt
 ///    (siehe `ContextTipStore.activate`): Ein aktiver Tipp ist schon
 ///    verbraucht, ihn zu verstecken hieße ihn verbrennen. Dass beide
 ///    gleichzeitig wollen, verhindert die Aktivierung selbst — ein Tipp
 ///    feuert nur, wenn keine andere Führungsfläche steht
 ///    (`ContextTipRules.tipOnList`).
-/// 5. **Danach führt die Checkliste**, bis sie fertig oder weggewischt ist.
+/// 4. **Danach führt die Checkliste**, bis sie fertig oder weggewischt ist.
 ///    Sie enthält den Weg zur Filialauswahl selbst, deshalb ersetzt sie die
 ///    Filialen-Karte, statt neben ihr zu stehen.
-/// 6. **Zuletzt die Filialen-Karte** — der Stand von vor diesem Umbau, für
+/// 5. **Zuletzt die Filialen-Karte** — der Stand von vor diesem Umbau, für
 ///    alle, die die Checkliste weggewischt haben und trotzdem ohne Filiale
 ///    dastehen. Eine Sackgasse darf daraus nie werden.
 ///
@@ -66,11 +62,9 @@ enum ListGuidance: Equatable {
         hasMarkets: Bool,
         firstItemAdded: Bool,
         checklistVisible: Bool,
-        tourIsRunning: Bool,
         flowActive: Bool,
         tipActive: Bool
     ) -> ListGuidance {
-        if tourIsRunning { return hasMarkets ? .none : .noMarkets }
         if listIsEmpty && !firstItemAdded { return hasMarkets ? .firstItem : .noMarkets }
         if flowActive { return hasMarkets ? .none : .noMarkets }
         if tipActive { return .tip }
@@ -171,7 +165,7 @@ enum FirstItemSuggestions {
 /// erste Artikel hängen: der erste selbst angelegte Artikel und der erste
 /// Angebots-Treffer.
 ///
-/// **Beide Merker sind Einbahnstraßen** — wie `tutorial.hasSeen`: Was einmal
+/// **Beide Merker sind Einbahnstraßen**: Was einmal
 /// passiert ist, ist passiert, und eine Führung, die wieder von vorn anfängt,
 /// weil jemand seine Liste geleert hat, führt niemanden.
 ///
@@ -184,9 +178,8 @@ enum FirstItemSuggestions {
 @MainActor
 @Observable
 final class SetupProgressStore {
-    /// Der erste **selbst** angelegte Artikel. Die Beispiel-Artikel des
-    /// Rundgangs zählen nicht — deshalb wird an den Bedienwegen aufgezeichnet
-    /// und nicht in `ShoppingListStore.add`.
+    /// Der erste **selbst** angelegte Artikel — aufgezeichnet an den
+    /// Bedienwegen und nicht in `ShoppingListStore.add`.
     private(set) var firstItemAdded: Bool
     /// Der erste Angebots-Treffer auf einem eigenen Artikel.
     private(set) var firstMatchSeen: Bool

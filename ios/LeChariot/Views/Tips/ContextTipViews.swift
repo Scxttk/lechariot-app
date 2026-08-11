@@ -4,19 +4,26 @@ import TipKit
 /// **TipKit zeichnet, der `ContextTipStore` entscheidet.**
 ///
 /// TipKit könnte beides — es hat eigene Regeln und eigene Zähler. Benutzt wird
-/// davon nur die Sprechblase: Die Entscheidung, *wann* ein Tipp dran ist,
-/// steht als reine Rechnung in `ContextTipRules`, weil sie dort prüfbar ist
-/// (dasselbe Muster wie `TourTabTransition`). TipKits Makro-Regeln laufen erst
-/// in einer konfigurierten Laufzeit und wären es nicht.
+/// davon nur die Karte: Die Entscheidung, *wann* ein Schild dran ist, steht als
+/// reine Rechnung in `ContextTipRules`, weil sie dort prüfbar ist. TipKits
+/// Makro-Regeln laufen erst in einer konfigurierten Laufzeit und wären es nicht.
 ///
-/// Die Kopplung ist deshalb bewusst simpel: Eine Ansicht trägt die Sprechblase
-/// nur, solange ihr Tipp der aktive des Stores ist (`contextTip(_:in:when:)`).
-/// TipKits eigenes Einmal-Gedächtnis bleibt als zweiter Riegel trotzdem an —
-/// `MaxDisplayCount(1)`, und das X des Nutzers invalidiert bei TipKit selbst.
+/// Die Kopplung ist deshalb bewusst simpel: Eine Ansicht trägt das Schild nur,
+/// solange sein Tipp der aktive ihrer Fläche ist (`ContextTipCard`).
 ///
-/// **Die Texte stehen für sich.** Sie stammen aus Rahmen, die der gekürzte
-/// Rundgang nicht mehr hat, und dürfen deshalb nichts voraussetzen, was „die
-/// Tour schon gesagt" hätte.
+/// **Und TipKit zählt bewusst gar nichts mit.** Bis zum 10.08. trug jeder Tipp
+/// `MaxDisplayCount(1)`, und das ✗ invalidierte ihn zusätzlich bei TipKit — als
+/// „zweiter Riegel". Genau dieser zweite Riegel macht „Tipps wieder anzeigen"
+/// aus den Einstellungen (Schicht 3) unmöglich: TipKits Merker liegt im
+/// App-Container, `resetDatastore()` wirkt nur **vor** `Tips.configure()`, und
+/// ein Knopf, der nichts tut, ist schlimmer als keiner. Das Einmal-Versprechen
+/// hält der Store allein (`ContextTipLedger.shown`) — eine Entscheidung, eine
+/// Stelle. `ContextTipJourneyTests.testShowingTipsAgainBringsTheSignBack` hält
+/// den Fall fest.
+///
+/// **Die Texte stehen für sich.** Sie stammen aus Rahmen, die es seit dem
+/// Abriss des Rundgangs nicht mehr gibt, und dürfen deshalb nichts
+/// voraussetzen, was „die Tour schon gesagt" hätte.
 
 /// „Nächste Woche" im Angebote-Tab — das bewusste Warten.
 struct NextWeekContextTip: Tip {
@@ -30,10 +37,6 @@ struct NextWeekContextTip: Tip {
 
     var image: Image? {
         Image(systemName: "calendar")
-    }
-
-    var options: [any TipOption] {
-        [MaxDisplayCount(1)]
     }
 }
 
@@ -50,10 +53,6 @@ struct MatchLineContextTip: Tip {
     var image: Image? {
         Image(systemName: "pin")
     }
-
-    var options: [any TipOption] {
-        [MaxDisplayCount(1)]
-    }
 }
 
 /// Menge, Größe, Notiz — die Angaben-Schicht hinter dem Artikelnamen.
@@ -68,10 +67,6 @@ struct ItemDetailsContextTip: Tip {
 
     var image: Image? {
         Image(systemName: "square.and.pencil")
-    }
-
-    var options: [any TipOption] {
-        [MaxDisplayCount(1)]
     }
 }
 
@@ -88,50 +83,125 @@ struct CheckOffContextTip: Tip {
     var image: Image? {
         Image(systemName: "checkmark.circle")
     }
+}
 
-    var options: [any TipOption] {
-        [MaxDisplayCount(1)]
+// MARK: - Das Emailschild
+
+/// **Ein Schild, kein Scheinwerfer** — die Gestalt aus Rundgang-Konzept §5.
+///
+/// Das App-Icon ist ein französisches Emailschild: randvolle Emaille, weißer
+/// Rand, dünne Innenlinie. Ein Hinweis dieser App ist ein kleines Schild
+/// derselben Familie, und daraus folgt jede Einzelheit:
+///
+/// - **Die doppelte Kante trägt, nicht der Schatten.** Creme auf Creme hebt
+///   sich über den Rand ab — kräftige Außenlinie in Emaille-Grün, feine
+///   Innenlinie mit Luft dazwischen. Ein Schlagschatten wäre Höhe, und Höhe
+///   ist die Sprache des Belags, den wir gerade abgerissen haben.
+/// - **Farbe aus `Theme`, nichts hartkodiert.** Überschrift in Akzent-Grün,
+///   Fließtext im warmen Sekundärton; im Dunkelmodus spiegelt es sich mit den
+///   Tokens von selbst.
+/// - **Textstile statt eigener Größen** (`headline`/`subheadline`) — das Schild
+///   wirkt über Rand und Farbe, nicht über eine Zierschrift, und Dynamic Type
+///   bleibt heil. Genau daran hat die Rundgang-Karte zweimal geblutet.
+/// - **Ein ✗ und sonst kein Knopf.** Das Wegtippen ist der einzige Ausgang, den
+///   ein Schild braucht; die HIG lässt einen Knopf nur zu, wenn er irgendwohin
+///   führt, und keines der vier Schilder tut das. `configuration.actions` wird
+///   deshalb gar nicht gezeichnet — wer je eines hinzufügt, sieht es hier
+///   fehlen, statt es unbemerkt zu verlieren.
+struct EnamelSignTipViewStyle: TipViewStyle {
+    /// Was das ✗ tut: das Schild aus dem Store nehmen, der es zeichnen lässt.
+    /// Gezeigt ist es dort längst — der Merker fällt beim Anzeigen, nicht beim
+    /// Wegdrücken (`ContextTipStore.activate`).
+    let onDismiss: () -> Void
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.md) {
+            if let image = configuration.image {
+                image
+                    .font(.headline)
+                    .foregroundStyle(Theme.accent)
+                    .accessibilityHidden(true)
+            }
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                configuration.title
+                    .font(.headline)
+                    .foregroundStyle(Theme.accent)
+                configuration.message
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.secondaryText)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.footnote.bold())
+                    .foregroundStyle(Theme.secondaryText)
+                    .padding(Theme.Spacing.xs)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            // **Kein eigener Bezeichner — er käme nicht an.** Am Simulator
+            // gemessen: `TipView` setzt seinen eigenen Bezeichner auf jedes
+            // Kind, im Baum steht am ✗ `identifier: 'TipView'`. Dieselbe Falle
+            // wie beim Behälter der Angaben-Schicht (siehe `ItemDetailPanel`),
+            // nur von außen. Gegriffen wird deshalb über das Label — das
+            // überlebt, und ein Bezeichner, der nie ankommt, wäre eine Zusage
+            // an Journeys, die er nicht hält.
+            .accessibilityLabel("Hinweis ausblenden")
+        }
+        .padding(Theme.Spacing.lg)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+        .overlay {
+            // Außenkante kräftig, Innenlinie fein und mit Luft dazwischen —
+            // die zwei Linien des Emailschilds.
+            RoundedRectangle(cornerRadius: Theme.Radius.card)
+                .strokeBorder(Theme.accent, lineWidth: 1.5)
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.inner)
+                        .strokeBorder(Theme.accent.opacity(0.45), lineWidth: 0.75)
+                        .padding(Theme.Spacing.xs)
+                }
+        }
     }
 }
 
-/// Die Karte, die den gerade aktiven Tipp zeichnet — **eine je Bildschirm**,
-/// oben, über dem, was sie erklärt.
+// MARK: - Die Karte
+
+/// Die Karte, die das gerade aktive Schild dieser Fläche zeichnet — **eines je
+/// Bildschirm**, oben, über dem, was es erklärt.
 ///
 /// **Warum keine Sprechblase (`popoverTip`).** Sie war der erste Entwurf, und
 /// sie erschien nie: Im Elementbaum stand nach dem Moment weder am
 /// Toolbar-Knopf noch an der Listenzeile etwas — auch nicht, als der Anhang
 /// testweise bedingungslos hing. Ein `TipView` an derselben Stelle stand
 /// sofort da. Zwei Messungen, eine Lehre: In dieser App zeichnet TipKit
-/// Karten, keine Sprechblasen. Die Karte trägt dieselben Texte und steht am
-/// selben Moment — sie zeigt nur nicht mit dem Finger.
+/// Karten, keine Sprechblasen. Das Schild trägt dieselben Texte und steht am
+/// selben Moment — es zeigt nur nicht mit dem Finger.
 ///
-/// `screen` hält die Tipps auseinander: Der Vorschau-Tipp gehört in den
-/// Angebote-Tab, die anderen drei auf die Liste. Ohne das stünde der Tipp zur
+/// `surface` hält die Schilder auseinander: Der Vorschau-Tipp gehört in den
+/// Angebote-Tab, die anderen drei auf die Liste. Ohne das stünde das Schild zur
 /// Angebotszeile im Angebote-Tab, sobald jemand den Tab wechselt.
 struct ContextTipCard: View {
     let store: ContextTipStore?
-    let screen: Screen
+    let surface: ContextTip.Surface
 
-    enum Screen {
-        case list, offers
-
-        func owns(_ tip: ContextTip) -> Bool {
-            switch (self, tip) {
-            case (.offers, .nextWeekPreview): true
-            case (.list, .matchLine), (.list, .itemDetails), (.list, .checkOff): true
-            default: false
-            }
+    var body: some View {
+        if let store, let tip = store.activeTip(on: surface) {
+            tipView(for: tip)
+                .tipViewStyle(EnamelSignTipViewStyle {
+                    store.dismissTip(on: surface)
+                })
         }
     }
 
-    var body: some View {
-        if let store, let tip = store.active, screen.owns(tip) {
-            switch tip {
-            case .nextWeekPreview: TipView(NextWeekContextTip())
-            case .matchLine: TipView(MatchLineContextTip())
-            case .itemDetails: TipView(ItemDetailsContextTip())
-            case .checkOff: TipView(CheckOffContextTip())
-            }
+    @ViewBuilder
+    private func tipView(for tip: ContextTip) -> some View {
+        switch tip {
+        case .nextWeekPreview: TipView(NextWeekContextTip())
+        case .matchLine: TipView(MatchLineContextTip())
+        case .itemDetails: TipView(ItemDetailsContextTip())
+        case .checkOff: TipView(CheckOffContextTip())
         }
     }
 }

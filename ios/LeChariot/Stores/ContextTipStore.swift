@@ -3,14 +3,16 @@ import Observation
 
 // MARK: - Die Tipps
 
-/// Die vier Einmal-Tipps, die der gekürzte Rundgang hinterlässt.
+/// Die vier Einmal-Schilder — **die ganze Erklärschicht der App.**
 ///
-/// Der Rundgang erzählte acht bis neun Rahmen am Stück, und die Forschung dazu
-/// ist eindeutig (~76 % der Tooltips in unter drei Sekunden weggewischt, siehe
-/// [[Le Chariot Onboarding-Forschung]]): Was nicht zum Kern-Loop gehört, wird
-/// hier zum Einmal-Tipp im Moment der Relevanz. Die Texte stehen für sich —
-/// sie dürfen nicht voraussetzen, dass der Rundgang dieselbe Stelle noch
-/// erwähnt, denn genau das tut er nach der Kürzung nicht mehr.
+/// Bis zum 10.08. standen sie neben dem Rundgang und mussten ihm ausweichen.
+/// Mit dem Abriss (Rundgang-Konzept §4) sind sie die Schicht 2: ein Schild am
+/// Ort, im Moment seiner Bedingung, wegwischbar, nichts gesperrt. Die Forschung
+/// dazu ist eindeutig (~78 % brechen klassische Touren ab, ~76 % der Tooltips
+/// in unter drei Sekunden weggewischt, siehe [[Le Chariot Onboarding-Forschung]]).
+///
+/// Die Texte stehen für sich — sie dürfen nichts voraussetzen, was „die Tour
+/// schon gesagt" hätte, denn die sagt nichts mehr.
 ///
 /// `rawValue` liegt im Ledger auf Platte. Umbenennen kostet nur den Merker
 /// (der Tipp käme einmal wieder), aber auch das nur absichtlich.
@@ -23,6 +25,21 @@ enum ContextTip: String, CaseIterable, Codable, Sendable {
     case itemDetails
     /// Kreis zum Abhaken, Wisch nach links zum Löschen.
     case checkOff
+
+    /// Auf welchem Bildschirm das Schild hängt.
+    ///
+    /// Steht hier und nicht in der Ansicht, weil die Sitzungsgrenze daran
+    /// hängt: gezählt wird **je Fläche**, siehe `ContextTipTuning`.
+    enum Surface: Hashable, CaseIterable {
+        case list, offers
+    }
+
+    var surface: Surface {
+        switch self {
+        case .nextWeekPreview: .offers
+        case .matchLine, .itemDetails, .checkOff: .list
+        }
+    }
 }
 
 // MARK: - Stellschrauben
@@ -30,12 +47,21 @@ enum ContextTip: String, CaseIterable, Codable, Sendable {
 /// **Alle Schwellwerte an einer Stelle**, damit „fühlt sich aufdringlich an"
 /// eine Zahl zum Drehen hat und keine Suche durchs Repo.
 enum ContextTipTuning {
-    /// Höchstens **ein** Tipp je App-Sitzung. Die Momente, an denen Tipps
-    /// hängen, kommen wieder (die Liste steht jeden Tag da, der Angebote-Tab
-    /// auch) — ein verschobener Tipp ist also nicht verloren, er kommt in der
-    /// nächsten Sitzung an seinem Moment wieder dran. Zwei Sprechblasen in
-    /// einer Sitzung wären genau die Tour in Raten, die abgeschafft wird.
-    static let tipsPerSession = 1
+    /// Höchstens **ein** Schild je Fläche und App-Sitzung. Zwei Schilder auf
+    /// demselben Bildschirm wären die Tour in Raten, die abgeschafft wird; die
+    /// Momente kommen wieder (die Liste steht jeden Tag da), ein verschobenes
+    /// Schild ist also nicht verloren.
+    ///
+    /// **Je Fläche, und das ist die Korrektur vom 10.08.** Bis dahin galt die
+    /// Grenze für die ganze Sitzung, und damit hat der Vorschau-Tipp den
+    /// Angebote-Tab praktisch nie erreicht: Auf der Liste feuert fast immer
+    /// zuerst die Angebotszeile, danach war die Sitzung verbraucht. Scott am
+    /// 10.08. abends, nach mehreren Durchläufen: „the tip for the future offers
+    /// is still not in there." Das Rundgang-Konzept hatte es schon so gemeint —
+    /// „der letzte hängt am Tab-Wechsel und kollidiert deshalb nie mit den
+    /// anderen" (§6, Regel 3) —, nur stand es nicht so im Code.
+    /// `ContextTipTests.testAListTipDoesNotEatTheOffersTip` hält den Fall fest.
+    static let tipsPerSurfaceAndSession = 1
 
     /// Ab dem wievielten angelegten Artikel der Angaben-Tipp kommt — und nur,
     /// wenn die Angaben-Schicht bis dahin **nie** benutzt wurde. Wer Chips
@@ -73,29 +99,28 @@ struct ContextTipLedger: Codable, Equatable {
 
 // MARK: - Regeln
 
-/// **Die Entscheidung, nicht die Sprechblase** — als reine Rechnung, nach dem
-/// Muster von `TourTabTransition`: Ansichten melden, was gerade wahr ist, und
-/// hier steht prüfbar, welcher Tipp daraus folgt.
+/// **Die Entscheidung, nicht das Schild** — als reine Rechnung: Ansichten
+/// melden, was gerade wahr ist, und hier steht prüfbar, welches Schild daraus
+/// folgt.
 enum ContextTipRules {
     /// Was nur für die laufende Sitzung gilt und deshalb nicht im Ledger liegt.
     struct Moment: Equatable {
-        var tourIsRunning = false
-        var activationsThisSession = 0
+        /// Wie viele Schilder auf **dieser** Fläche in dieser Sitzung schon
+        /// standen.
+        var activationsOnSurface = 0
     }
 
-    /// Während des Rundgangs spricht genau einer: der Rundgang. Und pro
-    /// Sitzung höchstens `tipsPerSession` — siehe dort.
+    /// Je Fläche und Sitzung höchstens `tipsPerSurfaceAndSession` — siehe dort.
     static func mayActivate(_ moment: Moment) -> Bool {
-        !moment.tourIsRunning
-            && moment.activationsThisSession < ContextTipTuning.tipsPerSession
+        moment.activationsOnSurface < ContextTipTuning.tipsPerSurfaceAndSession
     }
 
     /// Die Liste steht ruhig da (kein Tipp-Fluss) — welcher Tipp jetzt?
     ///
     /// Reihenfolge ist Vorrang: Die Angebotszeile zuerst (sie ist der Grund,
     /// aus dem es die App gibt), dann die Angaben-Schicht, zuletzt das
-    /// Abhaken. Es feuert höchstens einer — `tipsPerSession` sorgt dafür,
-    /// dass die anderen in späteren Sitzungen an ihrem Moment drankommen.
+    /// Abhaken. Es feuert höchstens einer — `tipsPerSurfaceAndSession` sorgt
+    /// dafür, dass die anderen in späteren Sitzungen an ihrem Moment drankommen.
     ///
     /// `guidanceVisible` heißt: Auf der Liste führt gerade eine andere Fläche
     /// (Checkliste, Filialen-Karte — die Vorfahrt steht in `ListGuidance`).
@@ -163,11 +188,9 @@ enum ContextTipRules {
     static func showsDietPrompt(
         _ ledger: ContextTipLedger,
         dietAnswered: Bool,
-        tipVisibleHere: Bool,
-        moment: Moment
+        tipVisibleHere: Bool
     ) -> Bool {
-        !moment.tourIsRunning
-            && !tipVisibleHere
+        !tipVisibleHere
             && !ledger.dietPromptDone
             && !dietAnswered
             && ledger.offersVisits >= ContextTipTuning.offersVisitsBeforeDietPrompt
@@ -176,34 +199,30 @@ enum ContextTipRules {
 
 // MARK: - Store
 
-/// Buchhaltung der Kontext-Tipps: zählt die Momente, entscheidet über die
+/// Buchhaltung der Schilder: zählt die Momente, entscheidet über die
 /// Regeln oben und merkt sich Gezeigtes über Neustarts hinweg.
 ///
-/// **`active` ist bewusst nicht persistiert.** Eine Sprechblase, die einen
-/// Neustart überlebt, zeigt auf einen Moment, der vorbei ist — nach dem
-/// Neustart ist die Sitzung frisch und der nächste Tipp wartet auf seinen
-/// eigenen Moment. Gezeigt-Merker und Zähler überleben dagegen auf Platte.
+/// **`active` ist bewusst nicht persistiert.** Ein Schild, das einen Neustart
+/// überlebt, zeigt auf einen Moment, der vorbei ist — nach dem Neustart ist die
+/// Sitzung frisch und das nächste Schild wartet auf seinen eigenen Moment.
+/// Gezeigt-Merker und Zähler überleben dagegen auf Platte.
 @MainActor
 @Observable
 final class ContextTipStore {
     private(set) var ledger: ContextTipLedger
-    /// Der gerade angezeigte Tipp — höchstens einer, siehe `tipsPerSession`.
-    private(set) var active: ContextTip?
+    /// Das Schild, das gerade steht — höchstens eines **je Fläche**, siehe
+    /// `tipsPerSurfaceAndSession`. Zwei Flächen gleichzeitig sieht ohnehin
+    /// niemand; getrennt gehalten, damit ein Schild im Angebote-Tab nicht das
+    /// der Liste wegnimmt, das dort schon als gezeigt gilt.
+    private(set) var active: [ContextTip.Surface: ContextTip] = [:]
 
-    /// Von `ContentView` gespiegelt. Während des Rundgangs zählt und feuert
-    /// hier nichts — die Beispiel-Artikel des Rundgangs sind keine Nutzung,
-    /// und zwei Erklärschichten übereinander sind eine zu viel.
-    var tourIsRunning = false
-
-    private var activationsThisSession = 0
+    private var activations: [ContextTip.Surface: Int] = [:]
     private var offersVisitCountedThisSession = false
     private var listSessionCounted = false
 
-    /// Unter `-uiTesting` bleiben die Tipps aus, sofern der Lauf sie nicht
-    /// per `-uiTestingTips` bestellt — dieselbe Abwägung wie beim Rundgang
-    /// (`UITestSupport.showsTutorial`): Eine Sprechblase über der Liste
-    /// bliebe in jeder bestehenden Journey hängen, ohne dass an ihr etwas
-    /// kaputt wäre.
+    /// Unter `-uiTesting` bleiben die Schilder aus, sofern der Lauf sie nicht
+    /// per `-uiTestingTips` bestellt: Ein Schild über der Liste bliebe in jeder
+    /// bestehenden Journey hängen, ohne dass an ihr etwas kaputt wäre.
     let isEnabled: Bool
 
     private let defaults: UserDefaults
@@ -225,11 +244,17 @@ final class ContextTipStore {
         }
     }
 
-    private var moment: ContextTipRules.Moment {
-        ContextTipRules.Moment(
-            tourIsRunning: tourIsRunning,
-            activationsThisSession: activationsThisSession
-        )
+    private func moment(on surface: ContextTip.Surface) -> ContextTipRules.Moment {
+        ContextTipRules.Moment(activationsOnSurface: activations[surface, default: 0])
+    }
+
+    /// Das Schild, das auf dieser Fläche gerade steht.
+    func activeTip(on surface: ContextTip.Surface) -> ContextTip? { active[surface] }
+
+    /// Weggetippt — das ✗ des Schilds. Der Merker ist beim Anzeigen schon
+    /// gefallen (siehe `activate`), hier geht nur die Karte weg.
+    func dismissTip(on surface: ContextTip.Surface) {
+        active[surface] = nil
     }
 
     // MARK: Momente
@@ -241,7 +266,7 @@ final class ContextTipStore {
     /// gerechnet): Führt gerade eine andere Fläche, wartet der Tipp — die
     /// Sitzung zählt trotzdem, denn gezählt wird Verhalten, nicht Platz.
     func listSettled(matchVisible: Bool, hasOpenItems: Bool, guidanceVisible: Bool) {
-        guard isEnabled, !tourIsRunning else { return }
+        guard isEnabled else { return }
         if !listSessionCounted, hasOpenItems, !ledger.checkedOff {
             listSessionCounted = true
             ledger.listSessionsWithoutCheckOff += 1
@@ -249,21 +274,19 @@ final class ContextTipStore {
         }
         activate(ContextTipRules.tipOnList(
             ledger, matchVisible: matchVisible, hasOpenItems: hasOpenItems,
-            guidanceVisible: guidanceVisible, moment: moment
+            guidanceVisible: guidanceVisible, moment: moment(on: .list)
         ))
     }
 
-    /// Ein Artikel ist auf die Liste gekommen — vom Nutzer, nicht vom
-    /// Rundgang (der ist über `tourIsRunning` ausgesperrt).
+    /// Ein Artikel ist auf die Liste gekommen.
     func itemAdded() {
-        guard isEnabled, !tourIsRunning else { return }
+        guard isEnabled else { return }
         ledger.itemsAdded += 1
         persist()
     }
 
-    /// Die Angaben-Schicht wurde benutzt (Chip angetippt oder Blatt geöffnet).
-    /// Kein Rundgang-Riegel: Auch wer sie **im** Rundgang anfasst, hat sie
-    /// gefunden — der Tipp dazu wäre danach in jedem Fall Bekanntes.
+    /// Die Angaben-Schicht wurde benutzt (Chip angetippt oder Blatt geöffnet)
+    /// — wer sie gefunden hat, braucht das Schild dazu nicht mehr.
     func detailsUsed() {
         guard isEnabled, !ledger.usedDetails else { return }
         ledger.usedDetails = true
@@ -279,10 +302,9 @@ final class ContextTipStore {
             ledger.checkedOff = true
             persist()
         }
-        guard !tourIsRunning else { return }
         activate(ContextTipRules.tipOnList(
             ledger, matchVisible: matchVisible, hasOpenItems: hasOpenItems,
-            guidanceVisible: guidanceVisible, moment: moment
+            guidanceVisible: guidanceVisible, moment: moment(on: .list)
         ))
     }
 
@@ -290,14 +312,14 @@ final class ContextTipStore {
     /// wer dreimal zwischen den Tabs wechselt, hat den Tab nicht dreimal
     /// besucht.
     func offersAppeared(nextWeekAvailable: Bool) {
-        guard isEnabled, !tourIsRunning else { return }
+        guard isEnabled else { return }
         if !offersVisitCountedThisSession {
             offersVisitCountedThisSession = true
             ledger.offersVisits += 1
             persist()
         }
         activate(ContextTipRules.tipOnOffers(
-            ledger, nextWeekAvailable: nextWeekAvailable, moment: moment
+            ledger, nextWeekAvailable: nextWeekAvailable, moment: moment(on: .offers)
         ))
     }
 
@@ -319,13 +341,12 @@ final class ContextTipStore {
     @ObservationIgnored private var dietPromptOpen = false
 
     func showsDietPrompt(dietAnswered: Bool) -> Bool {
-        guard isEnabled, !tourIsRunning, !ledger.dietPromptDone else { return false }
+        guard isEnabled, !ledger.dietPromptDone else { return false }
         if dietPromptOpen { return true }
         let shows = ContextTipRules.showsDietPrompt(
             ledger,
             dietAnswered: dietAnswered,
-            tipVisibleHere: active == .nextWeekPreview,
-            moment: moment
+            tipVisibleHere: active[.offers] != nil
         )
         if shows { dietPromptOpen = true }
         return shows
@@ -341,13 +362,13 @@ final class ContextTipStore {
     // MARK: Innereien
 
     /// Aktivieren heißt gezeigt: Der Merker fällt **beim** Anzeigen, nicht
-    /// beim Wegdrücken. Wer die Sprechblase stehen lässt und die App tötet,
-    /// bekommt sie nicht noch einmal — lieber ein verpasster Tipp als einer,
-    /// der wiederkommt.
+    /// beim Wegdrücken. Wer das Schild stehen lässt und die App tötet,
+    /// bekommt es nicht noch einmal — lieber ein verpasstes Schild als eines,
+    /// das wiederkommt.
     private func activate(_ tip: ContextTip?) {
-        guard let tip, active != tip else { return }
-        active = tip
-        activationsThisSession += 1
+        guard let tip, active[tip.surface] != tip else { return }
+        active[tip.surface] = tip
+        activations[tip.surface, default: 0] += 1
         ledger.shown.insert(tip)
         persist()
     }
@@ -358,13 +379,31 @@ final class ContextTipStore {
         }
     }
 
+    /// **„Tipps wieder anzeigen"** — der Wiederholweg aus den Einstellungen
+    /// (Rundgang-Konzept §4, Schicht 3). Er ersetzt „Rundgang erneut ansehen"
+    /// und erfüllt dieselbe HIG-Vorgabe: Ein Tutorial ist optional, wird nach
+    /// dem Überspringen nie wieder vorgesetzt und ist später leicht
+    /// wiederzufinden.
+    ///
+    /// Zurückgesetzt wird, **was gezeigt wurde** — nicht, was der Nutzer getan
+    /// hat. Wer die Angaben-Schicht längst benutzt, bekommt ihr Schild auch
+    /// nach dem Zurücksetzen nicht: Die Regeln sollen weiter für ihn gelten,
+    /// er will die Schilder nur wieder sehen dürfen. Die Sitzungszähler fallen
+    /// mit, sonst wartet der erste wieder bis zum nächsten Start.
+    func showTipsAgain() {
+        ledger.shown = []
+        active = [:]
+        activations = [:]
+        persist()
+    }
+
     /// Siehe `AppReset` — nach dem Zurücksetzen ist die Installation eine
-    /// neue, und eine neue bekommt jeden Tipp wieder an seinem Moment.
+    /// neue, und eine neue bekommt jedes Schild wieder an seinem Moment.
     func resetAllData() {
         ledger = ContextTipLedger()
-        active = nil
+        active = [:]
         dietPromptOpen = false
-        activationsThisSession = 0
+        activations = [:]
         offersVisitCountedThisSession = false
         listSessionCounted = false
         defaults.removeObject(forKey: Self.key)

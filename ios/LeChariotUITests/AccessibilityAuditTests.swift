@@ -79,6 +79,15 @@ final class AccessibilityAuditTests: XCTestCase {
         // sehen bekommt, und er trägt einen Knopf und zwei Absätze, die es
         // vorher nirgends gab.
         app.tippe(app.buttons["onboarding.primary"], "Weiter auf der Einwilligung")
+        // **Neu seit dem 10.08.:** Die Frage nach den Filialen hängt am
+        // Abschluss des Assistenten statt am Ende des Rundgangs, den es nicht
+        // mehr gibt. Sie ist damit der erste Bildschirm nach dem Assistenten —
+        // und gehört gemessen, bevor sie beantwortet wird.
+        XCTAssertTrue(app.staticTexts["marketPrompt.title"].waitForExistence(timeout: 15),
+                      "Ohne Filiale muss die Frage stehen")
+        try audit("Frage nach den Filialen")
+        app.tippe(app.buttons["marketPrompt.later"], "Später im Markt-Sheet")
+
         XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 15))
         try audit("Einkaufsliste ohne Filiale")
 
@@ -244,44 +253,26 @@ final class AccessibilityAuditTests: XCTestCase {
         try audit("Einstellungen dunkel", failOnContrast: false)
     }
 
-    /// Der Rundgang, gemessen — **ohne** Kontrast-Gate, und das ist hier keine
-    /// Bequemlichkeit, sondern die einzige ehrliche Einstellung.
+    /// **Das Emailschild, scharf geprüft** — mit Kontrast-Gate, und das ist der
+    /// Unterschied zum Rundgang, der hier bis zum 10.08. stand.
     ///
-    /// Der Bildschirm ist absichtlich zur Hälfte abgedunkelt: Alles außer dem
-    /// hervorgehobenen Bedienelement liegt unter 60 % Schwarz. Der Audit misst
-    /// diese Texte mit und meldet sie als durchgefallen — richtig gemessen und
-    /// trotzdem kein Befund, denn genau das ist der Zweck. Gemeldet werden
-    /// dabei auch die beiden Knöpfe der Karte, und die liegen **über** dem
-    /// Schleier auf `Theme.surface`: `Theme.onAccent` auf `Theme.accent`
-    /// (6,74:1) und `Theme.secondaryText` auf der Karte (5,89:1) — dieselben
-    /// Paare, die in jedem anderen Audit dieser Datei durchgehen. Ein Gate
-    /// darauf wäre Dauerrot für eine Abdunklung, die so gewollt ist.
+    /// Der Rundgang musste vom Gate ausgenommen werden: Er dunkelte den halben
+    /// Bildschirm ab, und jeder Text darunter fiel richtig gemessen durch. Das
+    /// Schild hat keinen Schleier — Creme auf Creme, Überschrift in Akzent-Grün,
+    /// Fließtext im Sekundärton, alles Tokens aus `Theme`. Wenn hier etwas
+    /// durchfällt, ist es ein Fehler und keine Absicht. Genau die Klasse Fehler
+    /// hat Scott am 10.08. im Dunkelmodus am Weiter-Knopf gemeldet.
     ///
-    /// Was **bleibt**: `sufficientElementDescription`. Ein Element ohne Label
-    /// ist auch auf einem abgedunkelten Bildschirm ein Fehler.
-    ///
-    /// Eigener Start: Unter `-uiTesting` allein ist der Rundgang aus.
-    func testTheTutorialPassesTheAudit() throws {
-        launch(behindOnboarding: false, arguments: ["-uiTestingTutorial"])
+    /// Eigener Start: Unter `-uiTesting` allein bleiben die Schilder aus.
+    func testTheContextTipSignPassesTheAudit() throws {
+        launch(behindOnboarding: true, arguments: ["-uiTestingTips"])
 
-        app.tippe(app.buttons["onboarding.primary"], "Weiter auf Willkommen")
-        app.tippe(app.buttons["onboarding.skip"], "Überspringen auf der Profilseite")
-        enterPLZ()
-        app.tippe(app.buttons["onboarding.skip"], "Später auf der Kettenseite")
-        app.tippe(app.buttons["onboarding.primary"], "Weiter auf der Belohnung")
-        app.tippe(app.buttons["onboarding.primary"], "Weiter auf der Einwilligung")
-
-        XCTAssertTrue(app.staticTexts["Alles bereit. Einmal kurz zeigen?"]
-            .waitForExistence(timeout: 15))
-        // Das Angebot ist ein normaler Onboarding-Bildschirm ohne Schleier und
-        // wird deshalb wie alle anderen scharf geprüft.
-        try audit("Rundgang-Angebot")
-
-        app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")
-        // Die **Karte**, nicht ihr Knopf: Seit dem 09.08. trägt nur noch die
-        // Schlusskarte einen, jeder Rahmen davor wartet auf eine Handlung.
-        XCTAssertTrue(app.staticTexts["tutorial.card"].waitForExistence(timeout: 15))
-        try audit("Rundgang", failOnContrast: false)
+        openTab("Angebote")
+        XCTAssertTrue(
+            app.staticTexts["Was ab Montag billiger wird"].waitForExistence(timeout: 20),
+            "Ohne Schild gäbe es hier nichts zu prüfen:\n\(app.debugDescription)"
+        )
+        try audit("Schild im Angebote-Tab")
     }
 
     // MARK: VoiceOver-Zuschnitt

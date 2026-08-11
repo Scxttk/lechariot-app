@@ -66,7 +66,7 @@ iPhone 17 Pro (Simulator), 400 Zeilen je Kette, 5 Durchläufe je Strecke,
 | Liste | 0,87 s | 3,48 Mrd | 85,2 MB |
 | Angebote | 1,26 s | 4,35 Mrd | 89,0 MB |
 | Vorschau | 1,31 s | 4,42 Mrd | 92,5 MB |
-| Rundgang | 3,17 s | 21,36 Mrd | 97,1 MB |
+| Rundgang (abgerissen am 10.08.) | 3,17 s | 21,36 Mrd | 97,1 MB |
 
 Die drei Scroll-Strecken messen denselben Block (zwei schnelle Wischer hinunter,
 einer hinauf) und sind untereinander vergleichbar. **Der Rundgang nicht:** Sein
