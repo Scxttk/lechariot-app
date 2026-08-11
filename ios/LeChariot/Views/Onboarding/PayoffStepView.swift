@@ -3,11 +3,21 @@ import SwiftUI
 /// Die Sätze des Belohnungsschritts, als reine Funktionen — damit die
 /// Singular-Fälle („1 Kette") getestet sind statt behauptet.
 enum PayoffCopy {
+    /// **Was VoiceOver aus den zwei großen Zahlen liest.**
+    ///
+    /// Bis zum 10.08. war das die Überschrift des Schritts. Seitdem stehen die
+    /// Zahlen groß und einzeln da (Punkt 4 der Bedienrunde) — vorgelesen
+    /// gehören sie trotzdem als ein Satz, sonst hört jemand „9", „Ketten",
+    /// „34", „Filialen" in vier Anläufen.
     static func headline(chains: Int, branches: Int) -> String {
         let ketten = chains == 1 ? "1 Kette" : "\(chains) Ketten"
         let filialen = branches == 1 ? "1 Filiale" : "\(branches) Filialen"
         return "\(ketten), \(filialen) in deiner Nähe."
     }
+
+    /// Das Wort neben der großen Zahl — ohne die Zahl selbst.
+    static func chainUnit(_ count: Int) -> String { count == 1 ? "Kette" : "Ketten" }
+    static func branchUnit(_ count: Int) -> String { count == 1 ? "Filiale" : "Filialen" }
 
     static func likedLine(count: Int) -> String {
         count == 1
@@ -35,6 +45,10 @@ struct PayoffStepView: View {
     var likedCount: Int
     var onContinue: () -> Void
 
+    /// Wächst mit der Systemschrift mit — eine feste Punktzahl wäre bei großer
+    /// Schrift die einzige Stelle des Bildschirms, die nicht mitwächst.
+    @ScaledMetric(relativeTo: .largeTitle) private var zahlenGröße = Theme.Typography.heroNumber
+
     var body: some View {
         OnboardingStepView(
             step: 5,
@@ -45,6 +59,7 @@ struct PayoffStepView: View {
         ) {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                 if let nearby {
+                    zahlen(nearby)
                     row("storefront", "Deren Wochenangebote vergleicht Le Chariot für deine Liste.")
                     if likedCount > 0 {
                         row("heart.fill", PayoffCopy.likedLine(count: likedCount))
@@ -64,9 +79,54 @@ struct PayoffStepView: View {
         }
     }
 
+    /// **Die zwei Zahlen, groß.**
+    ///
+    /// Sie standen bis zum 10.08. als Überschrift im Fließtext („4 Ketten, 5
+    /// Filialen in deiner Nähe."), und genau das war Scotts Befund: Die
+    /// eindrucksvollste Auskunft des Assistenten sah aus wie jeder andere Satz.
+    /// Jetzt trägt die Zahl das Gewicht und das Wort steht daneben.
+    ///
+    /// **Nebeneinander, solange es passt.** Bei großer Systemschrift werden aus
+    /// zwei Spalten zwei Zeilen — `ViewThatFits` entscheidet das an der
+    /// gemessenen Breite, nicht an einer Schriftgrößen-Abfrage.
+    private func zahlen(_ nearby: NearbyMarkets) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xl) {
+                zahl(nearby.chains.count, PayoffCopy.chainUnit(nearby.chains.count))
+                zahl(nearby.branchCount, PayoffCopy.branchUnit(nearby.branchCount))
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                zahl(nearby.chains.count, PayoffCopy.chainUnit(nearby.chains.count))
+                zahl(nearby.branchCount, PayoffCopy.branchUnit(nearby.branchCount))
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(PayoffCopy.headline(chains: nearby.chains.count,
+                                                branches: nearby.branchCount))
+        .accessibilityIdentifier("payoff.numbers")
+    }
+
+    private func zahl(_ value: Int, _ unit: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
+            Text("\(value)")
+                .font(.system(size: zahlenGröße, weight: .bold, design: .rounded))
+                // Ohne das springt die Zahl beim Wechsel von 9 auf 10 in der
+                // Breite; abgerundete Ziffern sind ohnehin für Tabellen gemacht.
+                .monospacedDigit()
+                .foregroundStyle(Theme.accent)
+                // Eine 152 darf nicht umbrechen, und drei Stellen passen auch
+                // bei großer Schrift noch in eine Zeile, wenn sie darf.
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(unit)
+                .font(.title3.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private var title: String {
-        guard let nearby else { return "Deine Gegend ist eingerichtet." }
-        return PayoffCopy.headline(chains: nearby.chains.count, branches: nearby.branchCount)
+        guard nearby != nil else { return "Deine Gegend ist eingerichtet." }
+        return "In deiner Nähe."
     }
 
     private var subtitle: String {

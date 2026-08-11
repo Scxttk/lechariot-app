@@ -131,6 +131,13 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
         try audit("Treffer-Sheet")
 
+        // **Die Chipreihen gehören mitgemessen, obwohl sie zugeklappt sind**
+        // (10.08. abends, Punkt 10). Sonst fiele mit dem Knopf davor genau der
+        // Teil des Blattes aus dem Audit, den ein Umbau gerade verschoben hat.
+        app.öffneAngaben()
+        try audit("Artikelblatt mit Angaben")
+        app.buttons["itemSheet.angaben"].firstMatch.tap()
+
         app.buttons["Weglegen"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Kurze Rückfrage"].waitForExistence(timeout: 10))
         // Erst einen Grund wählen: „Senden" ist vorher deaktiviert, und ein

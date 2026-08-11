@@ -57,10 +57,15 @@ final class ReviewNoteJourneyTests: XCTestCase {
         XCTAssertTrue(skip.waitForExistence(timeout: 15),
                       "Schritt 2: die Marktfrage lässt sich nicht überspringen")
         skip.tap()
+        // Die Zahlen stehen seit dem 10.08. abends groß da (Punkt 4); der Satz
+        // ist die Beschriftung des zusammengefassten Elements geblieben.
+        let zahlen = app.descendants(matching: .any)
+            .matching(identifier: "payoff.numbers").firstMatch
         XCTAssertTrue(
-            app.staticTexts["4 Ketten, 5 Filialen in deiner Nähe."].waitForExistence(timeout: 15),
+            zahlen.waitForExistence(timeout: 15),
             "Schritt 2: nach der Marktfrage fehlt der Bildschirm mit den Zahlen der Gegend"
         )
+        XCTAssertEqual(zahlen.label, "4 Ketten, 5 Filialen in deiner Nähe.")
         app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")   // Belohnung
         app.tippe(app.buttons["onboarding.primary"], "Weiter im Assistenten")   // Einwilligung
 

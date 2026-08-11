@@ -78,6 +78,41 @@ final class PaletteContrastTests: XCTestCase {
         }
     }
 
+    /// **Der Hauptknopf, der gerade nicht geht — auch der ist ein Farbpaar.**
+    ///
+    /// Gemeldet am 10.08. vom Wohnort-Schritt: „the weiter button is black … dark
+    /// gray on black". Am gerenderten Bild nachgemessen war die Kapsel #000000
+    /// und die Schrift darauf #0A120A — **1,09:1**. Der Grund ist genau der,
+    /// den `onAccent` eine Zeile weiter oben festhält, eine Stelle
+    /// verschoben: `onAccent` ist gegen `accent` gemessen, aber die Fläche
+    /// eines ausgeschalteten `.borderedProminent` ist nicht der Akzent — sie
+    /// gehörte niemandem und wurde von niemandem gerechnet.
+    ///
+    /// Seit `PrimaryActionButtonStyle` zeichnet die App sie selbst, also steht
+    /// sie hier: Schrift 4,5:1 **auf** der Fläche, und die Fläche 3:1 gegen die
+    /// Seite, damit die Kapsel überhaupt eine Form ist.
+    func testTheDisabledPrimaryButtonIsStillAButton() {
+        for (modeName, mode) in Self.modes {
+            let schrift = ratio(Theme.onAccentMuted, on: Theme.accentMuted, mode)
+            XCTAssertGreaterThanOrEqual(
+                schrift, 4.5,
+                "onAccentMuted auf accentMuted (\(modeName)): \(String(format: "%.2f", schrift)):1"
+            )
+            let form = ratio(Theme.accentMuted, on: Theme.background, mode)
+            XCTAssertGreaterThanOrEqual(
+                form, 3.0,
+                "Der ausgeschaltete Knopf gegen die Seite (\(modeName)): \(String(format: "%.2f", form)):1"
+            )
+            // Und er darf nicht wie der eingeschaltete aussehen — sonst wäre der
+            // Zustand zwar sichtbar, aber keiner.
+            let zustand = ratio(Theme.accentMuted, on: Theme.accent, mode)
+            XCTAssertGreaterThanOrEqual(
+                zustand, 1.5,
+                "aus gegen an (\(modeName)): \(String(format: "%.2f", zustand)):1"
+            )
+        }
+    }
+
     /// Das Rabatt-Schild ist eine Fläche, kein Text: 3:1 genügt — **und genau
     /// hier lag der einzige echte Durchfaller der alten Palette.** Im dunklen
     /// Modus stand es bei 2,87:1 gegen die Karte.

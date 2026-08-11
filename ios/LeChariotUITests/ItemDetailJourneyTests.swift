@@ -21,6 +21,7 @@ final class ItemDetailJourneyTests: XCTestCase {
         addItem("Vollmilch")
 
         app.openItemSheet(ofItem: "Vollmilch")
+        app.öffneAngaben()
 
         tapChip("klein")
         tapChip("Bio")
@@ -48,6 +49,7 @@ final class ItemDetailJourneyTests: XCTestCase {
         addItem("Vollmilch")
 
         app.openItemSheet(ofItem: "Vollmilch")
+        app.öffneAngaben()
         tapChip("Bio")
 
         // Ohne „Fertig": Die Kachel darunter trägt die Angabe schon.
@@ -134,6 +136,14 @@ final class ItemDetailJourneyTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["list.detailPanel.more"].waitForExistence(timeout: 10))
         app.buttons["list.detailPanel.more"].tap()
+
+        // **Dieser eine Weg kommt aufgeklappt an** (10.08. abends, Punkt 10).
+        // Das Blatt macht sonst mit den Angeboten auf; „Notiz und alle Angaben
+        // zu …" heißt aber wörtlich, was gemeint ist. Ohne die Zeile hier wäre
+        // die Unterscheidung eine Behauptung im Kommentar.
+        XCTAssertTrue(app.staticTexts["Angaben"].waitForExistence(timeout: 10),
+                      "Über „Notiz …\u{201C} muss das Blatt aufgeklappt aufgehen:\n"
+                      + app.debugDescription)
 
         let notiz = app.textViews["itemDetail.note"].exists
             ? app.textViews["itemDetail.note"]

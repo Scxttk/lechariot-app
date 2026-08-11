@@ -108,12 +108,32 @@ extension XCUIApplication {
         return fertig
     }
 
+    /// **Klappt die Angaben auf dem offenen Artikelblatt auf** (10.08. abends,
+    /// Punkt 10).
+    ///
+    /// Seit das Blatt mit den Angeboten aufmacht, liegen die Chipreihen hinter
+    /// „Angaben konfigurieren". Der Helfer steht hier und nicht in jeder
+    /// Journey, weil er genau einen Griff kapselt — und weil eine Journey, die
+    /// den Knopf selbst sucht, beim nächsten Umbau des Blattes wieder einzeln
+    /// nachgezogen werden müsste.
+    ///
+    /// Ist schon aufgeklappt (der Weg über „Notiz …"), tut er nichts.
+    func öffneAngaben(file: StaticString = #filePath, line: UInt = #line) {
+        let knopf = buttons["itemSheet.angaben"].firstMatch
+        XCTAssertTrue(knopf.waitForExistence(timeout: 15),
+                      "Der Knopf zu den Angaben fehlt auf dem Artikelblatt", file: file, line: line)
+        guard !staticTexts["Angaben"].exists else { return }
+        knopf.tap()
+        XCTAssertTrue(staticTexts["Angaben"].waitForExistence(timeout: 10),
+                      "Die Angaben klappen nicht auf", file: file, line: line)
+    }
+
     /// Öffnet das Artikelblatt und scrollt bis zu den Angeboten.
     ///
-    /// **Warum das Scrollen zum Helfer gehört und nicht in jede Journey.** Auf
-    /// dem geteilten Bildschirm stehen die Angaben oben — das ist die Antwort
-    /// auf den Feldtest vom 09.08. und Absicht. Die Angebotszeilen liegen
-    /// dadurch je nach Wortschatz des Artikels ein Stück tiefer, und ein
+    /// **Warum das Scrollen zum Helfer gehört und nicht in jede Journey.** Die
+    /// Angebote stehen seit dem 10.08. abends gleich oben (Punkt 10), aber wie
+    /// weit unten die *letzte* Zeile liegt, hängt weiter am Artikel: an der
+    /// Zahl seiner Treffer, an einer gehefteten Wahl, an der Fußnote. Ein
     /// `tap()` auf etwas außerhalb des Bildes schlägt fehl. Wer die Treffer
     /// meint, ruft das hier.
     ///
