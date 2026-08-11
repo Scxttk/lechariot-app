@@ -17,12 +17,23 @@ final class TermGridJourneyTests: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
+    }
+
+    /// **Der Startzustand gehört zum Test, nicht ins `setUp`.**
+    ///
+    /// Seit #142 prüft eine der Journeys hier den Fall *ohne* Filiale, und der
+    /// unterscheidet sich von den übrigen genau in einem Startargument. Ein
+    /// `setUp`, das immer denselben Zustand hinlegt, könnte ihn nicht
+    /// herstellen.
+    private func start(ohneFiliale: Bool = false) {
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded", "-uiTestingOnboardedAllBranches"]
+        app.launchArguments = ["-uiTesting", "-uiTestingOnboarded"]
+            + [ohneFiliale ? "-uiTestingOnboardedNoBranches" : "-uiTestingOnboardedAllBranches"]
         app.launch()
     }
 
     func testTypingOffersWordsTheMatcherUnderstands() {
+        start()
         let feld = input()
         feld.tap()
         feld.typeText("voll")
@@ -44,7 +55,40 @@ final class TermGridJourneyTests: XCTestCase {
     /// **Wenn nichts passt, sagt die Fläche das** — statt sich stillschweigend
     /// zu schließen. Dieselbe Unterscheidung wie im Kopf des Trefferblatts:
     /// „kenne ich nicht" ist eine Auskunft, kein Fehler.
+    /// **Ohne gewählte Filiale schlägt das Wörterbuch trotzdem vor** — Scotts
+    /// Punkt 5 der Bedienrunde vom 11.08. (#142).
+    ///
+    /// > „Wörterbuch matching klappt ohne Markt nicht, also wenn ich kartof
+    /// > eingebe kommt das Schlagwort Kartoffeln wie sonst nicht, ich hatte in
+    /// > diesem edge case keine Märkte ausgewählt."
+    ///
+    /// Der Zustand ist der, in dem er stand: Assistent durchlaufen, PLZ da,
+    /// Filialen alle abgewählt — also **kein einziges Angebot** im Vorrat. Bis
+    /// heute siebte `TermSuggestions` jeden Kandidaten an genau diesem Vorrat
+    /// aus, und ein leerer Vorrat siebt alles weg. Die Journey steht hier und
+    /// nicht nur als Unit-Test, weil der Fehler zwei Stockwerke hat: die
+    /// Auswahlregel und die Fläche, die sie zeichnet.
+    func testTypingSuggestsFromTheDictionaryWithoutAnyMarket() {
+        start(ohneFiliale: true)
+        let feld = input()
+        feld.tapAndAwaitKeyboard(in: app)
+        feld.typeText("kartof")
+
+        let kachel = app.buttons["Kartoffeln hinzufügen"]
+        XCTAssertTrue(kachel.waitForExistence(timeout: 10),
+                      "Ohne Filiale schlägt \u{201E}kartof\u{201C} nichts vor")
+        attach("raster-ohne-filiale")
+
+        // Und der Weg dahinter trägt auch ohne Vorrat: Der Tipp legt das Wort
+        // auf die Liste. Ein Vorschlag, den man nicht antippen kann, wäre nur
+        // die halbe Reparatur.
+        kachel.tap()
+        XCTAssertTrue(app.buttons["Kartoffeln"].waitForExistence(timeout: 10),
+                      "Die Kachel legt den Begriff nicht auf die Liste")
+    }
+
     func testAPrefixWithoutAnyMatchSaysSo() {
+        start()
         let feld = input()
         feld.tap()
         // **Erst ein Anfang mit Treffern, dann der ohne.** Geprüft wird der
@@ -78,6 +122,7 @@ final class TermGridJourneyTests: XCTestCase {
     /// feste Höhe probeweise entfernt wurde: Die Zeile blieb stehen, der Test
     /// blieb grün — er hätte nichts gemerkt. Deshalb die Oberkante dazu.
     func testNothingMovesUnderTheThumbWhileTyping() {
+        start()
         let feld = input()
         feld.tap()
         feld.typeText("vo")

@@ -72,6 +72,17 @@ enum UITestSupport {
     private static let seedsAllBranches =
         ProcessInfo.processInfo.arguments.contains("-uiTestingOnboardedAllBranches")
 
+    /// Zusätzlich `-uiTestingOnboardedNoBranches`: PLZ gesetzt, Assistent
+    /// durchlaufen — und **keine** Filiale gewählt.
+    ///
+    /// Das ist kein erfundener Zustand: Scott stand am 11.08. genau darin
+    /// (#142). Wer im Marktwähler alles abwählt, behält seine PLZ und verliert
+    /// seinen Vorrat — und ab da hängt jede Fläche, die sich an Angeboten
+    /// festhält, in der Luft. Ohne eigenen Schalter lässt sich das nicht
+    /// prüfen: `-uiTestingOnboarded` legt immer mindestens eine Filiale hin.
+    private static let seedsNoBranches =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingOnboardedNoBranches")
+
     /// Zusätzlich `-uiTestingOnboardedThreeChains`: eine **dritte** Filiale,
     /// deren Kette Zeilen der Folgewoche hat.
     ///
@@ -144,6 +155,7 @@ enum UITestSupport {
     /// Reihenfolge ist die von `seededBranches`, damit ein Lauf mit zwei
     /// Filialen genau den Zustand bekommt, den er vor dem 2026-08-02 hatte.
     private static var seededFavorites: [Market] {
+        if seedsNoBranches { return [] }
         if seedsThreeChains { return seededBranches }
         if seedsAllBranches { return Array(seededBranches.prefix(2)) }
         return [seededBranches[0]]

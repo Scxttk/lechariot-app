@@ -35,28 +35,68 @@ final class TermSuggestionsTests: XCTestCase {
         let words = TermSuggestions.words(for: "mil", in: regal)
         XCTAssertFalse(words.isEmpty, "mil bietet nichts an")
         XCTAssertTrue(words.contains("Milch"), "Der naheliegendste Begriff fehlt: \(words)")
-        // Und jedes angebotene Wort findet wirklich etwas — das ist der Punkt.
-        for word in words {
-            XCTAssertFalse(
-                OfferMatcher.matches(for: word, in: regal).isEmpty,
-                "\(word) wird angeboten, findet aber nichts"
-            )
-        }
+        // Und das Wort, hinter dem in diesem Regal wirklich etwas liegt, steht
+        // vorn. Bis #142 stand hier die schärfere Zusicherung, **jedes**
+        // angebotene Wort finde etwas — sie war die Kehrseite des Siebs, das
+        // ohne Filiale alles wegnahm.
+        XCTAssertEqual(words.first, "Milch", "Reihenfolge: \(words)")
+        XCTAssertFalse(OfferMatcher.matches(for: "Milch", in: regal).isEmpty)
     }
 
-    /// **Die Regel, die das Raster von einem Wörterbuchauszug unterscheidet.**
-    /// „Fleisch" steht im Wörterbuch, aber in diesem Regal liegt keins — die
-    /// Kachel darf nicht kommen, sonst tippt man sie an und liest „Diese Woche
-    /// nirgends im Angebot".
-    func testAWordWithoutAnOfferThisWeekIsNotOffered() {
-        let words = TermSuggestions.words(for: "fleisch", in: regal)
-        XCTAssertTrue(words.isEmpty, "Ein Wort ohne Angebot wird angeboten: \(words)")
-        // Gegenprobe am selben Wort: Mit einem passenden Angebot kommt es.
-        let mitFleisch = regal + [Self.offer("Hackfleisch gemischt 500 g", tags: ["hackfleisch"])]
-        XCTAssertFalse(
-            TermSuggestions.words(for: "hack", in: mitFleisch).isEmpty,
-            "Mit Angebot muss der Begriff kommen"
+    /// **Der Vorrat ordnet, er siebt nicht** — und das ist seit #142 anders
+    /// herum als vorher.
+    ///
+    /// Bis zum 11.08. war ein Wort ohne Angebot dieser Woche gar keins: Die
+    /// Kachel sollte halten, was sie verspricht, also flog „Fleisch" raus,
+    /// solange keins im Prospekt stand. Der Preis dafür stand in Scotts
+    /// Bedienrunde vom 11.08. — wer **keine** Filiale gewählt hat, hat einen
+    /// leeren Vorrat, und ein leerer Vorrat siebt jedes Wort weg. „kartof"
+    /// schlug nichts mehr vor, das Wörterbuch war unerreichbar geworden.
+    ///
+    /// Die Regel heißt jetzt: Das Wörterbuch ist die Quelle, die Angebote sind
+    /// die Reihenfolge. Was diese Woche wirklich zu haben ist, steht vorn —
+    /// aber nichts fällt deshalb heraus.
+    func testTheStockSortsTheWordsInsteadOfFilteringThemOut() {
+        // Ohne jedes Angebot bleibt das Wörterbuch erreichbar.
+        XCTAssertTrue(
+            TermSuggestions.words(for: "fleisch", in: []).contains("Fleisch"),
+            "Ohne Vorrat schlägt das Wörterbuch nichts vor"
         )
+        // Und mit Vorrat auch: „Fleisch" liegt in diesem Regal nicht, kommt
+        // aber trotzdem — man kann es aufschreiben wollen, ohne dass es im
+        // Prospekt steht.
+        XCTAssertTrue(
+            TermSuggestions.words(for: "fleisch", in: regal).contains("Fleisch"),
+            "Ein Wort ohne Angebot wird unterschlagen"
+        )
+    }
+
+    /// **Scotts Fall, wörtlich** (Bedienrunde 11.08., Punkt 5, #142):
+    ///
+    /// > „wenn ich kartof eingebe kommt das Schlagwort Kartoffeln wie sonst
+    /// > nicht, ich hatte in diesem edge case keine Märkte ausgewählt"
+    ///
+    /// Keine Filiale heißt kein Angebot heißt — bis heute — kein Vorschlag.
+    func testTheReportedPrefixWorksWithoutAnyMarket() {
+        let words = TermSuggestions.words(for: "kartof", in: [])
+        XCTAssertTrue(words.contains("Kartoffeln"),
+                      "Ohne Markt kommt das Schlagwort nicht: \(words)")
+    }
+
+    /// Was diese Woche wirklich zu haben ist, steht vorn. Ein Vorschlag mit
+    /// Angebot dahinter ist mehr wert als einer ohne — deshalb ordnet der
+    /// Vorrat, obwohl er nicht mehr siebt.
+    ///
+    /// Der Fall ist so gebaut, dass die Länge allein ihn nicht erklären kann:
+    /// „Kartoffelsalat" ist fünf Zeichen länger als „Kartoffel" und steht
+    /// trotzdem davor — weil es dazu ein Angebot gibt.
+    func testWordsWithAnOfferComeFirst() {
+        let mitSalat = regal + [Self.offer("Homann Kartoffelsalat 400 g", tags: ["kartoffelsalat"])]
+        let words = TermSuggestions.words(for: "kartof", in: mitSalat)
+        XCTAssertEqual(words.first, "Kartoffelsalat",
+                       "Der Begriff mit Angebot steht nicht vorn: \(words)")
+        XCTAssertTrue(words.contains("Kartoffeln"),
+                      "Die Wörter ohne Angebot fehlen: \(words)")
     }
 
     /// Ein Wort, das das Wörterbuch **nicht** kennt, taucht nie auf — auch
