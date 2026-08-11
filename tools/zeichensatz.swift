@@ -120,6 +120,13 @@ struct Prüfbogen: View {
 
 /// Eine Zelle: dieselbe Zeichnung dreimal — groß zum Beurteilen der Form,
 /// klein zum Beurteilen, ob sie das überhaupt überlebt.
+///
+/// **Die kleinen Größen sind die, die die App wirklich zeigt.** Hier standen
+/// 19,7 und 13,1 pt — gerechnet aus der Kachel der *Listenzeile*, aus der Zeit
+/// vor dem Raster. Gezeichnet wird inzwischen mit `size: 40` in
+/// `ShoppingGridTile` und `size: 22` in `ShoppingListView`; wer bei 13,1 pt
+/// urteilt, prüft strenger als das Gerät und wirft Zeichnungen weg, die dort
+/// nie ankommen.
 struct ArtikelZelle: View {
     let begriff: String
     let farbe: Color
@@ -129,15 +136,15 @@ struct ArtikelZelle: View {
             ItemGlyphView(term: begriff, category: nil, size: 65.6)
                 .foregroundStyle(farbe)
             HStack(alignment: .center, spacing: 12) {
-                ItemGlyphView(term: begriff, category: nil, size: 19.7)
+                ItemGlyphView(term: begriff, category: nil, size: 40)
                     .foregroundStyle(farbe)
-                ItemGlyphView(term: begriff, category: nil, size: 13.1)
+                ItemGlyphView(term: begriff, category: nil, size: 22)
                     .foregroundStyle(farbe)
             }
-            .frame(height: 21)
+            .frame(height: 44)
             Text(begriff).font(.system(size: 8)).foregroundStyle(farbe)
         }
-        .frame(width: 92, height: 108)
+        .frame(width: 92, height: 132)
     }
 }
 
@@ -151,7 +158,7 @@ struct ArtikelBogen: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Artikelzeichen · Seite \(seite) · 65,6 / 19,7 / 13,1 pt")
+            Text("Artikelzeichen · Seite \(seite) · 65,6 / 40 / 22 pt")
                 .font(.system(size: 9)).foregroundStyle(farbe)
             LazyVGrid(columns: spalten, spacing: 4) {
                 ForEach(begriffe, id: \.self) { ArtikelZelle(begriff: $0, farbe: farbe) }

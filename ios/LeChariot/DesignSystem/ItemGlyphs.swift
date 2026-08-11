@@ -95,27 +95,53 @@ enum ItemGlyph {
             p.bow(p.at(0.52, 0.18), p.at(0.22, 0.22), p.at(0.38, 0.22))
         },
 
-        // Banane: Außenbogen, Innenbogen, kurzer Stiel am linken Ende. Der
-        // Stiel ist das, was die Sichel von einem Mond unterscheidet.
+        // Banane: Außenbogen, Innenbogen, Stiel links — und die **Blüte** am
+        // rechten Ende. Der Stiel unterscheidet die Sichel vom Mond; die
+        // Spitze am anderen Ende macht aus der Sichel eine Frucht mit zwei
+        // Enden, statt einer, die einfach aufhört.
+        //
+        // Im Körper selbst steht bewusst keine Kante: Die Sichel ist an ihrer
+        // dicksten Stelle 0,18 stark, eine Linie darin hätte beidseitig 0,09
+        // Luft und liefe bei 40 pt mit beiden Rändern zusammen.
         "bananen": { p in
             p.begin(p.at(0.14, 0.34))
             p.bow(p.at(0.88, 0.42), p.at(0.20, 0.94), p.at(0.74, 0.90))
             p.bow(p.at(0.14, 0.34), p.at(0.68, 0.66), p.at(0.28, 0.60))
             p.close()
             p.line([p.at(0.14, 0.34), p.at(0.09, 0.20)])
+            p.line([p.at(0.88, 0.42), p.at(0.94, 0.30)])
         },
 
         // Zitrone: bauchiges Oval, schräg gelegt, mit einem Zipfel an **beiden**
         // Enden. Der erste Entwurf war schlanker und hatte nur einen Zipfel —
         // auf dem Prüfbogen ein **Blatt**. Die Zipfel sind es, die aus einer
         // Linsenform eine Zitrone machen.
+        // **Bauchig statt linsenförmig, mit Zipfel und Blatt.**
+        //
+        // Der schlanke, an beiden Enden spitze Körper war auf dem Prüfbogen ein
+        // **Blatt** — und zwar hartnäckig, auch nachdem die Zipfel dazukamen:
+        // Eine Form, die doppelt so breit wie hoch ist und beidseitig ausläuft,
+        // ist die Silhouette eines Blattes, egal was man ihr anhängt.
+        //
+        // Der Körper ist deshalb rundlich (0,74 × 0,60) und der Zipfel sitzt nur
+        // noch **rechts**; links sitzt stattdessen das Blatt. Damit ist die
+        // Zitrone unsymmetrisch, und das trennt sie zugleich vom Apfel, der
+        // höher als breit ist und seine Kerbe oben trägt.
         "zitronen": { p in
-            p.begin(p.at(0.16, 0.64))
-            p.bow(p.at(0.84, 0.36), p.at(0.20, 0.26), p.at(0.60, 0.14))
-            p.bow(p.at(0.16, 0.64), p.at(0.80, 0.86), p.at(0.40, 0.86))
+            p.begin(p.at(0.14, 0.60))
+            p.bow(p.at(0.52, 0.30), p.at(0.14, 0.40), p.at(0.30, 0.30))
+            p.bow(p.at(0.88, 0.58), p.at(0.74, 0.30), p.at(0.88, 0.40))
+            p.bow(p.at(0.50, 0.90), p.at(0.88, 0.78), p.at(0.70, 0.90))
+            p.bow(p.at(0.14, 0.60), p.at(0.30, 0.90), p.at(0.14, 0.78))
             p.close()
-            p.line([p.at(0.17, 0.63), p.at(0.08, 0.74)])
-            p.line([p.at(0.83, 0.37), p.at(0.92, 0.26)])
+            p.line([p.at(0.88, 0.58), p.at(0.96, 0.50)])
+            // Das Blatt muss **dick** sein. Der erste Zuschnitt war eine
+            // 0,09 schmale Sichel und damit bei 40 pt kein Blatt, sondern ein
+            // eingerollter Stiel: Zwei Kanten mit 0,09 Abstand sind bei einem
+            // Strich von 0,095 eine einzige Kante. Jetzt sind es 0,17.
+            p.begin(p.at(0.40, 0.32))
+            p.bow(p.at(0.10, 0.08), p.at(0.34, 0.10), p.at(0.16, 0.02))
+            p.bow(p.at(0.40, 0.32), p.at(0.10, 0.24), p.at(0.24, 0.34))
         },
 
         // Orange: runder Körper, ein Blatt flach obenauf, kurzer Stiel. Ohne
@@ -223,19 +249,46 @@ enum ItemGlyph {
 
         // Tomate: runder Körper, Kelch als Doppelstrich, Stiel. Drei Striche
         // oben liefen bei 13 pt zu; zwei lassen die Kuppe stehen.
+        // Tomate: runder Körper, Kelch als Doppelstrich, Stiel — und ein
+        // **Glanzbogen** oben links. Drei Kelchstriche liefen bei 13 pt zu;
+        // zwei lassen die Kuppe stehen, und das gilt bei 22 pt weiter.
+        //
+        // Der Glanzbogen ist der Zuwachs und liegt 0,13 innerhalb der Kreislinie
+        // — enger und er verschmilzt bei 40 pt mit ihr zu einer doppelt so
+        // dicken Kante.
         "tomaten": { p in
             p.circle(p.at(0.50, 0.62), 0.32)
             p.line([p.at(0.28, 0.22), p.at(0.50, 0.34), p.at(0.72, 0.22)])
             p.line([p.at(0.50, 0.34), p.at(0.50, 0.10)])
+            p.begin(p.at(0.32, 0.55))
+            p.bow(p.at(0.46, 0.43), p.at(0.34, 0.47), p.at(0.39, 0.43))
         },
 
         // Gurke: gerader Körper, nach links geneigt, mit drei Querkerben. Die
         // Kerben und die **Neigungsrichtung** sind der ganze Unterschied zur
         // Zucchini, die nach rechts liegt.
+        // Gerader Körper, nach links geneigt, mit **vier Noppen** im Zickzack.
+        //
+        // Zwei Anläufe, zwei verschiedene Lebensmittel:
+        //
+        // 1. Drei **Querkerben** — neben `brot` auf dem Bogen ein **Baguette**.
+        //    Quer eingeschnitten wird Brot, nicht Gemüse.
+        // 2. Eine durchgehende **Längsrippe** — eine Kapsel mit einem Schlitz
+        //    darin, also ein Brötchen mit Einschnitt. Eine Linie, die mittig
+        //    fast über die ganze Länge läuft, teilt den Körper, statt ihn zu
+        //    strukturieren.
+        //
+        // Die Noppen tun beides nicht: Sie sitzen abwechselnd links und rechts
+        // der Achse, berühren keine Kante und teilen nichts. Warzig ist die
+        // Eigenschaft, die eine Gurke von jedem Laib und jeder Zucchini
+        // unterscheidet.
         "gurke": { p in
-            p.capsule(0.50, 0.50, 0.30, 0.86, tilt: -32)
-            for t in [CGFloat(-0.22), 0, 0.22] {
-                quer(&p, mitte: (0.50, 0.50), hoehe: 0.86, neigung: -32, bei: t, laenge: 0.20)
+            p.capsule(0.50, 0.50, 0.32, 0.86, tilt: -32)
+            let w = -32.0 * .pi / 180
+            for (i, t) in [CGFloat(-0.24), -0.08, 0.08, 0.24].enumerated() {
+                let (x, y) = achse(mitte: (0.50, 0.50), hoehe: 0.86, neigung: -32, bei: t)
+                let seite: CGFloat = i % 2 == 0 ? 0.06 : -0.06
+                p.dot(p.at(x + seite * CGFloat(cos(w)), y + seite * CGFloat(sin(w))), 0.032)
             }
         },
 
@@ -299,6 +352,13 @@ enum ItemGlyph {
             p.bow(p.at(0.90, 0.38), p.at(0.72, 0.68), p.at(0.87, 0.49))
             p.bow(p.at(0.50, 0.92), p.at(0.66, 0.61), p.at(0.53, 0.80))
             p.close()
+            // **Die Mittelrippe** im mittleren Blatt — der Zuwachs, der aus drei
+            // Formen drei *Blätter* macht. Sie steht 0,17 von beiden
+            // Blatträndern entfernt und bleibt damit auch bei 40 pt eine eigene
+            // Linie. Bewusst nur im mittleren Blatt: Die beiden äußeren sind an
+            // ihrer breitesten Stelle keine 0,26 breit, dort wäre eine Rippe
+            // der dritte Strich in einem Bündel von dreien.
+            p.line([p.at(0.50, 0.86), p.at(0.50, 0.22)])
         },
 
         // Zwiebel: bauchige Knolle mit **Hals**, zwei kurze Nähte, zwei Triebe.
@@ -483,11 +543,37 @@ enum ItemGlyph {
         },
 
         // Zwei Zuckerwürfel, versetzt.
+        // **Ein Würfel mit drei sichtbaren Flächen** statt zweier flacher
+        // Quadrate.
+        //
+        // Zwei überlappende Rechtecke waren die sparsamste Art, „Würfelzucker"
+        // zu sagen, und zugleich die abstrakteste im ganzen Satz: Auf dem
+        // Prüfbogen standen dort zwei Karteikarten. Ein Würfel ist erst ein
+        // Würfel, wenn man ihm ansieht, dass er drei Dimensionen hat — die
+        // Deckfläche und die Seitenfläche sind der ganze Unterschied.
+        //
+        // Die Tiefe ist mit 0,16 × 0,14 angesetzt: knapp über den 0,13, unter
+        // denen zwei Kanten bei 40 pt eine werden.
+        //
+        // **Und daneben liegen drei Körner — die sind kein Schmuck.** Der
+        // Würfel allein war fertig gezeichnet, bis ein breiterer Prüfbogen
+        // `hefe` daneben stellte: ebenfalls ein Würfel in derselben Achse, nur
+        // mit einer Bande quer. Bei 22 pt waren die beiden nicht mehr
+        // auseinanderzuhalten, und `eiswürfel` ist gleich zweimal derselbe
+        // Körper. Drei Würfel im Satz, und der neue war der dritte.
+        //
+        // Die Körner sind das, was nur Zucker hat: Hefe bröselt nicht, Eis
+        // schmilzt. Sie liegen weit genug ab (0,12 Luft zur nächsten Kante),
+        // um bei 40 pt nicht an den Körper anzuwachsen.
         "zucker": { p in
-            p.stroke.addRoundedRect(in: p.box(0.36, 0.66, 0.42, 0.42),
-                                    cornerSize: p.corner(0.05))
-            p.stroke.addRoundedRect(in: p.box(0.64, 0.34, 0.42, 0.42),
-                                    cornerSize: p.corner(0.05))
+            p.line([p.at(0.10, 0.44), p.at(0.48, 0.44),
+                    p.at(0.48, 0.80), p.at(0.10, 0.80)], closed: true)
+            p.line([p.at(0.10, 0.44), p.at(0.26, 0.30),
+                    p.at(0.64, 0.30), p.at(0.48, 0.44)])
+            p.line([p.at(0.64, 0.30), p.at(0.64, 0.66), p.at(0.48, 0.80)])
+            p.dot(p.at(0.76, 0.84), 0.045)
+            p.dot(p.at(0.88, 0.88), 0.038)
+            p.dot(p.at(0.82, 0.72), 0.034)
         },
 
         // Salzstreuer: **abgesetzte** Kappe mit drei Löchern über einem
@@ -622,17 +708,28 @@ enum ItemGlyph {
         //
         // Die Kanne braucht nichts, was heraushängt, und sie ist in diesem
         // Satz die einzige — Kakao hat den Becher, Kaffee die Bohne.
+        // Tasse, Henkel — und der **Teebeutel an Schnur und Etikett**.
+        //
+        // Vorher hing hier ein Fähnchen *über* dem Tassenrand und ein zweiter
+        // Strich lief links heraus; auf dem Prüfbogen war das eine **Kanne mit
+        // Ausguss**. Das Etikett gehört an das andere Ende der Schnur, außerhalb
+        // der Tasse: Genau daran erkennt man einen Teebeutel, und genau das
+        // trennt die Tasse von jeder Kaffeetasse.
         "tee": { p in
-            p.begin(p.at(0.24, 0.44))
-            p.to(p.at(0.24, 0.62))
-            p.bow(p.at(0.72, 0.62), p.at(0.24, 0.88), p.at(0.72, 0.88))
-            p.to(p.at(0.72, 0.44))
+            p.begin(p.at(0.20, 0.48))
+            p.to(p.at(0.24, 0.78))
+            p.bow(p.at(0.64, 0.78), p.at(0.28, 0.92), p.at(0.60, 0.92))
+            p.to(p.at(0.68, 0.48))
             p.close()
-            p.line([p.at(0.36, 0.44), p.at(0.60, 0.44)])
-            p.line([p.at(0.48, 0.44), p.at(0.48, 0.32)])
-            p.line([p.at(0.24, 0.52), p.at(0.08, 0.36), p.at(0.08, 0.24)])
-            p.begin(p.at(0.72, 0.52))
-            p.bow(p.at(0.72, 0.76), p.at(0.94, 0.52), p.at(0.94, 0.76))
+            p.begin(p.at(0.68, 0.54))
+            p.bow(p.at(0.68, 0.72), p.at(0.88, 0.54), p.at(0.88, 0.72))
+            // Schnur und Etikett gehen **schräg zur Seite**, nicht senkrecht
+            // nach oben. Mittig über der Tasse war das Etikett ein Fähnchen auf
+            // einem Mast — bei 22 pt ein Lolli. Ein Teebeutel hängt über den
+            // Rand, seine Schnur läuft schief.
+            p.line([p.at(0.30, 0.48), p.at(0.20, 0.30)])
+            p.stroke.addRoundedRect(in: p.box(0.16, 0.20, 0.20, 0.15),
+                                    cornerSize: p.corner(0.03))
         },
 
         // Wasser: Glas mit Wasserspiegel und zwei Blasen.
@@ -1137,16 +1234,33 @@ enum ItemGlyph {
         // Milchtüte mit Giebel — dasselbe Motiv wie beim Kategoriezeichen,
         // schlanker gezogen. Milch ist die Milchtüte; hier etwas anderes zu
         // erfinden, nur damit es anders ist, wäre der falsche Ehrgeiz.
+        // Milchtüte mit **echtem Giebel**: First oben, Giebelkante quer, die
+        // gefaltete Spitze als V, Bodennaht unten.
+        //
+        // Der erste Entwurf hatte einen aufgesetzten Hals mit Deckel und stand
+        // auf dem Prüfbogen als **Flasche** da — der Hals war schmaler als der
+        // Giebel und damit las das Auge Flaschenhals, nicht Ausguss. Der flache
+        // First ist es, der die Tüte macht: Eine Milchtüte läuft oben nicht
+        // spitz zu, sie ist zusammengefaltet.
         "milch": { p in
-            p.begin(p.at(0.26, 0.94))
-            p.to(p.at(0.26, 0.44))
-            p.to(p.at(0.38, 0.26))
-            p.to(p.at(0.62, 0.26))
-            p.to(p.at(0.74, 0.44))
-            p.to(p.at(0.74, 0.94))
+            p.begin(p.at(0.24, 0.92))
+            p.to(p.at(0.24, 0.50))
+            p.to(p.at(0.36, 0.26))
+            p.to(p.at(0.64, 0.26))
+            p.to(p.at(0.76, 0.50))
+            p.to(p.at(0.76, 0.92))
             p.close()
-            p.line([p.at(0.26, 0.44), p.at(0.74, 0.44)])
-            p.line([p.at(0.38, 0.26), p.at(0.38, 0.12), p.at(0.62, 0.12), p.at(0.62, 0.26)])
+            // Die Kante, an der der Giebel auf den Korpus trifft.
+            p.line([p.at(0.24, 0.50), p.at(0.76, 0.50)])
+            // Die Mittelfalte des Giebels — **senkrecht, nicht als V**. Das V
+            // war der erste Versuch und auf dem Prüfbogen eine **Tüte mit
+            // eingedrückter Oberseite**: Ein nach unten zeigender Knick liest
+            // sich als Delle, nicht als Kante. Die Falte einer Milchtüte läuft
+            // vom First herunter.
+            p.line([p.at(0.50, 0.26), p.at(0.50, 0.50)])
+            // Bodennaht. 0,14 über der Unterkante: enger und sie läuft bei
+            // 40 pt mit dem 3,8-pt-Strich der Kante zusammen.
+            p.line([p.at(0.24, 0.78), p.at(0.76, 0.78)])
         },
 
         // Butter: Block mit einem abgeschnittenen Stück obenauf.
@@ -1155,26 +1269,57 @@ enum ItemGlyph {
         // daneben und war auf dem Prüfbogen ein **Karton mit offenem Deckel**.
         // Das abgeschnittene Stück sagt dasselbe (jemand hat davon genommen)
         // und ist eine Form statt einer Falte.
+        // Der Block, das abgeschnittene Stück obenauf — und **eine** Falte im
+        // Papier am rechten Ende.
+        //
+        // Erst standen hier **zwei** senkrechte Linien als Banderole, und der
+        // Prüfbogen zeigte, warum das nicht geht: Zwei Linien quer durch einen
+        // Quader teilen ihn in drei Fächer, und aus dem Päckchen wurde ein
+        // **Regal mit drei Kisten**. Eine Linie war nicht besser, nur weniger
+        // falsch — sie machte aus dem Block einen großen und einen kleinen
+        // Kasten.
+        //
+        // **Eine Linie, die eine Kante berührt, teilt; eine, die in der Ecke
+        // sitzt, faltet.** Deshalb liegt das Papier jetzt als abgeknickte Ecke
+        // oben rechts und läuft nicht mehr durch den Block hindurch.
         "butter": { p in
-            p.stroke.addRoundedRect(in: p.box(0.50, 0.68, 0.76, 0.30),
+            p.stroke.addRoundedRect(in: p.box(0.50, 0.68, 0.80, 0.32),
                                     cornerSize: p.corner(0.04))
-            p.begin(p.at(0.22, 0.53))
-            p.to(p.at(0.34, 0.33))
-            p.to(p.at(0.62, 0.33))
-            p.to(p.at(0.50, 0.53))
+            p.line([p.at(0.74, 0.52), p.at(0.90, 0.68)])
+            p.begin(p.at(0.26, 0.52))
+            p.to(p.at(0.36, 0.34))
+            p.to(p.at(0.64, 0.34))
+            p.to(p.at(0.54, 0.52))
             p.close()
         },
 
         // Käsedreieck mit zwei Löchern. Das Dreieck ist die Silhouette, die
         // niemand nachfragt — die Löcher sind gefüllt, weil ein Ring von drei
         // Pixeln bei 13 pt ein Punkt ist.
+        // Keil, **Rindenband** an der Unterkante, drei Löcher versetzt.
+        //
+        // Die Rinde ist der Zuwachs: Ein Dreieck mit Löchern ist ein Dreieck
+        // mit Löchern, erst das Band an der Grundseite sagt „geschnitten von
+        // einem Laib". Sie liegt auf 0,66 und nicht tiefer — bei 0,70 lief sie
+        // bei 40 pt mit der Grundkante zu einem Balken zusammen (Strich 3,8 pt,
+        // also 0,095 in Einheitsmaßen: zwei Striche brauchen 0,13 Abstand).
+        //
+        // Die Löcher sind gefüllt, nicht geringelt: Ein Ring von drei Pixeln
+        // ist bei 22 pt ein Punkt, nur ein unsauberer.
+        // Der Keil ist **höher gezogen** (0,18 statt 0,24) und die Rinde tiefer
+        // gerutscht (0,72 statt 0,66). Grund: In der ersten Fassung saßen die
+        // Löcher dort, wo das Dreieck schon schmal ist, und drängten sich unter
+        // der Spitze zusammen. Der Platz für Löcher ist unten, also musste die
+        // Rinde nach unten und der Keil in die Höhe.
         "käse": { p in
-            p.begin(p.at(0.08, 0.84))
-            p.to(p.at(0.52, 0.20))
-            p.to(p.at(0.92, 0.84))
+            p.begin(p.at(0.08, 0.88))
+            p.to(p.at(0.50, 0.18))
+            p.to(p.at(0.94, 0.88))
             p.close()
-            p.dot(p.at(0.42, 0.62), 0.062)
-            p.dot(p.at(0.62, 0.74), 0.055)
+            p.line([p.at(0.20, 0.72), p.at(0.80, 0.72)])
+            p.dot(p.at(0.42, 0.56), 0.050)
+            p.dot(p.at(0.58, 0.56), 0.050)
+            p.dot(p.at(0.50, 0.42), 0.045)
         },
 
         // Frischkäse: **runde** Dose, von schräg oben — Deckelellipse, kurze
@@ -1223,25 +1368,40 @@ enum ItemGlyph {
 
         // Quark: hoher Becher mit gewölbter Folie. Hoch statt flach, damit er
         // neben dem Frischkäse nicht derselbe Becher ist.
+        // Hoher Becher, **aufgesetzter Deckelrand**, eine Naht auf halber Höhe.
+        // Hoch statt flach, damit er neben dem Frischkäse nicht derselbe Becher
+        // ist; der kantige Deckel trennt ihn von der gewölbten Folie, die
+        // vorher hier lag und bei 22 pt nur eine dicke Kappe war.
         "quark": { p in
-            p.begin(p.at(0.26, 0.34))
-            p.to(p.at(0.34, 0.92))
-            p.to(p.at(0.66, 0.92))
-            p.to(p.at(0.74, 0.34))
-            p.begin(p.at(0.20, 0.34))
-            p.bow(p.at(0.80, 0.34), p.at(0.28, 0.14), p.at(0.72, 0.14))
+            p.begin(p.at(0.26, 0.36))
+            p.to(p.at(0.34, 0.90))
+            p.to(p.at(0.66, 0.90))
+            p.to(p.at(0.74, 0.36))
             p.close()
+            p.stroke.addRoundedRect(in: p.box(0.50, 0.30, 0.60, 0.12),
+                                    cornerSize: p.corner(0.03))
+            // **Hier stand eine abgezogene Folienecke, und sie ist wieder weg.**
+            // Schräg nach oben war sie ein **Strohhalm**, flach nach rechts ein
+            // **Löffelstiel** — beide Male machte der Fortsatz aus dem Becher
+            // ein Trinkgefäß. Ein Detail, das an der Silhouette zieht, kostet
+            // mehr, als es einbringt: Der aufgesetzte Deckelrand allein sagt
+            // „verschlossener Becher", und der berührt den Umriss nicht.
         },
 
         // Joghurt: Becher mit Löffel darin. Der Löffel ist die Auskunft —
         // ohne ihn stünden hier drei gleiche Becher nebeneinander.
+        // Becher mit Löffel darin — der Löffel ist die Auskunft, ohne ihn
+        // stünden hier drei gleiche Becher nebeneinander. Neu ist das
+        // **Bandenetikett** auf 0,58: Es füllt die leere Wand, die den Becher
+        // vorher zu einem Eimer machte, und liegt 0,14 unter dem Rand.
         "joghurt": { p in
-            p.begin(p.at(0.22, 0.42))
+            p.begin(p.at(0.22, 0.44))
             p.to(p.at(0.30, 0.92))
             p.to(p.at(0.70, 0.92))
-            p.to(p.at(0.78, 0.42))
-            p.line([p.at(0.16, 0.42), p.at(0.84, 0.42)])
-            p.line([p.at(0.56, 0.40), p.at(0.74, 0.14)])
+            p.to(p.at(0.78, 0.44))
+            p.line([p.at(0.16, 0.44), p.at(0.84, 0.44)])
+            p.line([p.at(0.25, 0.58), p.at(0.75, 0.58)])
+            p.line([p.at(0.56, 0.42), p.at(0.74, 0.14)])
             p.stroke.addEllipse(in: p.box(0.79, 0.11, 0.20, 0.14))
         },
 
@@ -1251,34 +1411,54 @@ enum ItemGlyph {
         // Ein einzelner großer Bogen über dem Becher war der erste Entwurf und
         // auf dem Prüfbogen ein **Eimer mit Deckel**. Ein Tuff ist nicht rund,
         // er ist gestapelt — erst die drei Stufen sagen „aufgeschlagen".
+        // Becher mit **Sahnetuff** — drei Bögen, die nach oben kleiner werden.
+        //
+        // Ein einzelner großer Bogen war der erste Entwurf und auf dem
+        // Prüfbogen ein **Eimer mit Deckel**. Ein Tuff ist nicht rund, er ist
+        // gestapelt.
+        //
+        // **Die Wanne ist breit und flach, nicht hoch und schmal** — und das ist
+        // der ganze Punkt. Ein schlanker Becher mit einem Tuff darauf war auf
+        // dem Prüfbogen **Softeis in der Waffel**; neben `eis` im selben Raster
+        // wäre das zweimal dasselbe Bild gewesen. Breiter als hoch liest sich
+        // als Becher, und der Tuff bleibt, was er ist: aufgeschlagene Sahne.
+        //
+        // Die drei Stufen stehen auf 0,14 und 0,13 Abstand — knapp über dem,
+        // was der 3,8-pt-Strich bei 40 pt noch offen lässt.
         "sahne": { p in
-            p.begin(p.at(0.30, 0.56))
-            p.to(p.at(0.36, 0.92))
-            p.to(p.at(0.64, 0.92))
-            p.to(p.at(0.70, 0.56))
-            p.line([p.at(0.24, 0.56), p.at(0.76, 0.56)])
-            p.begin(p.at(0.26, 0.54))
-            p.bow(p.at(0.74, 0.54), p.at(0.30, 0.34), p.at(0.70, 0.34))
-            p.begin(p.at(0.34, 0.40))
-            p.bow(p.at(0.66, 0.40), p.at(0.38, 0.22), p.at(0.62, 0.22))
-            p.begin(p.at(0.42, 0.27))
-            p.bow(p.at(0.58, 0.27), p.at(0.46, 0.08), p.at(0.54, 0.08))
+            p.begin(p.at(0.22, 0.60))
+            p.to(p.at(0.26, 0.90))
+            p.to(p.at(0.74, 0.90))
+            p.to(p.at(0.78, 0.60))
+            p.line([p.at(0.16, 0.60), p.at(0.84, 0.60)])
+            p.begin(p.at(0.28, 0.58))
+            p.bow(p.at(0.72, 0.58), p.at(0.32, 0.40), p.at(0.68, 0.40))
+            p.begin(p.at(0.36, 0.44))
+            p.bow(p.at(0.64, 0.44), p.at(0.40, 0.28), p.at(0.60, 0.28))
+            p.begin(p.at(0.44, 0.31))
+            p.bow(p.at(0.56, 0.31), p.at(0.47, 0.18), p.at(0.53, 0.18))
         },
 
-        // Zwei Eier, verschieden groß und versetzt. Eines allein wäre bei
-        // 13 pt ein Kreis; zwei sind ein Karton voll.
+        // **Zwei Eier im Karton**, nicht mehr zwei Eier im Nichts.
+        //
+        // Vorher lagen hier zwei freistehende Ovale, und genau das war das
+        // Problem: Ein Oval ist bei 22 pt eine Kartoffel, eine Zwiebel oder ein
+        // Ballon — der Satz hat von allen dreien eines. Der Karton darunter ist
+        // die Auskunft, die das Oval allein nicht geben kann, und zugleich das,
+        // was man im Laden in die Hand nimmt.
+        //
+        // Die beiden Kuppen stehen 0,16 auseinander. Bei 0,08 lagen ihre
+        // 3,8-pt-Striche bei 40 pt aufeinander und aus zwei Eiern wurde ein
+        // Doppelhöcker.
         "eier": { p in
-            p.begin(p.at(0.34, 0.26))
-            p.bow(p.at(0.16, 0.60), p.at(0.22, 0.26), p.at(0.16, 0.42))
-            p.bow(p.at(0.34, 0.90), p.at(0.16, 0.78), p.at(0.24, 0.90))
-            p.bow(p.at(0.52, 0.60), p.at(0.44, 0.90), p.at(0.52, 0.78))
-            p.bow(p.at(0.34, 0.26), p.at(0.52, 0.42), p.at(0.46, 0.26))
-            p.close()
-            p.begin(p.at(0.70, 0.44))
-            p.bow(p.at(0.56, 0.70), p.at(0.60, 0.44), p.at(0.56, 0.56))
-            p.bow(p.at(0.70, 0.92), p.at(0.56, 0.84), p.at(0.62, 0.92))
-            p.bow(p.at(0.84, 0.70), p.at(0.78, 0.92), p.at(0.84, 0.84))
-            p.bow(p.at(0.70, 0.44), p.at(0.84, 0.56), p.at(0.80, 0.44))
+            p.begin(p.at(0.16, 0.68))
+            p.bow(p.at(0.42, 0.68), p.at(0.16, 0.32), p.at(0.42, 0.32))
+            p.begin(p.at(0.58, 0.68))
+            p.bow(p.at(0.84, 0.68), p.at(0.58, 0.32), p.at(0.84, 0.32))
+            p.begin(p.at(0.08, 0.68))
+            p.to(p.at(0.92, 0.68))
+            p.to(p.at(0.86, 0.90))
+            p.to(p.at(0.14, 0.90))
             p.close()
         },
 
@@ -1345,16 +1525,26 @@ enum ItemGlyph {
         // **Nicht der Laib** — der ist das Kategoriezeichen für Backwaren,
         // und zwei Laibe nebeneinander wären eine Verwechslung.
         "brot": { p in
-            // **Zwei Kuppen statt einer.** Der erste Entwurf war eine einzige
-            // Kuppe mit einer zweiten Linie darin — auf dem Prüfbogen ein
-            // **Türbogen**. Eine Toastscheibe hat oben zwei Ohren und dazwischen
-            // eine Senke; genau daran erkennt man sie und nicht am Rechteck.
-            p.begin(p.at(0.20, 0.90))
-            p.to(p.at(0.20, 0.50))
-            p.bow(p.at(0.50, 0.42), p.at(0.20, 0.30), p.at(0.44, 0.30))
-            p.bow(p.at(0.80, 0.50), p.at(0.56, 0.30), p.at(0.80, 0.30))
-            p.to(p.at(0.80, 0.90))
+            // **Vom Toast zum Laib.** Hier stand eine Toastscheibe mit zwei
+            // Kuppen — richtig gezeichnet, aber sie beantwortete die schmalste
+            // Frage: `brot` ist der Begriff für Brot überhaupt, und ein Laib
+            // sagt das, was eine Scheibe Toast nur für Toast sagt.
+            //
+            // Der Laib trägt, was ein Laib trägt: die gewölbte Kruste, die
+            // **Krustennaht** an der Seite und **drei schräge Einschnitte**.
+            // Die Einschnitte stehen 0,16 auseinander und enden 0,16 über der
+            // Naht — bei 0,10 liefen sie bei 40 pt mit ihr zusammen und der
+            // Laib bekam einen Schatten statt einer Kruste.
+            p.begin(p.at(0.12, 0.82))
+            p.to(p.at(0.12, 0.56))
+            p.bow(p.at(0.50, 0.30), p.at(0.12, 0.40), p.at(0.28, 0.30))
+            p.bow(p.at(0.88, 0.56), p.at(0.72, 0.30), p.at(0.88, 0.40))
+            p.to(p.at(0.88, 0.82))
             p.close()
+            p.line([p.at(0.12, 0.68), p.at(0.88, 0.68)])
+            p.line([p.at(0.30, 0.52), p.at(0.38, 0.42)])
+            p.line([p.at(0.46, 0.50), p.at(0.54, 0.40)])
+            p.line([p.at(0.62, 0.52), p.at(0.70, 0.42)])
         },
 
         // Knäckebrot: rechteckige Scheibe mit zwei Lochreihen.
@@ -2344,7 +2534,12 @@ private let tranche3: [String: ItemGlyph.Rezept] = [
         p.line([p.at(0.34, 0.28), p.at(0.24, 0.14)])
         p.circle(p.at(0.20, 0.10), 0.07)
         p.circle(p.at(0.32, 0.14), 0.06)
+        // **Zwei Einschnitte statt einem.** Ein einzelner Strich im Körper ist
+        // eine Kerbe; zwei parallele im Abstand 0,136 sind das eingeschnittene
+        // Rautenmuster, das man auf einer Schinkenkruste sieht. Enger ginge
+        // nicht — unter 0,13 laufen sie bei 40 pt zu einem Balken zusammen.
         p.line([p.at(0.40, 0.48), p.at(0.66, 0.56)])
+        p.line([p.at(0.36, 0.62), p.at(0.62, 0.70)])
     },
 
     // Muscheln: aufgeklappte Schale mit Rippen.
