@@ -56,6 +56,13 @@ final class AreaRequestStore {
     private(set) var isFetchingArea = false
     /// Set once a pending area has finished. Drives the notice in the list.
     private(set) var areaJustCompleted = false
+    /// **Die Anforderung selbst ist nicht herausgegangen.**
+    ///
+    /// Bis zum 11.08. stand das nirgends: Der Fehler wurde geschluckt, und der
+    /// Wähler zeigte weiter zwei Ketten, als wäre das die Gegend. Ein Kreisel,
+    /// hinter dem nichts läuft, ist schlimmer als eine Fehlermeldung — deshalb
+    /// sagt der Wähler es jetzt und bietet einen zweiten Versuch an.
+    private(set) var areaRequestFailed = false
     /// The postcodes of the areas that just finished, for the notice. Empty
     /// when the run came from a version that did not record one.
     private(set) var completedAreaPLZs: [String] = []
@@ -204,10 +211,12 @@ final class AreaRequestStore {
             pendingAreas[key] = region
             anchorsByArea[key] = anchor
             isFetchingArea = true
+            areaRequestFailed = false
         } catch {
             // A failed request costs the extra chains, not the app. The user
             // still sees Kaufland and Penny, and the Sunday run catches up.
             isFetchingArea = !pendingAreas.isEmpty
+            areaRequestFailed = true
         }
     }
 
@@ -284,6 +293,7 @@ final class AreaRequestStore {
         defaults.removeObject(forKey: Self.anchorsKey)
         isFetchingArea = false
         areaJustCompleted = false
+        areaRequestFailed = false
         completedAreaPLZs = []
     }
 

@@ -149,6 +149,9 @@
 		A369882CBF0330DC4FF27C30 /* AppReset.swift in Sources */ = {isa = PBXBuildFile; fileRef = F32728F1183582BB532E5DBA /* AppReset.swift */; };
 		A36F9F9BE8B43115453427BA /* CartGlyph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60ECFAA678FC3A05BAB3D5C7 /* CartGlyph.swift */; };
 		A45381A011ED9182112CB845 /* KleinkramShots.swift in Sources */ = {isa = PBXBuildFile; fileRef = E827B3D54BD1225D41B47054 /* KleinkramShots.swift */; };
+		0765FF12809DBF2937DE0148 /* OrtUndGegendShots.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE765B6748648B2B4C7F5B9F /* OrtUndGegendShots.swift */; };
+		6F685DEAD46810DBD789F547 /* FrischeGegendJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3825FE493652FE0A022341 /* FrischeGegendJourneyTests.swift */; };
+		488DA04F59ABB558E7F2FD04 /* GrossstadtJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3314920E903AD783D9C2F7F6 /* GrossstadtJourneyTests.swift */; };
 		A4CE0B3B4ACEFA51629589C9 /* ItemGlyphTerm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D519A69106095EF41CC0C1C /* ItemGlyphTerm.swift */; };
 		A519AAD7032851365874313A /* PrivacyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F91D93DA2260BC2F67E979B /* PrivacyStore.swift */; };
 		A5DFF8517D0A39F7BCC035D0 /* ShoppingPlanCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0FF5B17E073D9F1D1CD226 /* ShoppingPlanCard.swift */; };
@@ -450,6 +453,9 @@
 		CB6E3156B64C47538B50B780 /* KettenOrdnungJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KettenOrdnungJourneyTests.swift; sourceTree = "<group>"; };
 		5CD63E4AD6A944DE8553AD65 /* MarktwahlProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarktwahlProbe.swift; sourceTree = "<group>"; };
 		E827B3D54BD1225D41B47054 /* KleinkramShots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KleinkramShots.swift; sourceTree = "<group>"; };
+		DE765B6748648B2B4C7F5B9F /* OrtUndGegendShots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrtUndGegendShots.swift; sourceTree = "<group>"; };
+		9C3825FE493652FE0A022341 /* FrischeGegendJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrischeGegendJourneyTests.swift; sourceTree = "<group>"; };
+		3314920E903AD783D9C2F7F6 /* GrossstadtJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrossstadtJourneyTests.swift; sourceTree = "<group>"; };
 		E9A08415BB968381E756CF5C /* ShoppingSectionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingSectionsTests.swift; sourceTree = "<group>"; };
 		EBB44CC40A1245F2D10AB081 /* AnklamDistanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnklamDistanceTests.swift; sourceTree = "<group>"; };
 		ECDACEF9C90BF20F6ADF0BFE /* WeekBoundaryJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekBoundaryJourneyTests.swift; sourceTree = "<group>"; };
@@ -627,6 +633,9 @@
 				CB6E3156B64C47538B50B780 /* KettenOrdnungJourneyTests.swift */,
 				5CD63E4AD6A944DE8553AD65 /* MarktwahlProbe.swift */,
 				E827B3D54BD1225D41B47054 /* KleinkramShots.swift */,
+				DE765B6748648B2B4C7F5B9F /* OrtUndGegendShots.swift */,
+				9C3825FE493652FE0A022341 /* FrischeGegendJourneyTests.swift */,
+				3314920E903AD783D9C2F7F6 /* GrossstadtJourneyTests.swift */,
 				8F44AA5C1E7655C0141A439B /* ListItemDetailPathJourneyTests.swift */,
 				A2D54CA2F7CD6F69B202434E /* LocatedPLZJourneyTests.swift */,
 				7A9D8435B451C3CC5B59F2F3 /* MatchFeedbackJourneyTests.swift */,
@@ -1226,6 +1235,9 @@
 				A14A0BA7908A447BA119B30B /* KettenOrdnungJourneyTests.swift in Sources */,
 				7C0124FCD83A43F08CAA30D8 /* MarktwahlProbe.swift in Sources */,
 				A45381A011ED9182112CB845 /* KleinkramShots.swift in Sources */,
+				0765FF12809DBF2937DE0148 /* OrtUndGegendShots.swift in Sources */,
+				6F685DEAD46810DBD789F547 /* FrischeGegendJourneyTests.swift in Sources */,
+				488DA04F59ABB558E7F2FD04 /* GrossstadtJourneyTests.swift in Sources */,
 				CCBB3720A76E216183D95EC5 /* ListItemDetailPathJourneyTests.swift in Sources */,
 				81EE8A4DF06EE1589DEF42F5 /* LocatedPLZJourneyTests.swift in Sources */,
 				3D129061277F9F5EC5A41C76 /* MatchFeedbackJourneyTests.swift in Sources */,

@@ -29,22 +29,39 @@ enum CityLookup {
     /// Ort — MapKit mit einem anderen als CoreLocation. Eine Liste gibt keine
     /// der beiden Schnittstellen her. Hängt man das Land an die Frage, kommen
     /// sie einzeln heraus: sieben echte Neustädte, in 3,9 s.
-    private static let laender = [
-        "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen", "Hamburg",
-        "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen", "Nordrhein-Westfalen",
-        "Rheinland-Pfalz", "Saarland", "Sachsen", "Sachsen-Anhalt",
-        "Schleswig-Holstein", "Thüringen",
-    ]
+    ///
+    /// Die Liste steht in `PlaceQuery`, weil der Fächer sie **anhängt** und der
+    /// Zerleger sie **wiedererkennen** muss — siehe dort.
+    private static var laender: [String] { PlaceQuery.laender }
 
     /// Der normale Weg: einmal fragen, und nur wenn die Antwort nicht zur Frage
     /// passt, den Fächer aufmachen.
-    static func look(up name: String) async -> Result {
+    ///
+    /// `gemeint` ist der Text, den der Mensch **selbst getippt** hat, wenn
+    /// `name` aus einem angetippten Vorschlag stammt. Beides auseinanderhalten
+    /// ist der Kern von #143: Gefragt wird mit dem Vorschlag, gemessen wird an
+    /// dem, was der Mensch wollte.
+    static func look(up name: String, gemeint: String? = nil) async -> Result {
         if let stubbed = stubbedResult(for: name) { return stubbed }
 
-        if let hit = await resolveOnce(name), hit.answersQuery {
+        let frage = PlaceQuery.parse(name)
+        let mass = gemeint.map(PlaceQuery.parse)
+
+        if let hit = await resolveOnce(frage, mass: mass ?? frage), hit.answersQuery {
+            // **Ein angetippter Vorschlag ist eine Wahl, keine Bestätigung.**
+            // Wer „Stuttgart" tippt und die Stuttgarter Straße in seiner
+            // eigenen Stadt angeboten bekommt, tippt sie an, ohne den Ort dahinter
+            // zu lesen — und hatte danach kommentarlos die PLZ von nebenan. Wenn
+            // der getippte Name selbst ein Ort ist und ein anderer als der
+            // getroffene, entscheidet das der Mensch.
+            if let mass, let anderer = await widersprechenderOrt(mass, gegen: hit.candidate) {
+                return .meintestDu([hit.candidate, anderer])
+            }
             return .verstanden(hit.candidate)
         }
-        let fächer = await alternatives(for: name)
+        // Gefächert wird über das, was der Mensch getippt hat — der Vorschlag
+        // hat sich als Frage ja gerade nicht bewährt.
+        let fächer = await alternatives(for: (mass ?? frage).name)
         return fächer.isEmpty ? .unbekannt : .meintestDu(fächer)
     }
 
@@ -57,32 +74,116 @@ enum CityLookup {
         if let stubbed = stubbedAlternatives() { return stubbed }
         guard !AppRepositories.usesMockData else { return [] }
 
+        // Ohne den Zerleger fragt der Fächer „Stuttgart, Baden-Württemberg,
+        // Deutschland, Bayern, Deutschland" — sechzehnmal Unsinn.
+        let frage = PlaceQuery.parse(name)
         var found: [PlaceCandidate] = []
         for land in laender {
-            guard let hit = await resolveOnce(name, in: land), hit.answersQuery else { continue }
+            guard let hit = await resolveOnce(frage.im(land), mass: frage), hit.answersQuery
+            else { continue }
             found.append(hit.candidate)
         }
         return PlaceMatch.usable(found)
     }
 
+    /// Der Ort, der dem getippten Namen entspricht — wenn es ihn gibt und er
+    /// ein anderer ist als der Treffer.
+    ///
+    /// Kostet genau eine Abfrage, und nur in dem einen Fall, in dem der Treffer
+    /// nicht so heißt wie die Frage. Ergibt der getippte Name selbst keinen Ort
+    /// (wer „Karl" tippt und die Karl-Laux-Straße wählt, meint die Straße),
+    /// bleibt es bei der Bestätigung.
+    private static func widersprechenderOrt(
+        _ mass: PlaceQuery, gegen treffer: PlaceCandidate
+    ) async -> PlaceCandidate? {
+        guard !PlaceMatch.answers(mass.name, ort: treffer.ort, ortsteil: nil) else { return nil }
+        guard let stadt = await resolveOnce(PlaceQuery(name: mass.name, land: nil), mass: mass),
+              stadt.answersQuery,
+              stadt.candidate.plz != treffer.plz else { return nil }
+        return stadt.candidate
+    }
+
     // MARK: - Eine Abfrage
 
-    private struct Hit {
+    struct Hit: Equatable {
         let candidate: PlaceCandidate
         /// Hieß der Ort auch so, wie gefragt wurde?
         let answersQuery: Bool
     }
 
-    private static func resolveOnce(_ name: String, in land: String? = nil) async -> Hit? {
+    /// Die Felder einer Geocoder-Antwort, die die Entscheidung liest — und
+    /// sonst nichts.
+    ///
+    /// Damit lässt sich die Entscheidung **ohne Netz** prüfen. Die Werte in den
+    /// Tests sind nicht ausgedacht, sondern die am 03./06./11.08. an Apples
+    /// Geocoder gemessenen.
+    struct Antwort: Equatable {
+        var locality: String?
+        var subLocality: String?
+        var thoroughfare: String?
+        var administrativeArea: String?
+        var postalCode: String?
+        var name: String?
+
+        init(
+            locality: String? = nil,
+            subLocality: String? = nil,
+            thoroughfare: String? = nil,
+            administrativeArea: String? = nil,
+            postalCode: String? = nil,
+            name: String? = nil
+        ) {
+            self.locality = locality
+            self.subLocality = subLocality
+            self.thoroughfare = thoroughfare
+            self.administrativeArea = administrativeArea
+            self.postalCode = postalCode
+            self.name = name
+        }
+    }
+
+    /// `frage` geht an Apple, `mass` entscheidet, ob die Antwort zählt. Meist
+    /// sind beide dasselbe; auseinander gehen sie, wenn ein Vorschlag angetippt
+    /// wurde.
+    private static func resolveOnce(_ frage: PlaceQuery, mass: PlaceQuery) async -> Hit? {
         guard !AppRepositories.usesMockData else { return nil }
-        let query = [name, land, "Deutschland"].compactMap { $0 }.joined(separator: ", ")
-        guard let forward = try? await CLGeocoder().geocodeAddressString(query).first,
+        let name = mass.name
+        guard let forward = try? await CLGeocoder().geocodeAddressString(frage.geocoderString).first,
               forward.isoCountryCode == "DE",
               let location = forward.location else { return nil }
         // Ein Land, das mitgefragt wurde, muss auch herauskommen — sonst hat
         // Apple die Einschränkung schlicht ignoriert und antwortet zum
         // zweiten Mal mit demselben Ort.
-        if let land, forward.administrativeArea != land { return nil }
+        if let land = frage.land, forward.administrativeArea != land { return nil }
+
+        let vorwärts = Antwort(
+            locality: forward.locality,
+            subLocality: forward.subLocality,
+            thoroughfare: forward.thoroughfare,
+            administrativeArea: forward.administrativeArea,
+            postalCode: forward.postalCode,
+            name: forward.name
+        )
+        // Die Rückwärtsrunde nur, wo sie gebraucht wird — siehe unten.
+        var rückwärts: Antwort?
+        if !(vorwärts.thoroughfare != nil && PLZValidator.isValid(vorwärts.postalCode ?? "")),
+           let back = try? await CLGeocoder().reverseGeocodeLocation(location).first {
+            rückwärts = Antwort(
+                locality: back.locality,
+                subLocality: back.subLocality,
+                thoroughfare: back.thoroughfare,
+                administrativeArea: back.administrativeArea,
+                postalCode: back.postalCode,
+                name: back.name
+            )
+        }
+        return entscheide(vorwärts: vorwärts, rückwärts: rückwärts, mass: mass)
+    }
+
+    /// **Was die App aus einer Geocoder-Antwort macht** — reine Rechnung, ohne
+    /// Netz, damit sie prüfbar ist.
+    static func entscheide(vorwärts: Antwort, rückwärts: Antwort?, mass: PlaceQuery) -> Hit? {
+        let name = mass.name
 
         // **Eine Straße beantwortet sich selbst** (06.08.). Wer „Dresden
         // Karl-Laux-Straße 6" tippt, bekam bis dahin „kennt Apple nicht" —
@@ -101,25 +202,25 @@ enum CityLookup {
         // hier sehr wohl eine PLZ; der Befund vom 03.08. („neunmal nil") galt
         // für blanke *Ortsnamen*, nicht für Adressen. Wo sie schon dasteht,
         // spart das die Rückwärts-Abfrage.
-        let istAdresse = forward.thoroughfare != nil
+        let istAdresse = vorwärts.thoroughfare != nil
 
-        if istAdresse, let plz = forward.postalCode, PLZValidator.isValid(plz) {
-            let ort = forward.locality ?? forward.name ?? plz
+        if istAdresse, let plz = vorwärts.postalCode, PLZValidator.isValid(plz) {
+            let ort = vorwärts.locality ?? vorwärts.name ?? plz
             return Hit(
-                candidate: PlaceCandidate(plz: plz, ort: ort, land: forward.administrativeArea),
+                candidate: PlaceCandidate(plz: plz, ort: ort, land: vorwärts.administrativeArea),
                 answersQuery: true
             )
         }
 
-        guard let back = try? await CLGeocoder().reverseGeocodeLocation(location).first,
-              let plz = back.postalCode, PLZValidator.isValid(plz) else { return nil }
+        guard let rückwärts, let plz = rückwärts.postalCode, PLZValidator.isValid(plz)
+        else { return nil }
 
-        let ort = back.locality ?? forward.locality ?? forward.name ?? plz
-        let candidate = PlaceCandidate(plz: plz, ort: ort, land: back.administrativeArea)
+        let ort = rückwärts.locality ?? vorwärts.locality ?? vorwärts.name ?? plz
+        let candidate = PlaceCandidate(plz: plz, ort: ort, land: rückwärts.administrativeArea)
         let matches = istAdresse
-            || PlaceMatch.answers(name, ort: back.locality, ortsteil: back.subLocality)
-            || PlaceMatch.answers(name, ort: forward.locality, ortsteil: forward.subLocality)
-            || PlaceMatch.answers(name, ort: forward.name, ortsteil: nil)
+            || PlaceMatch.answers(name, ort: rückwärts.locality, ortsteil: rückwärts.subLocality)
+            || PlaceMatch.answers(name, ort: vorwärts.locality, ortsteil: vorwärts.subLocality)
+            || PlaceMatch.answers(name, ort: vorwärts.name, ortsteil: nil)
         return Hit(candidate: candidate, answersQuery: matches)
     }
 
@@ -131,12 +232,42 @@ enum CityLookup {
     ///
     /// Format `Ort|PLZ|Land`, mehrere mit `;` getrennt; `NICHTS` für „kennt
     /// Apple nicht".
+    ///
+    /// **Ein Eintrag darf seine Frage mitbringen** (`Frage>Ort|PLZ|Land`) und
+    /// gilt dann nur für sie. Gebraucht seit #143: Ein angetippter Vorschlag
+    /// schickt eine *andere* Zeichenkette los als die, die getippt wurde
+    /// („Stuttgart" → „Stuttgart,Baden-Württemberg,Deutschland"), und genau
+    /// dieser Unterschied ist der Fehler gewesen. Eine Vorgabe, die für jede
+    /// Frage dasselbe antwortet, kann ihn nicht abbilden.
+    ///
+    /// Einträge ohne Frage gelten wie bisher für alles — die bestehenden
+    /// Journeys ändern sich nicht.
     private static func stubbedResult(for name: String) -> Result? {
         guard let raw = UserDefaults.standard.string(forKey: "uiTestingCityLookup") else { return nil }
         if raw == "NICHTS" { return .unbekannt }
-        let candidates = parse(raw)
+
+        var passend: [PlaceCandidate] = []
+        var allgemein: [PlaceCandidate] = []
+        for eintrag in raw.split(separator: ";").map(String.init) {
+            let teile = eintrag.split(separator: ">", maxSplits: 1).map(String.init)
+            if teile.count == 2 {
+                // Ohne Leerzeichen verglichen: Die Vorgabe kommt über
+                // `launchArguments` und trägt deshalb keine (siehe
+                // `AddressSuggestionJourneyTests`), die Frage aus dem
+                // Vorschlag dagegen schon — „Stuttgart, Baden-Württemberg".
+                guard ohneLeerzeichen(teile[0]) == ohneLeerzeichen(name) else { continue }
+                passend += parse(teile[1])
+            } else {
+                allgemein += parse(eintrag)
+            }
+        }
+        let candidates = passend.isEmpty ? allgemein : passend
         guard let first = candidates.first else { return .unbekannt }
         return candidates.count == 1 ? .verstanden(first) : .meintestDu(candidates)
+    }
+
+    private static func ohneLeerzeichen(_ value: String) -> String {
+        value.filter { !$0.isWhitespace }.lowercased()
     }
 
     private static func stubbedAlternatives() -> [PlaceCandidate]? {

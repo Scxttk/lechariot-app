@@ -70,6 +70,17 @@ struct MarketPickerView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var query = ""
+    /// **Die Gegenden, in denen bisher nur die bundesweiten Ketten stehen.**
+    ///
+    /// Steht schon fest, sobald das Verzeichnis geladen ist — also *bevor* die
+    /// Anforderung heraus ist. Genau das war der Fehler (#144): Der Hinweis
+    /// hing an `isFetchingArea`, und das wird erst nach zwei Netzrunden wahr.
+    /// In der Zwischenzeit sah eine frische Gegend aus wie eine Gegend, in der
+    /// es zwei Ketten gibt — Scott am 11.08. für Stuttgart: „its useless".
+    ///
+    /// Die App weiß es zu diesem Zeitpunkt sicher: `PickerDirectory` hat gerade
+    /// gerechnet, dass im Umkreis **ausschließlich** Kaufland und Penny stehen.
+    @State private var frischeGegenden: [String] = []
 
     /// All regions whose branches the picker offers — the current one plus
     /// every other ready region, so PLZ-border users pick across borders.
@@ -289,27 +300,7 @@ struct MarketPickerView: View {
         // Kein Wartebildschirm: Der Gebiets-Lauf dauert ~3 Minuten, so lange
         // das Onboarding zu blockieren wäre schlimmer als eine kurze Liste,
         // die nachwächst. Deshalb nur ein Hinweis über der Liste.
-        .safeAreaInset(edge: .top) {
-            if areaRequests.isFetchingArea {
-                // Anzeige statt nur grauem Text (Anklam, 02.08.): Ohne
-                // sichtbares Zeichen sieht „wird geholt" genauso aus wie
-                // „hier ist nichts". Der Kreisel steht für einen Lauf, der
-                // wirklich läuft — einen erfundenen Fortschrittsbalken gibt es
-                // bewusst nicht, wir kennen den Fortschritt nicht.
-                HStack(alignment: .top, spacing: Theme.Spacing.sm) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text(areaFetchNotice)
-                        .font(.footnote)
-                        .foregroundStyle(Theme.secondaryText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(Theme.Spacing.sm)
-                .background(.bar)
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("markets.areaFetching")
-            }
-        }
+        .safeAreaInset(edge: .top) { gegendsHinweis }
         // **Der Hinweis und das, was unter ihm hervorkommt, gehören zu
         // demselben Wechsel.** Gemeldet am 31.07.: Der graue Streifen blendet
         // langsam aus (die Vorgabe-Kurve des blanken `withAnimation` in
@@ -335,18 +326,82 @@ struct MarketPickerView: View {
             await useLocationIfAlreadyAllowed()
             await loadMarkets()
         }
+        .task { await warteAufDieGegend() }
         .refreshable { await loadMarkets() }
+    }
+
+    /// **Die Zeile, die sagt, dass hier gerade mehr entsteht** (#144).
+    ///
+    /// Sichtbar, sobald die App weiß, dass diese Gegend nur die bundesweiten
+    /// Ketten hat — nicht erst, wenn die Anforderung bestätigt ist. Sie geht
+    /// wieder weg, sobald ein neuer Ladelauf mehr findet als Kaufland und
+    /// Penny; das ist dasselbe Ereignis, das der Nutzer sehen will.
+    ///
+    /// **Was hier nicht steht: welche Ketten kommen.** Das weiß niemand vorher
+    /// — welche Läden in einer Gegend stehen, sagt erst das Verzeichnis, das
+    /// gerade geholt wird. Eine Liste zu versprechen, die dann anders ausfällt,
+    /// wäre die schlimmere Antwort auf „zeig alles an".
+    @ViewBuilder
+    private var gegendsHinweis: some View {
+        if areaRequests.areaRequestFailed && !frischeGegenden.isEmpty {
+            HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+                Label {
+                    Text("Die übrigen Märkte \(gegendsOrt) konnten wir gerade nicht anfordern.")
+                } icon: {
+                    Image(systemName: "wifi.exclamationmark")
+                }
+                .font(.footnote)
+                .foregroundStyle(Theme.error)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Button("Erneut") { Task { await loadMarkets() } }
+                    .font(.footnote.weight(.medium))
+                    .tint(Theme.accent)
+            }
+            .padding(Theme.Spacing.sm)
+            .background(.bar)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("markets.areaFailed")
+        } else if !frischeGegenden.isEmpty || areaRequests.isFetchingArea {
+            // Anzeige statt nur grauem Text (Anklam, 02.08.): Ohne
+            // sichtbares Zeichen sieht „wird geholt" genauso aus wie
+            // „hier ist nichts". Der Kreisel steht für einen Lauf, der
+            // wirklich läuft — einen erfundenen Fortschrittsbalken gibt es
+            // bewusst nicht, wir kennen den Fortschritt nicht.
+            HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+                ProgressView()
+                    .controlSize(.small)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Neue Märkte werden gerade geladen …")
+                        .font(.footnote.weight(.semibold))
+                    Text(areaFetchNotice)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.secondaryText)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(Theme.Spacing.sm)
+            .background(.bar)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("markets.areaFetching")
+        }
     }
 
     /// Names the postcode once there is more than one — "deiner Gegend" is no
     /// answer to a user who keeps two, and the short list they are looking at
     /// belongs to exactly one of them.
+    private var gegendsOrt: String {
+        let wartend = frischeGegenden.isEmpty ? areaRequests.pendingAreaPLZs : frischeGegenden
+        return wartend.count == 1 && plzs.count > 1 ? "um \(wartend[0])" : "in deiner Gegend"
+    }
+
     private var areaFetchNotice: String {
-        let waiting = areaRequests.pendingAreaPLZs
-        let where_ = waiting.count == 1 && plzs.count > 1
-            ? "um \(waiting[0])"
-            : "in deiner Gegend"
-        return "Wir holen gerade die übrigen Märkte \(where_) — das dauert etwa drei Minuten. Du kannst schon wählen; wir sagen Bescheid, sobald mehr da ist."
+        // **Kaufland und Penny sind keine Auswahl, sondern der Grundzustand.**
+        // Sie stehen bundesweit im Verzeichnis; wer sie für das Ergebnis einer
+        // Suche hält, hält eine leere Gegend für eine dünne.
+        guard !frischeGegenden.isEmpty else {
+            return "Wir holen gerade die übrigen Märkte \(gegendsOrt) — das dauert etwa drei Minuten. Du kannst schon wählen; wir sagen Bescheid, sobald mehr da ist."
+        }
+        return "Hier stehen bisher nur die bundesweiten Ketten. Wir holen das Verzeichnis \(gegendsOrt) — etwa drei Minuten, die Angebote kommen über Nacht. Du kannst schon wählen."
     }
 
     // MARK: Ketten statt Filialen auf der ersten Seite
@@ -548,12 +603,17 @@ struct MarketPickerView: View {
             if let directory = try await loadDirectory(), !directory.entries.isEmpty {
                 plan = directory
                 markets = directory.entries.map(\.market)
+                // **Vor der Anforderung, nicht nach ihr.** Was die Zeile sagt,
+                // steht hier schon fest; sie auf die Antwort des Servers warten
+                // zu lassen, war der Fehler.
+                frischeGegenden = directory.areaCandidates.map(\.plz).sorted()
                 // After the list is on screen, never before: a region run takes
                 // ~3 minutes, and the picker must not wait on the round trips
                 // that start it.
                 Task { await requestUnfetchedAreas(directory.areaCandidates) }
             } else {
                 plan = nil
+                frischeGegenden = []
                 markets = try await marketRepository.markets(plzs: plzs)
             }
         } catch {
@@ -626,6 +686,40 @@ struct MarketPickerView: View {
                 lon: candidate.lon
             )
         }
+    }
+
+    /// **Der Hinweis löst sich auf, während der Nutzer hinsieht.**
+    ///
+    /// Bis zum 11.08. fragte nur der App-Start und der Wechsel in den
+    /// Vordergrund nach, ob die Gegend fertig ist (`LeChariotApp`). Wer im
+    /// Onboarding sitzt und wählt, wechselt aber gar nicht — der Lauf landet
+    /// nach zwei bis drei Minuten, und der Bildschirm davor sagt weiter „wird
+    /// geladen". Die Nachfrage läuft deshalb, solange die Zeile steht, und
+    /// hört von selbst auf, wenn sie weg ist.
+    ///
+    /// Kostet eine Abfrage je Runde, und nur in einer frischen Gegend.
+    private func warteAufDieGegend() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(Self.gegendsNachfrageSekunden))
+            guard !Task.isCancelled else { return }
+            guard !frischeGegenden.isEmpty || areaRequests.isFetchingArea else { continue }
+            await areaRequests.checkPendingArea()
+            guard areaRequests.areaJustCompleted else { continue }
+            // Neu laden statt raten: Ob wirklich mehr dasteht, sagt das
+            // Verzeichnis, nicht die Zeile in `area_requests`.
+            await loadMarkets()
+        }
+    }
+
+    /// Abstand der Nachfragen. Der Lauf dauert gemessen ~3 Minuten (Gößnitz,
+    /// 26.07.), zwanzig Sekunden sind also neunmal nachfragen im schlimmsten
+    /// Fall — und im Testlauf zwei, damit eine Journey das Auflösen sieht,
+    /// ohne drei Minuten zu warten.
+    static var gegendsNachfrageSekunden: Double {
+        #if DEBUG
+        if UITestSupport.isActive { return 2 }
+        #endif
+        return 20
     }
 
     /// How far around each postcode the directory is searched to begin with.

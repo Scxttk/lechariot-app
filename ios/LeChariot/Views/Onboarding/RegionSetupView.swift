@@ -26,6 +26,22 @@ struct RegionSetupView: View {
     @State private var resolvedPlace: PlaceCandidate?
     /// „Meintest du …" — mehrere Orte desselben Namens.
     @State private var candidates: [PlaceCandidate] = []
+    /// **Der angetippte Vorschlag und der Text, der vorher im Feld stand.**
+    ///
+    /// Ohne ihn ist die eigene Eingabe nach dem Tipp verloren, und der Abgleich
+    /// misst die Antwort an Apples Vorschlagstext statt an der Frage — beide
+    /// Hälften von #143 hängen daran.
+    ///
+    /// Gebunden an genau den Vorschlag, der im Feld steht, und damit dieselbe
+    /// Regel wie bei `locatedPLZ`: Eine Ableitung gilt nur zu der Eingabe, aus
+    /// der sie stammt. **Nicht** in `onChange` weggeräumt — das läuft erst beim
+    /// nächsten Zeichnen, also womöglich *nach* der Zeile, die es setzt.
+    @State private var vorschlagsHerkunft: (vorschlag: String, getippt: String)?
+
+    private var gemeint: String? {
+        guard let herkunft = vorschlagsHerkunft, herkunft.vorschlag == manualPLZ else { return nil }
+        return herkunft.getippt
+    }
     @State private var isSearching = false
     /// Die zuletzt **erkannte** PLZ — nur damit die Zeile darunter sagen kann,
     /// woher die Zahl im Feld stammt. Wer sie überschreibt, bekommt die Zeile
@@ -123,13 +139,21 @@ struct RegionSetupView: View {
     /// derselbe Weg wie „Weiter", nur ohne den Umweg über das Tippen zu Ende.
     /// Der Abgleich läuft trotzdem durch `CityLookup`; ein Vorschlag ist ein
     /// Vorschlag, keine Postleitzahl.
+    ///
+    /// **Ein angetippter Vorschlag schließt die Liste** — auch wenn er
+    /// scheitert. Im Bild vom 11.08. stand sie danach wieder da: Das Feld hat
+    /// sich geändert, also lief der Vervollständiger erneut, und die zwei
+    /// Zeilen schoben die Fehlermeldung aus dem Bild. Wer gewählt hat, will
+    /// keine Auswahl mehr sehen, sondern das Ergebnis.
     @ViewBuilder
     private var addressSuggestions: some View {
-        if !completer.suggestions.isEmpty, resolvedPlace == nil {
+        if !completer.suggestions.isEmpty, resolvedPlace == nil,
+           vorschlagsHerkunft?.vorschlag != manualPLZ {
             VStack(spacing: 0) {
                 ForEach(Array(completer.suggestions.enumerated()), id: \.element.id) { index, item in
                     if index > 0 { Divider() }
                     Button {
+                        vorschlagsHerkunft = (vorschlag: item.query, getippt: manualPLZ)
                         manualPLZ = item.query
                         completer.clear()
                         lookUpCity()
@@ -365,13 +389,25 @@ struct RegionSetupView: View {
     ///
     /// Scotts Wunsch vom 02.08.: „Anklam" tippen dürfen. Intern ändert sich
     /// nichts — gespeichert wird weiter die PLZ, gesucht wird weiter mit ihr.
+    ///
+    /// **Ein Fehlschlag ändert nichts als die Fehlermeldung.**
+    ///
+    /// Kein Rückfall auf eine früher gespeicherte PLZ, keine übernommene
+    /// Ableitung, kein stiller Sprung: Steht am Ende kein Ort, steht im Feld
+    /// weiter, was der Mensch getippt hat, und die Zeile darunter sagt warum.
+    /// Das ist die zweite Hälfte von #143 — Scott bekam „nicht gefunden" und
+    /// hatte danach die PLZ von nebenan.
     private func lookUpCity() {
         guard case .ortsname(let name) = query else { return }
+        // Der Name in der Meldung ist der **getippte**, nicht Apples
+        // Vorschlagstext: „‚Stuttgart, Baden-Württemberg, Deutschland' kennt
+        // Apple nicht" ist eine Meldung über uns, keine über die Eingabe.
+        let gefragt = gemeint ?? name
         errorMessage = nil
         candidates = []
         isSearching = true
         Task {
-            let result = await CityLookup.look(up: name)
+            let result = await CityLookup.look(up: name, gemeint: gemeint)
             isSearching = false
             switch result {
             case .verstanden(let place):
@@ -379,7 +415,7 @@ struct RegionSetupView: View {
             case .meintestDu(let list):
                 candidates = list
             case .unbekannt:
-                errorMessage = "„\(name)\u{201C} kennt Apple nicht als Ort. Prüf die Schreibweise oder gib die Postleitzahl ein."
+                errorMessage = "„\(gefragt)\u{201C} kennt Apple nicht als Ort. Prüf die Schreibweise oder gib die Postleitzahl ein."
             }
         }
     }
@@ -388,13 +424,17 @@ struct RegionSetupView: View {
     /// so hieß wie gefragt, aber der falsche Ort dieses Namens war.
     private func showAlternatives() {
         guard case .ortsname(let name) = query else { return }
+        // Gefächert wird über den getippten Namen — steht im Feld ein
+        // angetippter Vorschlag, ist dessen Land schon die Antwort und der
+        // Fächer über sechzehn Länder wäre sechzehnmal dieselbe Frage.
+        let gefragt = gemeint ?? name
         errorMessage = nil
         isSearching = true
         Task {
-            let found = await CityLookup.alternatives(for: name)
+            let found = await CityLookup.alternatives(for: gefragt)
             isSearching = false
             if found.isEmpty {
-                errorMessage = "Mehr Orte namens „\(name)\u{201C} findet Apple nicht."
+                errorMessage = "Mehr Orte namens „\(gefragt)\u{201C} findet Apple nicht."
             } else {
                 candidates = found
                 resolvedPlace = nil

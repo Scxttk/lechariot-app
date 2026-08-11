@@ -37,6 +37,11 @@ enum AppRepositories {
             if let n = UITestSupport.dichteVerzeichnisGroesse {
                 return MockBranchRepository(fixtures: MockFixtures.dichtesVerzeichnis(n))
             }
+            // Die frische Gegend, die während des Laufs versorgt wird — der
+            // Übergang, den #144 verlangt.
+            if UITestSupport.gegendWirdFertig {
+                return MockWachsendesVerzeichnis()
+            }
             #endif
             return MockBranchRepository()
         }
@@ -64,6 +69,14 @@ enum AppRepositories {
                 AreaRequestStore.seedPendingArea(
                     UITestSupport.seededAreaAnchor, in: AppDefaults.shared
                 )
+            }
+            mock.wirdFertig = UITestSupport.gegendWirdFertig
+            mock.scheitert = UITestSupport.gegendScheitert
+            if UITestSupport.gegendWirdFertig {
+                // Der Anker der frischen Gegend liegt in Ueckermünde, die
+                // Region ist Ahlbeck — ohne diese Zeile meldete die Attrappe
+                // eine PLZ aus einem ganz anderen Fixture.
+                mock.plzJeAnker = ["penny-17373-1": "17419"]
             }
             #endif
             return mock
