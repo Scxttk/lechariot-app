@@ -87,7 +87,30 @@ enum ItemGlyph {
     /// Mittel deutlich schmaler. Gemessen am Referenzsatz (OpenMoji, 0,0278;
     /// siehe `docs/ZEICHEN-RECHERCHE.md`) kommt der Satz damit von 2,3-fach
     /// auf etwa 1,5-fach heran, ohne bei 22 pt zu zerfallen.
-    static let feder = Feder.Profil(breite: 0.072, neigung: -32, schmal: 0.46, spitze: 0.18)
+    /// **Die Feder darf groß leben und wird klein geklemmt.**
+    ///
+    /// `schmal` stand bis zum 12.08. auf 0,46, und der Satz las sich trotzdem
+    /// als Monolinie — gemessen: Der Weg von 0,46 auf 0,15 nimmt nur ein
+    /// Viertel der Konturfläche weg, weil ein gebogener Umriss durch jede
+    /// Richtung läuft und sich selbst ausmittelt. Zaghaft war der Wert also
+    /// nicht aus Geschmack, sondern weil ein *Verhältnis* mit der Zeichnung
+    /// mitschrumpft: 0,15 hätte bei 22 pt eine 0,24-pt-Stelle ergeben, und
+    /// dort reißt der Strich auf.
+    ///
+    /// Die Untergrenze in `Feder.Profil.mindest` löst das an der richtigen
+    /// Stelle — sie ist in **Punkten** gemessen, nicht im Verhältnis. Damit
+    /// kann die Feder hier auf 0,15 gehen: Bei 90 pt schwillt die Kontur
+    /// zwischen 1,5 und 6,5 pt an und ab, bei 40 pt zwischen 1,5 und 2,9, und
+    /// bei 22 pt ist praktisch alles geklemmt — dort ist die Monolinie kein
+    /// Verlust, sondern das, was bei der Größe überhaupt trägt.
+    ///
+    /// **`breite` bleibt bei 0,072.** Auf dem Prüfbogen sahen 0,085 und 0,095
+    /// kräftiger aus, aber 0,095 ist genau der Wert, an dem der Satz am 11.08.
+    /// gescheitert ist: Zwei Kanten, die näher beieinander liegen als der
+    /// Strich breit ist, sind eine Kante — drei Bananen wurden ein Klotz. Die
+    /// Feder soll Leben in den Strich bringen, nicht die alte Falle zurück.
+    static let feder = Feder.Profil(breite: 0.072, neigung: -32, schmal: 0.15,
+                                    spitze: 0.18, mindest: 1.5)
 
     /// Die Zeichnung dieses Begriffs, oder `nil` für einen, für den es hier
     /// keine gibt — dann greift das Kategoriezeichen, statt dass ein

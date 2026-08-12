@@ -392,6 +392,21 @@ enum Feder {
         /// Über welchen Anteil der Länge ein **offenes** Ende ausläuft.
         /// Geschlossene Umrisse haben keine Enden und laufen nicht aus.
         var spitze: CGFloat = 0.16
+        /// **Untergrenze in Punkten, nicht im Verhältnis.**
+        ///
+        /// Der Grund, warum `schmal` überhaupt so zaghaft eingestellt war: Ein
+        /// Verhältnis schrumpft mit der Zeichnung mit. Bei 0,15 und 22 pt wäre
+        /// die schmalste Stelle 0,24 pt — auf dem Gerät nichts, und der Strich
+        /// reißt dort auf. Also nicht die Feder zähmen, damit sie klein noch
+        /// trägt, sondern **groß leben lassen und klein klemmen**: Kein
+        /// Abschnitt wird schmaler als dieser Wert, egal wie stark die Feder
+        /// sonst moduliert.
+        ///
+        /// Bei 0,072 Grundbreite heißt das: 22 pt → volle Breite 1,6 pt, also
+        /// praktisch überall geklemmt und wieder Monolinie; 40 pt → 1,5 bis
+        /// 2,9 pt; 90 pt → 1,5 bis 6,5 pt, und dort schwillt sie sichtbar an
+        /// und ab. Erlaufen auf dem Prüfbogen 90/40/22, nicht gewählt.
+        var mindest: CGFloat = 1.5
     }
 
     /// Die ausgezogene Kontur zu einer Mittellinie.
@@ -511,7 +526,9 @@ enum Feder {
                 faktor *= 0.55 + 0.45 * min(1, rand)
             }
 
-            let h = breite * faktor / 2
+            // Die Klemme sitzt am Ende, nach Feder *und* Spitze: Was hier
+            // gemessen wird, ist die Breite, die wirklich gezeichnet wird.
+            let h = max(profil.mindest, breite * faktor) / 2
             let nx = -ty / tl * h, ny = tx / tl * h
             links.append(CGPoint(x: pts[i].x + nx, y: pts[i].y + ny))
             rechts.append(CGPoint(x: pts[i].x - nx, y: pts[i].y - ny))
