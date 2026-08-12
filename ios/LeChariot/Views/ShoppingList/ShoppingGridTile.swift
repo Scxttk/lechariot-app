@@ -239,6 +239,27 @@ struct ShoppingGridTile: View {
         }
     }
 
+    /// **Wie weit die Fahne aus der Ecke des Zeichens herausrückt** — nach
+    /// rechts und nach oben, gemessen an der oberen rechten Ecke des
+    /// Zeichenkastens (52 × 46).
+    ///
+    /// Bis zum 11.08. stand hier (+4, 0), und damit lag die Fahne mitten auf
+    /// der Zeichnung; Scott in der Bedienrunde: „Preis in Kacheln soll etwas
+    /// weiter oben und etwas weiter rechts sein um Produkt nicht zu
+    /// verdecken." **Die Zahlen sind gerechnet, nicht geschätzt:** Über die 19
+    /// Zeichnungen der Detail-Tranchen lag bei (+4, 0) im Mittel ein Fünftel
+    /// der Kontur und knapp ein Viertel der Körperfläche unter der Fahne, bei
+    /// (+8, −5) sind es 7 % und 4 %. Weiter hinaus bringt kaum noch etwas und
+    /// kostet den Halt: Die Fahne soll an der Ecke des Zeichens **hängen**,
+    /// nicht neben der Kachel schweben.
+    ///
+    /// **Die Grenzen dieser zwei Zahlen.** Nach oben ist bei −7 Schluss (über
+    /// dem Zeichenkasten liegen `Spacing.sm` plus die Randlinie der Kachel),
+    /// nach rechts bei etwa +17, gerechnet auf der schmalsten iPhone-Breite —
+    /// dort ist die Kachel 106 pt breit, und der Kasten steht mittig darin.
+    /// Was über die Kante ragt, liest sich als Fehler.
+    private static let fahnenVersatz = CGSize(width: 8, height: -5)
+
     /// Der Preis als Fähnchen an der Ecke. Es sitzt am Zeichen und nicht unter
     /// dem Wort, damit die Wortzeilen aller Kacheln eine gemeinsame Höhe
     /// behalten — sonst tanzt jede zweite Kachel.
@@ -256,12 +277,11 @@ struct ShoppingGridTile: View {
         .padding(.vertical, 2)
         .background(Theme.accent, in: Capsule())
         // **Innerhalb der Fläche, seit die Kachel eine hat** (08.08.). Ohne
-        // Fläche durfte die Fahne weit nach außen hängen, damit sie dem
-        // Erdbeerkelch und dem Deckel der Milchtüte aus dem Gesicht geht. Mit
-        // Fläche schnitt genau dieser Überstand über die Kante — und was über
-        // eine Kante ragt, liest sich als Fehler, nicht als Sticker. Jetzt
-        // knapp nach außen versetzt, aber innerhalb des Randes.
-        .offset(x: 4, y: 0)
+        // Fläche durfte die Fahne weit nach außen hängen; mit Fläche schnitt
+        // genau dieser Überstand über die Kante, und was über eine Kante ragt,
+        // liest sich als Fehler und nicht als Sticker. Wie weit sie heute
+        // herausrückt und warum genau so weit: `fahnenVersatz`.
+        .offset(x: Self.fahnenVersatz.width, y: Self.fahnenVersatz.height)
         .accessibilityHidden(true)
     }
 
