@@ -87,29 +87,35 @@ enum ItemGlyph {
     /// Mittel deutlich schmaler. Gemessen am Referenzsatz (OpenMoji, 0,0278;
     /// siehe `docs/ZEICHEN-RECHERCHE.md`) kommt der Satz damit von 2,3-fach
     /// auf etwa 1,5-fach heran, ohne bei 22 pt zu zerfallen.
-    /// **Die Feder darf groß leben und wird klein geklemmt.**
+    /// **Die Feder schwingt verhalten — und 0,15 ist ausprobiert und
+    /// verworfen, nicht übersehen.**
     ///
-    /// `schmal` stand bis zum 12.08. auf 0,46, und der Satz las sich trotzdem
-    /// als Monolinie — gemessen: Der Weg von 0,46 auf 0,15 nimmt nur ein
-    /// Viertel der Konturfläche weg, weil ein gebogener Umriss durch jede
-    /// Richtung läuft und sich selbst ausmittelt. Zaghaft war der Wert also
-    /// nicht aus Geschmack, sondern weil ein *Verhältnis* mit der Zeichnung
-    /// mitschrumpft: 0,15 hätte bei 22 pt eine 0,24-pt-Stelle ergeben, und
-    /// dort reißt der Strich auf.
+    /// Am 12.08. stand die Frage, warum der Satz trotz eingeschalteter Feder
+    /// wie eine Monolinie aussieht. Gemessen (Konturpixel auf einem
+    /// Probebogen, `breite` konstant gehalten): Der ganze Weg von der flachen
+    /// Linie bis zum Extrem nimmt **nur ein Viertel** der Konturfläche weg —
+    /// 1,00 → 100 %, 0,46 → 84 %, 0,28 → 78 %, 0,15 → 75 %. Ein gebogener
+    /// Umriss läuft durch jede Richtung und mittelt sich selbst aus.
     ///
-    /// Die Untergrenze in `Feder.Profil.mindest` löst das an der richtigen
-    /// Stelle — sie ist in **Punkten** gemessen, nicht im Verhältnis. Damit
-    /// kann die Feder hier auf 0,15 gehen: Bei 90 pt schwillt die Kontur
-    /// zwischen 1,5 und 6,5 pt an und ab, bei 40 pt zwischen 1,5 und 2,9, und
-    /// bei 22 pt ist praktisch alles geklemmt — dort ist die Monolinie kein
-    /// Verlust, sondern das, was bei der Größe überhaupt trägt.
+    /// Daraufhin lief der Satz eine Runde auf **0,15**, und auf dem Prüfbogen
+    /// 90/40/22 hat Scott ihn wieder abgewählt: Bei 90 pt schwoll die Kontur
+    /// zwischen 1,5 und 6,5 pt, und das war eine andere Zeichnung — kalligrafisch
+    /// statt gezeichnet. **0,46 ist die Anmutung, die bleiben soll**; die Feder
+    /// soll dem Strich Leben geben und nicht selbst das Motiv werden.
+    ///
+    /// **Die Untergrenze aus derselben Runde bleibt trotzdem**, weil sie
+    /// unabhängig vom Wert richtig ist: Ein *Verhältnis* schrumpft mit der
+    /// Zeichnung mit, eine Grenze in **Punkten** nicht. Sie ist bei 0,46 kein
+    /// totes Gewicht, sondern greift dort, wo es klein wird — 90 pt: 2,98 pt
+    /// schmalste Stelle, ungeklemmt; 40 pt: 1,32 → **1,50**; 22 pt: 0,73 →
+    /// **1,50**. Genau die Größen, bei denen ein dünn auslaufender Strich auf
+    /// dem Gerät aufreißt.
     ///
     /// **`breite` bleibt bei 0,072.** Auf dem Prüfbogen sahen 0,085 und 0,095
     /// kräftiger aus, aber 0,095 ist genau der Wert, an dem der Satz am 11.08.
     /// gescheitert ist: Zwei Kanten, die näher beieinander liegen als der
-    /// Strich breit ist, sind eine Kante — drei Bananen wurden ein Klotz. Die
-    /// Feder soll Leben in den Strich bringen, nicht die alte Falle zurück.
-    static let feder = Feder.Profil(breite: 0.072, neigung: -32, schmal: 0.15,
+    /// Strich breit ist, sind eine Kante — drei Bananen wurden ein Klotz.
+    static let feder = Feder.Profil(breite: 0.072, neigung: -32, schmal: 0.46,
                                     spitze: 0.18, mindest: 1.5)
 
     /// Die Zeichnung dieses Begriffs, oder `nil` für einen, für den es hier

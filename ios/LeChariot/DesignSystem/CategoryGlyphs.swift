@@ -394,18 +394,21 @@ enum Feder {
         var spitze: CGFloat = 0.16
         /// **Untergrenze in Punkten, nicht im Verhältnis.**
         ///
-        /// Der Grund, warum `schmal` überhaupt so zaghaft eingestellt war: Ein
-        /// Verhältnis schrumpft mit der Zeichnung mit. Bei 0,15 und 22 pt wäre
-        /// die schmalste Stelle 0,24 pt — auf dem Gerät nichts, und der Strich
-        /// reißt dort auf. Also nicht die Feder zähmen, damit sie klein noch
-        /// trägt, sondern **groß leben lassen und klein klemmen**: Kein
-        /// Abschnitt wird schmaler als dieser Wert, egal wie stark die Feder
-        /// sonst moduliert.
+        /// `schmal` ist ein *Verhältnis* und schrumpft deshalb mit der
+        /// Zeichnung mit — bei kleinen Größen läuft die schmalste Stelle
+        /// unter das, was auf dem Gerät noch ein Strich ist, und reißt auf.
+        /// Die Untergrenze steht dagegen in **Punkten**: Kein Abschnitt wird
+        /// schmaler als dieser Wert, egal wie stark die Feder sonst moduliert.
         ///
-        /// Bei 0,072 Grundbreite heißt das: 22 pt → volle Breite 1,6 pt, also
-        /// praktisch überall geklemmt und wieder Monolinie; 40 pt → 1,5 bis
-        /// 2,9 pt; 90 pt → 1,5 bis 6,5 pt, und dort schwillt sie sichtbar an
-        /// und ab. Erlaufen auf dem Prüfbogen 90/40/22, nicht gewählt.
+        /// **Das ist der Grund, warum `schmal` nicht mehr die Größe mitdenken
+        /// muss.** Vorher war der Wert ein Kompromiss zwischen „groß soll man
+        /// die Feder sehen" und „klein darf sie nicht zerfallen"; jetzt
+        /// beantwortet die Klemme die zweite Hälfte, und `schmal` ist wieder
+        /// eine reine Gestaltungsfrage.
+        ///
+        /// Bei 0,072 Grundbreite und `schmal` 0,46 greift sie genau dort, wo
+        /// es eng wird: 90 pt → 2,98 pt schmalste Stelle, ungeklemmt; 40 pt →
+        /// 1,32 wird **1,50**; 22 pt → 0,73 wird **1,50**.
         var mindest: CGFloat = 1.5
     }
 
