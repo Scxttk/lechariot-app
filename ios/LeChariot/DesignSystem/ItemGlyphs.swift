@@ -26,6 +26,36 @@ import SwiftUI
 /// App-Ziel, und genau das macht die Runde Zeichnen–Ansehen zwei Sekunden
 /// lang statt zwei Minuten. Die Auflösung Artikeltext → Begriff steht deshalb
 /// nebenan in `ItemGlyphTerm`.
+///
+/// ## Wer eine Fläche bekommt
+///
+/// **Jeder geschlossene Umriss trägt eine Körperfläche — ohne Ausnahme und
+/// ohne Zutun des Rezepts.** `drawing(for:in:)` nimmt dafür den
+/// flächengrößten geschlossenen Umriss der Zeichnung. Ein Rezept, das nichts
+/// sagt, ist damit trotzdem zweitonig; ein Rezept, das `alsKoerper()` oder
+/// `alsSchatten()` ruft, hat die Frage selbst beantwortet und behält recht.
+///
+/// **Linie bleibt nur, was gar keinen geschlossenen Umriss hat** — der
+/// Dampf über der Tasse, gekreuztes Besteck, ein Zweig. Das ist keine
+/// Geschmacksentscheidung je Zeichnung, sondern eine Eigenschaft der Form:
+/// Ein offener Zug hat keine Innenseite, und ein gedanklich geschlossener
+/// legt Fläche dorthin, wo keine ist.
+///
+/// **Warum als Regel und nicht als Handarbeit:** Zehn Zeichnungen bekamen
+/// ihre Fläche am 11./12.08. von Hand, 322 nicht. Ein Satz, in dem die
+/// Hälfte Fläche trägt und die andere nicht, liest sich als Versehen — und
+/// von Hand nachgezogen wäre er beim nächsten neuen Zeichen wieder
+/// uneinheitlich. Die Regel gilt für den **Artikel**satz; der Kategoriesatz
+/// steht bei 13 pt und bleibt Monolinie (siehe `CategoryGlyphs.swift`).
+///
+/// ## Herkunft der Geometrie
+///
+/// Einzelne Zeichnungen gehen auf **Lucide** (lucide.dev, ISC) zurück, mit
+/// `tools/svg2pen.py` in dieses Rezeptformat übersetzt und danach zweitonig
+/// umgezogen. Welche das sind, steht namentlich in `NOTICE` — dort steht
+/// auch, warum der Hinweis fällig ist. Alle übrigen sind hier gezeichnet;
+/// Lucide dient ihnen als Maßstab für Strichdisziplin und Geometrie, nicht
+/// als Vorlage.
 enum ItemGlyph {
 
     typealias Rezept = (inout Pen) -> Void
@@ -66,7 +96,17 @@ enum ItemGlyph {
         guard let recipe = recipes[term] else { return nil }
         var pen = Pen(rect: rect)
         recipe(&pen)
-        return CategoryGlyph.Drawing(koerper: pen.koerper, schatten: pen.schatten,
+
+        // **Die Regel aus dem Kopf dieser Datei, an genau einer Stelle.**
+        // Wer nichts gesagt hat, bekommt seinen größten geschlossenen Umriss
+        // als Körperfläche. Wer `alsKoerper()` oder `alsSchatten()` gerufen
+        // hat, hat die Frage schon beantwortet und wird nicht überstimmt.
+        var koerper = pen.koerper
+        if koerper.isEmpty, pen.schatten.isEmpty, let silhouette = pen.groessteGeschlossene {
+            koerper = silhouette
+        }
+
+        return CategoryGlyph.Drawing(koerper: koerper, schatten: pen.schatten,
                                      fein: pen.fein, stroke: pen.stroke, fill: pen.fill)
     }
 
@@ -441,43 +481,62 @@ enum ItemGlyph {
             p.line([p.at(0.50, 0.38), p.at(0.56, 0.12)])
         },
 
-        // Salat: drei Blätter, die aus einem Strunk auffächern.
+        // Salat: **eine Schüssel mit Blättern darin**, nicht mehr ein Büschel.
         //
-        // **Vierter Anlauf, und die drei davor waren alle derselbe Fehler:
-        // ein runder Kopf.** Was man in eine runde Silhouette hineinzeichnet,
-        // entscheidet, was sie ist, und keine der drei Füllungen hat gewonnen:
+        // Fünfter Anlauf. Die vier davor drehten sich um die Frage, wie man
+        // *die Pflanze* zeichnet — runder Kopf (dreimal falsch gelesen: Apfel,
+        // Kürbis, Gesicht), dann drei auffächernde Blätter. Der Büschel war
+        // sauber gezeichnet und trotzdem unbrauchbar: Auf dem Prüfbogen vom
+        // 12.08. las er sich bei 40 pt als **Schilf**, bei 22 pt als drei
+        // Striche. Scott, ebenfalls 12.08.: „the current salat glyph is bad."
         //
-        // 1. Eine senkrechte Rippe: ein **Apfel mit Stiel**.
-        // 2. Zwei geschwungene Rippen: ein **Kürbis** — senkrechte Linien in
-        //    einem runden Körper sind Rillen.
-        // 3. Zwei liegende Kuppeln: ein **Gesicht**. Zwei ineinander
-        //    geschachtelte Bögen in einem Rund sind Nase und Mund, und das
-        //    sieht man, sobald man es einmal gesehen hat.
+        // **Der Fehler war die Wahl des Gegenstands, nicht die Zeichnung.**
+        // Ein Blattbüschel ohne Gefäß hat keine Silhouette, an der man es
+        // festhält — jede Blattform ist bei 22 pt ein Strich. Die Schüssel
+        // hat eine, und sie ist außerdem das, was „Salat" auf einer
+        // Einkaufsliste meint. Dieselbe Lehre wie beim Ei: Der **Karton**
+        // trägt die Zeichnung, nicht das einzelne Stück.
         //
-        // Der Kopf war das Problem, nicht die Füllung. Drei Blätter aus einem
-        // Punkt haben gar keine geschlossene Außenkante, in die etwas
-        // hineinzudeuten wäre — und Romana, Rucola und Feldsalat sind ohnehin
-        // eher ein Büschel als eine Kugel.
+        // Geometrie der Schale aus Lucide `salad` (ISC, siehe `NOTICE`),
+        // übersetzt mit `tools/svg2pen.py`. Die Blätter sind eigene Hand:
+        // Lucides Blattwerk ist ein Geflecht aus fünf Bögen und bei 22 pt ein
+        // Fleck — hier stehen zwei Lappen mit einer Lücke dazwischen, weil
+        // zwei Kanten näher als 0,065 eine Kante sind.
         "salat": { p in
-            p.begin(p.at(0.50, 0.92))
-            p.bow(p.at(0.50, 0.10), p.at(0.33, 0.72), p.at(0.33, 0.28))
-            p.bow(p.at(0.50, 0.92), p.at(0.67, 0.28), p.at(0.67, 0.72))
+            // Die Schale. Sie trägt die Fläche — größter geschlossener Umriss.
+            p.begin(p.at(0.500, 0.875))
+            p.bow(p.at(0.635, 0.850), p.at(0.545, 0.875), p.at(0.593, 0.866))
+            p.bow(p.at(0.751, 0.778), p.at(0.677, 0.834), p.at(0.718, 0.808))
+            p.bow(p.at(0.835, 0.670), p.at(0.785, 0.748), p.at(0.814, 0.710))
+            p.bow(p.at(0.873, 0.538), p.at(0.855, 0.629), p.at(0.883, 0.566))
+            p.bow(p.at(0.500, 0.500), p.at(0.863, 0.505), p.at(0.680, 0.497))
+            p.bow(p.at(0.127, 0.538), p.at(0.320, 0.497), p.at(0.137, 0.505))
+            p.bow(p.at(0.165, 0.670), p.at(0.117, 0.566), p.at(0.145, 0.629))
+            p.bow(p.at(0.249, 0.778), p.at(0.186, 0.710), p.at(0.215, 0.748))
+            p.bow(p.at(0.365, 0.850), p.at(0.282, 0.808), p.at(0.323, 0.834))
+            p.bow(p.at(0.500, 0.875), p.at(0.407, 0.866), p.at(0.455, 0.875))
             p.close()
-            p.begin(p.at(0.50, 0.92))
-            p.bow(p.at(0.10, 0.38), p.at(0.28, 0.68), p.at(0.13, 0.49))
-            p.bow(p.at(0.50, 0.92), p.at(0.34, 0.61), p.at(0.47, 0.80))
+            // Der Standfuß — ohne ihn schwebt die Schale.
+            p.line([p.at(0.30, 0.93), p.at(0.70, 0.93)])
+            // **Zwei Blätter mit Spitze, nicht zwei Lappen.** Der erste Anlauf
+            // hatte zwei rundliche Kuppen über dem Rand, und auf dem Prüfbogen
+            // standen sie zwei Zellen neben `eier` — es waren dieselbe Form.
+            // Ein rundes Ding in einer Schale ist ein Ei, ein Knödel oder eine
+            // Kugel Eis; erst die auslaufende Spitze und die Mittelrippe machen
+            // daraus ein Blatt. Beide sitzen mit dem Fuß **hinter** dem Rand,
+            // damit sie in der Schale liegen und nicht darauf.
+            p.begin(p.at(0.30, 0.52))
+            p.bow(p.at(0.25, 0.16), p.at(0.20, 0.42), p.at(0.19, 0.26))
+            p.bow(p.at(0.50, 0.52), p.at(0.38, 0.22), p.at(0.47, 0.36))
             p.close()
-            p.begin(p.at(0.50, 0.92))
-            p.bow(p.at(0.90, 0.38), p.at(0.72, 0.68), p.at(0.87, 0.49))
-            p.bow(p.at(0.50, 0.92), p.at(0.66, 0.61), p.at(0.53, 0.80))
+            p.feinBogen(p.at(0.28, 0.50), p.at(0.26, 0.22),
+                        p.at(0.28, 0.40), p.at(0.27, 0.30))
+            p.begin(p.at(0.55, 0.52))
+            p.bow(p.at(0.79, 0.25), p.at(0.60, 0.36), p.at(0.71, 0.26))
+            p.bow(p.at(0.72, 0.52), p.at(0.82, 0.36), p.at(0.79, 0.45))
             p.close()
-            // **Die Mittelrippe** im mittleren Blatt — der Zuwachs, der aus drei
-            // Formen drei *Blätter* macht. Sie steht 0,17 von beiden
-            // Blatträndern entfernt und bleibt damit auch bei 40 pt eine eigene
-            // Linie. Bewusst nur im mittleren Blatt: Die beiden äußeren sind an
-            // ihrer breitesten Stelle keine 0,26 breit, dort wäre eine Rippe
-            // der dritte Strich in einem Bündel von dreien.
-            p.line([p.at(0.50, 0.86), p.at(0.50, 0.22)])
+            p.feinBogen(p.at(0.62, 0.50), p.at(0.76, 0.30),
+                        p.at(0.66, 0.43), p.at(0.72, 0.35))
         },
 
         // Zwiebel: bauchige Knolle mit **Hals**, zwei kurze Nähte, zwei Triebe.
@@ -936,7 +995,7 @@ enum ItemGlyph {
             // aufrechte Bohne kollidiert mit nichts, und die Naht hat in der
             // vollen Kachel Platz für ihren Schwung — sie macht die Bohne, nicht
             // die Form.
-            p.stroke.addEllipse(in: p.box(0.50, 0.50, 0.46, 0.72))
+            p.oval(0.50, 0.50, 0.46, 0.72)
             p.begin(p.at(0.50, 0.16))
             p.bow(p.at(0.50, 0.84), p.at(0.30, 0.36), p.at(0.70, 0.64))
         },
@@ -971,8 +1030,7 @@ enum ItemGlyph {
             // einem Mast — bei 22 pt ein Lolli. Ein Teebeutel hängt über den
             // Rand, seine Schnur läuft schief.
             p.line([p.at(0.30, 0.48), p.at(0.20, 0.30)])
-            p.stroke.addRoundedRect(in: p.box(0.16, 0.20, 0.20, 0.15),
-                                    cornerSize: p.corner(0.03))
+            p.rechteck(0.16, 0.20, 0.20, 0.15, ecke: 0.03)
         },
 
         // Wasser: Glas mit Wasserspiegel und zwei Blasen.
@@ -1234,7 +1292,7 @@ enum ItemGlyph {
             p.to(p.at(0.16, 0.84))
             p.bow(p.at(0.84, 0.84), p.at(0.16, 0.94), p.at(0.84, 0.94))
             p.to(p.at(0.84, 0.34))
-            p.stroke.addEllipse(in: p.box(0.50, 0.34, 0.68, 0.22))
+            p.oval(0.50, 0.34, 0.68, 0.22)
             p.circle(p.at(0.50, 0.34), 0.10)
         },
 
@@ -1352,10 +1410,8 @@ enum ItemGlyph {
         // aus dem Kategoriesatz. Im Brötchen ist sie beides nicht — und so
         // isst man sie hier ohnehin.
         "bratwurst": { p in
-            p.stroke.addRoundedRect(in: p.box(0.50, 0.68, 0.84, 0.30),
-                                    cornerSize: p.corner(0.15))
-            p.stroke.addRoundedRect(in: p.box(0.50, 0.44, 0.76, 0.22),
-                                    cornerSize: p.corner(0.11))
+            p.rechteck(0.50, 0.68, 0.84, 0.30, ecke: 0.15)
+            p.rechteck(0.50, 0.44, 0.76, 0.22, ecke: 0.11)
         },
 
         // Hähnchenkeule: dickes Fleisch oben, **kurzer** Knochen unten rechts
@@ -1435,8 +1491,7 @@ enum ItemGlyph {
             p.circle(p.at(0.50, 0.58), 0.31)
             p.line([p.at(0.22, 0.40), p.at(0.18, 0.16), p.at(0.40, 0.28)])
             p.line([p.at(0.78, 0.40), p.at(0.82, 0.16), p.at(0.60, 0.28)])
-            p.stroke.addRoundedRect(in: p.box(0.50, 0.66, 0.30, 0.20),
-                                    cornerSize: p.corner(0.08))
+            p.rechteck(0.50, 0.66, 0.30, 0.20, ecke: 0.08)
             p.dot(p.at(0.43, 0.66), 0.035)
             p.dot(p.at(0.57, 0.66), 0.035)
         },
@@ -1454,7 +1509,7 @@ enum ItemGlyph {
             p.bow(p.at(0.94, 0.20), p.at(0.94, 0.42), p.at(0.98, 0.28))
             p.dot(p.at(0.40, 0.56), 0.04)
             p.dot(p.at(0.60, 0.56), 0.04)
-            p.stroke.addEllipse(in: p.box(0.50, 0.78, 0.26, 0.14))
+            p.oval(0.50, 0.78, 0.26, 0.14)
         },
 
         // Ente: Körper, Kopf, Schnabel, ein Flügelbogen.
@@ -1471,20 +1526,46 @@ enum ItemGlyph {
             p.bow(p.at(0.58, 0.68), p.at(0.40, 0.76), p.at(0.54, 0.78))
         },
 
-        // Fisch: Körper, Keilschwanz **oben und unten**, Rückenflosse, Auge.
-        // Der Kategoriefisch hat einen glatten Rücken; die Flosse ist der
-        // Unterschied, an dem man die beiden nebeneinander auseinanderhält.
+        // Fisch: Körper, Keilschwanz, Rückenflosse, Auge.
+        //
+        // **Neu gezeichnet am 12.08.** Der Vorgänger war ein Kreisbogenpaar
+        // mit einem *geraden* Dreieck als Schwanz, und beides zusammen las
+        // sich auf dem Prüfbogen als Kinderzeichnung: Der Körper war an
+        // beiden Enden gleich spitz, also zeigte nichts, wo vorn ist, und das
+        // Dreieck saß mit einer scharfen Kante daran — die einzige Gerade im
+        // ganzen Satz (siehe „es gibt keine geraden Strecken" im Kopf von
+        // `CategoryGlyphs.swift`).
+        //
+        // Der Körper kommt aus Lucide `fish` (ISC, siehe `NOTICE`), übersetzt
+        // mit `tools/svg2pen.py`: ein Oval, das nach vorn füllig und nach
+        // hinten schlank wird. Kiemenbogen und Auge sind eigene Zutat — bei
+        // Lucide steht dort ein zweiter Konturstrich, und der ist bei 22 pt
+        // mit der Rückenlinie eine Kante.
         "fisch": { p in
-            p.begin(p.at(0.30, 0.54))
-            p.bow(p.at(0.92, 0.54), p.at(0.44, 0.20), p.at(0.78, 0.24))
-            p.bow(p.at(0.30, 0.54), p.at(0.78, 0.84), p.at(0.44, 0.88))
+            p.begin(p.at(0.271, 0.500))
+            p.bow(p.at(0.441, 0.300), p.at(0.290, 0.400), p.at(0.360, 0.330))
+            p.bow(p.at(0.702, 0.260), p.at(0.530, 0.262), p.at(0.630, 0.248))
+            p.bow(p.at(0.894, 0.437), p.at(0.790, 0.290), p.at(0.870, 0.370))
+            p.bow(p.at(0.894, 0.564), p.at(0.907, 0.476), p.at(0.907, 0.524))
+            p.bow(p.at(0.702, 0.740), p.at(0.870, 0.630), p.at(0.790, 0.710))
+            p.bow(p.at(0.441, 0.700), p.at(0.630, 0.752), p.at(0.530, 0.738))
+            p.bow(p.at(0.271, 0.500), p.at(0.360, 0.670), p.at(0.290, 0.600))
             p.close()
-            p.begin(p.at(0.30, 0.54))
-            p.to(p.at(0.06, 0.28))
-            p.to(p.at(0.06, 0.80))
-            p.close()
-            p.line([p.at(0.52, 0.28), p.at(0.60, 0.12), p.at(0.72, 0.30)])
-            p.dot(p.at(0.78, 0.48), 0.05)
+            // Der Schwanz, mit Schwung statt Kante — die Kerbe sitzt mittig,
+            // die beiden Spitzen liegen verschieden hoch.
+            p.begin(p.at(0.30, 0.42))
+            p.bow(p.at(0.07, 0.20), p.at(0.22, 0.34), p.at(0.13, 0.24))
+            p.bow(p.at(0.12, 0.50), p.at(0.08, 0.32), p.at(0.11, 0.42))
+            p.bow(p.at(0.07, 0.82), p.at(0.13, 0.60), p.at(0.09, 0.72))
+            p.bow(p.at(0.30, 0.60), p.at(0.14, 0.78), p.at(0.23, 0.68))
+            // Rückenflosse.
+            p.begin(p.at(0.50, 0.29))
+            p.bow(p.at(0.68, 0.14), p.at(0.54, 0.20), p.at(0.60, 0.15))
+            p.bow(p.at(0.70, 0.26), p.at(0.71, 0.17), p.at(0.71, 0.21))
+            // Kiemenbogen, dünn — in Konturstärke wäre er der zweite Rücken.
+            p.feinBogen(p.at(0.62, 0.29), p.at(0.62, 0.71),
+                        p.at(0.53, 0.40), p.at(0.53, 0.60))
+            p.dot(p.at(0.78, 0.44), 0.045)
         },
     ]
 
@@ -1564,8 +1645,7 @@ enum ItemGlyph {
         // sitzt, faltet.** Deshalb liegt das Papier jetzt als abgeknickte Ecke
         // oben rechts und läuft nicht mehr durch den Block hindurch.
         "butter": { p in
-            p.stroke.addRoundedRect(in: p.box(0.50, 0.68, 0.80, 0.32),
-                                    cornerSize: p.corner(0.04))
+            p.rechteck(0.50, 0.68, 0.80, 0.32, ecke: 0.04)
             p.line([p.at(0.74, 0.52), p.at(0.90, 0.68)])
             p.begin(p.at(0.26, 0.52))
             p.to(p.at(0.36, 0.34))
@@ -1648,7 +1728,7 @@ enum ItemGlyph {
         // nicht aufzufallen. Rund statt kantig trennt ihn ohnehin besser von
         // Quark, Sahne und Margarine, die alle Becher mit geraden Wänden sind.
         "frischkäse": { p in
-            p.stroke.addEllipse(in: p.box(0.50, 0.40, 0.68, 0.26))
+            p.oval(0.50, 0.40, 0.68, 0.26)
             p.begin(p.at(0.16, 0.40))
             p.to(p.at(0.16, 0.62))
             p.bow(p.at(0.84, 0.62), p.at(0.16, 0.82), p.at(0.84, 0.82))
@@ -1660,7 +1740,7 @@ enum ItemGlyph {
         // Satzes trennt.
         "mozzarella": { p in
             p.circle(p.at(0.36, 0.54), 0.26)
-            p.stroke.addEllipse(in: p.box(0.74, 0.72, 0.40, 0.22))
+            p.oval(0.74, 0.72, 0.40, 0.22)
         },
 
         // Feta: Block mit **gebröselter Oberkante** und zwei Krümeln daneben.
@@ -1695,8 +1775,7 @@ enum ItemGlyph {
             p.to(p.at(0.66, 0.90))
             p.to(p.at(0.74, 0.36))
             p.close()
-            p.stroke.addRoundedRect(in: p.box(0.50, 0.30, 0.60, 0.12),
-                                    cornerSize: p.corner(0.03))
+            p.rechteck(0.50, 0.30, 0.60, 0.12, ecke: 0.03)
             // **Hier stand eine abgezogene Folienecke, und sie ist wieder weg.**
             // Schräg nach oben war sie ein **Strohhalm**, flach nach rechts ein
             // **Löffelstiel** — beide Male machte der Fortsatz aus dem Becher
@@ -1712,14 +1791,18 @@ enum ItemGlyph {
         // **Bandenetikett** auf 0,58: Es füllt die leere Wand, die den Becher
         // vorher zu einem Eimer machte, und liegt 0,14 unter dem Rand.
         "joghurt": { p in
+            // Der Becher lief bis zum 12.08. offen aus und war damit der
+            // einzige im Satz ohne Körperfläche — geschlossen wird er entlang
+            // derselben Waagerechten, auf der ohnehin der Rand liegt.
             p.begin(p.at(0.22, 0.44))
             p.to(p.at(0.30, 0.92))
             p.to(p.at(0.70, 0.92))
             p.to(p.at(0.78, 0.44))
+            p.close()
             p.line([p.at(0.16, 0.44), p.at(0.84, 0.44)])
             p.line([p.at(0.25, 0.58), p.at(0.75, 0.58)])
             p.line([p.at(0.56, 0.42), p.at(0.74, 0.14)])
-            p.stroke.addEllipse(in: p.box(0.79, 0.11, 0.20, 0.14))
+            p.oval(0.79, 0.11, 0.20, 0.14)
         },
 
         // Sahne: Becher mit **Sahnetuff** — drei Bögen, die nach oben kleiner
@@ -1743,10 +1826,14 @@ enum ItemGlyph {
         // Die drei Stufen stehen auf 0,14 und 0,13 Abstand — knapp über dem,
         // was der 3,8-pt-Strich bei 40 pt noch offen lässt.
         "sahne": { p in
+            // Wie beim Joghurt: offener Becher, deshalb bis zum 12.08. ohne
+            // Fläche. Der Tuff darüber bleibt Linie — drei offene Bögen haben
+            // keine Innenseite, und gefüllt wäre er eine Haube.
             p.begin(p.at(0.22, 0.60))
             p.to(p.at(0.26, 0.90))
             p.to(p.at(0.74, 0.90))
             p.to(p.at(0.78, 0.60))
+            p.close()
             p.line([p.at(0.16, 0.60), p.at(0.84, 0.60)])
             p.begin(p.at(0.28, 0.58))
             p.bow(p.at(0.72, 0.58), p.at(0.32, 0.40), p.at(0.68, 0.40))
@@ -1815,10 +1902,8 @@ enum ItemGlyph {
         // Margarine: breite Wanne mit übergreifendem Deckel. Der Deckelrand
         // steht seitlich über, der Becher daneben hat seinen bündig.
         "margarine": { p in
-            p.stroke.addRoundedRect(in: p.box(0.50, 0.66, 0.64, 0.34),
-                                    cornerSize: p.corner(0.05))
-            p.stroke.addRoundedRect(in: p.box(0.50, 0.42, 0.78, 0.16),
-                                    cornerSize: p.corner(0.05))
+            p.rechteck(0.50, 0.66, 0.64, 0.34, ecke: 0.05)
+            p.rechteck(0.50, 0.42, 0.78, 0.16, ecke: 0.05)
         },
 
         // Pudding als **Sturzform**: gewellte Kuppe, Teller darunter. Der
@@ -1847,8 +1932,8 @@ enum ItemGlyph {
             p.line([p.at(0.28, 0.88), p.at(0.72, 0.88)])
             p.line([p.at(0.30, 0.80), p.at(0.28, 0.88)])
             p.line([p.at(0.70, 0.80), p.at(0.72, 0.88)])
-            p.stroke.addRect(p.box(0.50, 0.28, 0.26, 0.16))
-            p.stroke.addRect(p.box(0.50, 0.14, 0.20, 0.14))
+            p.rechteck(0.50, 0.28, 0.26, 0.16, ecke: 0)
+            p.rechteck(0.50, 0.14, 0.20, 0.14, ecke: 0)
         },
 
         // Kokosnuss, halbiert: Schale, Fruchtfleischrand, drei Fasern **außen
@@ -1907,8 +1992,7 @@ enum ItemGlyph {
 
         // Knäckebrot: rechteckige Scheibe mit zwei Lochreihen.
         "knäckebrot": { p in
-            p.stroke.addRoundedRect(in: p.box(0.50, 0.50, 0.62, 0.80),
-                                    cornerSize: p.corner(0.05))
+            p.rechteck(0.50, 0.50, 0.62, 0.80, ecke: 0.05)
             for y in [CGFloat(0.34), 0.50, 0.66] {
                 p.dot(p.at(0.40, y), 0.045)
                 p.dot(p.at(0.60, y), 0.045)
@@ -1948,8 +2032,7 @@ enum ItemGlyph {
         // stehen ohnehin „vegan", „veggie", „Fleischersatz" und „Falafel“; das
         // Blatt sagt genau das, was den Block von einem Butterstück trennt.
         "tofu": { p in
-            p.stroke.addRoundedRect(in: p.box(0.50, 0.70, 0.68, 0.36),
-                                    cornerSize: p.corner(0.04))
+            p.rechteck(0.50, 0.70, 0.68, 0.36, ecke: 0.04)
             p.begin(p.at(0.50, 0.50))
             p.bow(p.at(0.30, 0.18), p.at(0.36, 0.44), p.at(0.28, 0.32))
             p.bow(p.at(0.50, 0.50), p.at(0.50, 0.20), p.at(0.52, 0.36))
@@ -2079,6 +2162,7 @@ private let tranche1: [String: ItemGlyph.Rezept] = [
         p.to(p.at(0.30, 0.88))
         p.to(p.at(0.70, 0.88))
         p.to(p.at(0.78, 0.30))
+        p.close()
         p.line([p.at(0.34, 0.52), p.at(0.66, 0.52)])
         p.line([p.at(0.36, 0.66), p.at(0.64, 0.66)])
     },
@@ -2188,6 +2272,7 @@ private let tranche1: [String: ItemGlyph.Rezept] = [
         p.to(p.at(0.70, 0.56))
         p.bow(p.at(0.54, 0.36), p.at(0.68, 0.48), p.at(0.58, 0.44))
         p.to(p.at(0.54, 0.10))
+        p.close()
         p.line([p.at(0.28, 0.66), p.at(0.68, 0.66)])
     },
 
@@ -2738,7 +2823,7 @@ private let tranche3: [String: ItemGlyph.Rezept] = [
     // Ähre statt Frucht.
     "pflanzendrink": { p in
         p.line([p.at(0.24, 0.34), p.at(0.24, 0.92), p.at(0.70, 0.92),
-                p.at(0.70, 0.34)])
+                p.at(0.70, 0.34)], closed: true)
         p.line([p.at(0.24, 0.34), p.at(0.38, 0.22), p.at(0.70, 0.22),
                 p.at(0.70, 0.34)])
         p.line([p.at(0.38, 0.22), p.at(0.38, 0.34), p.at(0.70, 0.34)])
@@ -2756,6 +2841,7 @@ private let tranche3: [String: ItemGlyph.Rezept] = [
         p.to(p.at(0.32, 0.88))
         p.to(p.at(0.68, 0.88))
         p.to(p.at(0.76, 0.32))
+        p.close()
         p.dot(p.at(0.42, 0.52), 0.04)
         p.dot(p.at(0.58, 0.56), 0.04)
         p.dot(p.at(0.48, 0.70), 0.04)
@@ -2769,6 +2855,7 @@ private let tranche3: [String: ItemGlyph.Rezept] = [
         p.to(p.at(0.30, 0.90))
         p.to(p.at(0.66, 0.90))
         p.to(p.at(0.72, 0.36))
+        p.close()
         p.line([p.at(0.60, 0.36), p.at(0.80, 0.14)])
         p.begin(p.at(0.80, 0.14))
         p.bow(p.at(0.92, 0.24), p.at(0.90, 0.10), p.at(0.94, 0.16))
@@ -3191,6 +3278,7 @@ private let tranche4: [String: ItemGlyph.Rezept] = [
         p.to(p.at(0.72, 0.90))
         p.to(p.at(0.72, 0.52))
         p.bow(p.at(0.58, 0.34), p.at(0.72, 0.46), p.at(0.60, 0.44))
+        p.close()
         p.line([p.at(0.28, 0.62), p.at(0.72, 0.62)])
         p.line([p.at(0.28, 0.76), p.at(0.72, 0.76)])
     },
@@ -3201,6 +3289,7 @@ private let tranche4: [String: ItemGlyph.Rezept] = [
         p.to(p.at(0.34, 0.90))
         p.to(p.at(0.68, 0.90))
         p.to(p.at(0.74, 0.40))
+        p.close()
         p.begin(p.at(0.28, 0.40))
         p.bow(p.at(0.74, 0.40), p.at(0.32, 0.20), p.at(0.70, 0.20))
         p.line([p.at(0.56, 0.24), p.at(0.72, 0.06)])
@@ -3283,6 +3372,7 @@ private let tranche5: [String: ItemGlyph.Rezept] = [
         p.to(p.at(0.72, 0.88))
         p.to(p.at(0.72, 0.52))
         p.bow(p.at(0.58, 0.30), p.at(0.72, 0.46), p.at(0.62, 0.42))
+        p.close()
         p.begin(p.at(0.72, 0.58))
         p.bow(p.at(0.72, 0.76), p.at(0.90, 0.58), p.at(0.90, 0.76))
     },
@@ -3903,6 +3993,7 @@ private let tranche7: [String: ItemGlyph.Rezept] = [
         p.to(p.at(0.72, 0.90))
         p.bow(p.at(0.70, 0.48), p.at(0.72, 0.76), p.at(0.74, 0.62))
         p.bow(p.at(0.60, 0.20), p.at(0.66, 0.40), p.at(0.62, 0.34))
+        p.close()
         p.line([p.at(0.32, 0.62), p.at(0.68, 0.62)])
     },
 
@@ -4107,6 +4198,7 @@ private let tranche7: [String: ItemGlyph.Rezept] = [
         p.to(p.at(0.28, 0.86))
         p.to(p.at(0.72, 0.86))
         p.to(p.at(0.76, 0.40))
+        p.close()
         p.line([p.at(0.50, 0.76), p.at(0.50, 0.52)])
         p.line([p.at(0.50, 0.60), p.at(0.38, 0.52)])
         p.line([p.at(0.50, 0.60), p.at(0.62, 0.52)])
@@ -4121,7 +4213,7 @@ private let tranche7: [String: ItemGlyph.Rezept] = [
         p.begin(p.at(0.22, 0.50))
         p.bow(p.at(0.78, 0.50), p.at(0.26, 0.12), p.at(0.74, 0.12))
         p.line([p.at(0.28, 0.50), p.at(0.30, 0.86), p.at(0.70, 0.86),
-                p.at(0.72, 0.50)])
+                p.at(0.72, 0.50)], closed: true)
         p.line([p.at(0.28, 0.64), p.at(0.72, 0.64)])
         p.line([p.at(0.40, 0.30), p.at(0.44, 0.20)])
         p.line([p.at(0.56, 0.28), p.at(0.60, 0.18)])
@@ -4718,7 +4810,7 @@ private let tranche9: [String: ItemGlyph.Rezept] = [
     "blumentopf": { p in
         p.line([p.at(0.24, 0.36), p.at(0.76, 0.36)])
         p.line([p.at(0.26, 0.36), p.at(0.34, 0.82), p.at(0.66, 0.82),
-                p.at(0.74, 0.36)])
+                p.at(0.74, 0.36)], closed: true)
         p.line([p.at(0.26, 0.44), p.at(0.74, 0.44)])
         p.begin(p.at(0.28, 0.86))
         p.bow(p.at(0.72, 0.86), p.at(0.34, 0.94), p.at(0.66, 0.94))
@@ -5205,7 +5297,7 @@ private func blatt(_ p: inout Pen, von a: (CGFloat, CGFloat),
 /// wie bei `tomatensauce`.
 private func saftkarton(_ p: inout Pen) {
     p.line([p.at(0.24, 0.34), p.at(0.24, 0.92), p.at(0.70, 0.92),
-            p.at(0.70, 0.34)])
+            p.at(0.70, 0.34)], closed: true)
     p.line([p.at(0.24, 0.34), p.at(0.38, 0.22), p.at(0.70, 0.22),
             p.at(0.70, 0.34)])
     p.line([p.at(0.38, 0.22), p.at(0.38, 0.34), p.at(0.70, 0.34)])

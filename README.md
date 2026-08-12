@@ -94,3 +94,15 @@ See [docs/TESTS.md](docs/TESTS.md).
 ## Data contracts
 
 See [docs/CONTRACTS.md](docs/CONTRACTS.md).
+
+## Credits
+
+The item glyphs in `ios/LeChariot/DesignSystem/ItemGlyphs.swift` are drawn as
+formulas in code, not shipped as assets. A few of them derive their geometry
+from [Lucide](https://lucide.dev) (ISC), converted with `tools/svg2pen.py` and
+restyled in this set's two-tone treatment; Lucide is also the style reference
+the hand-drawn ones are matched against. Which glyphs those are, and why the
+notice is owed at all, is in [NOTICE](NOTICE).
+
+"No third-party dependencies" above is about code — the app links nothing but
+Apple's own frameworks.

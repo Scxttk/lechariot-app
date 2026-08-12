@@ -565,6 +565,96 @@ struct Pen {
     /// Läuft ab `begin`, `line(closed:)`, `circle`, `capsule` und `rechteck`.
     private var aktuell = Path()
 
+    /// **Jeder geschlossene Umriss, den das Rezept gezogen hat.**
+    ///
+    /// Grundlage für die Körperfläche, die sich ein Rezept nicht selbst
+    /// aussucht (siehe `groessteGeschlossene` und `ItemGlyph.drawing`). Offene
+    /// Züge stehen hier bewusst nicht drin: Ein offener Pfad wird beim Füllen
+    /// gedanklich geschlossen und legt dann eine Fläche dorthin, wo keine ist.
+    private(set) var geschlossene: [Path] = []
+
+    /// Der flächengrößte geschlossene Umriss — die Silhouette des Gegenstands.
+    ///
+    /// **Warum die größte und nicht die erste:** Die Reihenfolge im Rezept ist
+    /// Gestaltungsgeschichte, keine Aussage über die Form. Beim Käse steht die
+    /// abgewandte Seitenwand vor der Vorderfront, beim Eierkarton der Deckel
+    /// vor der Wanne. Die Fläche ist dagegen genau das, was den Gegenstand vom
+    /// Beiwerk trennt: Der Bauch ist größer als der Stiel, die Schale größer
+    /// als das Blatt darin.
+    var groessteGeschlossene: Path? {
+        geschlossene.max { Pen.flaeche($0) < Pen.flaeche($1) }
+    }
+
+    /// Der Flächeninhalt eines geschlossenen Pfades — Gaußsche Trapezformel
+    /// auf einem abgetasteten Streckenzug.
+    ///
+    /// Abgetastet statt über die Kontrollpunkte gerechnet, weil eine Sichel
+    /// (Banane) und ihr Kontrollpolygon verschieden groß sind — und die Sichel
+    /// steht in diesem Satz nicht selten neben ihrem eigenen Stiel.
+    static func flaeche(_ pfad: Path) -> CGFloat {
+        var punkte: [CGPoint] = []
+        var letzter = CGPoint.zero
+        var summe: CGFloat = 0
+
+        func schliesse() {
+            guard punkte.count >= 3 else { punkte = []; return }
+            var a: CGFloat = 0
+            for i in punkte.indices {
+                let p = punkte[i], q = punkte[(i + 1) % punkte.count]
+                a += p.x * q.y - q.x * p.y
+            }
+            summe += abs(a) / 2
+            punkte = []
+        }
+
+        /// Ein Kurvenstück als zwölf Strecken — fein genug, dass die
+        /// Reihenfolge zweier Umrisse nicht an der Abtastung hängt.
+        func kurve(_ f: (CGFloat) -> CGPoint) {
+            for i in 1...12 { punkte.append(f(CGFloat(i) / 12)) }
+        }
+
+        pfad.forEach { element in
+            switch element {
+            case .move(let to):
+                schliesse()
+                punkte = [to]
+                letzter = to
+            case .line(let to):
+                punkte.append(to)
+                letzter = to
+            case .quadCurve(let to, let control):
+                let von = letzter
+                kurve { (t: CGFloat) -> CGPoint in
+                    let u: CGFloat = 1 - t
+                    let a: CGFloat = u * u
+                    let b: CGFloat = 2 * u * t
+                    let c: CGFloat = t * t
+                    let x: CGFloat = a * von.x + b * control.x + c * to.x
+                    let y: CGFloat = a * von.y + b * control.y + c * to.y
+                    return CGPoint(x: x, y: y)
+                }
+                letzter = to
+            case .curve(let to, let control1, let control2):
+                let von = letzter
+                kurve { (t: CGFloat) -> CGPoint in
+                    let u: CGFloat = 1 - t
+                    let a: CGFloat = u * u * u
+                    let b: CGFloat = 3 * u * u * t
+                    let c: CGFloat = 3 * u * t * t
+                    let d: CGFloat = t * t * t
+                    let x: CGFloat = a * von.x + b * control1.x + c * control2.x + d * to.x
+                    let y: CGFloat = a * von.y + b * control1.y + c * control2.y + d * to.y
+                    return CGPoint(x: x, y: y)
+                }
+                letzter = to
+            case .closeSubpath:
+                schliesse()
+            }
+        }
+        schliesse()
+        return summe
+    }
+
     /// Von Hand, weil `aktuell` privat ist und der erzeugte Initialisierer
     /// damit ebenfalls privat wäre.
     init(rect: CGRect) { self.rect = rect }
@@ -631,6 +721,7 @@ struct Pen {
         let gedreht = form.applying(drehung)
         stroke.addPath(gedreht)
         aktuell = gedreht
+        geschlossene.append(gedreht)
     }
 
     /// Ein Rechteck mit runden Ecken, Maße und Radius in Einheitsmaßen.
@@ -644,6 +735,7 @@ struct Pen {
         form.addRoundedRect(in: box(cx, cy, w, h), cornerSize: corner(ecke))
         stroke.addPath(form)
         aktuell = form
+        geschlossene.append(form)
     }
 
     /// Eckenradius in Einheitsmaßen, für `addRoundedRect`.
@@ -674,6 +766,7 @@ struct Pen {
     mutating func close() {
         stroke.closeSubpath()
         aktuell.closeSubpath()
+        geschlossene.append(aktuell)
     }
 
     mutating func line(_ points: [CGPoint], closed: Bool = false) {
@@ -688,6 +781,7 @@ struct Pen {
         if closed {
             stroke.closeSubpath()
             aktuell.closeSubpath()
+            geschlossene.append(aktuell)
         }
     }
 
@@ -740,12 +834,14 @@ struct Pen {
         }
         stroke.addPath(form)
         aktuell = form
+        if closed { geschlossene.append(form) }
     }
 
     /// Gestrichener Kreis, Radius in Einheitsmaßen.
     mutating func circle(_ center: CGPoint, _ radius: CGFloat) {
         stroke.addEllipse(in: ring(center, radius))
         aktuell = Path(ellipseIn: ring(center, radius))
+        geschlossene.append(aktuell)
     }
 
     /// Gestrichenes Oval um einen Mittelpunkt, Maße in Einheitsmaßen.
@@ -757,6 +853,7 @@ struct Pen {
         let form = Path(ellipseIn: box(cx, cy, w, h))
         stroke.addPath(form)
         aktuell = form
+        geschlossene.append(form)
     }
 
     /// Gefüllter Punkt, Radius in Einheitsmaßen.

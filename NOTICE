@@ -17,7 +17,20 @@ dass die Geometrie aus ihrer Datei stammt. Was ohne Hinweis auskäme, wäre
 eine unabhängig entstandene Zeichnung; die eigenen Zeichen dieses Satzes
 sind das und stehen deshalb nicht hier.
 
-Betroffene Begriffe: brokkoli.
+Betroffene Begriffe: brokkoli, salat (die Schale aus `salad`), fisch (der
+Körper aus `fish`). Quelle jeweils lucide-static 1.31.0.
+
+Bei `salat` und `fisch` stammt nur der genannte Teil aus Lucide; Blätter,
+Mittelrippen, Schwanz, Rückenflosse und Kiemenbogen sind eigene Zeichnung.
+Der Hinweis nennt sie trotzdem vollständig — die Grenze zwischen „daraus
+abgeleitet" und „davon inspiriert" ist nichts, was man sich selbst großzügig
+zurechtlegen sollte.
+
+**Was Lucide sonst noch ist, ohne dass Geometrie übernommen wäre: der
+Maßstab.** Strichdisziplin und Geometriesprache des Satzes richten sich seit
+dem 12.08. daran aus (Stilprobe: `docs/zeichen/`). Ein Maßstab ist keine
+Vorlage — dafür steht hier nichts, so wie OpenMoji weiter unten auch nicht
+dafür hier steht.
 
 ISC License
 
