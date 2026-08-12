@@ -1,0 +1,61 @@
+Le Chariot — Hinweise zu fremden Werken
+=======================================
+
+Lucide Icons
+------------
+
+Ein Teil der Artikelzeichen in `ios/LeChariot/DesignSystem/ItemGlyphs.swift`
+geht auf Zeichnungen aus Lucide zurück. Die Geometrie ist mit
+`tools/svg2pen.py` in das Rezeptformat dieser App übersetzt und dort
+umgezogen worden (Körperfläche, Schattenfläche, Federkontur statt
+gleichmäßiger Haarlinie).
+
+**Der Hinweis ist trotzdem fällig.** Die ISC-Lizenz erlaubt ausdrücklich
+„use, copy, modify" — und knüpft ihre Bedingung an genau diese Handlungen.
+Entscheidend ist nicht, wie stark eine Zeichnung umgestaltet wurde, sondern
+dass die Geometrie aus ihrer Datei stammt. Was ohne Hinweis auskäme, wäre
+eine unabhängig entstandene Zeichnung; die eigenen Zeichen dieses Satzes
+sind das und stehen deshalb nicht hier.
+
+Betroffene Begriffe: brokkoli, salat (die Schale aus `salad`), fisch (der
+Körper aus `fish`). Quelle jeweils lucide-static 1.31.0.
+
+Bei `salat` und `fisch` stammt nur der genannte Teil aus Lucide; Blätter,
+Mittelrippen, Schwanz, Rückenflosse und Kiemenbogen sind eigene Zeichnung.
+Der Hinweis nennt sie trotzdem vollständig — die Grenze zwischen „daraus
+abgeleitet" und „davon inspiriert" ist nichts, was man sich selbst großzügig
+zurechtlegen sollte.
+
+**Was Lucide sonst noch ist, ohne dass Geometrie übernommen wäre: der
+Maßstab.** Strichdisziplin und Geometriesprache des Satzes richten sich seit
+dem 12.08. daran aus (Stilprobe: `docs/zeichen/`). Ein Maßstab ist keine
+Vorlage — dafür steht hier nichts, so wie OpenMoji weiter unten auch nicht
+dafür hier steht.
+
+ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+Offen: Der Hinweis muss **in der App** ankommen, nicht nur im Baum — eine
+Zeile in den Einstellungen („Danksagungen"). Solange die fehlt, ist die
+Bedingung nur halb erfüllt.
+
+OpenMoji — nicht verwendet
+--------------------------
+
+OpenMoji (CC BY-SA 4.0) diente ausschließlich als **Maßstab**: Strichstärke
+im Verhältnis zur Feldbreite, Kurvendichte je Zeichnung. Gemessene Werte
+stehen in `docs/ZEICHEN-RECHERCHE.md`. Es ist keine Geometrie übernommen —
+die Share-alike-Klausel färbte sonst auf diesen Satz ab.

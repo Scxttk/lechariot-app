@@ -104,6 +104,7 @@ struct Bogen: View {
         }
         .padding(16)
         .background(flaeche)
+        .environment(\.colorScheme, flaeche == creme ? .light : .dark)
     }
 }
 
@@ -166,6 +167,9 @@ struct ArtikelBogen: View {
         }
         .padding(14)
         .background(flaeche)
+        // Die Akzentfläche holt ihren Ton aus dem Erscheinungsbild, nicht aus
+        // einer Eigenschaft — hier steht es, statt vom Mac geerbt zu werden.
+        .environment(\.colorScheme, flaeche == creme ? .light : .dark)
     }
 }
 
