@@ -60,6 +60,7 @@ SERIELL=(
 	LeChariotUITests/PerformanceJourneyTests
 	LeChariotUITests/TermGridJourneyTests
 	LeChariotUITests/TileGestureJourneyTests
+	LeChariotUITests/TippLatenzProbe
 )
 
 # Was auf einem geteilten Runner **gar nicht** laufen darf.
@@ -81,9 +82,17 @@ SERIELL=(
 # anderthalb Minuten in einer Scherbe, für eine Zusicherung, die nur sagt, dass
 # überhaupt gemessen wurde. Sie gehört an den Mac, an dem jemand die Zahlen
 # liest, nicht in jeden PR.
+# `TippLatenzProbe` gehoert aus denselben zwei Gruenden dazu (11.08., #138):
+# Sie misst Tippdauern, und der Befund ist ein *Unterschied* zwischen zwei
+# Laeufen — auf geliehenen Kernen waere er eine Aussage ueber den Nachbarn.
+# Nachgemessen am 11.08.: Dieselbe Sonde meldete fuer denselben Griff 662 ms auf
+# ruhiger Maschine und 735 ms, waehrend eine zweite Sitzung baute. 11 % Rauschen
+# sind mehr, als eine Regression dieser Art gross ist. Dazu startet sie die App
+# sechsmal.
 OHNE_CI=(
 	LeChariotUITests/PerformanceJourneyTests
 	LeChariotUITests/MarktwahlProbe
+	LeChariotUITests/TippLatenzProbe
 )
 
 # Ein blosser Klassenname reicht; das Ziel davor kommt aus dem Quellbaum.

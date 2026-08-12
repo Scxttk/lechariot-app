@@ -24,6 +24,10 @@ struct ShoppingListView: View {
     @Environment(ContextTipStore.self) private var tips: ContextTipStore?
     /// Die zwei ersten Male (Artikel, Treffer) und die Checkliste dazu.
     @Environment(SetupProgressStore.self) private var setup
+    /// Der Merker für die Marktwertung — siehe `ShoppingListPlan`. Er gehört der
+    /// Ansicht und nicht dem Store: Gerechnet wird über die **offenen** Artikel
+    /// dieses Bildschirms, und die Ansicht ist die Stelle, die sie kennt.
+    @State private var planMemo = ShoppingListPlan()
     /// Der Artikel, dessen Blatt gerade oben steht — Angaben **und** Treffer,
     /// siehe `ItemSheet`. Bis zum 10.08. waren das zwei Zustände.
     @State private var sheetItem: ShoppingItem?
@@ -174,11 +178,20 @@ struct ShoppingListView: View {
     }
 
 
+    /// Der Plan der Woche — **über den Merker, nicht direkt gerechnet.**
+    ///
+    /// Drei Leser in diesem Rumpf hängen daran (`listBody`, `openGroups`,
+    /// `firstMatchArrived`), und ein Rumpf läuft bei jeder Zustandsänderung.
+    /// Direkt gerufen kostete das je Tipp ein Mehrfaches von 42 ms (gemessen bei
+    /// 1 200 Prospektzeilen, Debug am Simulator, `TippKostenProbe`); siehe
+    /// `ShoppingListPlan`.
     private var ranks: [MarketListRank] {
-        ShoppingListRanking.rank(
+        planMemo.ranks(
             items: list.uncheckedItems,
             offers: offerStore.offers,
-            chains: chains
+            offerGeneration: offerStore.generation,
+            chains: chains,
+            rejections: rejections.rejected
         ) { rejections.isRejected(itemText: $0, offer: $1) }
     }
 
