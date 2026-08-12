@@ -30,6 +30,35 @@ enum ItemGlyph {
 
     typealias Rezept = (inout Pen) -> Void
 
+    /// **Der Artikelsatz zieht einen dünneren Strich als der Kategoriesatz.**
+    ///
+    /// Nicht als Geschmacksfrage, sondern weil die beiden bei verschiedenen
+    /// Größen stehen. `CategoryGlyph.lineWidthRatio` (0,095) ist für die
+    /// **13 pt** der Abschnittszeile erlaufen — dort ist alles Dünnere unter
+    /// einem Gerätepixel. Der Artikelsatz steht im Raster bei **40 pt** und
+    /// auf dem Chip bei 22 pt, also beim Drei- bis Zweifachen.
+    ///
+    /// Bei 0,095 auf 40 pt ist der Strich 3,8 pt breit, und das ist der Grund,
+    /// warum jeder Versuch von mehr Zeichnung am 11.08. scheiterte: Zwei
+    /// Kanten, die näher als 0,095 beieinander liegen, sind **eine** Kante.
+    /// Drei Bananen nebeneinander wurden zu einem Klotz, zwei Möhren zu einem
+    /// „W", und die Körnung im Brokkolikopf zu zwei Augen. Nicht die
+    /// Zeichnungen waren zu ehrgeizig, sondern der Strich zu breit für sie.
+    ///
+    /// 0,065 bei 40 pt sind 2,6 pt — immer noch eine kräftige Monolinie, aber
+    /// mit Platz zwischen zwei Kanten. Bei 22 pt bleiben 1,4 pt.
+    static let lineWidthRatio: CGFloat = 0.065
+    static let feinLineWidthRatio: CGFloat = 0.036
+
+    /// **Wie der Artikelsatz gehalten wird.**
+    ///
+    /// Die Grundbreite liegt unter `lineWidthRatio`, weil die Feder an ihrer
+    /// breitesten Stelle so breit ist wie die alte gleichmäßige Linie — und im
+    /// Mittel deutlich schmaler. Gemessen am Referenzsatz (OpenMoji, 0,0278;
+    /// siehe `docs/ZEICHEN-RECHERCHE.md`) kommt der Satz damit von 2,3-fach
+    /// auf etwa 1,5-fach heran, ohne bei 22 pt zu zerfallen.
+    static let feder = Feder.Profil(breite: 0.072, neigung: -32, schmal: 0.46, spitze: 0.18)
+
     /// Die Zeichnung dieses Begriffs, oder `nil` für einen, für den es hier
     /// keine gibt — dann greift das Kategoriezeichen, statt dass ein
     /// erfundenes Bild das Falsche behauptet.
@@ -37,7 +66,8 @@ enum ItemGlyph {
         guard let recipe = recipes[term] else { return nil }
         var pen = Pen(rect: rect)
         recipe(&pen)
-        return CategoryGlyph.Drawing(stroke: pen.stroke, fill: pen.fill)
+        return CategoryGlyph.Drawing(koerper: pen.koerper, schatten: pen.schatten,
+                                     fein: pen.fein, stroke: pen.stroke, fill: pen.fill)
     }
 
     /// Nur für Tests und den Prüfbogen: alle Begriffe mit einer Zeichnung.
@@ -82,17 +112,40 @@ enum ItemGlyph {
         // Kategoriezeichen, und das ist kein Versehen: Ein Apfel ist ein
         // Apfel. Das Blatt liegt hier links und der Bauch ist runder, damit
         // die beiden nebeneinander nicht wie ein Doppel wirken.
+        //
+        // **Die Kerbe war da und man sah sie nicht.** Auf dem Prüfbogen vom
+        // 11.08. war dieser Apfel ein **Kreis mit Blatt** — nicht weil die
+        // Kerbe fehlte, sondern weil das Blatt quer über ihr lag und genau
+        // das zudeckte, was den Apfel vom Kreis unterscheidet. Zwei
+        // Änderungen: Die Kerbe geht auf 0,36 herunter, während die Schultern
+        // auf 0,14 stehen bleiben, und das Blatt rückt **neben** den Stiel.
+        // **Zwei Äpfel, und der hintere ist nur der Teil, den man sieht.**
+        //
+        // Verdeckte Kanten werden hier von Hand weggelassen, nicht
+        // übermalt: Der vordere Körper deckt bei 14 % Deckkraft nichts zu,
+        // ein voller hinterer Umriss stünde also mitten durch ihn hindurch.
+        // Der hintere Apfel ist deshalb nur der Sichelrest rechts — genau so
+        // viel, wie an einem vorderen vorbeiragen würde.
         "äpfel": { p in
-            p.begin(p.at(0.50, 0.30))
-            p.bow(p.at(0.14, 0.56), p.at(0.32, 0.16), p.at(0.14, 0.32))
-            p.bow(p.at(0.50, 0.94), p.at(0.14, 0.80), p.at(0.30, 0.94))
-            p.bow(p.at(0.86, 0.56), p.at(0.70, 0.94), p.at(0.86, 0.80))
-            p.bow(p.at(0.50, 0.30), p.at(0.86, 0.32), p.at(0.68, 0.16))
+            p.begin(p.at(0.63, 0.33))
+            p.bow(p.at(0.96, 0.60), p.at(0.84, 0.25), p.at(0.96, 0.42))
+            p.bow(p.at(0.66, 0.90), p.at(0.96, 0.79), p.at(0.83, 0.90))
+            p.begin(p.at(0.42, 0.34))
+            p.bow(p.at(0.07, 0.56), p.at(0.25, 0.13), p.at(0.07, 0.30))
+            p.bow(p.at(0.42, 0.95), p.at(0.07, 0.82), p.at(0.24, 0.95))
+            p.bow(p.at(0.77, 0.56), p.at(0.60, 0.95), p.at(0.77, 0.82))
+            p.bow(p.at(0.42, 0.34), p.at(0.77, 0.30), p.at(0.59, 0.13))
             p.close()
-            p.line([p.at(0.52, 0.28), p.at(0.56, 0.10)])
-            p.begin(p.at(0.52, 0.18))
-            p.bow(p.at(0.22, 0.14), p.at(0.42, 0.08), p.at(0.26, 0.04))
-            p.bow(p.at(0.52, 0.18), p.at(0.22, 0.22), p.at(0.38, 0.22))
+            p.alsKoerper()
+            p.begin(p.at(0.43, 0.32))
+            p.bow(p.at(0.50, 0.07), p.at(0.45, 0.22), p.at(0.46, 0.13))
+            blatt(&p, von: (0.44, 0.19), nach: (0.13, 0.08), bauch: 0.12)
+            // Glanz auf dem Bauch — zwei feine Striche, die der Wölbung
+            // folgen. Als Konturstärke wären sie eine Narbe.
+            p.feinBogen(p.at(0.17, 0.56), p.at(0.24, 0.41),
+                        p.at(0.15, 0.49), p.at(0.19, 0.43))
+            p.feinBogen(p.at(0.25, 0.62), p.at(0.31, 0.51),
+                        p.at(0.24, 0.57), p.at(0.27, 0.52))
         },
 
         // Banane: Außenbogen, Innenbogen, Stiel links — und die **Blüte** am
@@ -103,13 +156,33 @@ enum ItemGlyph {
         // Im Körper selbst steht bewusst keine Kante: Die Sichel ist an ihrer
         // dicksten Stelle 0,18 stark, eine Linie darin hätte beidseitig 0,09
         // Luft und liefe bei 40 pt mit beiden Rändern zusammen.
+        //
+        // **Etwas dicker als zuvor**, seit die Sichel eine Fläche trägt: Bei
+        // 0,18 Bauchstärke blieben nach dem Strich 0,085 Fläche übrig, und
+        // eine Fläche von 3,4 pt bei 40 pt Zeichen ist keine. Jetzt 0,24.
+        // **Eine Hand, keine einzelne Frucht.** Bananen liegen im Laden zu
+        // dritt am Stiel, und drei Sicheln übereinander sind das, was eine
+        // einzelne Sichel nie war: unverwechselbar. Die hinteren beiden sind
+        // nur Bögen — verdeckte Kanten fallen weg (siehe `äpfel`).
         "bananen": { p in
-            p.begin(p.at(0.14, 0.34))
-            p.bow(p.at(0.88, 0.42), p.at(0.20, 0.94), p.at(0.74, 0.90))
-            p.bow(p.at(0.14, 0.34), p.at(0.68, 0.66), p.at(0.28, 0.60))
+            // **Eine Hand, keine einzelne Frucht** — drei Sicheln am selben
+            // Stielansatz. Die hinteren beiden standen im ersten Anlauf 0,06
+            // hinter der vorderen und verschmolzen mit ihr zu einem Klotz;
+            // bei 0,065 Strichstaerke braucht es mindestens 0,10 Abstand,
+            // damit zwei Kanten zwei bleiben.
+            p.begin(p.at(0.20, 0.18))
+            p.bow(p.at(0.95, 0.26), p.at(0.24, 0.74), p.at(0.84, 0.70))
+            p.begin(p.at(0.16, 0.30))
+            p.bow(p.at(0.93, 0.38), p.at(0.20, 0.88), p.at(0.82, 0.84))
+            // Die vordere Banane, geschlossen: sie traegt die Flaeche.
+            p.begin(p.at(0.12, 0.44))
+            p.bow(p.at(0.90, 0.52), p.at(0.17, 0.99), p.at(0.78, 0.95))
+            p.bow(p.at(0.12, 0.44), p.at(0.68, 0.74), p.at(0.25, 0.66))
             p.close()
-            p.line([p.at(0.14, 0.34), p.at(0.09, 0.20)])
-            p.line([p.at(0.88, 0.42), p.at(0.94, 0.30)])
+            p.alsKoerper()
+            // Der gemeinsame Stielansatz links, die Bluete rechts.
+            p.line([p.at(0.15, 0.24), p.at(0.08, 0.10)])
+            p.line([p.at(0.90, 0.52), p.at(0.96, 0.44)])
         },
 
         // Zitrone: bauchiges Oval, schräg gelegt, mit einem Zipfel an **beiden**
@@ -127,21 +200,39 @@ enum ItemGlyph {
         // noch **rechts**; links sitzt stattdessen das Blatt. Damit ist die
         // Zitrone unsymmetrisch, und das trennt sie zugleich vom Apfel, der
         // höher als breit ist und seine Kerbe oben trägt.
+        //
+        // **Zipfel an beiden Enden, seit der Körper eine Fläche hat.** Mit dem
+        // warmen Ton war der rundliche Körper auf dem Prüfbogen vom 11.08. die
+        // **Orange** von nebenan — ein gefüllter runder Körper verliert die
+        // kleine Unsymmetrie, an der man ihn vorher noch erkannte. Der zweite
+        // Zipfel links kostet nichts und ist das, was keine Orange hat.
         "zitronen": { p in
-            p.begin(p.at(0.14, 0.60))
-            p.bow(p.at(0.52, 0.30), p.at(0.14, 0.40), p.at(0.30, 0.30))
-            p.bow(p.at(0.88, 0.58), p.at(0.74, 0.30), p.at(0.88, 0.40))
-            p.bow(p.at(0.50, 0.90), p.at(0.88, 0.78), p.at(0.70, 0.90))
-            p.bow(p.at(0.14, 0.60), p.at(0.30, 0.90), p.at(0.14, 0.78))
+            // **Ganze Frucht hinten links, halbe Scheibe vorn rechts.**
+            //
+            // Der erste Anlauf legte die Haelfte als Halbkreis nach unten und
+            // die ganze Frucht als Sichel dahinter — auf dem Pruefbogen war
+            // das eine **Erbsenschote mit Faecher**. Eine Haelfte, die auf
+            // ihrer flachen Seite steht, liest sich nicht als Schnittflaeche,
+            // sondern als Huelle. Die Scheibe ist deshalb ein **voller
+            // Kreis** mit Segmenten: So sieht ein Querschnitt aus.
+            p.begin(p.at(0.34, 0.30))
+            p.bow(p.at(0.10, 0.54), p.at(0.20, 0.28), p.at(0.10, 0.38))
+            p.bow(p.at(0.36, 0.82), p.at(0.10, 0.70), p.at(0.22, 0.82))
+            p.bow(p.at(0.58, 0.56), p.at(0.50, 0.82), p.at(0.58, 0.72))
+            p.bow(p.at(0.34, 0.30), p.at(0.58, 0.40), p.at(0.48, 0.30))
             p.close()
-            p.line([p.at(0.88, 0.58), p.at(0.96, 0.50)])
-            // Das Blatt muss **dick** sein. Der erste Zuschnitt war eine
-            // 0,09 schmale Sichel und damit bei 40 pt kein Blatt, sondern ein
-            // eingerollter Stiel: Zwei Kanten mit 0,09 Abstand sind bei einem
-            // Strich von 0,095 eine einzige Kante. Jetzt sind es 0,17.
-            p.begin(p.at(0.40, 0.32))
-            p.bow(p.at(0.10, 0.08), p.at(0.34, 0.10), p.at(0.16, 0.02))
-            p.bow(p.at(0.40, 0.32), p.at(0.10, 0.24), p.at(0.24, 0.34))
+            p.alsSchatten()
+            p.line([p.at(0.34, 0.30), p.at(0.31, 0.22)])
+            p.line([p.at(0.36, 0.82), p.at(0.38, 0.90)])
+            // Die Scheibe vorn: Schale, Fruchtfleisch, acht Segmente.
+            p.circle(p.at(0.66, 0.58), 0.30)
+            p.alsKoerper()
+            p.feinKreis(p.at(0.66, 0.58), 0.235)
+            for i in 0..<8 {
+                let w = CGFloat(i) * .pi / 4.0
+                p.feinLinie([p.at(0.66 + cos(w) * 0.03, 0.58 + sin(w) * 0.03),
+                             p.at(0.66 + cos(w) * 0.215, 0.58 + sin(w) * 0.215)])
+            }
         },
 
         // Orange: runder Körper, ein Blatt flach obenauf, kurzer Stiel. Ohne
@@ -256,12 +347,40 @@ enum ItemGlyph {
         // Der Glanzbogen ist der Zuwachs und liegt 0,13 innerhalb der Kreislinie
         // — enger und er verschmilzt bei 40 pt mit ihr zu einer doppelt so
         // dicken Kante.
+        // **Der Kelch statt des Glanzlichts.**
+        //
+        // Im Bauch stand ein einzelner kurzer Bogen als Glanzlicht. Er hatte
+        // weder oben noch unten Anschluss und war auf dem Prüfbogen vom
+        // 11.08. schlicht ein **Kratzer** in der Frucht — Glanz braucht eine
+        // Fläche, auf der er liegen kann, und die gab es hier nicht.
+        //
+        // Was die Tomate stattdessen braucht, sitzt oben: Aus dem zweizipfligen
+        // V ist ein **vierblättriger Kelch** geworden. Zwei Zipfel über einem
+        // Kreis sind ein Vogel über einem Ball.
+        //
+        // **Und sie liegt breit.** Mit dem Ton kam ein Nachbar dazu, den es
+        // vorher nicht gab: Der Apfel ist seit heute ebenfalls rot, und ein
+        // roter Kreis mit Grün obendrauf ist beides. Getrennt werden sie an
+        // der Silhouette, wie immer in diesem Satz — der Apfel steht **hoch**
+        // und hat seine Kerbe, die Tomate **liegt** (0,68 × 0,60).
         "tomaten": { p in
-            p.circle(p.at(0.50, 0.62), 0.32)
-            p.line([p.at(0.28, 0.22), p.at(0.50, 0.34), p.at(0.72, 0.22)])
-            p.line([p.at(0.50, 0.34), p.at(0.50, 0.10)])
-            p.begin(p.at(0.32, 0.55))
-            p.bow(p.at(0.46, 0.43), p.at(0.34, 0.47), p.at(0.39, 0.43))
+            // Die kleinere Tomate hinten rechts, nur der sichtbare Rest.
+            p.begin(p.at(0.66, 0.44))
+            p.bow(p.at(0.95, 0.66), p.at(0.86, 0.40), p.at(0.95, 0.52))
+            p.bow(p.at(0.70, 0.88), p.at(0.95, 0.80), p.at(0.84, 0.88))
+            // Die vordere: liegt breit, damit sie nicht der Apfel ist.
+            p.oval(0.42, 0.64, 0.68, 0.60)
+            p.alsKoerper()
+            // Vierblaettriger Kelch. Zwei Zipfel ueber einem Rund waren ein
+            // Vogel ueber einem Ball.
+            p.line([p.at(0.16, 0.28), p.at(0.42, 0.38), p.at(0.68, 0.28)])
+            p.line([p.at(0.28, 0.20), p.at(0.42, 0.38), p.at(0.56, 0.20)])
+            p.line([p.at(0.42, 0.38), p.at(0.42, 0.10)])
+            // Wangenfalte und Glanz.
+            p.feinBogen(p.at(0.16, 0.66), p.at(0.22, 0.52),
+                        p.at(0.15, 0.59), p.at(0.18, 0.54))
+            p.feinBogen(p.at(0.42, 0.90), p.at(0.62, 0.82),
+                        p.at(0.52, 0.91), p.at(0.60, 0.88))
         },
 
         // Gurke: gerader Körper, nach links geneigt, mit drei Querkerben. Die
@@ -417,27 +536,141 @@ enum ItemGlyph {
 
         // Möhre: verjüngter Körper, zwei Kerben, drei Blätter.
         "möhren": { p in
-            p.begin(p.at(0.28, 0.38))
-            p.to(p.at(0.72, 0.38))
-            p.to(p.at(0.52, 0.94))
+            // Zwei Moehren, die hintere schmaler und weit genug zur Seite:
+            // Standen ihre Innenkanten 0,04 auseinander, waren die beiden
+            // Wurzeln ein „W".
+            //
+            // **Bauchige Flanken statt gerader.** Als Dreieck aus drei
+            // Strecken war die Moehre ein Pfeil — und drei Pfeile im Raster
+            // sind eine Navigation. Eine Wurzel ist an der Schulter breit,
+            // verjuengt sich ungleichmaessig und laeuft stumpf aus.
+            p.begin(p.at(0.60, 0.40))
+            p.bow(p.at(0.79, 0.84), p.at(0.66, 0.60), p.at(0.74, 0.74))
+            p.bow(p.at(0.90, 0.40), p.at(0.86, 0.72), p.at(0.90, 0.56))
+            p.bow(p.at(0.60, 0.40), p.at(0.83, 0.35), p.at(0.68, 0.35))
             p.close()
-            p.line([p.at(0.36, 0.52), p.at(0.46, 0.49)])
-            p.line([p.at(0.42, 0.68), p.at(0.52, 0.65)])
-            p.line([p.at(0.50, 0.38), p.at(0.32, 0.12)])
-            p.line([p.at(0.50, 0.38), p.at(0.52, 0.06)])
-            p.line([p.at(0.50, 0.38), p.at(0.72, 0.14)])
+            p.alsSchatten()
+            p.line([p.at(0.76, 0.40), p.at(0.70, 0.19)])
+            p.line([p.at(0.76, 0.40), p.at(0.87, 0.17)])
+            // Die vordere Moehre.
+            p.begin(p.at(0.09, 0.38))
+            p.bow(p.at(0.31, 0.93), p.at(0.16, 0.60), p.at(0.25, 0.80))
+            p.bow(p.at(0.49, 0.38), p.at(0.41, 0.78), p.at(0.48, 0.58))
+            p.bow(p.at(0.09, 0.38), p.at(0.40, 0.32), p.at(0.19, 0.32))
+            p.close()
+            p.alsKoerper()
+            p.line([p.at(0.29, 0.38), p.at(0.11, 0.13)])
+            p.line([p.at(0.29, 0.38), p.at(0.31, 0.05)])
+            p.line([p.at(0.29, 0.38), p.at(0.51, 0.11)])
+            p.feinLinie([p.at(0.16, 0.52), p.at(0.26, 0.49)])
+            p.feinLinie([p.at(0.21, 0.66), p.at(0.31, 0.63)])
+            p.feinLinie([p.at(0.25, 0.79), p.at(0.33, 0.76)])
         },
 
         // Brokkoli: wolkiger Kopf, zwei Stielstriche, Schnittkante.
+        // **Drei Röschen statt einer Kuppe.**
+        //
+        // Auf dem Prüfbogen vom 11.08. war das hier der **Pilz** — und der
+        // steht in diesem Satz zwei Zellen weiter. Die Oberkante hatte zwar
+        // schon drei Bögen, aber ihre Kontrollpunkte lagen so flach, dass
+        // zwischen den Röschen keine Bucht entstand: Was blieb, war eine
+        // glatte Kuppe auf einem Stiel, und das ist die Silhouette eines
+        // Pilzes, egal wie viele Bögen sie gekostet hat.
+        //
+        // Jetzt greifen die Kontrollpunkte über die Endpunkte hinaus (0,10
+        // gegen 0,26), und **zwischen** den Röschen laufen zwei kurze Fugen
+        // in den Kopf hinein. Erst die Fugen machen aus der gebuchteten
+        // Oberkante einen Kopf aus Teilen.
         "brokkoli": { p in
-            p.begin(p.at(0.16, 0.44))
-            p.bow(p.at(0.36, 0.20), p.at(0.14, 0.28), p.at(0.22, 0.20))
-            p.bow(p.at(0.62, 0.18), p.at(0.46, 0.12), p.at(0.52, 0.12))
-            p.bow(p.at(0.84, 0.44), p.at(0.74, 0.16), p.at(0.86, 0.26))
-            p.close()
-            p.line([p.at(0.38, 0.46), p.at(0.40, 0.90)])
-            p.line([p.at(0.62, 0.46), p.at(0.58, 0.90)])
-            p.line([p.at(0.40, 0.90), p.at(0.58, 0.90)])
+            // **Nach Lucide, in unserem Stil.**
+            //
+            // Zehn eigene Anlaeufe standen hier vorher, und jeder war eine
+            // andere Fehllesung (Pilz, Gesicht, Croissant, Broetchen). Die
+            // Form kommt deshalb aus Lucide (ISC) und ist mit
+            // `tools/svg2pen.py` in Rezeptzeilen uebersetzt — Bogenbefehle
+            // und relative Koordinaten inklusive, von Hand waere das eine
+            // Fehlerquelle ohne Gegenwert.
+            //
+            // **Umgezogen, nicht uebernommen:** Kopf und Strunk bekommen die
+            // Koerperflaeche des Satzes, die beiden Haken wandern in die
+            // duenne Innenzeichnung, und die Kontur zieht die Feder. Das
+            // Original ist eine gleichmaessige Haarlinie ohne Flaeche.
+            //
+            // **Die Lizenz verlangt den Hinweis**, auch fuer die umgezogene
+            // Fassung: siehe `NOTICE` im Wurzelverzeichnis. Nicht der Stil
+            // entscheidet darueber, sondern dass die Geometrie aus ihrer
+            // Datei stammt.
+            p.begin(p.at(0.297, 0.454))
+            p.bow(p.at(0.244, 0.432), p.at(0.246, 0.406), p.at(0.260, 0.442))
+            p.bow(p.at(0.201, 0.392), p.at(0.227, 0.422), p.at(0.212, 0.408))
+            p.bow(p.at(0.174, 0.340), p.at(0.189, 0.377), p.at(0.180, 0.359))
+            p.bow(p.at(0.167, 0.282), p.at(0.169, 0.322), p.at(0.166, 0.301))
+            p.bow(p.at(0.181, 0.225), p.at(0.168, 0.263), p.at(0.173, 0.243))
+            p.bow(p.at(0.213, 0.177), p.at(0.188, 0.208), p.at(0.200, 0.191))
+            p.bow(p.at(0.260, 0.142), p.at(0.226, 0.163), p.at(0.243, 0.151))
+            p.bow(p.at(0.316, 0.126), p.at(0.277, 0.134), p.at(0.297, 0.128))
+            p.bow(p.at(0.374, 0.130), p.at(0.335, 0.124), p.at(0.356, 0.129))
+            p.bow(p.at(0.424, 0.132), p.at(0.392, 0.131), p.at(0.408, 0.137))
+            p.bow(p.at(0.472, 0.098), p.at(0.441, 0.126), p.at(0.455, 0.106))
+            p.bow(p.at(0.529, 0.084), p.at(0.490, 0.090), p.at(0.510, 0.085))
+            p.bow(p.at(0.587, 0.090), p.at(0.548, 0.082), p.at(0.569, 0.084))
+            p.bow(p.at(0.640, 0.115), p.at(0.606, 0.095), p.at(0.624, 0.104))
+            p.bow(p.at(0.680, 0.157), p.at(0.655, 0.126), p.at(0.667, 0.148))
+            p.bow(p.at(0.717, 0.173), p.at(0.693, 0.167), p.at(0.702, 0.171))
+            p.bow(p.at(0.775, 0.170), p.at(0.733, 0.176), p.at(0.758, 0.165))
+            p.bow(p.at(0.820, 0.205), p.at(0.792, 0.176), p.at(0.811, 0.190))
+            p.bow(p.at(0.833, 0.262), p.at(0.830, 0.221), p.at(0.832, 0.244))
+            p.bow(p.at(0.824, 0.309), p.at(0.833, 0.279), p.at(0.817, 0.295))
+            p.bow(p.at(0.871, 0.343), p.at(0.830, 0.322), p.at(0.857, 0.330))
+            p.bow(p.at(0.903, 0.392), p.at(0.884, 0.357), p.at(0.895, 0.375))
+            p.bow(p.at(0.916, 0.449), p.at(0.911, 0.410), p.at(0.915, 0.430))
+            p.bow(p.at(0.909, 0.507), p.at(0.917, 0.468), p.at(0.915, 0.489))
+            p.bow(p.at(0.883, 0.559), p.at(0.904, 0.525), p.at(0.891, 0.543))
+            p.bow(p.at(0.863, 0.605), p.at(0.875, 0.575), p.at(0.864, 0.588))
+            p.bow(p.at(0.875, 0.662), p.at(0.862, 0.622), p.at(0.874, 0.643))
+            p.bow(p.at(0.866, 0.720), p.at(0.875, 0.681), p.at(0.872, 0.701))
+            p.bow(p.at(0.838, 0.771), p.at(0.860, 0.738), p.at(0.850, 0.756))
+            p.bow(p.at(0.794, 0.809), p.at(0.826, 0.786), p.at(0.811, 0.799))
+            p.bow(p.at(0.740, 0.830), p.at(0.778, 0.819), p.at(0.759, 0.827))
+            p.bow(p.at(0.682, 0.831), p.at(0.721, 0.834), p.at(0.700, 0.834))
+            p.bow(p.at(0.626, 0.812), p.at(0.663, 0.828), p.at(0.643, 0.821))
+            p.bow(p.at(0.581, 0.775), p.at(0.610, 0.802), p.at(0.594, 0.789))
+            p.bow(p.at(0.552, 0.724), p.at(0.569, 0.760), p.at(0.599, 0.778))
+            p.alsKoerper()
+            p.begin(p.at(0.650, 0.592))
+            p.bow(p.at(0.597, 0.618), p.at(0.703, 0.605), p.at(0.614, 0.609))
+            p.bow(p.at(0.547, 0.650), p.at(0.580, 0.628), p.at(0.563, 0.639))
+            p.bow(p.at(0.500, 0.687), p.at(0.531, 0.662), p.at(0.515, 0.674))
+            p.bow(p.at(0.455, 0.726), p.at(0.485, 0.699), p.at(0.470, 0.713))
+            p.bow(p.at(0.413, 0.768), p.at(0.441, 0.740), p.at(0.427, 0.754))
+            p.bow(p.at(0.371, 0.810), p.at(0.399, 0.782), p.at(0.385, 0.796))
+            p.bow(p.at(0.330, 0.853), p.at(0.357, 0.824), p.at(0.344, 0.839))
+            p.bow(p.at(0.288, 0.896), p.at(0.316, 0.867), p.at(0.304, 0.885))
+            p.bow(p.at(0.236, 0.916), p.at(0.273, 0.906), p.at(0.254, 0.916))
+            p.bow(p.at(0.180, 0.898), p.at(0.218, 0.916), p.at(0.197, 0.907))
+            p.bow(p.at(0.133, 0.862), p.at(0.162, 0.889), p.at(0.146, 0.876))
+            p.bow(p.at(0.099, 0.813), p.at(0.119, 0.848), p.at(0.107, 0.831))
+            p.bow(p.at(0.083, 0.756), p.at(0.090, 0.796), p.at(0.082, 0.774))
+            p.bow(p.at(0.110, 0.706), p.at(0.085, 0.738), p.at(0.099, 0.721))
+            p.bow(p.at(0.153, 0.665), p.at(0.122, 0.691), p.at(0.139, 0.678))
+            p.bow(p.at(0.196, 0.623), p.at(0.167, 0.651), p.at(0.181, 0.637))
+            p.bow(p.at(0.238, 0.582), p.at(0.210, 0.609), p.at(0.224, 0.596))
+            p.bow(p.at(0.279, 0.539), p.at(0.252, 0.567), p.at(0.211, 0.537))
+            p.alsKoerper()
+            p.feinBogen(p.at(0.417, 0.542), p.at(0.380, 0.536), p.at(0.429, 0.571), p.at(0.392, 0.540))
+            p.feinBogen(p.at(0.380, 0.536), p.at(0.347, 0.521), p.at(0.369, 0.533), p.at(0.357, 0.527))
+            p.feinBogen(p.at(0.347, 0.521), p.at(0.320, 0.496), p.at(0.337, 0.514), p.at(0.328, 0.505))
+            p.feinBogen(p.at(0.320, 0.496), p.at(0.301, 0.464), p.at(0.312, 0.487), p.at(0.306, 0.476))
+            p.feinBogen(p.at(0.301, 0.464), p.at(0.292, 0.429), p.at(0.297, 0.453), p.at(0.293, 0.441))
+            p.feinBogen(p.at(0.292, 0.429), p.at(0.294, 0.392), p.at(0.291, 0.417), p.at(0.292, 0.404))
+            p.feinBogen(p.at(0.294, 0.392), p.at(0.306, 0.358), p.at(0.296, 0.380), p.at(0.286, 0.333))
+            p.feinBogen(p.at(0.691, 0.614), p.at(0.668, 0.603), p.at(0.704, 0.634), p.at(0.675, 0.607))
+            p.feinBogen(p.at(0.668, 0.603), p.at(0.647, 0.589), p.at(0.661, 0.599), p.at(0.654, 0.595))
+            p.feinBogen(p.at(0.647, 0.589), p.at(0.628, 0.572), p.at(0.640, 0.584), p.at(0.634, 0.578))
+            p.feinBogen(p.at(0.628, 0.572), p.at(0.613, 0.553), p.at(0.623, 0.566), p.at(0.617, 0.560))
+            p.feinBogen(p.at(0.613, 0.553), p.at(0.600, 0.531), p.at(0.608, 0.546), p.at(0.604, 0.539))
+            p.feinBogen(p.at(0.600, 0.531), p.at(0.591, 0.508), p.at(0.596, 0.524), p.at(0.593, 0.516))
+            p.feinBogen(p.at(0.591, 0.508), p.at(0.585, 0.483), p.at(0.588, 0.500), p.at(0.569, 0.466))
         },
 
         // Pilz: Hut als Halbkreis, Stiel mit rundem Fuß.
@@ -1271,24 +1504,44 @@ enum ItemGlyph {
         // First ist es, der die Tüte macht: Eine Milchtüte läuft oben nicht
         // spitz zu, sie ist zusammengefaltet.
         "milch": { p in
-            p.begin(p.at(0.24, 0.92))
-            p.to(p.at(0.24, 0.50))
-            p.to(p.at(0.36, 0.26))
-            p.to(p.at(0.64, 0.26))
-            p.to(p.at(0.76, 0.50))
-            p.to(p.at(0.76, 0.92))
+            // **Keine gerade Kante an der ganzen Tuete.**
+            //
+            // Mit `rund()` waren die Ecken weich und die Zeichnung trotzdem
+            // kantig — weil zwischen den Ecken weiter Strecken lagen. Eine
+            // beschichtete Kartontuete steht nie ganz gerade: Die Waende
+            // beulen leicht aus, der Giebel sitzt schief. Jede Flanke ist
+            // deshalb ein flacher Bogen (Auslenkung 0,015 bis 0,02) — zu
+            // wenig, um als Delle zu lesen, genug, damit nichts gezeichnet
+            // aussieht wie gefraest.
+            // Seitenwand rechts, abgewandt.
+            p.begin(p.at(0.63, 0.33))
+            p.bow(p.at(0.83, 0.25), p.at(0.70, 0.30), p.at(0.77, 0.27))
+            p.bow(p.at(0.85, 0.83), p.at(0.86, 0.44), p.at(0.86, 0.64))
+            p.bow(p.at(0.64, 0.91), p.at(0.78, 0.86), p.at(0.71, 0.89))
+            p.bow(p.at(0.63, 0.33), p.at(0.62, 0.72), p.at(0.62, 0.52))
             p.close()
-            // Die Kante, an der der Giebel auf den Korpus trifft.
-            p.line([p.at(0.24, 0.50), p.at(0.76, 0.50)])
-            // Die Mittelfalte des Giebels — **senkrecht, nicht als V**. Das V
-            // war der erste Versuch und auf dem Prüfbogen eine **Tüte mit
-            // eingedrückter Oberseite**: Ein nach unten zeigender Knick liest
-            // sich als Delle, nicht als Kante. Die Falte einer Milchtüte läuft
-            // vom First herunter.
-            p.line([p.at(0.50, 0.26), p.at(0.50, 0.50)])
-            // Bodennaht. 0,14 über der Unterkante: enger und sie läuft bei
-            // 40 pt mit dem 3,8-pt-Strich der Kante zusammen.
-            p.line([p.at(0.24, 0.78), p.at(0.76, 0.78)])
+            p.alsSchatten()
+            // Vorderfront.
+            p.begin(p.at(0.22, 0.33))
+            p.bow(p.at(0.63, 0.33), p.at(0.36, 0.31), p.at(0.49, 0.31))
+            p.bow(p.at(0.64, 0.91), p.at(0.65, 0.52), p.at(0.65, 0.72))
+            p.bow(p.at(0.21, 0.91), p.at(0.50, 0.93), p.at(0.35, 0.93))
+            p.bow(p.at(0.22, 0.33), p.at(0.20, 0.72), p.at(0.20, 0.52))
+            p.close()
+            p.alsKoerper()
+            // Giebel: vordere Schraege und die abgewandte daneben.
+            p.begin(p.at(0.22, 0.33))
+            p.bow(p.at(0.34, 0.16), p.at(0.25, 0.26), p.at(0.29, 0.20))
+            p.bow(p.at(0.52, 0.16), p.at(0.40, 0.14), p.at(0.46, 0.14))
+            p.bow(p.at(0.63, 0.33), p.at(0.57, 0.20), p.at(0.61, 0.26))
+            p.begin(p.at(0.52, 0.16))
+            p.bow(p.at(0.70, 0.09), p.at(0.58, 0.13), p.at(0.64, 0.10))
+            p.bow(p.at(0.83, 0.25), p.at(0.76, 0.13), p.at(0.81, 0.19))
+            // Der aufgestellte Kamm.
+            p.feinLinie([p.at(0.34, 0.16), p.at(0.41, 0.09), p.at(0.60, 0.09), p.at(0.52, 0.16)])
+            // Etikettband auf der Front.
+            p.feinBogen(p.at(0.22, 0.55), p.at(0.64, 0.55), p.at(0.36, 0.57), p.at(0.50, 0.57))
+            p.feinBogen(p.at(0.22, 0.69), p.at(0.64, 0.69), p.at(0.36, 0.71), p.at(0.50, 0.71))
         },
 
         // Butter: Block mit einem abgeschnittenen Stück obenauf.
@@ -1339,15 +1592,51 @@ enum ItemGlyph {
         // Löcher dort, wo das Dreieck schon schmal ist, und drängten sich unter
         // der Spitze zusammen. Der Platz für Löcher ist unten, also musste die
         // Rinde nach unten und der Keil in die Höhe.
+        // **Der Keil zeigt nach links, und das ist der ganze Punkt.**
+        //
+        // Hier stand ein gleichschenkliges Dreieck mit der Spitze nach oben,
+        // einer Querlinie und drei Punkten darin. Daneben steht in diesem
+        // Satz `pizza`: ein Dreieck mit einer Rundung und Punkten darin. Auf
+        // dem Prüfbogen vom 11.08. lagen die beiden nebeneinander und waren
+        // **dasselbe Zeichen** — ein Dreieck mit Tupfen. Keine Strichstärke
+        // rettet zwei Zeichnungen, die sich nur in der Rundung unterscheiden.
+        //
+        // Drei Dinge trennen sie jetzt: Der Käse liegt **quer** statt hoch,
+        // seine Löcher sind **gestrichene Ringe** statt voller Punkte (ein
+        // Loch ist ein Loch, ein Belagstück ist ein Fleck), und er hat eine
+        // **Rinde** — die Doppellinie an der hohen Kante.
         "käse": { p in
-            p.begin(p.at(0.08, 0.88))
-            p.to(p.at(0.50, 0.18))
-            p.to(p.at(0.94, 0.88))
+            // **Ein Keil, der nach links spitz zulaeuft** — und dessen Kanten
+            // leicht bauchig sind. Vier Anlaeufe: ein gleichschenkliges
+            // Dreieck mit Punkten (= `pizza` zwei Zellen weiter), ein Quader
+            // mit zwei Loechern (= ein **Koffer**), dann derselbe Keil aus
+            // Strecken — richtig in der Form und trotzdem hart, weil ein
+            // Kaeselaib geschnitten und nicht gefraest wird.
+            // Deckflaeche entlang der Oberkante.
+            p.begin(p.at(0.07, 0.59))
+            p.bow(p.at(0.21, 0.45), p.at(0.11, 0.53), p.at(0.15, 0.48))
+            p.bow(p.at(0.92, 0.23), p.at(0.45, 0.36), p.at(0.70, 0.28))
+            p.bow(p.at(0.77, 0.36), p.at(0.88, 0.28), p.at(0.83, 0.32))
+            p.bow(p.at(0.07, 0.59), p.at(0.52, 0.46), p.at(0.28, 0.54))
             p.close()
-            p.line([p.at(0.20, 0.72), p.at(0.80, 0.72)])
-            p.dot(p.at(0.42, 0.56), 0.050)
-            p.dot(p.at(0.58, 0.56), 0.050)
-            p.dot(p.at(0.50, 0.42), 0.045)
+            p.alsSchatten()
+            // Schnittflaeche rechts — hier ist der Keil am dicksten.
+            p.begin(p.at(0.77, 0.36))
+            p.bow(p.at(0.92, 0.23), p.at(0.83, 0.32), p.at(0.88, 0.27))
+            p.bow(p.at(0.93, 0.63), p.at(0.94, 0.36), p.at(0.94, 0.50))
+            p.bow(p.at(0.78, 0.77), p.at(0.89, 0.68), p.at(0.83, 0.73))
+            p.bow(p.at(0.77, 0.36), p.at(0.76, 0.63), p.at(0.76, 0.50))
+            p.close()
+            p.alsSchatten()
+            // Vorderflaeche.
+            p.begin(p.at(0.07, 0.59))
+            p.bow(p.at(0.77, 0.36), p.at(0.28, 0.54), p.at(0.52, 0.45))
+            p.bow(p.at(0.78, 0.77), p.at(0.76, 0.50), p.at(0.76, 0.64))
+            p.bow(p.at(0.07, 0.59), p.at(0.52, 0.83), p.at(0.26, 0.71))
+            p.close()
+            p.alsKoerper()
+            p.feinKreis(p.at(0.42, 0.60), 0.048)
+            p.feinKreis(p.at(0.62, 0.56), 0.036)
         },
 
         // Frischkäse: **runde** Dose, von schräg oben — Deckelellipse, kurze
@@ -1478,16 +1767,49 @@ enum ItemGlyph {
         // Die beiden Kuppen stehen 0,16 auseinander. Bei 0,08 lagen ihre
         // 3,8-pt-Striche bei 40 pt aufeinander und aus zwei Eiern wurde ein
         // Doppelhöcker.
+        // Die beiden Eier tragen den Ton, die Schachtel nur ihren Körper —
+        // sonst wäre das Zeichen ein cremefarbener Block mit einer Kante.
+        // Die Kuppen werden dafür geschlossen; die Schlusslinie liegt genau
+        // auf der Oberkante der Schachtel und ist deshalb keine zweite.
         "eier": { p in
-            p.begin(p.at(0.16, 0.68))
-            p.bow(p.at(0.42, 0.68), p.at(0.16, 0.32), p.at(0.42, 0.32))
-            p.begin(p.at(0.58, 0.68))
-            p.bow(p.at(0.84, 0.68), p.at(0.58, 0.32), p.at(0.84, 0.32))
-            p.begin(p.at(0.08, 0.68))
-            p.to(p.at(0.92, 0.68))
-            p.to(p.at(0.86, 0.90))
-            p.to(p.at(0.14, 0.90))
+            // **Drei Eier in der offenen Schachtel.** Im ersten Anlauf sass
+            // der Deckel so tief, dass die Eier bis zur Haelfte darin
+            // verschwanden — drei Boegen unter einem Dach, also eine Arkade.
+            //
+            // Gepresste Pappe hat **nirgends** eine gerade Kante: Deckel und
+            // Wanne sind deshalb aus Boegen gebaut, nicht aus Strecken mit
+            // gerundeten Ecken. Der Unterschied ist klein und genau der
+            // zwischen „Karton" und „Kiste".
+            p.begin(p.at(0.15, 0.34))
+            p.bow(p.at(0.27, 0.15), p.at(0.17, 0.26), p.at(0.21, 0.19))
+            p.bow(p.at(0.84, 0.15), p.at(0.45, 0.12), p.at(0.66, 0.12))
+            p.bow(p.at(0.91, 0.34), p.at(0.89, 0.19), p.at(0.91, 0.26))
+            p.bow(p.at(0.15, 0.34), p.at(0.66, 0.39), p.at(0.38, 0.39))
             p.close()
+            p.alsSchatten()
+            // Die drei Eier, das mittlere vorn und groesser.
+            p.begin(p.at(0.16, 0.68))
+            p.bow(p.at(0.38, 0.68), p.at(0.16, 0.40), p.at(0.38, 0.40))
+            p.close()
+            p.alsKoerper()
+            p.begin(p.at(0.62, 0.68))
+            p.bow(p.at(0.84, 0.68), p.at(0.62, 0.40), p.at(0.84, 0.40))
+            p.close()
+            p.alsKoerper()
+            p.begin(p.at(0.38, 0.70))
+            p.bow(p.at(0.62, 0.70), p.at(0.38, 0.38), p.at(0.62, 0.38))
+            p.close()
+            p.alsKoerper()
+            // Die Wanne.
+            p.begin(p.at(0.06, 0.67))
+            p.bow(p.at(0.94, 0.67), p.at(0.34, 0.64), p.at(0.66, 0.64))
+            p.bow(p.at(0.85, 0.90), p.at(0.93, 0.78), p.at(0.90, 0.85))
+            p.bow(p.at(0.15, 0.90), p.at(0.62, 0.94), p.at(0.38, 0.94))
+            p.bow(p.at(0.06, 0.67), p.at(0.10, 0.85), p.at(0.07, 0.78))
+            p.close()
+            p.feinLinie([p.at(0.28, 0.74), p.at(0.27, 0.85)])
+            p.feinLinie([p.at(0.50, 0.76), p.at(0.50, 0.87)])
+            p.feinLinie([p.at(0.72, 0.74), p.at(0.73, 0.85)])
         },
 
         // Margarine: breite Wanne mit übergreifendem Deckel. Der Deckelrand
@@ -1553,26 +1875,34 @@ enum ItemGlyph {
         // **Nicht der Laib** — der ist das Kategoriezeichen für Backwaren,
         // und zwei Laibe nebeneinander wären eine Verwechslung.
         "brot": { p in
-            // **Vom Toast zum Laib.** Hier stand eine Toastscheibe mit zwei
-            // Kuppen — richtig gezeichnet, aber sie beantwortete die schmalste
-            // Frage: `brot` ist der Begriff für Brot überhaupt, und ein Laib
-            // sagt das, was eine Scheibe Toast nur für Toast sagt.
-            //
-            // Der Laib trägt, was ein Laib trägt: die gewölbte Kruste, die
-            // **Krustennaht** an der Seite und **drei schräge Einschnitte**.
-            // Die Einschnitte stehen 0,16 auseinander und enden 0,16 über der
-            // Naht — bei 0,10 liefen sie bei 40 pt mit ihr zusammen und der
-            // Laib bekam einen Schatten statt einer Kruste.
-            p.begin(p.at(0.12, 0.82))
-            p.to(p.at(0.12, 0.56))
-            p.bow(p.at(0.50, 0.30), p.at(0.12, 0.40), p.at(0.28, 0.30))
-            p.bow(p.at(0.88, 0.56), p.at(0.72, 0.30), p.at(0.88, 0.40))
-            p.to(p.at(0.88, 0.82))
+            // **Laib und eine Scheibe daneben.** Die Scheibe trug im ersten
+            // Anlauf zwei feine Kreise als Poren — und war damit ein
+            // **Gesicht**: zwei Loecher in einer runden Flaeche, die Falle
+            // Nummer zwei der Liste. Zwei waagerechte Striche sagen dasselbe
+            // und koennen keine Augen sein.
+            p.begin(p.at(0.30, 0.76))
+            p.bow(p.at(0.30, 0.50), p.at(0.27, 0.68), p.at(0.27, 0.58))
+            p.bow(p.at(0.94, 0.50), p.at(0.30, 0.22), p.at(0.94, 0.22))
+            p.bow(p.at(0.94, 0.76), p.at(0.97, 0.58), p.at(0.97, 0.68))
+            p.bow(p.at(0.30, 0.76), p.at(0.80, 0.82), p.at(0.44, 0.82))
             p.close()
-            p.line([p.at(0.12, 0.68), p.at(0.88, 0.68)])
-            p.line([p.at(0.30, 0.52), p.at(0.38, 0.42)])
-            p.line([p.at(0.46, 0.50), p.at(0.54, 0.40)])
-            p.line([p.at(0.62, 0.52), p.at(0.70, 0.42)])
+            p.alsSchatten()
+            // Die Krustennaht und die drei Einschnitte.
+            p.feinBogen(p.at(0.32, 0.62), p.at(0.93, 0.62),
+                        p.at(0.48, 0.66), p.at(0.78, 0.66))
+            p.feinLinie([p.at(0.46, 0.44), p.at(0.54, 0.32)])
+            p.feinLinie([p.at(0.62, 0.42), p.at(0.70, 0.30)])
+            p.feinLinie([p.at(0.78, 0.44), p.at(0.86, 0.32)])
+            // Die Scheibe, links davor.
+            p.begin(p.at(0.06, 0.90))
+            p.bow(p.at(0.06, 0.68), p.at(0.03, 0.83), p.at(0.03, 0.74))
+            p.bow(p.at(0.40, 0.68), p.at(0.06, 0.50), p.at(0.40, 0.50))
+            p.bow(p.at(0.40, 0.90), p.at(0.43, 0.74), p.at(0.43, 0.83))
+            p.bow(p.at(0.06, 0.90), p.at(0.32, 0.94), p.at(0.14, 0.94))
+            p.close()
+            p.alsKoerper()
+            p.feinLinie([p.at(0.12, 0.78), p.at(0.34, 0.78)])
+            p.feinLinie([p.at(0.12, 0.86), p.at(0.30, 0.86)])
         },
 
         // Knäckebrot: rechteckige Scheibe mit zwei Lochreihen.
@@ -4886,10 +5216,10 @@ private func saftkarton(_ p: inout Pen) {
 /// Eine Hälfte einer Artikelzeichnung als `Shape` — wie `CategoryGlyphShape`,
 /// nur mit dem Begriff statt der Kategorie als Schlüssel.
 struct ItemGlyphShape: Shape {
-    enum Part { case stroke, fill }
-
     let term: String
-    let part: Part
+    let part: CategoryGlyphShape.Part
+    /// Wenn gesetzt, liefert `.stroke` die ausgezogene Kontur als Fläche.
+    var feder: Feder.Profil?
 
     func path(in rect: CGRect) -> Path {
         // Immer quadratisch und mittig — eine gestreckte Möhre wäre keine.
@@ -4897,7 +5227,10 @@ struct ItemGlyphShape: Shape {
         let square = CGRect(x: rect.midX - side / 2, y: rect.midY - side / 2,
                             width: side, height: side)
         guard let drawing = ItemGlyph.drawing(for: term, in: square) else { return Path() }
-        return part == .stroke ? drawing.stroke : drawing.fill
+        if part == .stroke, let feder {
+            return Feder.kontur(drawing.stroke, seite: side, profil: feder)
+        }
+        return drawing.pfad(part)
     }
 }
 
@@ -4917,13 +5250,11 @@ struct ItemGlyphView: View {
 
     var body: some View {
         if let term, ItemGlyph.drawing(for: term, in: CGRect(x: 0, y: 0, width: 1, height: 1)) != nil {
-            ZStack {
-                ItemGlyphShape(term: term, part: .fill)
-                ItemGlyphShape(term: term, part: .stroke)
-                    .stroke(style: StrokeStyle(lineWidth: size * CategoryGlyph.lineWidthRatio,
-                                               lineCap: .round, lineJoin: .round))
-            }
-            .frame(width: size, height: size)
+            GlyphEbenen(form: { ItemGlyphShape(term: term, part: $0, feder: ItemGlyph.feder) },
+                        size: size,
+                        kontur: ItemGlyph.lineWidthRatio,
+                        feinheit: ItemGlyph.feinLineWidthRatio,
+                        ausgezogen: true)
         } else if let category {
             CategoryGlyphView(category: category, size: size)
         } else {

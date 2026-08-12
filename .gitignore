@@ -21,3 +21,6 @@ assets/trailer/
 
 # Secrets
 APIKeys.plist
+
+# Python-Werkzeuge unter tools/
+__pycache__/
