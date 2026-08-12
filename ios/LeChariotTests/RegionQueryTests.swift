@@ -205,4 +205,104 @@ final class RegionQueryTests: XCTestCase {
         XCTAssertEqual(hit?.candidate.plz, "01219")
         XCTAssertEqual(hit?.answersQuery, true)
     }
+
+    // MARK: Fünf Ziffern sind noch kein deutsches Gebiet (#148)
+
+    /// **Der Fall aus Prod, 12.08.**: Ein US-ZIP lief durch das Onboarding,
+    /// weil fünf Ziffern fünf Ziffern sind. Apple beantwortet ihn — sogar mit
+    /// „, Deutschland" dahinter — aus **Mexiko**; das Land steht in der
+    /// Antwort, es hat nur nie jemand gelesen.
+    func testAnAmericanZipIsNotAGermanPostcode() {
+        let ergebnis = CityLookup.entscheidePLZ(
+            "95070",
+            vorwärts: CityLookup.Antwort(
+                locality: "Texhuacán", administrativeArea: "Ver.", postalCode: "95070",
+                name: "95070", isoCountryCode: "MX", country: "Mexiko"
+            ),
+            rückwärts: nil
+        )
+        XCTAssertEqual(ergebnis, .ausland(land: "Mexiko"))
+    }
+
+    /// **Das Land allein reicht nicht.** Auf eine erfundene deutsche PLZ
+    /// antwortet Apple mit einem beliebigen deutschen Ort — hier
+    /// Annaberg-Buchholz mit der PLZ 09456. Eine Landesprüfung ohne den
+    /// Abgleich der Ziffern hätte 10001 durchgelassen.
+    func testAGermanAnswerWithAnotherPostcodeIsNoAnswer() {
+        let ergebnis = CityLookup.entscheidePLZ(
+            "10001",
+            vorwärts: CityLookup.Antwort(
+                locality: "Annaberg-Buchholz", administrativeArea: "Sachsen",
+                name: "10000 Ritter", isoCountryCode: "DE", country: "Deutschland"
+            ),
+            rückwärts: CityLookup.Antwort(
+                locality: "Annaberg-Buchholz", administrativeArea: "Sachsen",
+                postalCode: "09456", isoCountryCode: "DE", country: "Deutschland"
+            )
+        )
+        XCTAssertEqual(ergebnis, .unbekannt)
+    }
+
+    /// Dieselbe Klasse, ohne Ort: „99999, Deutschland" landet bei Apple
+    /// irgendwo in Thüringen (99974).
+    func testAnInventedPostcodeFallsBackToSomewhereElse() {
+        let ergebnis = CityLookup.entscheidePLZ(
+            "99999",
+            vorwärts: CityLookup.Antwort(name: "Deutschland", isoCountryCode: "DE", country: "Deutschland"),
+            rückwärts: CityLookup.Antwort(
+                locality: "Mühlhausen/Thüringen", administrativeArea: "Thüringen",
+                postalCode: "99974", isoCountryCode: "DE", country: "Deutschland"
+            )
+        )
+        XCTAssertEqual(ergebnis, .unbekannt)
+    }
+
+    /// Und die echte PLZ geht durch — mit ihrem Ort, den `PlaceNameStore`
+    /// danach nicht ein zweites Mal erfragen muss.
+    func testARealGermanPostcodePasses() {
+        let ergebnis = CityLookup.entscheidePLZ(
+            "01219",
+            vorwärts: CityLookup.Antwort(
+                locality: "Dresden", administrativeArea: "Sachsen", postalCode: "01219",
+                name: "01219", isoCountryCode: "DE", country: "Deutschland"
+            ),
+            rückwärts: nil
+        )
+        XCTAssertEqual(ergebnis, .deutsch(PlaceCandidate(plz: "01219", ort: "Dresden", land: "Sachsen")))
+    }
+
+    /// **10115 gibt es zweimal auf der Welt** — Berlin und Manhattan. Gefragt
+    /// wird mit „, Deutschland", und Apple antwortet aus Berlin; die Prüfung
+    /// darf daran nicht scheitern.
+    func testAPostcodeThatExistsTwiceStaysGerman() {
+        let ergebnis = CityLookup.entscheidePLZ(
+            "10115",
+            vorwärts: CityLookup.Antwort(
+                locality: "Berlin", administrativeArea: "Berlin", postalCode: "10115",
+                name: "10115", isoCountryCode: "DE", country: "Deutschland"
+            ),
+            rückwärts: nil
+        )
+        XCTAssertEqual(ergebnis, .deutsch(PlaceCandidate(plz: "10115", ort: "Berlin", land: "Berlin")))
+    }
+
+    /// Ein Ort dicht an der Grenze: Die Ziffern stimmen und stehen in
+    /// Deutschland — dass die Rückwärtsrunde jenseits davon landet, ändert
+    /// daran nichts.
+    func testTheTypedDigitsBeatALookAcrossTheBorder() {
+        let ergebnis = CityLookup.entscheidePLZ(
+            "78266",
+            vorwärts: CityLookup.Antwort(
+                locality: "Büsingen am Hochrhein", administrativeArea: "Baden-Württemberg",
+                postalCode: "78266", isoCountryCode: "DE", country: "Deutschland"
+            ),
+            rückwärts: CityLookup.Antwort(
+                locality: "Schaffhausen", postalCode: "8238",
+                isoCountryCode: "CH", country: "Schweiz"
+            )
+        )
+        XCTAssertEqual(ergebnis, .deutsch(PlaceCandidate(
+            plz: "78266", ort: "Büsingen am Hochrhein", land: "Baden-Württemberg"
+        )))
+    }
 }

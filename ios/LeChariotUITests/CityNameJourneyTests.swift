@@ -65,12 +65,14 @@ final class CityNameJourneyTests: XCTestCase {
     }
 
     /// Die PLZ-Eingabe bleibt, was sie war: tippen, „Weiter", fertig — **kein**
-    /// Zwischenschritt „Ort suchen".
+    /// Zwischenschritt „Ort suchen". Seit #148 fragt auch sie Apple nach dem
+    /// Land, aber hinter demselben einen Knopf; der Fall, in dem die Antwort
+    /// nicht passt, steht in `AuslandJourneyTests`.
     func testTypingAPostcodeStillGoesStraightThrough() {
         start()
         type("01219")
 
-        XCTAssertEqual(primary.label, "Weiter", "Fünf Ziffern brauchen keinen Geocoder")
+        XCTAssertEqual(primary.label, "Weiter", "Für die PLZ bleibt es ein Knopf")
         primary.tap()
         XCTAssertFalse(field.waitForExistence(timeout: 10), "Die PLZ-Strecke von vorher muss unverändert durchlaufen")
     }

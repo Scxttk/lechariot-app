@@ -9,7 +9,9 @@ import Foundation
 /// Reine Rechnung über Zeichenketten wie `PlaceName`: Die Klassifikation ist
 /// prüfbar, ohne dass jemand ein Netz braucht.
 enum RegionQuery: Equatable {
-    /// Fünf Ziffern — der Weg von vorher, unverändert.
+    /// Fünf Ziffern. **Eine Einordnung, kein Urteil:** Ob die Zahl in
+    /// Deutschland liegt, weiß erst `CityLookup.pruefe(plz:)` — bis zum 12.08.
+    /// hat das niemand gefragt, und ein US-ZIP kam damit durch (#148).
     case postleitzahl(String)
     /// Ein Name, den Apple erst nachschlagen muss.
     case ortsname(String)
