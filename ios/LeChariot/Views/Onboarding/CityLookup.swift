@@ -86,6 +86,111 @@ enum CityLookup {
         return PlaceMatch.usable(found)
     }
 
+    // MARK: - Fünf Ziffern sind noch kein deutsches Gebiet
+
+    /// **Was hinter einer getippten Postleitzahl steckt** (#148).
+    enum PLZErgebnis: Equatable {
+        /// Apple verortet die Ziffern in Deutschland, und zwar unter genau
+        /// diesen Ziffern.
+        case deutsch(PlaceCandidate)
+        /// Sie liegen in einem anderen Land — mit dessen Namen, wo Apple ihn
+        /// nennt.
+        case ausland(land: String?)
+        /// Deutschland, aber eine andere PLZ: Diese Zahl ist keine.
+        case unbekannt
+        /// Gar keine Antwort. **Nicht dasselbe wie „gibt es nicht"** — daraus
+        /// folgt kein Urteil, nur ein zweiter Versuch.
+        case keineAntwort
+    }
+
+    /// **Fünf Ziffern sind fünf Ziffern — überall auf der Welt.**
+    ///
+    /// Bis zum 12.08. ging eine PLZ ohne jede Rückfrage in den Speicher:
+    /// `RegionQuery` sagte „fünf Ziffern, also PLZ", und damit war sie eine.
+    /// Zwei Installationen an der US-Westküste liefen so durch das Onboarding
+    /// und landeten in einer App ohne Märkte und ohne Erklärung — es gibt
+    /// keinen deutschen Anker, an dem eine Gebiets-Anforderung hängen könnte.
+    ///
+    /// Der Ortsname-Weg hatte das Loch nie: `resolveOnce` verlangt seit jeher
+    /// `isoCountryCode == "DE"`. Nur an den Ziffern kam niemand vorbei, weil
+    /// sie gar nicht erst gefragt haben.
+    ///
+    /// **Am 12.08. gemessen** (dieselbe Frage, die `PlaceQuery` ohnehin stellt,
+    /// also mit „, Deutschland" dahinter):
+    ///
+    ///     95070, Deutschland → iso MX, Texhuacán, postalCode 95070
+    ///     95070             → nichts
+    ///     10001, Deutschland → iso DE, Annaberg-Buchholz, rückwärts 09456
+    ///     10115 / 01219 / 70173, Deutschland → iso DE, ebendiese PLZ
+    ///
+    /// Zwei Dinge stehen darin. Erstens ignoriert Apple das angehängte Land und
+    /// antwortet trotzdem aus Mexiko — der Anhang schadet also nicht, und
+    /// **ohne** ihn kommt gar nichts zurück. Zweitens reicht die Landesprüfung
+    /// allein nicht: Auf eine erfundene deutsche PLZ antwortet Apple mit einem
+    /// beliebigen deutschen Ort, der eine **andere** PLZ trägt. Deshalb gilt
+    /// hier dieselbe Regel wie seit #143 beim Ortsnamen — **das Getippte ist
+    /// das Maß**: Es zählt nur, was unter genau diesen Ziffern zurückkommt.
+    static func pruefe(plz: String) async -> PLZErgebnis {
+        if let stubbed = stubbedPLZ(for: plz) { return stubbed }
+        // Mock-Läufe sprechen nie mit Apple. Eine PLZ gilt dort als deutsch —
+        // sonst käme keine Journey mehr durch den Assistenten, und geprüft
+        // würde nicht die Entscheidung, sondern das Netz.
+        guard !AppRepositories.usesMockData else {
+            return .deutsch(PlaceCandidate(plz: plz, ort: plz, land: nil))
+        }
+        let frage = PlaceQuery(name: plz, land: nil)
+        guard let forward = try? await CLGeocoder().geocodeAddressString(frage.geocoderString).first
+        else { return .keineAntwort }
+
+        let vorwärts = antwort(forward)
+        // Die Rückwärtsrunde nur, wo die Ziffern vorwärts nicht schon
+        // dastanden — bei einer echten PLZ tun sie das (gemessen), und dann
+        // wäre sie eine Abfrage für nichts.
+        var rückwärts: Antwort?
+        if vorwärts.postalCode != plz, let location = forward.location,
+           let back = try? await CLGeocoder().reverseGeocodeLocation(location).first {
+            rückwärts = antwort(back)
+        }
+        return entscheidePLZ(plz, vorwärts: vorwärts, rückwärts: rückwärts)
+    }
+
+    /// **Was die App aus den Antworten auf fünf Ziffern macht** — reine
+    /// Rechnung, ohne Netz, damit sie prüfbar ist. Wie `entscheide`.
+    static func entscheidePLZ(_ plz: String, vorwärts: Antwort, rückwärts: Antwort?) -> PLZErgebnis {
+        let antworten = [vorwärts, rückwärts].compactMap { $0 }
+
+        // Die getippten Ziffern, aus Deutschland: der einzige Fall, der
+        // durchgeht. Er steht **vor** der Landesprüfung, damit ein Ort dicht an
+        // der Grenze nicht daran scheitert, dass die Rückwärtsrunde jenseits
+        // davon landet.
+        if let treffer = antworten.first(where: { $0.postalCode == plz && $0.isoCountryCode == "DE" }) {
+            // Ort und Bundesland kommen aus **der** Antwort, die die Ziffern
+            // trug — nicht aus der anderen: An der Grenze nennt die
+            // Rückwärtsrunde sonst einen Ort im Nachbarland.
+            let ort = treffer.locality ?? vorwärts.locality ?? plz
+            return .deutsch(PlaceCandidate(plz: plz, ort: ort, land: treffer.administrativeArea))
+        }
+        if let fremd = antworten.first(where: {
+            $0.isoCountryCode != nil && $0.isoCountryCode != "DE"
+        }) {
+            return .ausland(land: fremd.country)
+        }
+        return .unbekannt
+    }
+
+    private static func antwort(_ placemark: CLPlacemark) -> Antwort {
+        Antwort(
+            locality: placemark.locality,
+            subLocality: placemark.subLocality,
+            thoroughfare: placemark.thoroughfare,
+            administrativeArea: placemark.administrativeArea,
+            postalCode: placemark.postalCode,
+            name: placemark.name,
+            isoCountryCode: placemark.isoCountryCode,
+            country: placemark.country
+        )
+    }
+
     /// Der Ort, der dem getippten Namen entspricht — wenn es ihn gibt und er
     /// ein anderer ist als der Treffer.
     ///
@@ -124,6 +229,10 @@ enum CityLookup {
         var administrativeArea: String?
         var postalCode: String?
         var name: String?
+        /// Das Land der Antwort, als Kürzel — der Prüfstein aus #148.
+        var isoCountryCode: String?
+        /// Dasselbe Land, ausgeschrieben, damit die Meldung es nennen kann.
+        var country: String?
 
         init(
             locality: String? = nil,
@@ -131,7 +240,9 @@ enum CityLookup {
             thoroughfare: String? = nil,
             administrativeArea: String? = nil,
             postalCode: String? = nil,
-            name: String? = nil
+            name: String? = nil,
+            isoCountryCode: String? = nil,
+            country: String? = nil
         ) {
             self.locality = locality
             self.subLocality = subLocality
@@ -139,6 +250,8 @@ enum CityLookup {
             self.administrativeArea = administrativeArea
             self.postalCode = postalCode
             self.name = name
+            self.isoCountryCode = isoCountryCode
+            self.country = country
         }
     }
 
@@ -156,26 +269,12 @@ enum CityLookup {
         // zweiten Mal mit demselben Ort.
         if let land = frage.land, forward.administrativeArea != land { return nil }
 
-        let vorwärts = Antwort(
-            locality: forward.locality,
-            subLocality: forward.subLocality,
-            thoroughfare: forward.thoroughfare,
-            administrativeArea: forward.administrativeArea,
-            postalCode: forward.postalCode,
-            name: forward.name
-        )
+        let vorwärts = antwort(forward)
         // Die Rückwärtsrunde nur, wo sie gebraucht wird — siehe unten.
         var rückwärts: Antwort?
         if !(vorwärts.thoroughfare != nil && PLZValidator.isValid(vorwärts.postalCode ?? "")),
            let back = try? await CLGeocoder().reverseGeocodeLocation(location).first {
-            rückwärts = Antwort(
-                locality: back.locality,
-                subLocality: back.subLocality,
-                thoroughfare: back.thoroughfare,
-                administrativeArea: back.administrativeArea,
-                postalCode: back.postalCode,
-                name: back.name
-            )
+            rückwärts = antwort(back)
         }
         return entscheide(vorwärts: vorwärts, rückwärts: rückwärts, mass: mass)
     }
@@ -264,6 +363,30 @@ enum CityLookup {
         let candidates = passend.isEmpty ? allgemein : passend
         guard let first = candidates.first else { return .unbekannt }
         return candidates.count == 1 ? .verstanden(first) : .meintestDu(candidates)
+    }
+
+    /// Dieselbe Naht für die PLZ-Prüfung: `uiTestingPLZPruefung`, Einträge mit
+    /// `;` getrennt, jeder wahlweise mit seiner Frage davor (`95070>…`).
+    ///
+    /// Werte: `AUSLAND|Mexiko`, `UNBEKANNT`, `NICHTS` — oder ein Ort in der
+    /// Schreibweise von oben (`Dresden|01219|Sachsen`) für „geht durch".
+    /// Eine PLZ, zu der nichts dasteht, bleibt beim Mock-Verhalten und geht
+    /// durch; so braucht eine Journey nur den Fall zu setzen, den sie meint.
+    private static func stubbedPLZ(for plz: String) -> PLZErgebnis? {
+        guard let raw = UserDefaults.standard.string(forKey: "uiTestingPLZPruefung") else { return nil }
+        for eintrag in raw.split(separator: ";").map(String.init) {
+            let teile = eintrag.split(separator: ">", maxSplits: 1).map(String.init)
+            if teile.count == 2, ohneLeerzeichen(teile[0]) != ohneLeerzeichen(plz) { continue }
+            let wert = teile.count == 2 ? teile[1] : teile[0]
+            let felder = wert.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+            switch felder[0].uppercased() {
+            case "AUSLAND": return .ausland(land: felder.count > 1 && !felder[1].isEmpty ? felder[1] : nil)
+            case "UNBEKANNT": return .unbekannt
+            case "NICHTS": return .keineAntwort
+            default: if let ort = parse(wert).first { return .deutsch(ort) }
+            }
+        }
+        return nil
     }
 
     private static func ohneLeerzeichen(_ value: String) -> String {

@@ -82,7 +82,14 @@ struct RegionSetupView: View {
     }
 
     private func primaryAction() {
-        if needsLookup { lookUpCity() } else { submit(submittablePLZ) }
+        if needsLookup { lookUpCity() } else if case .postleitzahl(let plz) = query {
+            // **Auch fünf Ziffern gehen erst zu Apple** (#148). Der Ortsname
+            // hat den Rückweg immer gehabt; die PLZ war der eine Weg in den
+            // Speicher, auf dem niemand nach dem Land gefragt hat.
+            pruefePLZ(plz)
+        } else {
+            submit(submittablePLZ)
+        }
     }
 
     private var submittablePLZ: String {
@@ -344,6 +351,7 @@ struct RegionSetupView: View {
                     .font(.subheadline)
                     .foregroundStyle(Theme.error)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("region.error")
             }
         }
     }
@@ -420,6 +428,40 @@ struct RegionSetupView: View {
         }
     }
 
+    /// **Die PLZ, bevor sie eine Region wird** (#148).
+    ///
+    /// Am 12.08. in Prod belegt: Ein US-ZIP hat fünf Ziffern, also lief er als
+    /// deutsche PLZ durch — und dahinter stand eine App ohne Märkte, ohne
+    /// Erklärung und ohne einen Anker, an dem eine Gebiets-Anforderung hängen
+    /// könnte. Geprüft wird deshalb hier, am einzigen Weg in `addRegion`, und
+    /// nicht an der Quelle: Die Ziffern kommen auch aus dem Ortungs-Knopf, und
+    /// ein Gerät an der US-Westküste liefert dort dieselbe Zahl.
+    ///
+    /// **Ein Fehlschlag ändert nichts als die Meldung** — dieselbe Zusage wie
+    /// beim Ortsnamen: keine Region gespeichert, kein Schritt weiter, und im
+    /// Feld steht weiter, was der Mensch getippt hat.
+    private func pruefePLZ(_ plz: String) {
+        errorMessage = nil
+        isChecking = true
+        Task {
+            let ergebnis = await CityLookup.pruefe(plz: plz)
+            isChecking = false
+            switch ergebnis {
+            case .deutsch(let ort):
+                // Der Ortsname ist gerade abgefragt worden; ihn gleich zu
+                // behalten spart `PlaceNameStore` dieselbe Frage.
+                submit(plz, ort: ort)
+            case .ausland(let land):
+                let wo = land.map { "\(plz) liegt in \($0)." } ?? "\(plz) liegt nicht in Deutschland."
+                errorMessage = "\(wo) \(AppBrand.name) funktioniert bisher nur in Deutschland."
+            case .unbekannt:
+                errorMessage = "\(plz) gibt es als deutsche Postleitzahl nicht. Prüf die Ziffern."
+            case .keineAntwort:
+                errorMessage = "\(plz) ließ sich gerade nicht prüfen. Versuch es noch einmal."
+            }
+        }
+    }
+
     /// Der Länder-Fächer auf Zuruf — für den Fall, dass die erste Antwort zwar
     /// so hieß wie gefragt, aber der falsche Ort dieses Namens war.
     private func showAlternatives() {
@@ -447,7 +489,9 @@ struct RegionSetupView: View {
         candidates = []
     }
 
-    private func submit(_ rawPLZ: String) {
+    /// `ort` trägt den Ort, den die PLZ-Prüfung gerade genannt hat; sonst gilt
+    /// der bestätigte aus dem Namensweg.
+    private func submit(_ rawPLZ: String, ort: PlaceCandidate? = nil) {
         guard let plz = PLZValidator.normalized(rawPLZ) else { return }
         // `addRegion` quietly does nothing once the limit is reached. Without
         // this the flow would report success and move on with a region that was
@@ -461,8 +505,8 @@ struct RegionSetupView: View {
         // Den Namen, den Apple gerade genannt hat, gleich behalten — sonst
         // fragt `PlaceNameStore.resolve` denselben Geocoder ein zweites Mal
         // nach etwas, das wir schon wissen.
-        if let resolvedPlace, resolvedPlace.plz == plz {
-            placeNames.remember(name: resolvedPlace.ort, forPLZ: plz)
+        if let bekannt = ort ?? resolvedPlace, bekannt.plz == plz {
+            placeNames.remember(name: bekannt.ort, forPLZ: plz)
         }
         Task {
             await store.addRegion(plz)

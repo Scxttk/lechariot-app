@@ -39,6 +39,12 @@ struct ContentView: View {
     /// Liste; die Markt-Frage nach dem Onboarding bringt ihre eigene Fassung
     /// mit (`MarketPromptSheet`).
     @State private var showsMarketPicker = false
+    /// Die Postleitzahl über den Tabs — aus dem Zustand ohne Region heraus.
+    /// Ohne sie zeigte dieser Bildschirm auf die Einstellungen und überließ
+    /// dem Menschen den Weg.
+    @State private var showsRegionSetup = false
+    /// Ob die eben geschlossene Region-Eingabe eine Region hinterlassen hat.
+    @State private var regionAdded = false
     @Environment(\.scenePhase) private var scenePhase
 
     private enum Tab {
@@ -130,6 +136,31 @@ struct ContentView: View {
         // Navigationsziel im selben Sheet.
         .sheet(isPresented: marketQuestion) { marketPromptSheet }
         .sheet(isPresented: $showsMarketPicker) { marketPicker }
+        // **Erst wenn das eine Blatt unten ist, fährt das nächste hoch.** Ein
+        // `sheet`, das während der Auflösung des vorherigen gesetzt wird,
+        // erscheint nicht — deshalb hängt die Auswahl an `onDismiss` und nicht
+        // an der Zeile, die die Region meldet.
+        .sheet(isPresented: $showsRegionSetup, onDismiss: {
+            if regionAdded {
+                regionAdded = false
+                showsMarketPicker = true
+            }
+        }) {
+            NavigationStack {
+                RegionSetupView(onPLZSubmitted: { _ in
+                    // Eine frische Region ohne Filialen ist der halbe Weg; die
+                    // Auswahl steht direkt dahinter, statt den Menschen auf
+                    // demselben leeren Bildschirm abzusetzen.
+                    regionAdded = true
+                    showsRegionSetup = false
+                })
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Abbrechen") { showsRegionSetup = false }
+                    }
+                }
+            }
+        }
     }
 
     /// **Der Weg ohne Filialen aus dem Onboarding fragt — einmal.**
@@ -318,13 +349,19 @@ struct ContentView: View {
             setupNeeded(
                 title: "Keine Region bereit",
                 symbol: "mappin.slash",
-                message: "Füge in den Einstellungen eine Postleitzahl hinzu — dann lädt \(AppBrand.name) die Angebote deiner Gegend."
+                message: "Ohne Postleitzahl weiß \(AppBrand.name) nicht, welche Angebote in Frage kommen.",
+                actionTitle: "Postleitzahl hinzufügen",
+                identifier: "tab.noRegion",
+                action: { showsRegionSetup = true }
             )
         } else if requiresFavorites, !store.hasFavorites {
             setupNeeded(
                 title: "Keine Filiale gewählt",
                 symbol: "storefront",
-                message: "\(AppBrand.name) vergleicht nur die Läden, in die du wirklich gehst. Wähle mindestens eine Filiale aus."
+                message: "\(AppBrand.name) vergleicht nur die Läden, in die du wirklich gehst. Wähle mindestens eine Filiale aus.",
+                actionTitle: "Filialen wählen",
+                identifier: "tab.noMarkets",
+                action: { showsMarketPicker = true }
             )
         } else {
             // All favorites, unfiltered: the picker offers branches from
@@ -334,17 +371,32 @@ struct ContentView: View {
         }
     }
 
-    private func setupNeeded(title: String, symbol: String, message: String) -> some View {
+    /// **Der Knopf führt dorthin, wo das Fehlende entsteht** (#107).
+    ///
+    /// Bis zum 12.08. stand hier für jeden Fall „Zu den Einstellungen" — von
+    /// den Angeboten aus drei Tipps bis zur Filialauswahl, und der Mensch
+    /// musste den Weg selbst finden. Die Auswahl liegt als Blatt über den Tabs
+    /// (dieselbe, die die Liste aus ihrer Karte heraus öffnet), also kann der
+    /// Zustand sie ebenso gut selbst aufmachen.
+    private func setupNeeded(
+        title: String,
+        symbol: String,
+        message: String,
+        actionTitle: String,
+        identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
         ContentUnavailableView {
             Label(title, systemImage: symbol)
         } description: {
             Text(message)
         } actions: {
-            Button("Zu den Einstellungen") { selectedTab = .einstellungen }
+            Button(actionTitle, action: action)
                 .buttonStyle(.borderedProminent)
                 .foregroundStyle(Theme.onAccent)
         }
         .themedScreen()
+        .accessibilityIdentifier(identifier)
     }
 }
 
