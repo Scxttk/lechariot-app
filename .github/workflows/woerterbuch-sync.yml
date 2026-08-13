@@ -34,6 +34,12 @@ jobs:
           curl -sSf -o /tmp/backend.json \
             https://raw.githubusercontent.com/Scxttk/lechariot-backend/master/docs/matching-woerterbuch.json
 
+      # **Das Urteil bleibt der Byte-Vergleich**, denn mitgeliefert wird die
+      # Datei, nicht ihr Inhalt. Die *Meldung* darf das nicht sein: Der Lauf
+      # vom 12.08. hat 3853 Zeilen Rohdiff gehabt und vierzig davon gezeigt,
+      # und die vierzig waren Umsortierung aus `#62`. Wer das liest, weiß
+      # hinterher nicht, ob sieben Begriffe dazugekommen sind oder einer
+      # verschwunden ist — und der rote Lauf stand vier Tage.
       - name: Vergleichen
         run: |
           MINE=ios/LeChariot/Resources/matching-woerterbuch.json
@@ -44,10 +50,43 @@ jobs:
           echo "::error::Das mitgelieferte Wörterbuch weicht vom Backend ab."
           echo "Die Suche der App findet damit andere Begriffe als der Import taggt."
           echo ""
-          echo "Unterschied (Backend = links, App = rechts):"
-          diff /tmp/backend.json "$MINE" | head -40 || true
+          python3 - "$MINE" <<'PY'
+          import json, re, sys
+
+          backend = json.load(open("/tmp/backend.json"))
+          app = json.load(open(sys.argv[1]))
+
+          def zeige(titel, zeilen):
+              if zeilen:
+                  print(f"{titel} ({len(zeilen)}):")
+                  for zeile in zeilen:
+                      print(f"    {zeile}")
+
+          for feld in ("begriffe", "marken"):
+              b, a = backend.get(feld, {}), app.get(feld, {})
+              zeige(f"{feld}: im Backend neu", sorted(set(b) - set(a)))
+              zeige(f"{feld}: nur in der App", sorted(set(a) - set(b)))
+              zeige(f"{feld}: geändert", sorted(k for k in set(b) & set(a) if b[k] != a[k]))
+
+          # Die Nonfood-Regeln sind ein Alternativ-Regex, kein Objekt — hier
+          # zählt, welcher Ausdruck dazukam, nicht wo er steht.
+          for feld in ("nonfood_terms", "nonfood_cat", "food_cat"):
+              b, a = backend.get(feld, ""), app.get(feld, "")
+              if b == a:
+                  continue
+              teile = lambda s: {t for t in re.split(r"\|", s) if t}
+              zeige(f"{feld}: im Backend neu", sorted(teile(b) - teile(a)))
+              zeige(f"{feld}: nur in der App", sorted(teile(a) - teile(b)))
+
+          for feld in ("kategorien",):
+              if backend.get(feld) != app.get(feld):
+                  print(f"{feld}: unterschiedlich")
+          PY
           echo ""
           echo "Beheben:"
           echo "  curl -sSf -o $MINE \\"
           echo "    https://raw.githubusercontent.com/Scxttk/lechariot-backend/master/docs/matching-woerterbuch.json"
+          echo ""
+          echo "Und danach die Suite: ein neuer Begriff braucht ein Artikelzeichen"
+          echo "(ItemGlyphs.swift) und eine Regalzeile (MatchShelfTests.swift)."
           exit 1

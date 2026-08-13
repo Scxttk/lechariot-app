@@ -310,7 +310,10 @@ final class MatchShelfTests: XCTestCase {
         "avocado": "Avocado Hass, 2 Stück",
         "backwaren": "Mohn-Croissant 4 Stück",
         "bananen": "Chiquita Bananen, 1 kg",
-        "beeren": "Deutsche Erdbeeren 500 g Schale",
+        // Seit der Pflegerunde vom 08.08. (`#63`) heißt `beeren` nur noch die
+        // Mischung; die einzelnen Beeren stehen weiter unten mit eigener
+        // Zeile. Der alte Titel „Deutsche Erdbeeren" gehört jetzt dorthin.
+        "beeren": "Beerenmischung TK 500 g",
         "bier": "Radeberger Pilsner 20 x 0,33 l",
         "bratwurst": "Thüringer Rostbratwurst 400 g",
         "brokkoli": "Brokkoli lose, 500 g",
@@ -391,6 +394,15 @@ final class MatchShelfTests: XCTestCase {
         "zwiebeln": "Speisezwiebeln 2 kg Netz",
         "äpfel": "Äpfel Elstar 2 kg Beutel",
         "öl": "Bertolli Olivenöl extra vergine 500 ml",
+        // Pflegerunde 08.08. (`#63`): Der `beeren`-Schirm ist in fünf Beeren
+        // zerfallen, aus `brot` sind Toast und Baguette herausgelöst.
+        "baguette": "Steinofen-Baguette 2 x 125 g",
+        "brombeeren": "Brombeeren 125 g Schale",
+        "erdbeeren": "Deutsche Erdbeeren 500 g Schale",
+        "heidelbeeren": "Heidelbeeren 250 g Schale",
+        "himbeeren": "Himbeeren 125 g Schale",
+        "johannisbeeren": "Rote Johannisbeeren 250 g",
+        "toast": "Golden Toast Butter Toast 500 g",
     ]
 
     private static func angebot(_ produkt: String, tag: String) -> Offer {
