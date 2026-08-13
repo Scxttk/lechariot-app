@@ -184,6 +184,15 @@ lauf() {
 		# Endgültig rot ist also: gefallen **und** nicht danach durchgekommen.
 		local rote
 		rote=$(namen_endgueltig_rot "$protokoll" | wc -l | tr -d ' ')
+		if [ "$rote" -gt 0 ]; then
+			# **Ein rotes Urteil ohne Namen ist keins.** Bis zum 12.08. hat
+			# dieser Zweig nur gezählt; wer die Ausgabe nicht vollständig
+			# aufgehoben hatte, sah am Ende „✗ rot" und musste den ganzen Lauf
+			# wiederholen, um zu erfahren, was gefallen war — 45 Minuten für
+			# eine Zeile, die hier schon dasteht.
+			echo "✗ Endgültig rot (auch im zweiten Anlauf gefallen):"
+			namen_endgueltig_rot "$protokoll" | sed 's/^/    /'
+		fi
 		if [ "$rote" -eq 0 ]; then
 			# **Der Rückgabewert von `xcodebuild` taugt hier nicht als Urteil.**
 			# Gemessen am 09.08.: Ein Durchgang lief alle 139 Journeys durch,
