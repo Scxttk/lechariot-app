@@ -167,7 +167,8 @@ enum ItemGlyph {
     private static let recipes: [String: Rezept] = {
         var alle: [String: Rezept] = [:]
         for teil in [obstUndGemuese, molkereiUndBackwaren, fleischUndFisch,
-                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4, tranche5, tranche6, tranche7, tranche8, tranche9, tranche10, tranche11] {
+                     vorratUndGetraenke, tranche1, tranche2, tranche3, tranche4, tranche5, tranche6, tranche7, tranche8, tranche9, tranche10, tranche11,
+                     pflegerunde08] {
             alle.merge(teil) { erstes, _ in erstes }
         }
         return alle
@@ -314,10 +315,15 @@ enum ItemGlyph {
             p.bow(p.at(0.50, 0.20), p.at(0.84, 0.22), p.at(0.66, 0.22))
         },
 
-        // Erdbeere für alle Beeren: Herzkörper, Kelchblätter, zwei Kerne.
-        // Himbeere und Heidelbeere sind bei 13 pt nicht voneinander zu
-        // unterscheiden — die Erdbeere ist die Beere, die eine Silhouette hat.
-        "beeren": { p in
+        // Erdbeere: Herzkörper, Kelchblätter, zwei Kerne.
+        //
+        // **Stand bis zur Pflegerunde vom 08.08. unter `beeren`** und war
+        // damit die Beere für alle: Erdbeere, Himbeere, Heidelbeere,
+        // Brombeere, Johannisbeere zeigten dieselbe Zeichnung, weil sie
+        // denselben Begriff meinten. Seit `#63` führt das Wörterbuch sie
+        // einzeln, und `beeren` heißt nur noch die Mischung — die Zeichnung
+        // bleibt hier und heißt jetzt so, wie sie aussieht.
+        "erdbeeren": { p in
             p.begin(p.at(0.50, 0.36))
             p.bow(p.at(0.16, 0.50), p.at(0.28, 0.30), p.at(0.16, 0.36))
             p.bow(p.at(0.50, 0.94), p.at(0.16, 0.72), p.at(0.32, 0.88))
@@ -5294,6 +5300,147 @@ private let tranche11: [String: ItemGlyph.Rezept] = [
         p.circle(p.at(0.50, 0.21), 0.045)
         p.begin(p.at(0.32, 0.56))
         p.bow(p.at(0.68, 0.56), p.at(0.44, 0.44), p.at(0.56, 0.68))
+    },
+]
+
+/// **Was die Pflegerunde vom 08.08. im Backend aufgeteilt hat** (`#63`, `#66`):
+/// Aus einem `beeren` wurden sechs Begriffe, aus `brot` kamen Toast und
+/// Baguette heraus. Die Zeichnungen ziehen nach, weil das Wörterbuch die
+/// Arbeitsliste ist — steht ein Begriff darin und hat kein Zeichen, fällt die
+/// Kachel auf das Kategoriezeichen zurück, und im Raster stünde neben der
+/// Erdbeere wieder der Apfel.
+///
+/// **Die fünf Beeren dürfen sich nicht gleichen, und das ist die ganze
+/// Schwierigkeit.** Bei 22 pt trennt sie keine Textur, sondern nur die
+/// Silhouette: Kuppel (Himbeere), Kugel mit Krönchen (Heidelbeere), stehendes
+/// Oval am Stiel (Brombeere), hängende Rispe (Johannisbeere) — und die
+/// Erdbeere behält ihr Herz. Der Mischung bleibt, was sie ist: drei
+/// verschiedene Beeren nebeneinander, keine vierte Beerenform.
+private let pflegerunde08: [String: ItemGlyph.Rezept] = [
+
+    // Beerenmischung: drei verschieden geformte Beeren, keine eigene
+    // Beerenform. Der Begriff heißt seit `#63` nur noch „Beerenmix" —
+    // eine einzelne Beere wäre die Behauptung, es sei eine bestimmte.
+    "beeren": { p in
+        p.circle(p.at(0.30, 0.60), 0.24)
+        p.oval(0.72, 0.50, 0.40, 0.52)
+        p.circle(p.at(0.54, 0.84), 0.14)
+        blatt(&p, von: (0.30, 0.36), nach: (0.10, 0.18), bauch: 0.07)
+    },
+
+    // Himbeere: der Fingerhut — oben flach, unten rund, drei Steinfrüchte
+    // darin. **Die offene Unterseite war der erste Versuch und ist verworfen:**
+    // Auf dem Prüfbogen wurde daraus eine Schale mit Blattfächer. Gegen die
+    // Erdbeere trennt sie die Silhouette, nicht die Textur — dort ein Herz mit
+    // Spitze, hier ein runder Leib ohne. Die Körnung liegt fein, weil drei
+    // Kreise in Konturstärke bei 22 pt ein Klotz sind.
+    "himbeeren": { p in
+        p.begin(p.at(0.20, 0.38))
+        p.bow(p.at(0.50, 0.90), p.at(0.20, 0.68), p.at(0.30, 0.90))
+        p.bow(p.at(0.80, 0.38), p.at(0.70, 0.90), p.at(0.80, 0.68))
+        p.bow(p.at(0.20, 0.38), p.at(0.76, 0.26), p.at(0.24, 0.26))
+        p.close()
+        // **Sechs statt drei, und das ist kein Geschmack.** Drei Kreise als
+        // Zwei-und-einer-darunter waren auf dem Prüfbogen ein **Gesicht** —
+        // die zweite Falle aus dem Kopf dieser Datei. Eine Pyramide aus
+        // sechsen kann keine Augen haben.
+        for (x, y) in [(CGFloat(0.34), CGFloat(0.44)), (0.50, 0.44), (0.66, 0.44),
+                       (0.42, 0.60), (0.58, 0.60), (0.50, 0.76)] {
+            p.feinKreis(p.at(x, y), 0.085)
+        }
+        p.line([p.at(0.50, 0.30), p.at(0.50, 0.12)])
+        blatt(&p, von: (0.50, 0.20), nach: (0.24, 0.10), bauch: 0.05)
+        blatt(&p, von: (0.50, 0.20), nach: (0.76, 0.10), bauch: 0.05)
+    },
+
+    // Heidelbeere: Kugel mit dem Krönchen, das nur sie hat — der fünfzackige
+    // Kelch auf der Oberseite. Eine zweite, kleinere dahinter, damit aus der
+    // Kugel eine Handvoll wird.
+    "heidelbeeren": { p in
+        p.circle(p.at(0.76, 0.38), 0.18)
+        p.circle(p.at(0.42, 0.62), 0.30)
+        // Der Kelchstern liegt **auf** der Beere, nicht als Stiel darüber:
+        // Über den Scheitel gelegt wurde daraus auf dem Prüfbogen der Strunk
+        // einer Tomate, und als Strahlenkranz aus der Mitte ein Schneestern —
+        // ausgerechnet das Zeichen für Tiefkühl. Ein geschlossener Fünfstern
+        // ist beides nicht.
+        var stern: [CGPoint] = []
+        for schritt in 0..<10 {
+            let bogen = (CGFloat(schritt) * 36 - 90) * .pi / 180
+            let radius: CGFloat = schritt.isMultiple(of: 2) ? 0.13 : 0.055
+            stern.append(p.at(0.42 + radius * cos(bogen), 0.56 + radius * sin(bogen)))
+        }
+        p.feinLinie(stern, closed: true)
+    },
+
+    // Brombeere: stehendes Oval aus Steinfrüchten am Stiel mit zwei Kelch-
+    // blättern. Gegen die Himbeere steht sie aufrecht und trägt einen Stiel;
+    // gegen die Traube ist sie ein geschlossener Körper statt sechs Kugeln.
+    "brombeeren": { p in
+        p.oval(0.48, 0.62, 0.56, 0.68)
+        p.feinKreis(p.at(0.36, 0.52), 0.10)
+        p.feinKreis(p.at(0.60, 0.52), 0.10)
+        p.feinKreis(p.at(0.36, 0.74), 0.10)
+        p.feinKreis(p.at(0.60, 0.74), 0.10)
+        p.line([p.at(0.48, 0.28), p.at(0.52, 0.08)])
+        blatt(&p, von: (0.48, 0.28), nach: (0.22, 0.18), bauch: 0.06)
+        blatt(&p, von: (0.48, 0.28), nach: (0.74, 0.16), bauch: 0.06)
+    },
+
+    // Johannisbeere: die Rispe — ein Stiel, an dem vier Beeren einzeln
+    // hängen. Die Traube steht als dichtes Dreieck, die Preiselbeere als
+    // drei sich berührende Kugeln; das Hängende gibt es nur hier.
+    "johannisbeeren": { p in
+        p.begin(p.at(0.10, 0.10))
+        p.bow(p.at(0.82, 0.30), p.at(0.40, 0.08), p.at(0.66, 0.16))
+        for (x, y, stielX, stielY) in [(CGFloat(0.24), CGFloat(0.58), CGFloat(0.21), CGFloat(0.13)),
+                                       (0.50, 0.76, 0.46, 0.18),
+                                       (0.76, 0.60, 0.72, 0.25)] {
+            p.feinLinie([p.at(stielX, stielY), p.at(x, y - 0.14)])
+            p.dot(p.at(x, y), 0.14)
+        }
+    },
+
+    // Toastscheiben: zwei, versetzt, mit Kuppe. Das `brot` daneben ist ein
+    // **Laib** mit einer Scheibe davor — hier gibt es keinen Laib, und die
+    // zweite Scheibe sagt „Packung" statt „Brot".
+    "toast": { p in
+        // Die hintere Scheibe nur als Sichelrest, wie beim Apfel: Ein voller
+        // Umriss stünde bei 14 % Deckkraft mitten durch die vordere hindurch.
+        p.begin(p.at(0.62, 0.28))
+        p.bow(p.at(0.86, 0.44), p.at(0.78, 0.26), p.at(0.86, 0.31))
+        p.to(p.at(0.86, 0.76))
+        p.to(p.at(0.74, 0.76))
+        p.begin(p.at(0.14, 0.88))
+        p.to(p.at(0.14, 0.50))
+        p.bow(p.at(0.44, 0.34), p.at(0.14, 0.39), p.at(0.26, 0.34))
+        p.bow(p.at(0.74, 0.50), p.at(0.62, 0.34), p.at(0.74, 0.39))
+        p.to(p.at(0.74, 0.88))
+        p.close()
+        p.alsKoerper()
+        // Die Krustennaht, in Abstand zur Kante — wie bei der Scheibe des
+        // `brot`, damit die beiden aus derselben Hand stammen.
+        p.feinBogen(p.at(0.22, 0.58), p.at(0.66, 0.58),
+                    p.at(0.30, 0.46), p.at(0.58, 0.46))
+        p.feinLinie([p.at(0.22, 0.58), p.at(0.22, 0.80)])
+        p.feinLinie([p.at(0.66, 0.58), p.at(0.66, 0.80)])
+    },
+
+    // Baguette: der lange Leib über die Diagonale, mit den drei Einschnitten.
+    // Über die Diagonale, weil ein Baguette quer im Quadrat entweder kurz
+    // oder dünn wäre — und ein dünnes Baguette ist ein Grissini.
+    "baguette": { p in
+        // Stumpfe Enden, kein spitzes Oval: Spitz zulaufend wäre es eine
+        // Schote, und die steht zwei Zeichen weiter.
+        p.begin(p.at(0.08, 0.80))
+        p.bow(p.at(0.80, 0.08), p.at(0.24, 0.42), p.at(0.42, 0.24))
+        p.bow(p.at(0.92, 0.20), p.at(0.90, 0.06), p.at(0.94, 0.10))
+        p.bow(p.at(0.20, 0.92), p.at(0.76, 0.58), p.at(0.58, 0.76))
+        p.bow(p.at(0.08, 0.80), p.at(0.06, 0.94), p.at(0.02, 0.90))
+        p.close()
+        p.feinLinie([p.at(0.32, 0.58), p.at(0.42, 0.68)])
+        p.feinLinie([p.at(0.45, 0.45), p.at(0.55, 0.55)])
+        p.feinLinie([p.at(0.58, 0.32), p.at(0.68, 0.42)])
     },
 ]
 

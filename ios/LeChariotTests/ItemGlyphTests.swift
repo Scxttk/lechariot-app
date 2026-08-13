@@ -31,7 +31,7 @@ final class ItemGlyphTests: XCTestCase {
     /// Test, welche Zeichnung ins Leere zeigt.
     func testEveryDictionaryTermIsDrawnOrNamedAsAnException() {
         let wörterbuch = Set(MatchDictionary.allTerms)
-        XCTAssertEqual(wörterbuch.count, 337,
+        XCTAssertEqual(wörterbuch.count, 344,
                        "Das Wörterbuch hat sich geändert — die Zahl hier ist nur der Wecker, "
                        + "die Arbeit steht in den Meldungen darunter.")
 
@@ -160,7 +160,14 @@ final class ItemGlyphTests: XCTestCase {
     /// Der Weg, für den der ganze Satz gebaut ist: Was jemand tippt, muss beim
     /// richtigen Begriff landen.
     func testTheTermResolverAnswersFromTheDictionary() {
-        XCTAssertEqual(ItemGlyphTerm.term(for: "Erdbeeren"), "beeren")
+        // **Bis zur Pflegerunde vom 08.08. war die Antwort hier `beeren`.**
+        // Das Wörterbuch führte alle fünf Beeren unter einem Begriff; seit
+        // `#63` hat jede ihren eigenen, und Regel 1 greift: Heißt der Begriff
+        // wie das Wort, ist er es. Genau die Verschiebung, die dieser Satz
+        // hinnimmt, statt eine zweite Meinung zu haben.
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Erdbeeren"), "erdbeeren")
+        // Die Mischung ist geblieben, was sie war — und nur noch sie.
+        XCTAssertEqual(ItemGlyphTerm.term(for: "Beerenmix"), "beeren")
         XCTAssertEqual(ItemGlyphTerm.term(for: "Vollmilch"), "milch")
         // **Der grobe Begriff hat den feinen bis zum 07.08. verdeckt.**
         // „Zahnpasta" stand in der exact-Liste von `windeln/hygiene` — einer

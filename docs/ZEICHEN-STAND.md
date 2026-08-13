@@ -180,12 +180,12 @@ Nicht konvertiert, aber verfügbar und geholt: Lucide hat `apple`, `banana`,
    Regeln oben gebaut. Das ist die eigentliche Arbeit. Vorgehen wie bisher:
    Tranchen von ~20, Prüfbogen nach jeder Runde, Fehllesungen am Rezept
    festhalten.
-2. **Die App-Kopie des Wörterbuchs ist sieben Begriffe hinter dem Backend.**
-   `lechariot-backend/docs/matching-woerterbuch.json` hat 344,
-   `ios/LeChariot/Resources/matching-woerterbuch.json` hat 337. Undgezeichnet
-   fehlen: `erdbeeren`, `himbeeren`, `heidelbeeren`, `brombeeren`,
-   `johannisbeeren`, `baguette`, `toast`. Resync + zeichnen; der 337-Test fällt
-   dabei und will mitgezogen werden.
+2. ~~**Die App-Kopie des Wörterbuchs ist sieben Begriffe hinter dem
+   Backend.**~~ **Erledigt am 13.08.** Beide Kopien stehen wieder Byte für
+   Byte gleich (344 Begriffe), die sieben Neuen sind gezeichnet (`beeren`
+   heißt jetzt nur noch die Mischung und hat ein eigenes Zeichen bekommen,
+   die Erdbeere ist unter ihren richtigen Namen gezogen), und der harte Test
+   steht auf 344.
 3. **`ItemGlyphTerm` kennt keine Plural- und keine ß-Toleranz.** `Limette`,
    `Nektarine`, `Aprikose`, `Brezeln`, `Klossteig`, `Rote Beete`, `Soße` lösen
    auf **nichts** auf und zeigen ein Fragezeichen, obwohl die Zeichnung da ist.
