@@ -13,18 +13,9 @@ import XCTest
 /// es nicht mehr gibt; sie sind am 08.08. mitgegangen. Geblieben ist D, und D
 /// rendert `ShoppingGridTile` selbst — also genau das, was läuft.
 ///
-/// **Warum `drawHierarchy` und nicht `ImageRenderer`.** Eine `List` ist
-/// UIKit-getragen; `ImageRenderer` bekommt davon eine leere Fläche. Der Umweg
-/// über ein echtes Fenster kostet zwei Zeilen und liefert das, was der
-/// Bildschirm zeigt — samt Trennlinien, Einzügen und Abschnittsköpfen, also
-/// genau den Unterschieden, um die es hier geht.
-///
-/// **Die Bilder gehen als Anhang ins `.xcresult`**, nicht in einen Ordner:
-///
-///     xcodebuild test … -only-testing:LeChariotTests/ListDirectionShots \
-///       -resultBundlePath /tmp/bogen.xcresult
-///     xcrun xcresulttool export attachments --path /tmp/bogen.xcresult \
-///       --output-path /tmp/bogen
+/// Das Fenster, aus dem die Bilder kommen, und der Weg, sie aus dem
+/// `.xcresult` zu holen, stehen seit dem 12.08. in `Fensterbogen` — drei Bögen
+/// teilen sich denselben Umweg.
 ///
 /// **Hier stand bis zum 08.08. ein Weg über eine Umgebungsvariable, und der hat
 /// nie funktioniert.** Die Anweisung lautete
@@ -64,43 +55,11 @@ final class ListDirectionShots: XCTestCase {
                   scheme: .light, breite: 834, hoehe: 1200)
     }
 
-    /// iPhone-Breite in Punkten, Höhe großzügig: Ein zu knapper Ausschnitt
-    /// schneidet genau die Zeile ab, um die es geht.
-    private let size = CGSize(width: 393, height: 800)
-
     private func write(_ view: some View, named name: String, scheme: ColorScheme,
                        breite: CGFloat? = nil, hoehe: CGFloat? = nil) throws {
-        let size = CGSize(width: breite ?? self.size.width, height: hoehe ?? self.size.height)
-        let host = UIHostingController(
-            rootView: view
-                .environment(\.colorScheme, scheme)
-                .frame(width: size.width, height: size.height)
-        )
-        host.overrideUserInterfaceStyle = scheme == .light ? .light : .dark
-        // **Das Fenster muss an eine Szene.** Ein frei gebautes `UIWindow`
-        // gehört zu keinem Bildschirm, und `drawHierarchy` zeichnet dann eine
-        // weiße Fläche — sechs bitgleiche PNGs, erst am `md5` gemerkt.
-        let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
-        let window = scene.map { UIWindow(windowScene: $0) } ?? UIWindow()
-        window.frame = CGRect(origin: .zero, size: size)
-        window.overrideUserInterfaceStyle = host.overrideUserInterfaceStyle
-        window.rootViewController = host
-        window.makeKeyAndVisible()
-        window.layoutIfNeeded()
-        // Eine Umlaufrunde: Ohne sie steht die Liste im ersten Bild noch leer,
-        // weil ihre Zellen erst beim Layout entstehen.
-        RunLoop.current.run(until: Date().addingTimeInterval(0.35))
-
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 3
-        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            window.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
-        }
-        let png = try XCTUnwrap(image.pngData())
-        let anhang = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
-        anhang.name = name
-        anhang.lifetime = .keepAlways
-        add(anhang)
+        try schreibeBogen(view, named: name, scheme: scheme,
+                          groesse: CGSize(width: breite ?? Self.bogenGroesse.width,
+                                          height: hoehe ?? Self.bogenGroesse.height))
     }
 }
 

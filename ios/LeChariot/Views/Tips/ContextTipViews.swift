@@ -163,6 +163,49 @@ struct EnamelSignTipViewStyle: TipViewStyle {
                         .padding(Theme.Spacing.xs)
                 }
         }
+        // **Der Saum, ohne den der Rahmen an den Ecken fehlt** (11.08., Punkt
+        // 3: „der Rahmen ist nicht ganz zu sehen wegen den Container
+        // Abrundungen").
+        //
+        // Ein eigener `TipViewStyle` ersetzt den *Inhalt* der Karte; ihren
+        // Behälter behält TipKit — und der beschneidet, was in ihm gezeichnet
+        // wird, an einer **weiteren** Rundung als unserer. Wo unsere Ecke aus
+        // seiner herausläuft, wird sie weggeschnitten: An allen vier Ecken
+        // brach die Kante ab, die Kanten dazwischen standen.
+        //
+        // `.continuous` statt `.circular` ändert daran nichts — am gerenderten
+        // Bild geprüft, die Ecke blieb Punkt für Punkt dieselbe. Vier Punkte
+        // Saum halten unsere Ecke innerhalb seiner, und am Schild selbst sieht
+        // deswegen nichts anders aus.
+        //
+        // **Der Saum allein reicht nicht**, er legt nur TipKits eigene Fläche
+        // frei: ein weißer Rand samt Schatten um das Schild, also genau die
+        // Höhe, die hier keine sein soll. Die zweite Hälfte steht in
+        // `emailschild(onDismiss:)`, und die zwei gehören zusammen.
+        .padding(Theme.Spacing.xs)
+    }
+}
+
+extension View {
+    /// **Aus einem `TipView` ein Emailschild machen** — der Stil und die
+    /// abgeschaltete TipKit-Fläche, denn einzeln taugt keins von beidem.
+    ///
+    /// Der Stil zeichnet das Schild, der Saum darin hält seinen Rahmen aus
+    /// TipKits Beschnitt (siehe `EnamelSignTipViewStyle`). Sobald das Schild
+    /// aber eingerückt ist, steht **TipKits eigene Fläche** darum herum:
+    /// weiße Karte, größerer Radius, Schlagschatten. `Color.clear` nimmt sie
+    /// weg — die Fläche gehört dem Schild.
+    ///
+    /// **Warum das nicht schon vorher auffiel:** Solange das Schild den
+    /// Behälter randvoll ausfüllte, lag TipKits Fläche vollständig hinter der
+    /// unseren. Eine testweise violett gefärbte kam im Bild überhaupt nicht
+    /// vor — verdeckt, nicht wirkungslos.
+    ///
+    /// Beides an einer Stelle, weil `SchilderRahmenShots` dieselbe Einbettung
+    /// fotografiert; zwei Fassungen davon gingen still auseinander.
+    func emailschild(onDismiss: @escaping () -> Void) -> some View {
+        tipViewStyle(EnamelSignTipViewStyle(onDismiss: onDismiss))
+            .tipBackground(Color.clear)
     }
 }
 
@@ -189,9 +232,7 @@ struct ContextTipCard: View {
     var body: some View {
         if let store, let tip = store.activeTip(on: surface) {
             tipView(for: tip)
-                .tipViewStyle(EnamelSignTipViewStyle {
-                    store.dismissTip(on: surface)
-                })
+                .emailschild { store.dismissTip(on: surface) }
         }
     }
 
