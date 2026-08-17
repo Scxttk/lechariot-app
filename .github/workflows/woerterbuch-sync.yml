@@ -44,8 +44,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Wiederholen statt rot werden: Ein 429 oder 5xx von raw.githubusercontent
+      # sagt nichts über das Wörterbuch aus, ein roter Lauf hier liest sich aber
+      # wie Drift — also genau das Rauschen, das dieser Lauf loswerden soll.
+      #
+      # Kein `--retry-all-errors`: Ein 404 heisst, dass die Datei drüben
+      # verschoben wurde, und das soll sofort und laut scheitern. `--retry`
+      # allein deckt 429 und 5xx ab, 404 fällt weiterhin ohne Wartezeit durch.
       - name: Wörterbuch aus dem Backend holen
-        run: curl -sSf -o /tmp/backend.json "$QUELLE"
+        run: |
+          curl -sSf --retry 5 --retry-delay 5 \
+            -o /tmp/backend.json "$QUELLE"
 
       # **Das Urteil bleibt der Byte-Vergleich**, denn mitgeliefert wird die
       # Datei, nicht ihr Inhalt. Die *Meldung* darf das nicht sein: Der Lauf
