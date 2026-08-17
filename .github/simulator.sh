@@ -25,7 +25,16 @@
 # sagen, statt auf ein anderes Gerät auszuweichen. Welches Gerät gemeint ist,
 # ist eine Zusicherung der Suite (siehe `docs/TESTS.md`, „Das Gerät ist Teil des
 # Ergebnisses").
+#
+# **Zum Gerät gehört sein Gebietsschema.** Der Runner steht auf `en_US`, Scotts
+# Mac auf `de_DE`, und die App rechnet Preise mit `Locale.current` — dieselbe
+# Zeile heisst hier `0,79 €` und dort `€0.79`. Das hat eine Woche lang eine
+# Journey rot gehalten und eine zweite Zusicherung still ausgehebelt; die
+# Begründung steht bei `GEBIETSSCHEMA_LOCALE` in `tools/testlauf.sh`. Gesetzt
+# wird es hier, weil hier das Gerät bestimmt wird.
 set -euo pipefail
+
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/tools/testlauf.sh"
 
 LAUFZEIT="${1:?Laufzeit, z. B. com.apple.CoreSimulator.SimRuntime.iOS-26-2}"
 NAME="${2:?Gerätename, z. B. iPhone 17 Pro}"
@@ -36,6 +45,9 @@ for versuch in $(seq 1 12); do
 			'.devices[$lz]? // [] | .[] | select(.name == $name) | .udid' \
 		| head -1)
 	if [ -n "${udid:-}" ]; then
+		# Alles Geschwätz nach stderr: Auf stdout steht die UDID, und der
+		# Aufrufer liest sie als Zuweisung.
+		gebietsschema_setzen "$udid" >&2
 		echo "$udid"
 		exit 0
 	fi

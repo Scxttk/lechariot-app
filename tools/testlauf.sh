@@ -3,7 +3,7 @@
 # Was über einen Testlauf gewusst wird — an *einer* Stelle.
 #
 # Diese Datei wird von `tools/tests.sh` (lokal) und von
-# `.github/workflows/suite.yml` (CI) benutzt. Beide brauchen dieselben drei
+# `.github/workflows/suite.yml` (CI) benutzt. Beide brauchen dieselben vier
 # Dinge, und beim ersten Anlauf hatte CI sie nachgebaut statt geerbt:
 #
 #   1. **Welche Klassen nicht nebeneinander laufen dürfen** (`SERIELL`).
@@ -11,6 +11,7 @@
 #   3. **Wie ein Protokoll zu urteilen ist** (`namen_endgueltig_rot` und
 #      Nachbarn) — die Regel „rot ist ein Lauf, in dem ein *Test* gefallen
 #      ist", nicht der Rückgabewert von `xcodebuild`.
+#   4. **In welchem Gebietsschema gemessen wird** (`GEBIETSSCHEMA`).
 #
 # Zwei Fassungen dieser drei Dinge wären genau die Sorte Doppelung, die still
 # auseinanderläuft: Wer eine Klasse in `SERIELL` einträgt und CI nicht
@@ -29,6 +30,8 @@
 #     tools/testlauf.sh ziel FooTests     # in welchem Ziel die Klasse liegt
 #     tools/testlauf.sh gewichte          # Klassen nach Zahl der Testmethoden
 #     tools/testlauf.sh auswertung x.log  # Urteil über ein Protokoll
+#     tools/testlauf.sh gebietsschema     # Gebietsschema und Sprachen des Laufs
+#     tools/testlauf.sh gebietsschema-setzen UDID   # sie auf ein Gerät schreiben
 
 TESTLAUF_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -44,10 +47,18 @@ TESTLAUF_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # der Klon.
 #
 # `TileGestureJourneyTests.testATapChecksTheItemWithoutWaitingForALongPress`
-# trägt denselben Befund aus der anderen Richtung: Er sichert eine **Frist
+# trug denselben Befund aus der anderen Richtung: Er sicherte eine **Frist
 # zwischen zwei Gesten** zu. Auf drei Klonen fiel er am 09.08. zweimal von zwei
 # Versuchen, allein ist er grün. Wer eine Gestendauer zusichert, misst unter
 # Last die Last.
+#
+# **Allein zu laufen hat trotzdem nicht gereicht** (17.08.): Auch im seriellen
+# Durchgang riss der Median die Schranke in 9 von 14 Läufen — der geliehene
+# Runner ist nicht der Mac, auf dem die 1,0 s kalibriert wurden. Die Schranke
+# ist deshalb weg; geurteilt wird über die Zahl in `TippLatenzProbe`. Die Klasse
+# bleibt hier, damit der Median im Protokoll unter Last nicht zu Unsinn wird —
+# wer die Wanduhr des seriellen Durchgangs braucht, kann sie herausnehmen, ohne
+# eine Zusicherung zu verlieren.
 #
 # `PerformanceJourneyTests` misst CPU und Speicher gegen Grundwerte aus
 # `tools/perf-baseline.json` — aufgenommen auf Scotts Mac im Leerlauf. Neben
@@ -62,6 +73,52 @@ SERIELL=(
 	LeChariotUITests/TileGestureJourneyTests
 	LeChariotUITests/TippLatenzProbe
 )
+
+# ---------------------------------------------------------------------------
+# Das Gebietsschema, in dem gemessen wird.
+#
+# **Die App rechnet Preise mit `Locale.current`.** `.currency(code: "EUR")` steht
+# an acht Stellen ohne eigenes Gebietsschema, und der Simulator erbt seins vom
+# Rechner: auf Scotts Mac `de_DE` → `0,79 €`, auf dem geliehenen Runner `en_US`
+# → `€0.79`. Dieselbe Zeile, zwei Schreibweisen.
+#
+# Das hat eine Woche lang gekostet, ohne dass es jemand sah (17.08.):
+# `NextWeekJourneyTests.testTheSameProductInBothWeeksShowsThePreviewPriceInThePreview`
+# sucht `0,79` und war in **8 von 8** untersuchten Läufen rot, lokal immer grün.
+# Schlimmer ist die andere Hälfte desselben Tests: Die Zusicherung, dass der
+# *heutige* Preis `0,99` nicht in die Vorschau leckt — die Regression aus #53 —
+# ging in CI durch, weil `0,99` in US-Schreibweise ebenfalls nirgends steht. Ein
+# Wächter, der aus Versehen immer zustimmt, ist schlimmer als keiner.
+#
+# Gemessen wird deshalb in der Sprache, in der die App ausgeliefert wird. Sie ist
+# einsprachig deutsch; ein Lauf in `en_US` prüft einen Zustand, den kein Nutzer
+# sieht.
+#
+# **Und zwar am Gerät, nicht über `-testLanguage`/`-testRegion`.** Der nahe
+# liegende Weg wirkt hier nicht: Mit beiden Flaggen auf `en`/`US` blieb derselbe
+# Test auf diesem Mac grün (17.08. nachgemessen). Die Journeys setzen
+# `app.launchArguments` selbst, und diese Zuweisung überschreibt das
+# `-AppleLocale`, das XCTest dem Start sonst mitgäbe. Was wirkt, ist das
+# Gebietsschema des Simulators: auf `en_US` gestellt fiel derselbe Test auf
+# diesem Mac mit derselben Meldung und demselben Etikett wie in CI
+# (`'Bio Vollmilch, €0.79, bei Lidl, …'`), zurück auf `de_DE` war er wieder grün.
+GEBIETSSCHEMA_LOCALE=de_DE
+GEBIETSSCHEMA_SPRACHEN=(de-DE en-DE)
+
+# Das Gebietsschema auf ein Gerät schreiben. Läuft vor dem Testlauf; `xcodebuild`
+# bootet danach selbst.
+#
+# Geschrieben wird im Bootzustand über `simctl spawn` und nicht in die Plist im
+# Datenverzeichnis: Ein frisch angelegtes Gerät hat das Verzeichnis noch gar
+# nicht, und `cfprefsd` schriebe eine von Hand angelegte Datei beim Abschalten
+# wieder platt. Danach abschalten, damit der nächste Start die Werte liest.
+gebietsschema_setzen() {
+	local udid="$1"
+	xcrun simctl bootstatus "$udid" -b >&2
+	xcrun simctl spawn "$udid" defaults write -g AppleLocale -string "$GEBIETSSCHEMA_LOCALE"
+	xcrun simctl spawn "$udid" defaults write -g AppleLanguages -array "${GEBIETSSCHEMA_SPRACHEN[@]}"
+	xcrun simctl shutdown "$udid" >&2
+}
 
 # Was auf einem geteilten Runner **gar nicht** laufen darf.
 #
@@ -297,11 +354,13 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
 	case "${1:-}" in
 		scherben)    scherben "${2:-3}" ;;
 		seriell)     seriell_fuer_ci ;;
+		gebietsschema) echo "$GEBIETSSCHEMA_LOCALE ${GEBIETSSCHEMA_SPRACHEN[*]}" ;;
+		gebietsschema-setzen) gebietsschema_setzen "$2" ;;
 		klassen)     ui_klassen_mit_gewicht | awk '{print $2}' | sort ;;
 		soll)        klassen_fuer_ci ;;
 		gewichte)    ui_klassen_mit_gewicht | sort -k1,1nr -k2,2 ;;
 		ziel)        ziel_fuer_klasse "$2" ;;
 		auswertung)  auswertung "$2" ;;
-		*) sed -n '2,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
+		*) sed -n '2,33p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
 	esac
 fi

@@ -68,8 +68,13 @@ final class FrischeGegendJourneyTests: XCTestCase {
         let netto = app.buttons["picker.chain.Netto"]
         XCTAssertTrue(netto.waitForExistence(timeout: 40),
                       "Nach dem Gebiets-Lauf fehlen die neuen Ketten:\n" + app.debugDescription)
-        XCTAssertFalse(hinweis.exists,
-                       "Die Ladezeile steht noch da, obwohl die Gegend versorgt ist")
+        // **Warten statt einmal hinsehen.** „Die Kette steht da" und „die Zeile
+        // ist weg" sind zwei Aktualisierungen der Ansicht, nicht eine. Ein
+        // `exists` direkt nach dem Warten auf `netto` gibt der zweiten null
+        // Bilder Zeit — auf dem geliehenen Runner fiel der Test daran, auf dem
+        // Mac nie.
+        XCTAssertTrue(hinweis.waitForNonExistence(timeout: 10),
+                      "Die Ladezeile steht noch da, obwohl die Gegend versorgt ist")
     }
 
     /// **Kein Wolf-Geschrei.** Wo das Verzeichnis etwas hergibt, hat die Zeile
