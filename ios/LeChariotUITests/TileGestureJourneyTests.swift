@@ -39,10 +39,27 @@ final class TileGestureJourneyTests: XCTestCase {
     ///
     /// Die absolute Zahl trägt den Aufwand von XCUITest mit (Element suchen,
     /// Ereignis bauen, auf Ruhe warten); interessant ist sie deshalb im
-    /// **Vergleich** vorher/nachher, und dafür steht sie im Protokoll. Die
-    /// Schranke hier ist grob und fängt nur den Fall ab, der wirklich weh täte:
-    /// ein Erkenner, der auf sein Zeitfenster wartet, bevor er den Tipp
-    /// durchlässt.
+    /// **Vergleich** vorher/nachher, und dafür steht sie im Protokoll.
+    ///
+    /// **Was hier geprüft wird, ist der Zustand, nicht die Wanduhr** (17.08.).
+    /// Bis dahin stand eine Schranke von 1,0 s auf dem Median. Auf diesem Mac
+    /// war das reichlich — die Grundlinie oben ist 0,772 s bei 7 % Streuung.
+    /// Auf dem geliehenen Runner ist derselbe Median 1,030 s: 70 Messungen aus
+    /// 14 Läufen, Mittel 1,064 s, Streuung 0,207 s, einzelne Werte bis 1,749 s.
+    /// **60 % der Messungen und 9 von 14 Läufen rissen die Schranke**, ohne dass
+    /// sich am Erkenner etwas geändert hätte. Der Test lief dabei längst allein
+    /// (`SERIELL`) — es ist nicht der Nachbarklon, es ist die Maschine.
+    ///
+    /// Damit ist es dieselbe Art Zusicherung, die für `PerformanceJourneyTests`,
+    /// `MarktwahlProbe` und `TippLatenzProbe` schon aus CI heraus ist, und aus
+    /// demselben gemessenen Grund. Die Regel dort gilt auch hier: Ein Messstand,
+    /// dem niemand glaubt, wird abgeschaltet statt gelesen.
+    ///
+    /// **Die Zahl bleibt, das Urteil zieht um.** Der Median steht weiter im
+    /// Protokoll, und gemessen mit Boden wird derselbe Griff als
+    /// `kachel-abhaken` in `TippLatenzProbe` — auf der Maschine, auf der jemand
+    /// die Zahlen liest. Was hier rot werden kann, ist der Fall, der ohne Uhr
+    /// auskommt: ein Tipp, der den Zustand gar nicht umlegt.
     func testATapChecksTheItemWithoutWaitingForALongPress() {
         launch()
         addItem("Vollmilch")
@@ -63,15 +80,11 @@ final class TileGestureJourneyTests: XCTestCase {
         }
 
         let median = messungen.sorted()[messungen.count / 2]
-        // Landet als Zahl im Protokoll — genau dafür ist der Test da.
+        // Landet als Zahl im Protokoll — genau dafür ist der Test da. Geurteilt
+        // wird darüber nicht mehr hier, sondern an `kachel-abhaken` in
+        // `TippLatenzProbe`; warum, steht im Kopf dieses Tests.
         print("MESSUNG tipp-bis-erledigt median=\(String(format: "%.3f", median)) s "
               + "alle=\(messungen.map { String(format: "%.3f", $0) })")
-
-        XCTAssertLessThan(
-            median, 1.0,
-            "Abhaken dauert \(String(format: "%.3f", median)) s — der Tipp wartet auf "
-            + "den langen Druck, statt sofort zu greifen"
-        )
     }
 
     // MARK: Das Halten
