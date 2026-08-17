@@ -269,7 +269,7 @@ struct ShoppingGridTile: View {
                 Image(systemName: "pin.fill")
                     .font(.system(size: 7, weight: .semibold))
             }
-            Text(preis, format: .currency(code: "EUR"))
+            Text(preis, format: .euro)
                 .font(.system(size: 9, weight: .semibold).monospacedDigit())
         }
         .foregroundStyle(Theme.onAccent)
@@ -369,7 +369,7 @@ struct ShoppingGridTile: View {
                 let offer = position.offer
                 var satz = (position.isPinned ? "Deine Wahl: " : "Günstigstes Angebot: ") + offer.product
                 if let price = offer.price {
-                    satz += ", " + price.formatted(.currency(code: "EUR"))
+                    satz += ", " + price.formatted(.euro)
                 }
                 teile.append(satz + " bei \(offer.market)")
             }

@@ -294,7 +294,7 @@ struct NextWeekView: View {
     private func voiceOver(_ offer: Offer) -> String {
         var parts: [String] = [offer.product]
         if let price = offer.price {
-            parts.append(price.formatted(.currency(code: "EUR")))
+            parts.append(price.formatted(.euro))
         }
         parts.append("bei \(offer.market)")
         parts.append("gilt ab \(DateFormatter.offerDayLong.string(from: offer.validFrom))")
