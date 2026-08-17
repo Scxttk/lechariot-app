@@ -119,7 +119,7 @@ struct OfferDetailView: View {
                 PriceText(amount: price, size: .large)
             }
             if let regular = offer.regularPrice {
-                Text(regular, format: .currency(code: "EUR"))
+                Text(regular, format: .euro)
                     .font(.subheadline.monospacedDigit())
                     .strikethrough()
                     .foregroundStyle(Theme.secondaryText)
@@ -141,7 +141,7 @@ struct OfferDetailView: View {
             if let basePrice = offer.basePrice, let baseUnit = offer.baseUnit {
                 factRow(
                     "Grundpreis",
-                    "\(basePrice.formatted(.currency(code: "EUR"))) / \(baseUnit)",
+                    "\(basePrice.formatted(.euro)) / \(baseUnit)",
                     monospaced: true
                 )
             }
@@ -259,7 +259,7 @@ private struct PriceHistorySection: View {
                 row(point, previous: shown.dropFirst(index + 1).first)
             }
             if let cheapest {
-                Text("Günstigster erfasster Preis: \(cheapest.formatted(.currency(code: "EUR")))")
+                Text("Günstigster erfasster Preis: \(cheapest.formatted(.euro))")
                     .font(.caption)
                     .foregroundStyle(Theme.secondaryText)
             }
@@ -281,7 +281,7 @@ private struct PriceHistorySection: View {
             Spacer(minLength: Theme.Spacing.sm)
             if let delta {
                 Label(
-                    abs(delta).formatted(.currency(code: "EUR")),
+                    abs(delta).formatted(.euro),
                     systemImage: delta < 0 ? "arrow.down" : "arrow.up"
                 )
                 .font(.caption.monospacedDigit())
@@ -313,10 +313,10 @@ private struct PriceHistorySection: View {
     private static func voiceOver(_ point: PriceHistoryPoint, delta: Double?) -> String {
         var parts = ["Kalenderwoche \(point.weekOfYear)", point.windowText]
         if let price = point.price {
-            parts.append(price.formatted(.currency(code: "EUR")))
+            parts.append(price.formatted(.euro))
         }
         if let delta {
-            let amount = abs(delta).formatted(.currency(code: "EUR"))
+            let amount = abs(delta).formatted(.euro)
             parts.append(delta < 0
                 ? "\(amount) günstiger als in der Woche davor"
                 : "\(amount) teurer als in der Woche davor")

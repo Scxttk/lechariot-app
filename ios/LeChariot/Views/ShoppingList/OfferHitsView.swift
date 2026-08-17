@@ -117,7 +117,7 @@ struct OfferHitsView: View {
                 .font(.subheadline.monospacedDigit())
                 .foregroundStyle(Theme.secondaryText)
             if let total = rank.total {
-                Text(total, format: .currency(code: "EUR"))
+                Text(total, format: .euro)
                     .font(.subheadline.monospacedDigit())
                     .frame(minWidth: 60, alignment: .trailing)
             } else {
@@ -130,7 +130,7 @@ struct OfferHitsView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             "\(rank.chain), \(rank.matchedCount) von \(rank.itemCount) Artikeln"
-            + (rank.total.map { ", \($0.formatted(.currency(code: "EUR")))" } ?? "")
+            + (rank.total.map { ", \($0.formatted(.euro))" } ?? "")
         )
     }
 

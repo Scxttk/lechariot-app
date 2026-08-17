@@ -61,7 +61,7 @@ struct ShoppingPlanCard: View {
                 .font(.title2.bold())
                 .foregroundStyle(Theme.accent)
             let amount = winner.total.map {
-                Text($0, format: .currency(code: "EUR"))
+                Text($0, format: .euro)
                     .font(.title3.bold().monospacedDigit())
             }
 
@@ -125,7 +125,7 @@ struct ShoppingPlanCard: View {
         var summary = "Am besten zu \(rank.chain), "
             + "deckt \(rank.matchedCount) von \(rank.itemCount) Artikeln ab"
         if let total = rank.total {
-            summary += ", zusammen \(total.formatted(.currency(code: "EUR")))"
+            summary += ", zusammen \(total.formatted(.euro))"
         }
         // Die Kopfzeile ist **ein** Element (`children: .ignore`) — was hier
         // nicht mitkommt, existiert für VoiceOver nicht.

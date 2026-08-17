@@ -646,6 +646,26 @@ struct OfferImageContent: View {
     }
 }
 
+// MARK: - Price format
+
+/// **Preise stehen deutsch, egal auf welche Region das Gerät gestellt ist.**
+///
+/// `.euro` allein rechnet mit `Locale.current`, und die kommt
+/// vom Gerät. Die App ist einsprachig deutsch — die Texte also auch —, aber die
+/// Zahlen folgten der Region: `0,79 €` auf einem Telefon mit Region
+/// Deutschland, `€0.79` auf einem mit Region USA, im selben deutschen Satz. Wer
+/// hier einkauft und sein Telefon aus anderen Gründen anders eingestellt hat,
+/// liest damit eine Schreibweise, die auf keinem Preisschild im Laden steht.
+///
+/// Aufgefallen ist es an der Suite (17.08.): `NextWeekJourneyTests` stand auf
+/// dem Runner eine Woche rot, weil der auf `en_US` steht. Der Test hat einen
+/// echten Zustand der App beschrieben — nur nicht den, den er prüfen wollte.
+extension FormatStyle where Self == FloatingPointFormatStyle<Double>.Currency {
+    static var euro: Self {
+        .currency(code: "EUR").locale(Locale(identifier: "de_DE"))
+    }
+}
+
 // MARK: - Price text
 
 /// Price label with tabular digits so columns of prices align optically.
@@ -662,7 +682,7 @@ struct PriceText: View {
     var size: Size = .regular
 
     var body: some View {
-        Text(amount, format: .currency(code: "EUR"))
+        Text(amount, format: .euro)
             .font(font)
     }
 

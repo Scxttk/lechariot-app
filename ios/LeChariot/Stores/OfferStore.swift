@@ -59,13 +59,13 @@ extension Offer {
         var parts: [String] = [product]
         if let unit { parts.append(unit) }
         if let price {
-            parts.append(price.formatted(.currency(code: "EUR")))
+            parts.append(price.formatted(.euro))
         }
         if let discountPercent {
             parts.append("\(discountPercent) Prozent reduziert")
         }
         if let regularPrice {
-            parts.append("statt \(regularPrice.formatted(.currency(code: "EUR")))")
+            parts.append("statt \(regularPrice.formatted(.euro))")
         }
         parts.append("bei \(market)")
         parts.append("gültig bis \(DateFormatter.offerDay.string(from: validUntil))")
