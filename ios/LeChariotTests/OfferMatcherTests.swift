@@ -6,12 +6,13 @@ final class OfferMatcherTests: XCTestCase {
         _ product: String,
         matchKey: [String] = [],
         price: Double? = 1.99,
-        market: String = "Lidl"
+        market: String = "Lidl",
+        category: String? = nil
     ) -> Offer {
         var base = MockFixtures.offers[0]
         base = Offer(
             market: market, product: product, price: price,
-            regularPrice: nil, unit: nil, category: base.category, emoji: nil,
+            regularPrice: nil, unit: nil, category: category ?? base.category, emoji: nil,
             validFrom: base.validFrom, validUntil: base.validUntil,
             basePrice: nil, baseUnit: nil, nationwide: false
         )
@@ -126,20 +127,23 @@ final class OfferMatcherTests: XCTestCase {
         XCTAssertEqual(matches[0].kind, .direct)
     }
 
-    func testMatchesOrderedDirectFirstThenByPrice() {
-        // "Käse" hits "Käse Aufschnitt" directly (title token) and the rest
-        // only via tag — direct first, then category by ascending price.
+    /// **Bis #106 stand hier „Direkttreffer zuerst".** Der „Käse Aufschnitt"
+    /// gewann gegen den billigeren Gouda, weil er das Wort im Titel trägt —
+    /// eine Rangfolge nach Fundweg. Alle drei stehen im selben Regal, also
+    /// ordnet jetzt der Preis; der Fundweg bleibt in `kind` und wird in der
+    /// Zeile genannt, statt die Reihenfolge zu bestimmen.
+    func testInsideOneShelfThePriceOrdersRegardlessOfRoute() {
         let offers = [
-            offer("Bergkäse teuer", matchKey: ["käse"], price: 4.99),
-            offer("Käse Aufschnitt", matchKey: ["käse"], price: 2.49),
-            offer("Gouda billig", matchKey: ["käse"], price: 0.99),
+            offer("Bergkäse teuer", matchKey: ["käse"], price: 4.99, category: "Molkerei & Eier"),
+            offer("Käse Aufschnitt", matchKey: ["käse"], price: 2.49, category: "Molkerei & Eier"),
+            offer("Gouda billig", matchKey: ["käse"], price: 0.99, category: "Molkerei & Eier"),
         ]
         let matches = OfferMatcher.matches(for: "Käse", in: offers)
         XCTAssertEqual(
             matches.map(\.offer.product),
-            ["Käse Aufschnitt", "Gouda billig", "Bergkäse teuer"]
+            ["Gouda billig", "Käse Aufschnitt", "Bergkäse teuer"]
         )
-        XCTAssertEqual(matches.map(\.kind), [.direct, .category, .category])
+        XCTAssertEqual(matches.map(\.kind), [.category, .direct, .category])
     }
 
     // MARK: Wörterbuch in der Suche (gemeldet 21.07., entschieden 31.07.)
@@ -227,6 +231,66 @@ final class OfferMatcherTests: XCTestCase {
         XCTAssertEqual(OfferMatcher.levenshtein("limbuger", "limburger"), 1)
         XCTAssertEqual(OfferMatcher.levenshtein("tomate", "tomaten"), 1)
         XCTAssertEqual(OfferMatcher.levenshtein("käse", "kekse"), 2)
+    }
+
+    // MARK: Reihenfolge — was das Produkt ist, nicht wie es gefunden wurde (#106)
+
+    /// **Der gemessene Fall vom 01.08.**: Ein Gebäckartikel nennt „Käse"
+    /// wörtlich und stand deshalb ganz oben; der Schnittkäse trägt das Wort nur
+    /// zusammengeschrieben und stand darunter. Beides sind Treffer — aber nur
+    /// einer davon ist Käse.
+    func testThePastryDoesNotStandAboveTheCheese() {
+        let regal = [
+            offer("Speck-Käse-Twister", matchKey: ["backwaren"], price: 0.99, category: "Backwaren"),
+            offer("GRÜNLÄNDER Schnittkäse", matchKey: ["käse"], price: 2.49, category: "Molkerei & Eier"),
+        ]
+        let treffer = OfferMatcher.matches(for: "Käse", in: regal)
+
+        XCTAssertEqual(treffer.map(\.offer.product), ["GRÜNLÄNDER Schnittkäse", "Speck-Käse-Twister"])
+        // Der Fundweg bleibt, was er ist — er ordnet nur nicht mehr.
+        XCTAssertEqual(treffer.first?.kind, .category)
+        XCTAssertEqual(treffer.last?.kind, .direct)
+    }
+
+    /// Innerhalb des Regals entscheidet weiter der Preis — auch über den
+    /// Fundweg hinweg. Vorher stand jeder Titeltreffer über jedem Tag-Treffer,
+    /// und der billigste Joghurt landete auf Platz vier.
+    func testInsideTheShelfThePriceDecidesAcrossBothRoutes() {
+        let regal = [
+            offer("MILBONA Joghurt 3,5 %", matchKey: ["joghurt"], price: 0.89, category: "Molkerei & Eier"),
+            offer("MÜLLER Froop", matchKey: ["joghurt"], price: 0.44, category: "Molkerei & Eier"),
+            offer("BIOLAND Joghurt mild", matchKey: ["joghurt"], price: 1.79, category: "Molkerei & Eier"),
+        ]
+        let treffer = OfferMatcher.matches(for: "Joghurt", in: regal)
+
+        XCTAssertEqual(treffer.map(\.offer.price), [0.44, 0.89, 1.79])
+    }
+
+    /// Kennt das Wörterbuch die Anfrage nicht — Markenname, Fantasiewort —,
+    /// gibt es kein Regal, in das etwas gehören könnte. Dann zählt allein der
+    /// Preis, genau wie vor #106.
+    func testWithoutAKnownShelfOnlyThePriceOrders() {
+        let regal = [
+            offer("MILBONA Butterkäse", matchKey: ["käse"], price: 2.99, category: "Molkerei & Eier"),
+            offer("MILBONA Skyr", matchKey: ["joghurt"], price: 0.99, category: "Molkerei & Eier"),
+        ]
+        let treffer = OfferMatcher.matches(for: "Milbona", in: regal)
+
+        XCTAssertEqual(treffer.map(\.offer.price), [0.99, 2.99])
+    }
+
+    /// Zwei Zeilen, die in allem gleich sind, dürfen nicht in zwei Läufen zwei
+    /// Reihenfolgen ergeben: Swifts `sorted` ist nicht stabil.
+    func testTheSameShelfAndPriceStillOrdersTheSameEveryRun() {
+        let regal = [
+            offer("Gouda jung", matchKey: ["käse"], price: 1.99, category: "Molkerei & Eier"),
+            offer("Emmentaler Scheiben", matchKey: ["käse"], price: 1.99, category: "Molkerei & Eier"),
+            offer("Cheddar am Stück", matchKey: ["käse"], price: 1.99, category: "Molkerei & Eier"),
+        ]
+        let einmal = OfferMatcher.matches(for: "Käse", in: regal).map(\.offer.product)
+        let nochmal = OfferMatcher.matches(for: "Käse", in: regal.reversed()).map(\.offer.product)
+
+        XCTAssertEqual(einmal, nochmal)
     }
 }
 

@@ -546,7 +546,9 @@ struct ShoppingListView: View {
     /// Fehler. Dann gilt die eigene Reihenfolge.
     private func openGroups(plan: [MarketListRank]) -> (groups: [ShoppingSection], showsHeaders: Bool) {
         let byQuery = ShoppingSections.categories(from: plan)
-        let sections = ShoppingSections.build(items: list.uncheckedItems) { byQuery[$0.query] }
+        let sections = ShoppingSections.build(items: list.uncheckedItems) {
+            byQuery[$0.query] ?? ShoppingSections.warengruppe(forItem: $0.query)
+        }
         guard ShoppingSections.needsHeaders(sections) else {
             return ([ShoppingSection(category: "", items: list.uncheckedItems)], false)
         }
