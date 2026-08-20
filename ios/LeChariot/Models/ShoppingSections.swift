@@ -21,12 +21,20 @@ struct ShoppingSection: Identifiable, Equatable {
 /// keine zweite Zuordnung: Zwei Listen, die dasselbe wissen müssen, gehen
 /// auseinander (siehe `Categories.hasSymbol`).
 ///
-/// **Der Preis dieser Wahl, und er gehört genannt:** Ein Artikel, für den es
-/// gerade kein Angebot gibt, hat keine Kategorie und landet im Restabschnitt —
-/// und er kann den Abschnitt wechseln, wenn nächste Woche ein anderer Prospekt
-/// kommt. Das ist der Unterschied zu Bring!, das einen festen Katalog mitbringt.
-/// Ein eigener Katalog wäre die dritte Stelle, an der Warenkunde gepflegt wird;
-/// dafür ist der Nutzen zu klein und die Pflegelast zu groß.
+/// **Und wo es kein Angebot gibt, fragt die Liste den Begriff.** Bis zum 20.08.
+/// endete die Kette hier: kein Treffer, keine Kategorie, Restabschnitt — im
+/// Feldtest stand „Eier" unter „Noch nicht einsortiert", obwohl jeder weiß,
+/// wohin Eier gehören (#157). Der Wörterbuchbegriff kennt sein Regal inzwischen
+/// selbst (Feld `warengruppe`, Backend-#87), und das ist **kein** eigener
+/// Katalog: Es ist dieselbe Keyword-Tabelle, aus der die Angebotszeilen ihre
+/// Kategorie bekommen, nur einmal über den Begriff statt über den Produkttitel
+/// gefragt.
+///
+/// **Der Treffer bleibt vorn.** Wer ein Angebot hat, wird danach einsortiert —
+/// das ist die Auskunft aus dieser Woche, der Begriff ist die aus dem
+/// Wörterbuch. Ein Artikel kann damit weiter den Abschnitt wechseln, wenn
+/// nächste Woche ein anderer Prospekt kommt; er fällt nur nicht mehr aus der
+/// Ordnung, bloß weil diese Woche nichts von ihm im Angebot ist.
 enum ShoppingSections {
     /// Wo die landen, für die es gerade nichts gibt. **Nicht „Sonstiges"** —
     /// das ist eine der fünfzehn echten Kategorien, und ein Artikel ohne
@@ -44,6 +52,19 @@ enum ShoppingSections {
         guard let category = matches.first?.offer.category,
               !category.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
         return category
+    }
+
+    /// **Das Regal eines Artikels ohne Treffer** — aus seinem
+    /// Wörterbuchbegriff; `nil`, wenn das Wörterbuch den Artikel nicht kennt
+    /// oder der Begriff kein Regal trägt.
+    ///
+    /// Die Auflösung Artikeltext → Begriff macht `ItemGlyphTerm`, dieselbe, die
+    /// auch entscheidet, welches Zeichen die Kachel trägt. Zwei Wege zum selben
+    /// Begriff wären zwei Meinungen über dieselbe Frage: Was die Erdbeere zeigt,
+    /// gehört auch in das Regal von `erdbeeren`.
+    static func warengruppe(forItem text: String) -> String? {
+        guard let term = ItemGlyphTerm.term(for: text) else { return nil }
+        return MatchDictionary.warengruppe(of: term)
     }
 
     /// **Die Kategorien aus dem Plan, der ohnehin gerechnet ist** — Artikeltext

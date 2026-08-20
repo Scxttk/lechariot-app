@@ -111,9 +111,28 @@ enum OfferMatcher {
         return prev[t.count]
     }
 
-    /// All matches for a query, direct hits first, each stage sorted by price
-    /// (offers without a price last). An offer appears at most once — a direct
-    /// hit is never repeated as a category hit.
+    /// Alle Treffer einer Anfrage — **geordnet danach, was das Produkt ist,
+    /// nicht danach, wie es gefunden wurde** (#106).
+    ///
+    /// Bis zum 20.08. standen alle Titeltreffer über allen Tag-Treffern. Das
+    /// las sich wie eine Rangfolge und war eine Mechanik: Am 01.08. stand ein
+    /// **Gebäckartikel** mit „Käse" im Namen über dem Schnittkäse, der das Wort
+    /// nur zusammengeschrieben trägt. Ein Wort im Titel ist das **schwächere**
+    /// Signal — das Wörterbuch hat den Titel schon durch alle Sperr- und
+    /// Kompositaregeln geschickt, der rohe Name hat sie noch vor sich.
+    ///
+    /// Zuerst kommt deshalb, was **in das Regal des gesuchten Begriffs gehört**
+    /// („Käse" → Molkerei & Eier), danach entscheidet der Preis. Kennt das
+    /// Wörterbuch die Anfrage nicht — Markennamen, Fantasiewörter —, gibt es
+    /// kein Regal und damit nichts zu ordnen: dann zählt allein der Preis, wie
+    /// vorher.
+    ///
+    /// **Der Fundweg verschwindet nicht, er behauptet nur nichts mehr.** Welche
+    /// Zeile über den Namen und welche über das Wörterbuch kam, steht weiter in
+    /// `kind` und wird in der Zeile genannt (`QueryUnderstanding.rowNote`).
+    ///
+    /// Ein Angebot erscheint höchstens einmal — ein Titeltreffer wird nie als
+    /// Tag-Treffer wiederholt.
     static func matches(for query: String, in offers: [Offer]) -> [OfferMatch] {
         let queryTokens = tokens(query)
         guard !queryTokens.isEmpty else { return [] }
@@ -162,7 +181,29 @@ enum OfferMatcher {
             // Same price: prefer the better base price when known.
             return (lhs.basePrice ?? .infinity) < (rhs.basePrice ?? .infinity)
         }
-        return direct.sorted(by: byPrice).map { OfferMatch(offer: $0, kind: .direct) }
-            + category.sorted(by: byPrice).map { OfferMatch(offer: $0, kind: .category) }
+
+        // Das Regal, das die Anfrage meint — leer, wenn das Wörterbuch sie
+        // nicht kennt. Dann bleibt jede Zeile gleich weit vom Gesuchten weg
+        // und der Preis ordnet allein.
+        let regal = ShoppingSections.warengruppe(forItem: query)
+        func gehörtInsRegal(_ offer: Offer) -> Bool {
+            guard let regal else { return true }
+            return offer.category == regal
+        }
+
+        let alle = direct.map { OfferMatch(offer: $0, kind: .direct) }
+            + category.map { OfferMatch(offer: $0, kind: .category) }
+        return alle.sorted { lhs, rhs in
+            let l = gehörtInsRegal(lhs.offer), r = gehörtInsRegal(rhs.offer)
+            if l != r { return l }
+            if lhs.offer.price != rhs.offer.price || lhs.offer.basePrice != rhs.offer.basePrice {
+                return byPrice(lhs.offer, rhs.offer)
+            }
+            // Gleiches Regal, gleicher Preis, gleicher Grundpreis: Swifts Sort
+            // ist nicht stabil, und zwei Läufe derselben Liste dürfen nicht
+            // zwei Reihenfolgen ergeben. Der Name entscheidet, damit es eine
+            // gibt — nicht, weil er etwas über das Angebot sagt.
+            return lhs.offer.product < rhs.offer.product
+        }
     }
 }
