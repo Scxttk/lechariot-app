@@ -159,6 +159,18 @@ enum OfferQuery {
         return offers.filter { $0.validFrom <= today && today <= $0.validUntil }
     }
 
+    /// Der Tag, für den die Einkaufsliste rechnet: heute, sonntags der Montag
+    /// danach. Am Sonntag ist kein Geschäft offen und die meisten Prospekte
+    /// enden samstags — geplant wird für die Woche, die morgen anfängt.
+    static func listDay(now: Date = .now) -> Date {
+        let calendar = Calendar.supabase
+        let today = calendar.startOfDay(for: now)
+        guard calendar.component(.weekday, from: today) == 1,
+              let monday = calendar.date(byAdding: .day, value: 1, to: today)
+        else { return today }
+        return monday
+    }
+
     /// The offers that only start later.
     ///
     /// Nothing user-facing reads these yet — they are separated so that
@@ -270,9 +282,15 @@ final class OfferStore {
     }
 
     private(set) var state: State = .loading
-    /// The offers of the running week. Everything downstream — list, Top-Deals,
-    /// shopping-list matcher, market ranking — reads this and only this.
+    /// The offers of the running week — what the Angebote tab and Top-Deals
+    /// read. The shopping list reads `listOffers`.
     private(set) var offers: [Offer] = []
+    /// Was die Einkaufsliste vergleicht: werktags genau `offers`, sonntags die
+    /// Angebote, die am Montag gelten (`OfferQuery.listDay`). Gibt es für
+    /// Montag noch keine Zeile, bleibt es bei heute.
+    private(set) var listOffers: [Offer] = []
+    /// Der Montag, für den `listOffers` rechnet — `nil`, solange es heute ist.
+    private(set) var listWeekStart: Date?
     /// The offers that only start next week. Fed from the same fetch, kept in
     /// its own property so no caller can reach them by accident.
     private(set) var upcomingOffers: [Offer] = []
@@ -431,6 +449,12 @@ final class OfferStore {
         upcomingOffers = OfferQuery.deduplicated(
             OfferQuery.upcoming(mine, now: now), now: now, separateWindows: true
         )
+        let listDay = OfferQuery.listDay(now: now)
+        let monday = listDay > now
+            ? OfferQuery.deduplicated(OfferQuery.current(mine, now: listDay), now: listDay)
+            : []
+        listOffers = monday.isEmpty ? offers : monday
+        listWeekStart = monday.isEmpty ? nil : listDay
         // Aus dem **ungefilterten** Topf, nicht aus `upcomingOffers`: Der
         // Dedupe kann die früheste Zeile einer Kette gegen eine spätere
         // tauschen, und dann stünde ein Anfangsdatum da, das es so nie gab.

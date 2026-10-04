@@ -143,7 +143,7 @@ struct ShoppingListView: View {
             var positions: [ItemSuggestion.Position] = []
             var dormant: [PinnedOffer] = []
             for pin in pins {
-                if let offer = ShoppingListMatcher.pinnedOffer(pin, in: offerStore.offers) {
+                if let offer = ShoppingListMatcher.pinnedOffer(pin, in: offerStore.listOffers) {
                     positions.append(ItemSuggestion.Position(
                         match: OfferMatch(
                             offer: offer,
@@ -164,7 +164,7 @@ struct ShoppingListView: View {
                let covered = winner.matchedItems.first(where: { $0.item == item.query }) {
                 return covered.match
             }
-            return ShoppingListMatcher.cheapestMatch(for: item.query, in: offerStore.offers) {
+            return ShoppingListMatcher.cheapestMatch(for: item.query, in: offerStore.listOffers) {
                 rejections.isRejected(itemText: item.query, offer: $0)
             }
         }()
@@ -188,7 +188,7 @@ struct ShoppingListView: View {
     private var ranks: [MarketListRank] {
         planMemo.ranks(
             items: list.uncheckedItems,
-            offers: offerStore.offers,
+            offers: offerStore.listOffers,
             offerGeneration: offerStore.generation,
             chains: chains,
             rejections: rejections.rejected
@@ -203,7 +203,7 @@ struct ShoppingListView: View {
     private func winnerWithoutPins(_ plan: [MarketListRank]) -> String? {
         ShoppingListRanking.winnerWithoutPins(
             items: list.uncheckedItems,
-            offers: offerStore.offers,
+            offers: offerStore.listOffers,
             chains: chains,
             currentWinner: plan.first?.chain
         ) { rejections.isRejected(itemText: $0, offer: $1) }
@@ -238,7 +238,7 @@ struct ShoppingListView: View {
     /// eine spätere Sitzung — er verschwindet nicht.
     private var firstOpenHasMatch: Bool {
         guard hasMarkets, let first = list.uncheckedItems.first else { return false }
-        return ShoppingListMatcher.cheapestMatch(for: first.query, in: offerStore.offers) {
+        return ShoppingListMatcher.cheapestMatch(for: first.query, in: offerStore.listOffers) {
             rejections.isRejected(itemText: first.query, offer: $0)
         } != nil
     }
@@ -283,7 +283,7 @@ struct ShoppingListView: View {
     /// Die Beispiel-Angebote der leeren Liste. Leer ohne Filialen — dann
     /// trägt `FirstItemPrompt` die Einladung (siehe `FirstItemSuggestions`).
     private var firstItemExamples: [FirstItemExample] {
-        FirstItemSuggestions.examples(from: offerStore.offers, excluding: dismissedExamples)
+        FirstItemSuggestions.examples(from: offerStore.listOffers, excluding: dismissedExamples)
     }
 
     /// Ob gerade der **allererste** Treffer auf dem Bildschirm steht.
@@ -460,7 +460,8 @@ struct ShoppingListView: View {
         .sheet(item: $sheetItem) { item in
             ItemSheet(
                 item: item,
-                offers: offerStore.offers,
+                offers: offerStore.listOffers,
+                weekStart: offerStore.listWeekStart,
                 favoriteMarkets: favoriteMarkets,
                 startsWithAngaben: sheetOpensAngaben
             )
@@ -677,6 +678,7 @@ struct ShoppingListView: View {
                     ShoppingPlanCard(
                         ranks: plan,
                         winnerWithoutPins: winnerWithoutPins(plan),
+                        weekStart: offerStore.listWeekStart,
                         onShowHits: { hitsRanks = plan }
                     )
                         .listRowInsets(EdgeInsets(
@@ -991,7 +993,7 @@ struct ShoppingListView: View {
     private var suggestions: [String] {
         ShoppingSuggestions.strip(
             for: list.items,
-            offers: offerStore.offers,
+            offers: offerStore.listOffers,
             history: history.top(
                 ShoppingSuggestions.personalLength,
                 // **Nur die offenen sperren.** Ein abgehakter Artikel gehört in
@@ -1068,7 +1070,7 @@ struct ShoppingListView: View {
     /// Die Wörterbuchwörter zum getippten Text — leer, solange nichts getippt
     /// ist.
     private var typedTerms: [String] {
-        TermSuggestions.words(for: newItemText, in: offerStore.offers)
+        TermSuggestions.words(for: newItemText, in: offerStore.listOffers)
     }
 
     /// **Beim Tippen zeigt dieselbe Fläche etwas anderes — und zwar von
