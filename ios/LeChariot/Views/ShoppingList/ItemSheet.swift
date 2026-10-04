@@ -45,6 +45,8 @@ import SwiftUI
 struct ItemSheet: View {
     let item: ShoppingItem
     let offers: [Offer]
+    /// Gesetzt, wenn `offers` erst ab diesem Montag gelten (sonntags).
+    let weekStart: Date?
     /// The chosen branches — only used to name the branch in the detail view,
     /// same rule as the offer list sections.
     var favoriteMarkets: [Market] = []
@@ -78,11 +80,13 @@ struct ItemSheet: View {
     /// Normalfall.
     init(item: ShoppingItem,
          offers: [Offer],
+         weekStart: Date? = nil,
          favoriteMarkets: [Market] = [],
          startsWithAngaben: Bool = false,
          priceHistoryRepository: PriceHistoryRepositoryProtocol = AppRepositories.priceHistory) {
         self.item = item
         self.offers = offers
+        self.weekStart = weekStart
         self.favoriteMarkets = favoriteMarkets
         self.priceHistoryRepository = priceHistoryRepository
         _note = State(initialValue: item.note ?? "")
@@ -461,7 +465,7 @@ struct ItemSheet: View {
     /// eigene Angabe aufhört und die Auskunft der App anfängt.
     private var trefferKopf: some View {
         Section { EmptyView() } header: {
-            Text("Angebote diese Woche")
+            Text(weekStart == nil ? "Angebote diese Woche" : "Angebote ab Montag")
                 .accessibilityIdentifier("itemSheet.offers.header")
         }
     }

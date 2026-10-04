@@ -19,6 +19,9 @@ struct ShoppingPlanCard: View {
     /// sagen dürfen**. Ein Sieger, der sich ohne erkennbaren Grund ändert,
     /// sieht aus wie ein Fehler der App statt wie die Folge der eigenen Wahl.
     var winnerWithoutPins: String? = nil
+    /// Gesetzt, wenn die Karte sonntags mit den Angeboten ab Montag rechnet
+    /// (`OfferStore.listWeekStart`).
+    var weekStart: Date? = nil
     /// Der Weg zu den Treffern. Ohne ihn zeigt die Karte nur die Antwort.
     var onShowHits: (() -> Void)? = nil
 
@@ -48,7 +51,7 @@ struct ShoppingPlanCard: View {
 
     private func headline(_ winner: MarketListRank) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            Text(winner.matchedCount == 0 ? "Noch kein Treffer" : "Am besten zu")
+            Text(Self.caption(winner, weekStart: weekStart))
                 .font(.caption)
                 .foregroundStyle(Theme.secondaryText)
                 .textCase(.uppercase)
@@ -78,7 +81,7 @@ struct ShoppingPlanCard: View {
                 }
             }
 
-            Text(coverageText(winner))
+            Text(Self.coverageText(winner, weekStart: weekStart))
                 .font(.subheadline)
                 .foregroundStyle(Theme.secondaryText)
                 // Inside a List row a Text defaults to a single truncated line;
@@ -95,7 +98,7 @@ struct ShoppingPlanCard: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(headlineSummary(winner))
+        .accessibilityLabel(Self.headlineSummary(winner, weekStart: weekStart, flipLine: flipLine))
         // Nur als Anker für den Barrierefreiheits-Audit: Diese Karte trägt
         // `.themeCard()` mit zwei `.shadow`-Modifikatoren, und durch eine
         // Schattenebene misst `performAccessibilityAudit` nicht mehr die
@@ -106,11 +109,20 @@ struct ShoppingPlanCard: View {
         .accessibilityIdentifier("list.plan.headline")
     }
 
-    private func coverageText(_ rank: MarketListRank) -> String {
+    static func caption(_ rank: MarketListRank, weekStart: Date?) -> String {
+        guard rank.matchedCount > 0 else { return "Noch kein Treffer" }
+        return weekStart == nil ? "Am besten zu" : "Ab Montag am besten zu"
+    }
+
+    static func coverageText(_ rank: MarketListRank, weekStart: Date?) -> String {
         guard rank.matchedCount > 0 else {
-            return "Für deine Liste gibt es diese Woche keine Angebote in deinen Filialen."
+            return "Für deine Liste gibt es \(weekPhrase(weekStart)) keine Angebote in deinen Filialen."
         }
         return "deckt \(rank.matchedCount) von \(rank.itemCount) Artikeln ab"
+    }
+
+    private static func weekPhrase(_ weekStart: Date?) -> String {
+        weekStart == nil ? "diese Woche" : "ab Montag"
     }
 
     /// Der Satz, der den Ausschlag der eigenen Wahl benennt.
@@ -118,11 +130,13 @@ struct ShoppingPlanCard: View {
         winnerWithoutPins.map { "Deine Wahl gibt den Ausschlag — ohne sie wäre \($0) am besten." }
     }
 
-    private func headlineSummary(_ rank: MarketListRank) -> String {
+    static func headlineSummary(
+        _ rank: MarketListRank, weekStart: Date?, flipLine: String? = nil
+    ) -> String {
         guard rank.matchedCount > 0 else {
-            return "Kein Markt hat diese Woche Angebote für deine Liste."
+            return "Kein Markt hat \(weekPhrase(weekStart)) Angebote für deine Liste."
         }
-        var summary = "Am besten zu \(rank.chain), "
+        var summary = "\(caption(rank, weekStart: weekStart)) \(rank.chain), "
             + "deckt \(rank.matchedCount) von \(rank.itemCount) Artikeln ab"
         if let total = rank.total {
             summary += ", zusammen \(total.formatted(.euro))"
@@ -212,6 +226,24 @@ struct ShoppingPlanCard: View {
     ShoppingPlanCard(ranks: [
         MarketListRank(chain: "Lidl", matchedItems: [], missingItems: ["Zahnpasta"], total: nil),
     ])
+    .padding()
+    .background(Theme.background)
+}
+
+#Preview("Sonntag") {
+    ShoppingPlanCard(
+        ranks: [
+            MarketListRank(
+                chain: "Lidl",
+                matchedItems: [
+                    RankedItemMatch(item: "Milch", match: OfferMatch(offer: MockFixtures.offers[0], kind: .direct)),
+                ],
+                missingItems: ["Zahnpasta"],
+                total: 1.29
+            ),
+        ],
+        weekStart: .now
+    )
     .padding()
     .background(Theme.background)
 }
