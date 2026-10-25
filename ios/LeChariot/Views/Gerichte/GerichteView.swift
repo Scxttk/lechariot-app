@@ -11,6 +11,8 @@ import SwiftUI
 /// ersten Mal steht die Einwilligung (`GerichteEinwilligungView`) — ohne sie
 /// zeigt das Blatt nichts anderes als sie.
 struct GerichteView: View {
+    /// `OfferStore.listOffers`, dieselbe Quelle wie die Liste: Sonntags sind
+    /// das schon die Angebote der kommenden Woche.
     let offers: [Offer]
 
     @Environment(ShoppingListStore.self) private var list
