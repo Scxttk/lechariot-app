@@ -388,6 +388,14 @@ enum MockFixtures {
                 let wort = woerter[i % woerter.count]
                 let marke = marken[(i / woerter.count) % marken.count]
                 let preis = Double((i * 37) % 900 + 49) / 100
+                // `UITestSupport` gibt es nur im Debug-Bau — dieselbe Klammer
+                // wie in `AppRepositories.offers`.
+                #if DEBUG
+                let bild = UITestSupport.servesBulkImages
+                    ? UITestSupport.messbild(i)?.absoluteString : nil
+                #else
+                let bild: String? = nil
+                #endif
                 result.append(Offer(
                     marketId: "\(chain.lowercased())-01219-1",
                     market: chain,
@@ -405,8 +413,7 @@ enum MockFixtures {
                     basePrice: preis,
                     baseUnit: "1 Stück",
                     nationwide: false,
-                    imageUrl: UITestSupport.servesBulkImages
-                        ? UITestSupport.messbild(i)?.absoluteString : nil,
+                    imageUrl: bild,
                     matchKey: [wort.lowercased()]
                 ))
             }
