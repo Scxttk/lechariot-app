@@ -97,8 +97,12 @@ final class AddFlowZonesJourneyTests: XCTestCase {
         waitForList()
         input.tapAndAwaitKeyboard(in: app)
 
+        // **Das letzte Wort steht im letzten Regal.** Seit #175 sortiert die
+        // Liste auch Artikel ohne Angebot ins Regal; endet die Reihe mit
+        // „Joghurt", landet er mitten im Kühlregal, die Liste muss gar nicht
+        // scrollen, und die Probe misst nichts. Nudeln und Reis stehen unten.
         let wörter = ["Butter", "Milch", "Kaffee", "Brot", "Eier", "Käse",
-                      "Nudeln", "Reis", "Salat", "Gurke", "Zwiebeln", "Joghurt"]
+                      "Joghurt", "Salat", "Gurke", "Zwiebeln", "Nudeln", "Reis"]
         for wort in wörter { app.typeText("\(wort)\n") }
 
         let letzte = tile(wörter.last!)
@@ -125,13 +129,18 @@ final class AddFlowZonesJourneyTests: XCTestCase {
 
         // **Die Gegenprobe.** Ohne sie hieße „der letzte ist sichtbar" nur,
         // dass zwölf Kacheln auf einen Bildschirm passen — der Test wäre auch
-        // gegen den Stand von gestern grün. Geprüft wird die **Oberkante** der
-        // ersten Kachel: Ihre Unterkante ragte bei zwölf Artikeln um 3 pt in
-        // den Streifen hinein, und daran wäre eine richtige Messung
-        // gescheitert.
-        let erste = tile(wörter.first!)
-        XCTAssertTrue(!erste.exists || erste.frame.minY < oben,
-                      "Nichts ist gescrollt — die Probe misst nichts: \(erste.frame)")
+        // gegen den Stand von gestern grün. Geprüft wird die **Oberkante**:
+        // Eine Unterkante ragte bei zwölf Artikeln um 3 pt in den Streifen
+        // hinein, und daran wäre eine richtige Messung gescheitert.
+        //
+        // **Irgendeine Kachel, nicht die zuerst getippte** — nach Regalen
+        // sortiert steht „Butter" nicht mehr oben.
+        let herausGescrollt = wörter.filter { name in
+            let k = tile(name)
+            return !k.exists || k.frame.minY < oben
+        }
+        XCTAssertFalse(herausGescrollt.isEmpty,
+                       "Nichts ist gescrollt — die Probe misst nichts: \(lageAller(wörter))")
 
         // Der Fluss hat das überlebt: das dreizehnte Wort geht ohne einen Tipp
         // ins Feld durch.

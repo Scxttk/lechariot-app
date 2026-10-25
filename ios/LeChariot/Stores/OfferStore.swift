@@ -449,7 +449,11 @@ final class OfferStore {
         upcomingOffers = OfferQuery.deduplicated(
             OfferQuery.upcoming(mine, now: now), now: now, separateWindows: true
         )
+        #if DEBUG
+        let listDay = UITestSupport.followsListWeek ? OfferQuery.listDay(now: now) : now
+        #else
         let listDay = OfferQuery.listDay(now: now)
+        #endif
         let monday = listDay > now
             ? OfferQuery.deduplicated(OfferQuery.current(mine, now: listDay), now: listDay)
             : []

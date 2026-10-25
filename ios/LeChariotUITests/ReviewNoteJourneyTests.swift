@@ -108,6 +108,18 @@ final class ReviewNoteJourneyTests: XCTestCase {
             .firstMatch
         XCTAssertTrue(plan.waitForExistence(timeout: 15),
                       "Schritt 6: Die App sagt nicht, welcher Markt die Liste abdeckt")
+
+        // 7. „Kochen" fragt vor dem ersten Mal um Zustimmung — die Liste geht
+        //    an ein Sprachmodell —, und ohne sie geht es zurück in die Liste.
+        let kochen = app.buttons["list.kochen"]
+        XCTAssertTrue(kochen.waitForExistence(timeout: 10),
+                      "Schritt 7: Oben links fehlt der Knopf Kochen")
+        kochen.tap()
+        XCTAssertTrue(app.buttons["gerichte.erlauben"].waitForExistence(timeout: 10),
+                      "Schritt 7: Vor dem ersten Mal fehlt die Frage nach der Zustimmung")
+        app.buttons["gerichte.nichtErlauben"].tap()
+        XCTAssertTrue(app.navigationBars["Einkaufsliste"].waitForExistence(timeout: 5),
+                      "Schritt 7: Ohne Zustimmung geht es nicht zurück in die Liste")
     }
 
     /// Schließt das Mengen-Menü, das seit [UI-8] beim Anlegen von selbst

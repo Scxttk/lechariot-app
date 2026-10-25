@@ -326,6 +326,11 @@ final class AccessibilityAuditTests: XCTestCase {
     func testThePlanCardIsReadAsAWhole() {
         launch(behindOnboarding: true)
         addItem("Vollmilch")
+        // Beim Tippen ist die Plan-Karte ausgeblendet, und der Zug in
+        // `dismissQuantitySheet` nimmt der Zeile den Fokus nicht. „Fertig"
+        // tut es — derselbe Weg wie in `ReviewNoteJourneyTests`.
+        let fertig = app.buttons["list.input.done"]
+        if fertig.waitForExistence(timeout: 3) { fertig.tap() }
 
         let summary = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label BEGINSWITH %@ OR label BEGINSWITH %@",
