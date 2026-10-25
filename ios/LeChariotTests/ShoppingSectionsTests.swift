@@ -183,4 +183,39 @@ final class ShoppingSectionsTests: XCTestCase {
         XCTAssertEqual(sections.count, 2)
         XCTAssertTrue(ShoppingSections.needsHeaders(sections))
     }
+
+    // MARK: Ohne Treffer entscheidet der Begriff (#157)
+
+    /// **Der gemeldete Fall aus dem Feldtest (Build 2026.0813.1000):** „Eier"
+    /// stand unter „Noch nicht einsortiert", weil es in der Woche kein
+    /// Ei-Angebot gab. Das Wörterbuch weiß trotzdem, wohin Eier gehören.
+    func testAnItemWithoutAnyOfferStillKnowsItsShelf() {
+        XCTAssertEqual(ShoppingSections.warengruppe(forItem: "Eier"), "Molkerei & Eier")
+        XCTAssertEqual(ShoppingSections.warengruppe(forItem: "Käse"), "Molkerei & Eier")
+        XCTAssertEqual(ShoppingSections.warengruppe(forItem: "Brot"), "Backwaren")
+    }
+
+    /// Auch die Schreibweise, die jemand wirklich tippt — Mehrzahl, Großschrift,
+    /// zusammengesetzt. Aufgelöst wird über `ItemGlyphTerm`, also über denselben
+    /// Weg wie das Zeichen auf der Kachel.
+    func testTheShelfSurvivesHowPeopleActuallyType() {
+        XCTAssertEqual(ShoppingSections.warengruppe(forItem: "10 Eier"), "Molkerei & Eier")
+        XCTAssertEqual(ShoppingSections.warengruppe(forItem: "Erdbeer Joghurt"), "Molkerei & Eier")
+    }
+
+    /// **Kein geratenes Regal.** Was das Wörterbuch nicht kennt, bleibt im
+    /// Restabschnitt — dort steht es sichtbar unsortiert, statt unsichtbar
+    /// falsch.
+    func testAnUnknownItemGetsNoShelfAtAll() {
+        XCTAssertNil(ShoppingSections.warengruppe(forItem: "Blumendraht"))
+        XCTAssertNil(ShoppingSections.warengruppe(forItem: "qwertz"))
+    }
+
+    /// Der Treffer bleibt vorn: Wer diese Woche ein Angebot hat, wird danach
+    /// einsortiert — auch wenn der Begriff ein anderes Regal nennen würde.
+    func testAMatchStillOutranksTheDictionary() {
+        let ausDerWoche = ShoppingSections.category(forMatches: matches("Tiefkühl"))
+        XCTAssertEqual(ausDerWoche, "Tiefkühl")
+        XCTAssertEqual(ShoppingSections.warengruppe(forItem: "Eier"), "Molkerei & Eier")
+    }
 }

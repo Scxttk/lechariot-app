@@ -83,6 +83,8 @@ enum MatchDictionary {
     /// wartet sonst darauf, dass jemand 91 Bilder zeichnet, bevor die Suche
     /// besser werden darf.
     static func oberbegriff(of term: String) -> String? { ueber[term] }
+    /// Begriff → Regal, siehe `warengruppe(of:)`.
+    private static let byShelf: [String: String] = loaded.byShelf
 
     /// Die Begriffe, die dieses einzelne Suchwort meinen kann. Leer, wenn das
     /// Wörterbuch es nicht kennt — dann bleibt nur der Titeltreffer.
@@ -164,6 +166,20 @@ enum MatchDictionary {
     /// Begriff sichtbar falsch ist.
     static func synonymCount(for term: String) -> Int { counts[term] ?? 0 }
 
+    /// **Das Regal, in das dieser Begriff gehört** — „Molkerei & Eier" für
+    /// `eier`, „Backwaren" für `brot`.
+    ///
+    /// Kommt aus dem Wörterbuch (Feld `warengruppe`, Backend-#87) und damit
+    /// aus derselben Keyword-Tabelle, die der Import den Angebotszeilen
+    /// anlegt. **Kein zweiter Katalog**, dieselbe Begründung wie in
+    /// `ShoppingSections` und `ItemGlyphTerm` — nur weiß die App es jetzt auch
+    /// für einen Artikel, für den diese Woche kein Angebot existiert.
+    ///
+    /// `nil`, wo die Tabelle schweigt (120 von 435 Begriffen, meist
+    /// Drogerie- und Haushaltskram): Ein geratenes Regal wäre schlechter als
+    /// gar keins, denn der Artikel stünde dann falsch statt unsortiert.
+    static func warengruppe(of term: String) -> String? { byShelf[term] }
+
     /// Alle Begriffe des Wörterbuchs — nur für Tests und Diagnose.
     static var allTerms: [String] { Array(Set(byWord.values.flatMap { $0 })).sorted() }
 
@@ -190,6 +206,10 @@ enum MatchDictionary {
         /// Der Topf, in dem diese Sorte liegt — `salami` → `wurst`. Fehlt bei
         /// jedem Begriff, der selbst einer ist.
         let oberbegriff: String?
+        /// Das Regal des Begriffs, vom Backend mitgeschrieben. Optional, weil
+        /// eine ältere Kopie der Datei es noch nicht trägt — dann verhält sich
+        /// die App wie vorher.
+        let warengruppe: String?
     }
 
     private struct File: Decodable {
@@ -201,7 +221,8 @@ enum MatchDictionary {
     private static let loaded: (
         byWord: [String: Set<String>], byPhrase: [String: Set<String>], counts: [String: Int],
         byTerm: [String: [String]], ueber: [String: String],
-        blockWords: [String: Set<String>], blockPhrases: [String: Set<String>]
+        blockWords: [String: Set<String>], blockPhrases: [String: Set<String>],
+        byShelf: [String: String]
     ) = {
         // Im Test-Bundle liegt die Datei nicht in `Bundle.main`, in der App
         // schon — beide Wege, damit dieselbe Klasse in beiden Fällen lädt.
@@ -215,7 +236,7 @@ enum MatchDictionary {
             // Ohne Wörterbuch verhält sich die Suche wie vorher: Titeltreffer
             // und Tag-Gleichheit. Eine fehlende Datei darf die Suche nicht
             // abschalten.
-            return ([:], [:], [:], [:], [:], [:], [:])
+            return ([:], [:], [:], [:], [:], [:], [:], [:])
         }
 
         var byWord: [String: Set<String>] = [:]
@@ -226,9 +247,11 @@ enum MatchDictionary {
         var ueber: [String: String] = [:]
         var blockWords: [String: Set<String>] = [:]
         var blockPhrases: [String: Set<String>] = [:]
+        var byShelf: [String: String] = [:]
 
         for (term, entry) in file.begriffe {
             if let topf = entry.oberbegriff { ueber[term] = topf }
+            if let shelf = entry.warengruppe, !shelf.isEmpty { byShelf[term] = shelf }
             for roh in entry.block ?? [] {
                 let b = normalized(roh)
                 guard !b.isEmpty else { continue }
@@ -257,7 +280,7 @@ enum MatchDictionary {
                 }
             }
         }
-        return (byWord, byPhrase, counts, byTerm, ueber, blockWords, blockPhrases)
+        return (byWord, byPhrase, counts, byTerm, ueber, blockWords, blockPhrases, byShelf)
     }()
 
     /// Dieselbe Normalisierung wie in `OfferMatcher`, damit Suchwort und
