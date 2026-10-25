@@ -230,7 +230,8 @@ struct GerichteView: View {
         .buttonStyle(PrimaryActionButtonStyle())
         .disabled(aus)
         .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.bottom, Theme.Spacing.sm)
+        .padding(.vertical, Theme.Spacing.sm)
+        .background(Theme.background)
         .accessibilityIdentifier(id)
     }
 }
@@ -350,7 +351,8 @@ struct ZutatenKnopf: View {
         .buttonStyle(PrimaryActionButtonStyle())
         .disabled(gewaehlt.isEmpty)
         .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.bottom, Theme.Spacing.sm)
+        .padding(.vertical, Theme.Spacing.sm)
+        .background(Theme.background)
         .sensoryFeedback(.success, trigger: hinzugefuegt)
         .accessibilityIdentifier("gerichte.hinzufuegen")
     }
