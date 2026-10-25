@@ -94,6 +94,23 @@ struct SupabaseClient {
         return text
     }
 
+    /// POST /functions/v1/{name}. Gibt Status und Körper zurück, ohne bei
+    /// einem Fehlerstatus zu werfen: Die Edge Function antwortet mit 429 und
+    /// 422 auf Fälle, die der Aufrufer unterscheiden und benennen muss.
+    func invokeFunction<Body: Encodable>(_ name: String, body: Body) async throws -> (Int, Data) {
+        guard let url = URL(string: baseURL.absoluteString + "/functions/v1/" + name) else {
+            throw SupabaseError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60
+        applyHeaders(&request)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await session.data(for: request)
+        return ((response as? HTTPURLResponse)?.statusCode ?? 0, data)
+    }
+
     /// GET returning a JSON array, decoded per element: a single malformed
     /// row is skipped and logged instead of sinking the whole fetch.
     func getList<T: Decodable>(_ type: T.Type, path: String, query: String = "") async throws -> [T] {

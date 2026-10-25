@@ -350,6 +350,20 @@ final class ShoppingListStore {
         return true
     }
 
+    /// Eine Zutat aus Kochen. Wie `add`, nur geht die Menge als Notiz mit —
+    /// nicht in den Text, sonst suchte die Liste nach „500 g Hackfleisch".
+    /// Eine Notiz, die schon dasteht, bleibt: Sie hat jemand selbst getippt.
+    @discardableResult
+    func addIngredient(_ name: String, menge: String) -> Bool {
+        guard add(name) else { return false }
+        let menge = menge.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !menge.isEmpty, let idx = items.indices.last, (items[idx].note ?? "").isEmpty {
+            items[idx].note = menge
+            persist()
+        }
+        return true
+    }
+
     /// Der zuletzt angelegte Eintrag — das Mengen-Menü hängt sich daran
     /// ([UI-8]). `add` gibt nur Bescheid, *ob* etwas dazukam; welches es war,
     /// weiß nur der Speicher.

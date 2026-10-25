@@ -1,11 +1,11 @@
 # Datenschutzerklärung — Le Chariot
 
-Stand: 30. Juli 2026
+Stand: 25. Oktober 2026
 
 Le Chariot vergleicht die Wochenangebote deutscher Supermärkte mit deiner
 Einkaufsliste. Diese Erklärung sagt, was die App dabei über dich speichert und
-was sie verschickt. Der kurze Teil vorweg: **Dein Name und deine Einkaufsliste
-verlassen dein Telefon nicht.**
+was sie verschickt. Der kurze Teil vorweg: **Dein Name verlässt dein Telefon
+nicht, deine Einkaufsliste nur, wenn du „Kochen" nutzt und vorher zustimmst.**
 
 ## Verantwortlich
 
@@ -20,7 +20,8 @@ die vollständigen Anbieterangaben dazu.
 Diese Daten werden ausschließlich lokal gespeichert und nie übertragen:
 
 - dein Vorname
-- deine Einkaufsliste
+- deine Einkaufsliste (Ausnahme: „Kochen", siehe unten)
+- deine Notizen zu Artikeln
 - welche Märkte du magst (die Frage aus dem Onboarding)
 - welche Angebote du weggelegt hast
 - alle Einstellungen der App
@@ -42,6 +43,35 @@ gefundene Produkt, der Markt, und dein Freitext-Kommentar, falls du einen
 schreibst. Das dient dazu, die Produkterkennung zu verbessern. Die Meldung
 geht nur raus, wenn du sie abschickst.
 
+### Kochen
+
+„Kochen" schlägt Gerichte aus deiner Liste vor und macht aus einem Gericht
+eine Zutatenliste. Dafür wird ein Sprachmodell gefragt: **Claude von Anthropic**. Bevor das zum ersten Mal passiert, fragt die App dich
+ausdrücklich; ohne deine Zustimmung bleibt „Kochen" aus und alles andere
+funktioniert wie bisher.
+
+Übertragen wird nur, was die Antwort braucht:
+
+| Was | Wozu |
+|---|---|
+| das Gericht, das du eintippst, oder die Texte der Einträge deiner Liste | damit das Modell Gerichte bzw. Zutaten nennen kann |
+| Begriffe aus den Angeboten der Woche (z. B. „hackfleisch"), ohne Markt oder Filiale | damit Vorschläge zu den Angeboten passen |
+| die Installations-ID | nur für das Tageslimit; gespeichert wird davon ein nicht umkehrbarer Hash, der nach zwei Tagen gelöscht wird |
+
+Nicht übertragen werden dein Vorname, deine Notizen, deine Postleitzahl und
+deine Filialen. Die Anfrage geht über unseren Server (Supabase) an Anthropic;
+wir speichern weder die Anfrage noch die Antwort. Anthropic verarbeitet sie,
+um die Antwort zu erzeugen, und verwendet Daten aus dieser Schnittstelle nach
+seinen Bedingungen nicht zum Training seiner Modelle. Anthropic kann
+Anfragen für eine begrenzte Zeit zur Missbrauchserkennung aufbewahren; die
+Einzelheiten stehen in der Datenschutzerklärung von Anthropic
+(<https://www.anthropic.com/legal/privacy>). Die Verarbeitung kann in den USA
+stattfinden; sie stützt sich auf die Standardvertragsklauseln der
+EU-Kommission im Datenverarbeitungsvertrag von Anthropic.
+
+Deine Zustimmung kannst du in den Einstellungen unter **Kochen** jederzeit
+widerrufen.
+
 **Die Installations-ID ist zufällig** und wird bei der Installation erzeugt. Sie
 ist aus keiner Gerätekennung abgeleitet und lässt sich mit nichts außerhalb
 dieser App verknüpfen. Da wir weder Namen noch E-Mail-Adresse noch ein
@@ -59,12 +89,13 @@ Entfernungen werden dann ab deren Mitte gerechnet.
 ## Wer die Daten bekommt
 
 Gespeichert wird bei **Supabase** (Supabase Inc.), unserem Hosting-Anbieter, der
-die Daten in unserem Auftrag verarbeitet. Darüber hinaus geben wir nichts
+die Daten in unserem Auftrag verarbeitet. Nutzt du „Kochen", geht deine Anfrage
+außerdem an **Anthropic** (siehe oben). Darüber hinaus geben wir nichts
 weiter.
 
 Die App enthält **keine Bibliotheken von Drittanbietern** — kein Analyse-SDK,
 kein Werbenetzwerk, keine Absturzberichte an Dritte. Sie spricht ausschließlich
-mit unserem eigenen Server.
+mit unserem eigenen Server; auch „Kochen" läuft über ihn.
 
 ## Werbung und Tracking
 
@@ -76,7 +107,8 @@ geräteübergreifendes Tracking und keine Weitergabe an Datenhändler.
 Die Übertragung des Profils beruht auf deiner Einwilligung
 (Art. 6 Abs. 1 lit. a DSGVO), die du im Onboarding ausdrücklich erteilst und
 jederzeit widerrufen kannst. Eine Rückmeldung zu einem falschen Treffer schickst
-du selbst ab; auch das ist eine Einwilligung.
+du selbst ab; auch das ist eine Einwilligung. Für „Kochen" gibt es eine eigene
+Einwilligung, die du vor der ersten Nutzung erteilst.
 
 ## Speicherdauer
 

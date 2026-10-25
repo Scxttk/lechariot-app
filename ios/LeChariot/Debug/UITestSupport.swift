@@ -146,6 +146,17 @@ enum UITestSupport {
     static let servesSundayOffers =
         ProcessInfo.processInfo.arguments.contains("-uiTestingSunday")
 
+    /// `-uiTestingGerichteKontingentAus`: Die Kochen-Attrappe antwortet mit
+    /// aufgebrauchtem Tageskontingent, damit eine Journey den Satz dazu sieht.
+    static let gerichteKontingentAus =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingGerichteKontingentAus")
+
+    /// `-uiTestingGerichteErlaubt`: Die Einwilligung fürs Kochen ist schon
+    /// gegeben — für Journeys, die das Blatt selbst prüfen und nicht die
+    /// Einwilligung davor.
+    static let gerichteErlaubt =
+        ProcessInfo.processInfo.arguments.contains("-uiTestingGerichteErlaubt")
+
     /// `-uiTestingBulkOffers <n>`: `n` Zeilen **je Kette** für die laufende
     /// Woche, halb so viele für die Vorschau.
     ///

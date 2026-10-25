@@ -43,6 +43,9 @@ struct SettingsView: View {
     @State private var showTipsResetNotice = false
     @State private var showDeleteConfirmation = false
     @State private var privacy = PrivacyStore()
+    /// Spiegel von `GerichteEinwilligung` — die Einwilligung selbst liegt in
+    /// den Defaults, der Schalter braucht einen Zustand zum Binden.
+    @State private var kochenErlaubt = GerichteEinwilligung().erteilt
 
     var body: some View {
         NavigationStack {
@@ -68,6 +71,7 @@ struct SettingsView: View {
                     profileSection
                     feedbackSection
                     appearanceSection
+                    kochenSection
                     privacySection
                     helpSection
                     appSection
@@ -309,8 +313,8 @@ struct SettingsView: View {
             Text("Profil")
         } footer: {
             Text(profile.hasConsented
-                 ? "Deine Angaben helfen bei der Weiterentwicklung und werden anonym übermittelt. Vorname und Einkaufsliste bleiben auf dem Gerät."
-                 : "Deine Angaben bleiben vollständig auf diesem Gerät.")
+                 ? "Deine Angaben helfen bei der Weiterentwicklung und werden anonym übermittelt. Vorname und Einkaufsliste bleiben auf dem Gerät, außer du nutzt Kochen."
+                 : "Deine Angaben bleiben auf diesem Gerät, außer du nutzt Kochen.")
         }
     }
 
@@ -350,6 +354,30 @@ struct SettingsView: View {
                 }
             }
             .pickerStyle(.segmented)
+        }
+    }
+
+    // MARK: Kochen
+
+    /// Der Widerruf der Kochen-Einwilligung. Einschalten geht hier auch; der
+    /// Fußtext sagt dafür dasselbe wie das Einwilligungsblatt in Kurzform —
+    /// wer hier einschaltet, soll nicht weniger wissen als dort.
+    private var kochenSection: some View {
+        Section {
+            Toggle("Kochen mit Claude", isOn: Binding(
+                get: { kochenErlaubt },
+                set: { an in
+                    let einwilligung = GerichteEinwilligung()
+                    if an { einwilligung.erteilen() } else { einwilligung.widerrufen() }
+                    kochenErlaubt = an
+                }
+            ))
+            .tint(Theme.accent)
+            .accessibilityIdentifier("settings.kochen")
+        } header: {
+            Text("Kochen")
+        } footer: {
+            Text("Eingetippte Gerichte oder die Einträge deiner Liste gehen an Anthropic, den Anbieter von Claude. Vorname, Notizen, Ort und Filialen nicht.")
         }
     }
 

@@ -51,7 +51,7 @@ struct ConsentStepView: View {
                     "iphone",
                     Theme.accent,
                     "Bleibt auf dem Gerät",
-                    "Dein Vorname, deine Einkaufsliste und welche Märkte du magst."
+                    "Dein Vorname, deine Einkaufsliste und welche Märkte du magst. Nur wenn du später Kochen nutzt und zustimmst, gehen Listeneinträge an Anthropic."
                 )
                 detail(
                     "person.fill.questionmark",
