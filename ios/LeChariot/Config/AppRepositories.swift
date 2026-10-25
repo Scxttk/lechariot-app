@@ -123,6 +123,20 @@ enum AppRepositories {
         return LiveMatchFeedbackRepository(client: client)
     }
 
+    /// Kochen über die Edge Function `gerichte`. Ohne Backend (und in jedem
+    /// UI-Lauf) feste Antworten — siehe `MockGerichteRepository`.
+    static func gerichte() -> GerichteRepositoryProtocol {
+        guard let client else {
+            #if DEBUG
+            if UITestSupport.gerichteKontingentAus {
+                return MockGerichteRepository(fehler: .kontingent(grenze: 20))
+            }
+            #endif
+            return MockGerichteRepository()
+        }
+        return LiveGerichteRepository(client: client)
+    }
+
     /// nil heißt hier: Es liegt nichts auf dem Server, weil nie etwas
     /// hochgeladen wurde. Die Einstellungen sagen dann genau das, statt einen
     /// Knopf anzubieten, der ins Leere greift.

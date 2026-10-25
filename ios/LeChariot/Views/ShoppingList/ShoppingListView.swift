@@ -42,6 +42,8 @@ struct ShoppingListView: View {
     /// beim Antippen, damit das Blatt genau den Lauf zeigt, dessen Zahlen in
     /// der Zeile standen. Siehe `OfferHitsView`.
     @State private var hitsRanks: [MarketListRank]?
+    /// Das Kochen-Blatt (`GerichteView`).
+    @State private var zeigtKochen = false
     /// Weggewischte Beispiel-Angebote der leeren Liste. Bewusst `@State` und
     /// nicht persistiert: Die Fläche existiert nur bis zum ersten Artikel,
     /// und ein Nein zu einem Wochenangebot ist keins für immer.
@@ -478,6 +480,11 @@ struct ShoppingListView: View {
         )) { bundle in
             OfferHitsView(ranks: bundle.ranks, favoriteMarkets: favoriteMarkets)
                 .environment(list)
+        }
+        .sheet(isPresented: $zeigtKochen) {
+            GerichteView(offers: offerStore.listOffers, startetMitListe: !list.items.isEmpty)
+                .environment(list)
+                .environment(profile)
         }
     }
 
@@ -1612,6 +1619,14 @@ struct ShoppingListView: View {
 
     @ToolbarContentBuilder
     private var toolbarMenu: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button {
+                zeigtKochen = true
+            } label: {
+                Label("Kochen", systemImage: "fork.knife")
+            }
+            .accessibilityIdentifier("list.kochen")
+        }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button("Erledigte entfernen", systemImage: "checkmark.circle") {

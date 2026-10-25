@@ -13,7 +13,16 @@
     match_feedback  install_id, query, product_title, market, match_kind,
                     reason, comment
 
-  First name and the shopping list never leave the phone. There is no account and
+  A third flow, Kochen (Edge Function `gerichte`), only after its own consent
+  sheet: the typed dish text or the shopping list entries' text, plus offer
+  terms, go through our server to Anthropic (Claude) and come back as dishes.
+  Nothing of it is stored on our side; the rate-limit counter keeps a SHA-256
+  of the install id for two days. Declared below as OtherUserContent (list
+  entries) and SearchHistory (the typed dish), purpose AppFunctionality —
+  both types were already declared for match_feedback, so the list of types
+  does not change, only what feeds them.
+
+  First name never leaves the phone; the shopping list only via Kochen. There is no account and
   no device identifier, which is why everything below is declared as *not* linked
   to the user's identity — the rows can be joined to each other, not to a person.
 
@@ -57,7 +66,8 @@
 		</dict>
 		<!-- match_feedback.query: the word off the shopping list that produced
 		     the wrong match. Declared as search history because that is what it
-		     functionally is, even though the user typed it as a list entry. -->
+		     functionally is, even though the user typed it as a list entry.
+		     Also the dish typed into Kochen ("Lasagne für 4"), sent to Anthropic. -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeSearchHistory</string>
@@ -72,6 +82,8 @@
 			</array>
 		</dict>
 		<!-- match_feedback.comment: free text, so anything can end up in it.
+		     Kochen sends the shopping list entries (free text as well) to
+		     Anthropic — same type, purpose AppFunctionality.
 		     Steht in derselben Zeile wie das Suchwort darüber und wird in der
 		     Pflegerunde zusammen mit ihm gelesen — also derselbe Zweck, auch
 		     wenn nur eines der beiden Felder nach „Suche" aussieht. -->
