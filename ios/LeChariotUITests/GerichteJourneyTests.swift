@@ -46,6 +46,22 @@ final class GerichteJourneyTests: XCTestCase {
         )).firstMatch
     }
 
+    /// Alle Kachel-Beschriftungen der Liste, von oben bis unten durchgescrollt.
+    /// Seit die Liste nach Regalen sortiert, liegen neun Zutaten nicht mehr
+    /// alle über dem Falz, und eine Kachel unter dem Falz steht nicht im Baum.
+    private func alleKacheln() -> Set<String> {
+        var gesehen = Set<String>()
+        for _ in 0..<6 {
+            let vorher = gesehen.count
+            for k in app.buttons.matching(identifier: "list.tile").allElementsBoundByIndex {
+                gesehen.insert(k.label.components(separatedBy: ",")[0])
+            }
+            if gesehen.count == vorher && vorher > 0 { break }
+            app.swipeUp()
+        }
+        return gesehen
+    }
+
     /// Gericht → Zutaten: Einwilligung, Lasagne, eine Zutat abwählen, alles
     /// Übrige landet auf der Liste — die abgewählte nicht.
     func testEinGerichtWirdZuZutatenAufDerListe() {
@@ -71,10 +87,12 @@ final class GerichteJourneyTests: XCTestCase {
         XCTAssertEqual(hinzufuegen.label, "8 Zutaten hinzufügen")
         hinzufuegen.tap()
 
-        XCTAssertTrue(kachel("Lasagneplatten").waitForExistence(timeout: 10),
-                      "Lasagneplatten fehlen auf der Liste:\n" + app.debugDescription)
-        XCTAssertTrue(kachel("Hackfleisch").exists)
-        XCTAssertFalse(kachel("Knoblauch").exists, "Die abgewählte Zutat steht trotzdem auf der Liste")
+        XCTAssertTrue(kachel("Zwiebeln").waitForExistence(timeout: 10),
+                      "Die Zutaten landen nicht auf der Liste:\n" + app.debugDescription)
+        let liste = alleKacheln()
+        XCTAssertTrue(liste.isSuperset(of: ["Lasagneplatten", "Hackfleisch", "Reibekäse"]), "\(liste)")
+        XCTAssertFalse(liste.contains("Knoblauch"), "Die abgewählte Zutat steht trotzdem auf der Liste")
+        XCTAssertEqual(liste.count, 8, "\(liste)")
     }
 
     /// Gericht aus Zutaten: Mit Nudeln und Tomaten auf der Liste fehlen der
