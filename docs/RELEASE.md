@@ -201,6 +201,10 @@ keine Filialen, und die App sieht dann leer aus.
    Filialen steht dort weiterhin offen
 4. Ein Wort in die Zeile unten eintragen, z. B. "Milch", "Brot" oder "Kaese"
 5. Oben steht dann, welcher Markt die Liste am guenstigsten abdeckt
+6. Oben links "Kochen" schlaegt Gerichte aus der Liste vor oder macht aus
+   einem Gericht eine Zutatenliste. Dafuer geht die Liste an ein Sprachmodell
+   (Claude von Anthropic). Vor dem ersten Mal fragt die App ausdruecklich um
+   Zustimmung; ohne sie bleibt "Kochen" aus und alles andere funktioniert
 
 Kein Login, kein Konto, keine Bezahlfunktion.
 ```

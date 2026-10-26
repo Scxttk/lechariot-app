@@ -146,6 +146,17 @@ enum UITestSupport {
     static let servesSundayOffers =
         ProcessInfo.processInfo.arguments.contains("-uiTestingSunday")
 
+    /// Ob die Einkaufsliste sonntags auf die Angebote ab Montag umschaltet
+    /// (`OfferQuery.listDay`). In einem UI-Lauf **nur mit `-uiTestingSunday`**.
+    ///
+    /// Die Standard-Fixtures gelten Montag bis Sonntag der laufenden Woche
+    /// (`MockFixtures.weekStart`). An einem echten Sonntag rechnete die Liste
+    /// deshalb nur noch mit den zwei Lidl-Zeilen der Folgewoche — ohne
+    /// Landliebe, Bärenmarke und Aldi. Gemessen am 25.10.2026: zehn Journeys
+    /// fielen, und zwar nur sonntags. Dieselbe Regel wie beim Sonntagszustand:
+    /// Der Zustand kommt aus dem Schalter, nicht aus dem Kalender.
+    static let followsListWeek = !isActive || servesSundayOffers
+
     /// `-uiTestingGerichteKontingentAus`: Die Kochen-Attrappe antwortet mit
     /// aufgebrauchtem Tageskontingent, damit eine Journey den Satz dazu sieht.
     static let gerichteKontingentAus =
